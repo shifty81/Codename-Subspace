@@ -53,8 +53,15 @@ $dotnetVersion = Get-DotNetVersion
 Write-Host "✓ .NET SDK is installed (version $dotnetVersion)" -ForegroundColor Green
 
 # Check if version is sufficient (9.0 or higher)
+# Handle preview versions like "9.0.0-preview.1" by extracting numeric part only
 $versionParts = $dotnetVersion.Split('.')
-$majorVersion = [int]$versionParts[0]
+$majorVersionString = $versionParts[0] -replace '[^0-9].*$', ''
+try {
+    $majorVersion = [int]$majorVersionString
+}
+catch {
+    $majorVersion = 0
+}
 if ($majorVersion -lt 9) {
     Write-Host "⚠️  Warning: .NET SDK version $dotnetVersion detected." -ForegroundColor Yellow
     Write-Host "   This project requires .NET 9.0 or later." -ForegroundColor Yellow

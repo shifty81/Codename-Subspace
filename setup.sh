@@ -64,8 +64,9 @@ DOTNET_VERSION=$(dotnet --version)
 echo -e "${GREEN}✓ .NET SDK is installed (version $DOTNET_VERSION)${NC}"
 
 # Check if version is sufficient (9.0 or higher)
-MAJOR_VERSION=$(echo $DOTNET_VERSION | cut -d. -f1)
-if [ "$MAJOR_VERSION" -lt 9 ]; then
+# Extract major version, handling preview versions like "9.0.0-preview.1"
+MAJOR_VERSION=$(echo $DOTNET_VERSION | cut -d. -f1 | grep -o '^[0-9]*' | head -1)
+if [ -z "$MAJOR_VERSION" ] || [ "$MAJOR_VERSION" -lt 9 ]; then
     echo -e "${YELLOW}⚠️  Warning: .NET SDK version $DOTNET_VERSION detected.${NC}"
     echo -e "${YELLOW}   This project requires .NET 9.0 or later.${NC}"
     echo -e "${YELLOW}   Please update your .NET SDK from: https://dotnet.microsoft.com/download${NC}"

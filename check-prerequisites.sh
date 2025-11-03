@@ -30,9 +30,10 @@ if ! command_exists dotnet; then
     ALL_OK=false
 else
     DOTNET_VERSION=$(dotnet --version)
-    MAJOR_VERSION=$(echo $DOTNET_VERSION | cut -d. -f1)
+    # Extract major version, handling preview versions like "9.0.0-preview.1"
+    MAJOR_VERSION=$(echo $DOTNET_VERSION | cut -d. -f1 | grep -o '^[0-9]*' | head -1)
     
-    if [ "$MAJOR_VERSION" -ge 9 ]; then
+    if [ -n "$MAJOR_VERSION" ] && [ "$MAJOR_VERSION" -ge 9 ]; then
         echo -e "${GREEN}✓ .NET SDK $DOTNET_VERSION (compatible)${NC}"
     else
         echo -e "${YELLOW}⚠️  .NET SDK $DOTNET_VERSION (requires 9.0+)${NC}"

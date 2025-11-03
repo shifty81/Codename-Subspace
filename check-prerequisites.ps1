@@ -41,8 +41,15 @@ if (-not (Test-Command "dotnet")) {
 }
 else {
     $dotnetVersion = Get-DotNetVersion
+    # Handle preview versions like "9.0.0-preview.1" by extracting numeric part only
     $versionParts = $dotnetVersion.Split('.')
-    $majorVersion = [int]$versionParts[0]
+    $majorVersionString = $versionParts[0] -replace '[^0-9].*$', ''
+    try {
+        $majorVersion = [int]$majorVersionString
+    }
+    catch {
+        $majorVersion = 0
+    }
     
     if ($majorVersion -ge 9) {
         Write-Host "✓ .NET SDK $dotnetVersion (compatible)" -ForegroundColor Green
