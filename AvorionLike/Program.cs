@@ -4,6 +4,7 @@ using AvorionLike.Core.Voxel;
 using AvorionLike.Core.Physics;
 using AvorionLike.Core.Resources;
 using AvorionLike.Core.RPG;
+using AvorionLike.Core.Graphics;
 using System.Numerics;
 
 namespace AvorionLike;
@@ -55,6 +56,7 @@ class Program
             Console.WriteLine("7. Scripting Demo - Execute Lua Script");
             Console.WriteLine("8. Multiplayer - Start Server");
             Console.WriteLine("9. View Statistics");
+            Console.WriteLine("10. 3D Graphics Demo - Visualize Voxel Ships [NEW]");
             Console.WriteLine("0. Exit");
             Console.Write("\nSelect option: ");
 
@@ -88,6 +90,9 @@ class Program
                     break;
                 case "9":
                     ShowStatistics();
+                    break;
+                case "10":
+                    GraphicsDemo();
                     break;
                 case "0":
                     _running = false;
@@ -425,6 +430,96 @@ class Program
         {
             Console.WriteLine($"  {entity.Name} (ID: {entity.Id.ToString()[..8]}...)");
         }
+    }
+
+    static void GraphicsDemo()
+    {
+        Console.WriteLine("\n=== 3D Graphics Demo ===");
+        Console.WriteLine("Starting 3D graphics window...");
+        Console.WriteLine();
+
+        // Check if there are any entities to render
+        var entities = _gameEngine!.EntityManager.GetAllEntities().ToList();
+        if (entities.Count == 0)
+        {
+            Console.WriteLine("No entities found! Creating demo ships first...");
+            Console.WriteLine();
+            
+            // Create a few test ships at different positions
+            for (int i = 0; i < 3; i++)
+            {
+                var ship = _gameEngine.EntityManager.CreateEntity($"Demo Ship {i + 1}");
+                
+                var voxelComponent = new VoxelStructureComponent();
+                
+                // Create different ship designs
+                switch (i)
+                {
+                    case 0: // Simple line ship
+                        for (int j = 0; j < 5; j++)
+                        {
+                            voxelComponent.AddBlock(new VoxelBlock(
+                                new Vector3(j * 3, 0, 0),
+                                new Vector3(2.5f, 2.5f, 2.5f),
+                                "Iron"
+                            ));
+                        }
+                        break;
+                    
+                    case 1: // Cross-shaped ship
+                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 0), new Vector3(3, 3, 3), "Titanium"));
+                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(4, 0, 0), new Vector3(2, 2, 2), "Iron"));
+                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(-4, 0, 0), new Vector3(2, 2, 2), "Iron"));
+                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 4, 0), new Vector3(2, 2, 2), "Naonite"));
+                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, -4, 0), new Vector3(2, 2, 2), "Naonite"));
+                        break;
+                    
+                    case 2: // Compact cube ship
+                        for (int x = 0; x < 3; x++)
+                        {
+                            for (int y = 0; y < 2; y++)
+                            {
+                                voxelComponent.AddBlock(new VoxelBlock(
+                                    new Vector3(x * 3, y * 3, 0),
+                                    new Vector3(2.5f, 2.5f, 2.5f),
+                                    x == 1 ? "Trinium" : "Xanion"
+                                ));
+                            }
+                        }
+                        break;
+                }
+                
+                _gameEngine.EntityManager.AddComponent(ship.Id, voxelComponent);
+                
+                // Add physics with different positions
+                var physicsComponent = new PhysicsComponent
+                {
+                    Position = new Vector3(i * 30 - 30, 0, 0),
+                    Mass = voxelComponent.TotalMass
+                };
+                _gameEngine.EntityManager.AddComponent(ship.Id, physicsComponent);
+                
+                Console.WriteLine($"Created {ship.Name} at position ({physicsComponent.Position.X}, {physicsComponent.Position.Y}, {physicsComponent.Position.Z})");
+            }
+            
+            Console.WriteLine();
+        }
+
+        Console.WriteLine("Opening 3D window... (Close window or press ESC to return to menu)");
+        Console.WriteLine();
+
+        try
+        {
+            using var graphicsWindow = new GraphicsWindow(_gameEngine);
+            graphicsWindow.Run();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error running graphics window: {ex.Message}");
+            Console.WriteLine("Graphics rendering may not be available on this system.");
+        }
+
+        Console.WriteLine("Returned to console mode.");
     }
 }
 

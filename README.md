@@ -80,8 +80,27 @@ AvorionLike is a custom-built game engine that replicates the core systems found
 - `ValidationHelper` - Common validation operations
 - `ErrorHandler` - Centralized error handling
 
-### 7. Voxel-Based Architecture
-### 7. Voxel-Based Architecture
+### 7. 3D Graphics Rendering **NEW** 🎨
+- Real-time OpenGL-based 3D rendering using Silk.NET
+- Voxel mesh generation and rendering
+- Free-look camera with WASD and mouse controls
+- Phong lighting model (ambient, diffuse, specular)
+- Material-based coloring for different block types
+- Cross-platform windowing and input handling
+
+**Key Classes:**
+- `Camera` - 3D camera with movement and rotation
+- `Shader` - OpenGL shader program wrapper
+- `VoxelRenderer` - Renders voxel structures as 3D cubes
+- `GraphicsWindow` - Main graphics window and rendering loop
+
+**Features:**
+- Visualize voxel ships in real-time 3D
+- Navigate around structures with smooth camera controls
+- Material differentiation through colors
+- Integrated with ECS for seamless entity rendering
+
+### 8. Voxel-Based Architecture
 - Arbitrary-sized blocks for flexible ship and station construction
 - Automatic center of mass and total mass calculation
 - Collision detection between voxel blocks
@@ -90,8 +109,7 @@ AvorionLike is a custom-built game engine that replicates the core systems found
 - `VoxelBlock` - Represents a single voxel with position, size, and material properties
 - `VoxelStructureComponent` - Component containing voxel structure data for entities
 
-### 8. Newtonian Physics System
-### 8. Newtonian Physics System
+### 9. Newtonian Physics System
 - Realistic physics simulation with forces, acceleration, velocity
 - Linear and rotational motion support
 - Drag and collision detection
@@ -101,8 +119,7 @@ AvorionLike is a custom-built game engine that replicates the core systems found
 - `PhysicsComponent` - Component for physics properties
 - `PhysicsSystem` - System that handles physics simulation
 
-### 9. Procedural Generation
-### 9. Procedural Generation
+### 10. Procedural Generation
 - Deterministic galaxy sector generation using seed-based algorithms
 - Procedural asteroid fields with resource types
 - Random station generation with various types
@@ -113,8 +130,7 @@ AvorionLike is a custom-built game engine that replicates the core systems found
 - `GalaxySector` - Represents a sector in the galaxy
 - `AsteroidData`, `StationData`, `ShipData` - Data structures for sector objects
 
-### 10. Scripting API (Lua Integration)
-### 10. Scripting API (Lua Integration)
+### 11. Scripting API (Lua Integration)
 - NLua-based scripting engine for modding support
 - Register C# objects for Lua access
 - Execute scripts and call Lua functions from C#
@@ -123,8 +139,7 @@ AvorionLike is a custom-built game engine that replicates the core systems found
 **Key Classes:**
 - `ScriptingEngine` - Manages Lua scripting and mod loading
 
-### 11. Networking/Multiplayer
-### 11. Networking/Multiplayer
+### 12. Networking/Multiplayer
 - TCP-based client-server architecture
 - Sector-based multiplayer with server-side sector management
 - Multi-threaded sector handling for scalability
@@ -136,8 +151,7 @@ AvorionLike is a custom-built game engine that replicates the core systems found
 - `SectorServer` - Manages a single sector on the server
 - `NetworkMessage` - Message structure for network communication
 
-### 12. Resource and Inventory Management
-### 12. Resource and Inventory Management
+### 13. Resource and Inventory Management
 - Multiple resource types (Iron, Titanium, Naonite, etc.)
 - Inventory system with capacity limits
 - Crafting system for ship upgrades
@@ -149,8 +163,7 @@ AvorionLike is a custom-built game engine that replicates the core systems found
 - `CraftingSystem` - Handles crafting of upgrades
 - `SubsystemUpgrade` - Represents a ship upgrade
 
-### 13. RPG Elements
-### 13. RPG Elements
+### 14. RPG Elements
 - Ship progression with experience and levels
 - Faction relations and reputation system
 - Loot drop system
@@ -162,7 +175,7 @@ AvorionLike is a custom-built game engine that replicates the core systems found
 - `LootSystem` - Generates loot drops
 - `TradingSystem` - Manages resource trading
 
-### 14. Development Tools
+### 15. Development Tools
 - **Debug Renderer** - Debug visualization for game objects and physics
 - **Performance Profiler** - FPS and frame timing tracking
 - **Memory Tracker** - Memory usage monitoring (including GPU when available)
@@ -276,7 +289,26 @@ The application provides an interactive console menu with various demos:
 7. **Scripting** - Execute Lua scripts
 8. **Multiplayer** - Start multiplayer server
 9. **Statistics** - View engine statistics
-10. **Development Tools** - Access debug console and profiling tools
+10. **3D Graphics Demo** - **NEW!** 🎨 Visualize voxel ships in real-time 3D
+
+#### Using 3D Graphics Visualization
+
+Select option 10 from the main menu to open a 3D graphics window that visualizes your voxel ships!
+
+**Controls:**
+- **WASD** - Move camera forward/back/left/right
+- **Space/Shift** - Move camera up/down
+- **Mouse** - Look around (free camera)
+- **ESC** - Close graphics window and return to menu
+
+**Features:**
+- Real-time 3D rendering of voxel structures
+- Phong lighting with ambient, diffuse, and specular components
+- Material-based colors (Iron=gray, Titanium=blue, Naonite=green, etc.)
+- Smooth camera controls for navigation
+- Automatic creation of demo ships if none exist
+
+If no entities are present when you start the graphics demo, the engine will automatically create three sample ships with different designs to showcase the rendering capabilities.
 
 #### Using Development Tools
 
@@ -307,6 +339,11 @@ AvorionLike/
 │   │   ├── IComponent.cs
 │   │   ├── EntityManager.cs
 │   │   └── SystemBase.cs
+│   ├── Graphics/         # 3D Rendering System (NEW!)
+│   │   ├── Camera.cs
+│   │   ├── Shader.cs
+│   │   ├── VoxelRenderer.cs
+│   │   └── GraphicsWindow.cs
 │   ├── Voxel/            # Voxel-based architecture
 │   │   ├── VoxelBlock.cs
 │   │   └── VoxelStructureComponent.cs
@@ -394,6 +431,7 @@ engine.StartServer(27015); // Start on port 27015
 
 - **C# / .NET 9.0** - Core programming language and framework
 - **NLua (v1.7.3)** - Lua scripting integration for modding
+- **Silk.NET (v2.21.0)** - Cross-platform OpenGL rendering and windowing
 - **System.Numerics** - Vector math for physics and positions
 - **System.Net.Sockets** - TCP networking for multiplayer
 - **Visual Studio 2022** - Primary development environment
@@ -421,10 +459,13 @@ For detailed credits and acknowledgments, see [CREDITS.md](CREDITS.md).
 ✅ **Event system for decoupled communication** 🎉  
 ✅ **Validation and error handling utilities** 🎉  
 ✅ **Save/Load persistence system** 🎉  
+✅ **Real-time 3D graphics rendering** 🎨  
+✅ **OpenGL-based voxel visualization** 🎨  
+✅ **Interactive camera controls** 🎨  
 
 ## Future Enhancements
 
-- Graphics rendering (OpenGL/DirectX)
+- Advanced rendering features (textures, shadows, post-processing)
 - Advanced collision detection with voxel geometry
 - Spatial partitioning for physics optimization
 - Client-side prediction and lag compensation
