@@ -78,17 +78,17 @@ public class DebugRenderer
 
     private struct DebugLine
     {
-        public Vector3 Start;
-        public Vector3 End;
-        public string Color;
-        public float Duration;
+        public Vector3 Start { get; set; }
+        public Vector3 End { get; set; }
+        public string Color { get; set; }
+        public float Duration { get; set; }
     }
 
     private struct DebugBox
     {
-        public Vector3 Position;
-        public Vector3 Size;
-        public string Color;
-        public float Duration;
+        public Vector3 Position { get; set; }
+        public Vector3 Size { get; set; }
+        public string Color { get; set; }
+        public float Duration { get; set; }
     }
 }

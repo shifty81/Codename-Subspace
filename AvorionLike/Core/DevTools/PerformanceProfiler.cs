@@ -143,6 +143,6 @@ public class PerformanceProfiler
         public Stopwatch Timer { get; } = new();
         public double TotalTime { get; set; } = 0;
         public int CallCount { get; set; } = 0;
-        public double AverageTime => CallCount > 0 ? TotalTime / CallCount : 0;
+        public double AverageTime => CallCount > 0 && TotalTime > 0 ? TotalTime / CallCount : 0;
     }
 }

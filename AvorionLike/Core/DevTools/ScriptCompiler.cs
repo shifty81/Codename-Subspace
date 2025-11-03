@@ -246,9 +246,9 @@ public class ScriptCompiler
 
     public struct ScriptInfo
     {
-        public string Name;
-        public string Content;
-        public DateTime LoadTime;
-        public int ExecutionCount;
+        public string Name { get; set; }
+        public string Content { get; set; }
+        public DateTime LoadTime { get; set; }
+        public int ExecutionCount { get; set; }
     }
 }

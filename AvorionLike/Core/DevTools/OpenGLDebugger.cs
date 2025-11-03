@@ -138,9 +138,9 @@ public class OpenGLDebugger
 
     public struct GLError
     {
-        public string ErrorCode;
-        public string Function;
-        public string Message;
-        public DateTime Timestamp;
+        public string ErrorCode { get; set; }
+        public string Function { get; set; }
+        public string Message { get; set; }
+        public DateTime Timestamp { get; set; }
     }
 }
