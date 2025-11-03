@@ -438,9 +438,16 @@ For detailed credits and acknowledgments, see [CREDITS.md](CREDITS.md).
 
 ## Documentation
 
+### 📋 Quick Reference
+- **[Project Summary](PROJECT_SUMMARY.md)** - 📌 **START HERE** - Quick overview of current state and next steps
+- **[Next Steps & Recommendations](NEXT_STEPS.md)** - 📌 **COMPREHENSIVE GUIDE** - Detailed analysis and prioritized recommendations (980+ lines)
+- **[Architecture Diagram](ARCHITECTURE_DIAGRAM.md)** - Visual system architecture and component relationships
+
+### 📚 Detailed Documentation
 - **[Quick Start Guide](QUICKSTART.md)** - Get up and running in minutes
 - **[Architecture Review](ARCHITECTURE.md)** - Comprehensive backend architecture analysis (540+ lines)
 - **[Implementation Roadmap](IMPLEMENTATION_ROADMAP.md)** - Detailed development plan and timelines
+- **[Executive Summary](EXECUTIVE_SUMMARY.md)** - Backend review summary
 - **[Dependencies](DEPENDENCIES.md)** - Complete list of project dependencies
 - **[Contributing](CONTRIBUTING.md)** - How to contribute to the project
 - **[Credits](CREDITS.md)** - Acknowledgments and licenses
