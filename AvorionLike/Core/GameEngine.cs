@@ -5,6 +5,9 @@ using AvorionLike.Core.Networking;
 using AvorionLike.Core.Procedural;
 using AvorionLike.Core.Resources;
 using AvorionLike.Core.RPG;
+using AvorionLike.Core.Configuration;
+using AvorionLike.Core.Logging;
+using AvorionLike.Core.Events;
 
 namespace AvorionLike.Core;
 
@@ -43,10 +46,30 @@ public class GameEngine
     /// </summary>
     private void Initialize()
     {
-        Console.WriteLine("Initializing AvorionLike Game Engine...");
+        // Initialize logging first
+        var config = ConfigurationManager.Instance.Config;
+        
+        if (config.Development.LogToFile)
+        {
+            var logPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "AvorionLike",
+                "Logs"
+            );
+            Logger.Instance.EnableFileLogging(logPath);
+        }
+
+        // Set log level from configuration
+        var logLevel = Enum.TryParse<LogLevel>(config.Development.LogLevel, out var level) 
+            ? level 
+            : LogLevel.Info;
+        Logger.Instance.SetMinimumLevel(logLevel);
+
+        Logger.Instance.Info("GameEngine", "Initializing AvorionLike Game Engine...");
 
         // Initialize ECS
         EntityManager = new EntityManager();
+        Logger.Instance.Info("GameEngine", "EntityManager initialized");
 
         // Initialize systems
         PhysicsSystem = new PhysicsSystem(EntityManager);
@@ -55,6 +78,7 @@ public class GameEngine
         CraftingSystem = new CraftingSystem();
         LootSystem = new LootSystem();
         TradingSystem = new TradingSystem();
+        Logger.Instance.Info("GameEngine", "All systems initialized");
 
         // Register systems with entity manager
         EntityManager.RegisterSystem(PhysicsSystem);
@@ -65,6 +89,10 @@ public class GameEngine
 
         _lastUpdateTime = DateTime.UtcNow;
 
+        // Publish game started event
+        EventSystem.Instance.Publish(GameEvents.GameStarted, new GameEvent());
+        
+        Logger.Instance.Info("GameEngine", "Game Engine initialized successfully");
         Console.WriteLine("Game Engine initialized successfully");
     }
 
@@ -78,6 +106,7 @@ public class GameEngine
         IsRunning = true;
         _lastUpdateTime = DateTime.UtcNow;
         
+        Logger.Instance.Info("GameEngine", "Game Engine started");
         Console.WriteLine("Game Engine started");
     }
 
@@ -89,9 +118,15 @@ public class GameEngine
         if (!IsRunning) return;
 
         IsRunning = false;
+        
+        Logger.Instance.Info("GameEngine", "Stopping Game Engine...");
+        
         EntityManager.Shutdown();
         GameServer?.Stop();
         ScriptingEngine.Dispose();
+        
+        // Shutdown logger last
+        Logger.Instance.Shutdown();
         
         Console.WriteLine("Game Engine stopped");
     }
@@ -110,6 +145,9 @@ public class GameEngine
 
         // Clamp delta time to prevent huge jumps
         deltaTime = Math.Min(deltaTime, 0.1f);
+
+        // Process queued events
+        EventSystem.Instance.ProcessQueuedEvents();
 
         // Update all systems
         EntityManager.UpdateSystems(deltaTime);
