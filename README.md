@@ -107,6 +107,8 @@ AvorionLike requires the following to run:
 - **Dependencies** (automatically installed via NuGet):
   - NLua 1.7.3 (for Lua scripting support)
 
+📖 **For detailed dependency information**, see [DEPENDENCIES.md](DEPENDENCIES.md)
+
 **Note:** The current implementation uses a cross-platform console interface. For a Windows-specific GUI version using Windows Forms, modify the `.csproj` file to target `net9.0-windows` and enable Windows Forms by adding `<UseWindowsForms>true</UseWindowsForms>` to the PropertyGroup section. This requires building on a Windows machine.
 
 ### Quick Start - Automated Setup (Recommended)
