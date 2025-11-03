@@ -2,6 +2,8 @@
 
 A custom game engine implementation inspired by Avorion, built as a standalone Windows application using C# and .NET 9.0.
 
+> **🚀 New to AvorionLike?** Check out our [Quick Start Guide](QUICKSTART.md) for one-click setup!
+
 ## Overview
 
 AvorionLike is a custom-built game engine that replicates the core systems found in Avorion. It features a modular architecture with support for voxel-based ship building, Newtonian physics, procedural generation, multiplayer networking, and extensive modding capabilities through Lua scripting.
@@ -154,6 +156,9 @@ AvorionLike is a custom-built game engine that replicates the core systems found
 git clone https://github.com/shifty81/AvorionLike.git
 cd AvorionLike
 
+# Navigate to project directory
+cd AvorionLike
+
 # Restore dependencies
 dotnet restore
 
@@ -161,8 +166,36 @@ dotnet restore
 dotnet build
 
 # Run the application
-dotnet run --project AvorionLike
+dotnet run
 ```
+
+### Installing .NET 9.0 SDK
+
+If you don't have .NET 9.0 SDK installed:
+
+#### Windows
+1. Download the installer from [dotnet.microsoft.com/download](https://dotnet.microsoft.com/download)
+2. Run the installer
+3. Restart your terminal
+4. Verify installation: `dotnet --version`
+
+#### Linux (Ubuntu/Debian)
+```bash
+wget https://dot.net/v1/dotnet-install.sh -O dotnet-install.sh
+chmod +x dotnet-install.sh
+./dotnet-install.sh --channel 9.0
+export PATH="$PATH:$HOME/.dotnet"
+```
+
+Or follow the official guide: [Install .NET on Linux](https://learn.microsoft.com/en-us/dotnet/core/install/linux)
+
+#### macOS
+Using Homebrew:
+```bash
+brew install --cask dotnet-sdk
+```
+
+Or download from [dotnet.microsoft.com/download](https://dotnet.microsoft.com/download)
 
 ### Running the Application
 
@@ -328,6 +361,58 @@ For detailed credits and acknowledgments, see [CREDITS.md](CREDITS.md).
 - More RPG features (quests, dialog systems)
 - Steam Workshop integration
 - Performance optimizations for large-scale multiplayer
+
+## Troubleshooting
+
+### Common Issues
+
+#### ".NET SDK is not installed" or "dotnet command not found"
+- **Solution**: Install .NET 9.0 SDK from [dotnet.microsoft.com/download](https://dotnet.microsoft.com/download)
+- After installation, restart your terminal/command prompt
+- Verify with: `dotnet --version`
+
+#### "The current .NET SDK does not support targeting .NET 9.0"
+- **Solution**: Your .NET SDK version is too old. Download and install .NET 9.0 SDK or later
+- Check your version: `dotnet --version`
+- Multiple SDK versions can coexist peacefully
+
+#### NuGet package restore fails
+- **Solution**: Check your internet connection
+- Try clearing the NuGet cache: `dotnet nuget locals all --clear`
+- Then run: `dotnet restore` again
+
+#### Build errors related to NLua
+- **Solution**: Make sure NuGet packages are restored correctly
+- Run: `dotnet restore` in the AvorionLike project directory
+- If issues persist, delete `bin` and `obj` folders and rebuild
+
+#### Permission denied when running setup scripts (Linux/macOS)
+- **Solution**: Make the script executable
+- Run: `chmod +x setup.sh` or `chmod +x check-prerequisites.sh`
+
+#### Script execution disabled (Windows PowerShell)
+- **Solution**: You may need to change the execution policy
+- Run PowerShell as Administrator and execute:
+  ```powershell
+  Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+  ```
+- Then try running the setup script again
+
+#### Application crashes or unexpected behavior
+- **Solution**: Make sure you built the project successfully
+- Try a clean build: Delete `bin` and `obj` folders, then run `dotnet build`
+- Check that you're running .NET 9.0 or later: `dotnet --version`
+
+### Getting Help
+
+If you encounter issues not listed here:
+1. Check if there's an existing [GitHub Issue](https://github.com/shifty81/AvorionLike/issues)
+2. Review the build output for specific error messages
+3. Open a new issue with:
+   - Your OS and version
+   - .NET SDK version (`dotnet --version`)
+   - Full error message
+   - Steps to reproduce
 
 ## License
 
