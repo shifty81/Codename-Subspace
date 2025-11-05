@@ -69,7 +69,9 @@ public class PhysicsComponent : IComponent
     public void ApplyRotationalThrust(Vector3 axis, float magnitude)
     {
         float actualMagnitude = Math.Min(magnitude, MaxTorque);
-        AddTorque(axis * actualMagnitude);
+        // Normalize axis to ensure correct torque scaling
+        var normalizedAxis = axis.Length() > 0 ? Vector3.Normalize(axis) : Vector3.Zero;
+        AddTorque(normalizedAxis * actualMagnitude);
     }
 
     /// <summary>

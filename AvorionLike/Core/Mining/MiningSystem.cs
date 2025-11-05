@@ -44,7 +44,12 @@ public class Asteroid
     {
         Position = data.Position;
         Size = data.Size;
-        ResourceType = Enum.Parse<ResourceType>(data.ResourceType);
+        // Try to parse resource type, default to Iron if invalid
+        if (!Enum.TryParse<ResourceType>(data.ResourceType, out var resourceType))
+        {
+            resourceType = ResourceType.Iron;
+        }
+        ResourceType = resourceType;
         RemainingResources = Size * 10f; // Size determines total resources
     }
 }

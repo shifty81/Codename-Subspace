@@ -227,10 +227,16 @@ public class EconomySystem : SystemBase
     /// </summary>
     public Station CreateStation(StationData stationData)
     {
+        // Try to parse station type, default to Trading Post if invalid
+        if (!Enum.TryParse<StationType>(stationData.StationType, out var stationType))
+        {
+            stationType = StationType.TradingPost;
+        }
+        
         var station = new Station
         {
             Name = stationData.Name,
-            Type = Enum.Parse<StationType>(stationData.StationType)
+            Type = stationType
         };
         
         // Set up production based on type

@@ -123,7 +123,13 @@ public class BuildSystem : SystemBase
         float volume = session.SelectedSize.X * session.SelectedSize.Y * session.SelectedSize.Z;
         int materialCost = (int)(volume * 10); // 10 units per cubic unit
         
-        var materialType = Enum.Parse<ResourceType>(session.SelectedMaterial);
+        // Try to parse material to ResourceType, fallback to Iron
+        if (!Enum.TryParse<ResourceType>(session.SelectedMaterial, out var materialType))
+        {
+            result.Message = $"Invalid material type: {session.SelectedMaterial}";
+            return result;
+        }
+        
         if (!inventory.HasResource(materialType, materialCost))
         {
             result.Message = $"Not enough {session.SelectedMaterial}. Need {materialCost}";
@@ -195,8 +201,11 @@ public class BuildSystem : SystemBase
         float volume = blockToRemove.Size.X * blockToRemove.Size.Y * blockToRemove.Size.Z;
         int refund = (int)(volume * 5); // Half of placement cost
         
-        var materialType = Enum.Parse<ResourceType>(blockToRemove.MaterialType);
-        inventory.AddResource(materialType, refund);
+        // Try to parse material to ResourceType, fallback to Iron
+        if (Enum.TryParse<ResourceType>(blockToRemove.MaterialType, out var materialType))
+        {
+            inventory.AddResource(materialType, refund);
+        }
         
         // Remove the block
         structure.RemoveBlock(blockToRemove);
@@ -291,8 +300,11 @@ public class BuildSystem : SystemBase
         float volume = lastBlock.Size.X * lastBlock.Size.Y * lastBlock.Size.Z;
         int refund = (int)(volume * 10); // Full refund for undo
         
-        var materialType = Enum.Parse<ResourceType>(lastBlock.MaterialType);
-        inventory.AddResource(materialType, refund);
+        // Try to parse material to ResourceType, fallback to Iron
+        if (Enum.TryParse<ResourceType>(lastBlock.MaterialType, out var materialType))
+        {
+            inventory.AddResource(materialType, refund);
+        }
         
         return true;
     }
