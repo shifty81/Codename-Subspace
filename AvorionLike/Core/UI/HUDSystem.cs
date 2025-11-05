@@ -13,9 +13,9 @@ namespace AvorionLike.Core.UI;
 public class HUDSystem
 {
     private readonly GameEngine _gameEngine;
-    private bool _showDebugInfo = true;
-    private bool _showEntityInfo = true;
-    private bool _showResourceInfo = true;
+    private bool _showDebugInfo = false;
+    private bool _showEntityInfo = false;
+    private bool _showResourceInfo = false;
     
     public HUDSystem(GameEngine gameEngine)
     {

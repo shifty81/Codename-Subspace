@@ -223,8 +223,10 @@ public class ImGuiController : IDisposable
         
         var io = ImGui.GetIO();
         
-        // Update display size
-        io.DisplaySize = new Vector2(_window.Size.X, _window.Size.Y);
+        // Update display size (handles window resize)
+        _windowWidth = _window.Size.X;
+        _windowHeight = _window.Size.Y;
+        io.DisplaySize = new Vector2(_windowWidth, _windowHeight);
         io.DisplayFramebufferScale = Vector2.One;
         io.DeltaTime = deltaTime;
         
