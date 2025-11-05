@@ -1,12 +1,13 @@
 using System.Numerics;
 using AvorionLike.Core.ECS;
+using AvorionLike.Core.Persistence;
 
 namespace AvorionLike.Core.Physics;
 
 /// <summary>
 /// Component for Newtonian physics properties
 /// </summary>
-public class PhysicsComponent : IComponent
+public class PhysicsComponent : IComponent, ISerializable
 {
     public Guid EntityId { get; set; }
     
@@ -79,6 +80,57 @@ public class PhysicsComponent : IComponent
     /// </summary>
     public void ClearForces()
     {
+        AppliedForce = Vector3.Zero;
+        AppliedTorque = Vector3.Zero;
+    }
+
+    /// <summary>
+    /// Serialize the component to a dictionary
+    /// </summary>
+    public Dictionary<string, object> Serialize()
+    {
+        return new Dictionary<string, object>
+        {
+            ["EntityId"] = EntityId.ToString(),
+            ["Position"] = SerializationHelper.SerializeVector3(Position),
+            ["Velocity"] = SerializationHelper.SerializeVector3(Velocity),
+            ["Acceleration"] = SerializationHelper.SerializeVector3(Acceleration),
+            ["Rotation"] = SerializationHelper.SerializeVector3(Rotation),
+            ["AngularVelocity"] = SerializationHelper.SerializeVector3(AngularVelocity),
+            ["AngularAcceleration"] = SerializationHelper.SerializeVector3(AngularAcceleration),
+            ["Mass"] = Mass,
+            ["MomentOfInertia"] = MomentOfInertia,
+            ["Drag"] = Drag,
+            ["AngularDrag"] = AngularDrag,
+            ["MaxThrust"] = MaxThrust,
+            ["MaxTorque"] = MaxTorque,
+            ["CollisionRadius"] = CollisionRadius,
+            ["IsStatic"] = IsStatic
+        };
+    }
+
+    /// <summary>
+    /// Deserialize the component from a dictionary
+    /// </summary>
+    public void Deserialize(Dictionary<string, object> data)
+    {
+        EntityId = Guid.Parse(SerializationHelper.GetValue(data, "EntityId", Guid.Empty.ToString()));
+        Position = SerializationHelper.DeserializeVector3(data["Position"]);
+        Velocity = SerializationHelper.DeserializeVector3(data["Velocity"]);
+        Acceleration = SerializationHelper.DeserializeVector3(data["Acceleration"]);
+        Rotation = SerializationHelper.DeserializeVector3(data["Rotation"]);
+        AngularVelocity = SerializationHelper.DeserializeVector3(data["AngularVelocity"]);
+        AngularAcceleration = SerializationHelper.DeserializeVector3(data["AngularAcceleration"]);
+        Mass = SerializationHelper.GetValue(data, "Mass", 1000f);
+        MomentOfInertia = SerializationHelper.GetValue(data, "MomentOfInertia", 1000f);
+        Drag = SerializationHelper.GetValue(data, "Drag", 0.1f);
+        AngularDrag = SerializationHelper.GetValue(data, "AngularDrag", 0.1f);
+        MaxThrust = SerializationHelper.GetValue(data, "MaxThrust", 100f);
+        MaxTorque = SerializationHelper.GetValue(data, "MaxTorque", 50f);
+        CollisionRadius = SerializationHelper.GetValue(data, "CollisionRadius", 10f);
+        IsStatic = SerializationHelper.GetValue(data, "IsStatic", false);
+        
+        // Reset applied forces (these should not be persisted)
         AppliedForce = Vector3.Zero;
         AppliedTorque = Vector3.Zero;
     }

@@ -14,6 +14,7 @@ using AvorionLike.Core.Fleet;
 using AvorionLike.Core.Navigation;
 using AvorionLike.Core.Voxel;
 using AvorionLike.Core.Economy;
+using AvorionLike.Core.Persistence;
 
 namespace AvorionLike.Core;
 
@@ -238,6 +239,224 @@ public class GameEngine
             IsServerRunning = GameServer?.IsRunning ?? false,
             PhysicsEnabled = PhysicsSystem.IsEnabled
         };
+    }
+
+    /// <summary>
+    /// Save the current game state
+    /// </summary>
+    /// <param name="saveName">Name of the save file</param>
+    /// <returns>True if save was successful</returns>
+    public bool SaveGame(string saveName)
+    {
+        try
+        {
+            Logger.Instance.Info("GameEngine", $"Saving game: {saveName}");
+            
+            var saveData = new SaveGameData
+            {
+                SaveName = saveName,
+                SaveTime = DateTime.UtcNow,
+                Version = "1.0.0",
+                GalaxySeed = _galaxySeed,
+                GameState = new Dictionary<string, object>
+                {
+                    ["IsRunning"] = IsRunning
+                }
+            };
+
+            // Serialize all entities
+            foreach (var entity in EntityManager.GetAllEntities())
+            {
+                var entityData = new EntityData
+                {
+                    EntityId = entity.Id,
+                    EntityName = entity.Name,
+                    IsActive = entity.IsActive
+                };
+
+                // Serialize all components that implement ISerializable
+                SerializeComponent<PhysicsComponent>(entity, entityData);
+                SerializeComponent<VoxelStructureComponent>(entity, entityData);
+                SerializeComponent<InventoryComponent>(entity, entityData);
+                SerializeComponent<ProgressionComponent>(entity, entityData);
+                SerializeComponent<FactionComponent>(entity, entityData);
+
+                saveData.Entities.Add(entityData);
+            }
+
+            // Save to file
+            bool success = SaveGameManager.Instance.SaveGame(saveData, saveName);
+            
+            if (success)
+            {
+                Logger.Instance.Info("GameEngine", $"Game saved successfully: {saveName}");
+                EventSystem.Instance.Publish(GameEvents.GameSaved, new GameEvent());
+            }
+            else
+            {
+                Logger.Instance.Error("GameEngine", $"Failed to save game: {saveName}");
+            }
+            
+            return success;
+        }
+        catch (Exception ex)
+        {
+            Logger.Instance.Error("GameEngine", $"Error saving game: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Load a saved game state
+    /// </summary>
+    /// <param name="saveName">Name of the save file to load</param>
+    /// <returns>True if load was successful</returns>
+    public bool LoadGame(string saveName)
+    {
+        try
+        {
+            Logger.Instance.Info("GameEngine", $"Loading game: {saveName}");
+            
+            var saveData = SaveGameManager.Instance.LoadGame(saveName);
+            if (saveData == null)
+            {
+                Logger.Instance.Error("GameEngine", $"Failed to load game: {saveName}");
+                return false;
+            }
+
+            // Clear existing entities
+            var existingEntities = EntityManager.GetAllEntities().ToList();
+            foreach (var entity in existingEntities)
+            {
+                EntityManager.DestroyEntity(entity.Id);
+            }
+
+            // Restore entities
+            foreach (var entityData in saveData.Entities)
+            {
+                var entity = EntityManager.CreateEntity(entityData.EntityName);
+                entity.IsActive = entityData.IsActive;
+
+                // Deserialize all components
+                foreach (var componentData in entityData.Components)
+                {
+                    DeserializeComponent(entity.Id, componentData);
+                }
+            }
+
+            Logger.Instance.Info("GameEngine", $"Game loaded successfully: {saveName}");
+            EventSystem.Instance.Publish(GameEvents.GameLoaded, new GameEvent());
+            
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.Instance.Error("GameEngine", $"Error loading game: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Quick save the current game
+    /// </summary>
+    public bool QuickSave()
+    {
+        return SaveGame("quicksave");
+    }
+
+    /// <summary>
+    /// Quick load the most recent save
+    /// </summary>
+    public bool QuickLoad()
+    {
+        return LoadGame("quicksave");
+    }
+
+    /// <summary>
+    /// Get list of available save games
+    /// </summary>
+    public List<string> GetSaveGames()
+    {
+        var saves = SaveGameManager.Instance.ListSaveGames();
+        return saves.Select(s => s.SaveName).ToList();
+    }
+
+    /// <summary>
+    /// Get detailed information about available save games
+    /// </summary>
+    public List<SaveGameInfo> GetSaveGameInfo()
+    {
+        return SaveGameManager.Instance.ListSaveGames();
+    }
+
+    /// <summary>
+    /// Helper method to serialize a component if it exists
+    /// </summary>
+    private void SerializeComponent<T>(Entity entity, EntityData entityData) where T : class, IComponent, ISerializable
+    {
+        if (EntityManager.HasComponent<T>(entity.Id))
+        {
+            var component = EntityManager.GetComponent<T>(entity.Id);
+            if (component != null)
+            {
+                var componentData = new ComponentData
+                {
+                    ComponentType = typeof(T).FullName ?? typeof(T).Name,
+                    Data = component.Serialize()
+                };
+                entityData.Components.Add(componentData);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Helper method to deserialize a component
+    /// </summary>
+    private void DeserializeComponent(Guid entityId, ComponentData componentData)
+    {
+        try
+        {
+            switch (componentData.ComponentType)
+            {
+                case "AvorionLike.Core.Physics.PhysicsComponent":
+                    var physicsComponent = new PhysicsComponent();
+                    physicsComponent.Deserialize(componentData.Data);
+                    EntityManager.AddComponent(entityId, physicsComponent);
+                    break;
+
+                case "AvorionLike.Core.Voxel.VoxelStructureComponent":
+                    var voxelComponent = new VoxelStructureComponent();
+                    voxelComponent.Deserialize(componentData.Data);
+                    EntityManager.AddComponent(entityId, voxelComponent);
+                    break;
+
+                case "AvorionLike.Core.Resources.InventoryComponent":
+                    var inventoryComponent = new InventoryComponent();
+                    inventoryComponent.Deserialize(componentData.Data);
+                    EntityManager.AddComponent(entityId, inventoryComponent);
+                    break;
+
+                case "AvorionLike.Core.RPG.ProgressionComponent":
+                    var progressionComponent = new ProgressionComponent();
+                    progressionComponent.Deserialize(componentData.Data);
+                    EntityManager.AddComponent(entityId, progressionComponent);
+                    break;
+
+                case "AvorionLike.Core.RPG.FactionComponent":
+                    var factionComponent = new FactionComponent();
+                    factionComponent.Deserialize(componentData.Data);
+                    EntityManager.AddComponent(entityId, factionComponent);
+                    break;
+
+                default:
+                    Logger.Instance.Warning("GameEngine", $"Unknown component type: {componentData.ComponentType}");
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Instance.Error("GameEngine", $"Error deserializing component {componentData.ComponentType}: {ex.Message}");
+        }
     }
 }
 

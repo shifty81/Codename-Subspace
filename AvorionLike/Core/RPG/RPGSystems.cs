@@ -1,12 +1,14 @@
+using System.Text.Json;
 using AvorionLike.Core.ECS;
 using AvorionLike.Core.Resources;
+using AvorionLike.Core.Persistence;
 
 namespace AvorionLike.Core.RPG;
 
 /// <summary>
 /// Component for ship progression and stats
 /// </summary>
-public class ProgressionComponent : IComponent
+public class ProgressionComponent : IComponent, ISerializable
 {
     public Guid EntityId { get; set; }
     public int Level { get; set; } = 1;
@@ -37,6 +39,33 @@ public class ProgressionComponent : IComponent
         ExperienceToNextLevel = (int)(ExperienceToNextLevel * 1.5f);
         SkillPoints += 3;
     }
+
+    /// <summary>
+    /// Serialize the component to a dictionary
+    /// </summary>
+    public Dictionary<string, object> Serialize()
+    {
+        return new Dictionary<string, object>
+        {
+            ["EntityId"] = EntityId.ToString(),
+            ["Level"] = Level,
+            ["Experience"] = Experience,
+            ["ExperienceToNextLevel"] = ExperienceToNextLevel,
+            ["SkillPoints"] = SkillPoints
+        };
+    }
+
+    /// <summary>
+    /// Deserialize the component from a dictionary
+    /// </summary>
+    public void Deserialize(Dictionary<string, object> data)
+    {
+        EntityId = Guid.Parse(SerializationHelper.GetValue(data, "EntityId", Guid.Empty.ToString()));
+        Level = SerializationHelper.GetValue(data, "Level", 1);
+        Experience = SerializationHelper.GetValue(data, "Experience", 0);
+        ExperienceToNextLevel = SerializationHelper.GetValue(data, "ExperienceToNextLevel", 100);
+        SkillPoints = SerializationHelper.GetValue(data, "SkillPoints", 0);
+    }
 }
 
 /// <summary>
@@ -52,7 +81,7 @@ public class Faction
 /// <summary>
 /// Component for faction relations
 /// </summary>
-public class FactionComponent : IComponent
+public class FactionComponent : IComponent, ISerializable
 {
     public Guid EntityId { get; set; }
     public string FactionName { get; set; } = "Neutral";
@@ -96,6 +125,46 @@ public class FactionComponent : IComponent
     public bool IsHostile(string factionName)
     {
         return GetReputation(factionName) <= -50;
+    }
+
+    /// <summary>
+    /// Serialize the component to a dictionary
+    /// </summary>
+    public Dictionary<string, object> Serialize()
+    {
+        return new Dictionary<string, object>
+        {
+            ["EntityId"] = EntityId.ToString(),
+            ["FactionName"] = FactionName,
+            ["Reputation"] = new Dictionary<string, object>(Reputation.ToDictionary(k => k.Key, v => (object)v.Value))
+        };
+    }
+
+    /// <summary>
+    /// Deserialize the component from a dictionary
+    /// </summary>
+    public void Deserialize(Dictionary<string, object> data)
+    {
+        EntityId = Guid.Parse(SerializationHelper.GetValue(data, "EntityId", Guid.Empty.ToString()));
+        FactionName = SerializationHelper.GetValue(data, "FactionName", "Neutral");
+        
+        Reputation.Clear();
+        if (data.ContainsKey("Reputation"))
+        {
+            Dictionary<string, object> reputationData;
+            
+            if (data["Reputation"] is JsonElement jsonElement)
+            {
+                reputationData = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonElement.GetRawText()) 
+                    ?? new Dictionary<string, object>();
+            }
+            else
+            {
+                reputationData = (Dictionary<string, object>)data["Reputation"];
+            }
+            
+            Reputation = SerializationHelper.DeserializeStringDictionary<int>(reputationData);
+        }
     }
 }
 

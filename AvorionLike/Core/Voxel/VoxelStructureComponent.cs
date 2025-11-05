@@ -1,12 +1,14 @@
 using System.Numerics;
+using System.Text.Json;
 using AvorionLike.Core.ECS;
+using AvorionLike.Core.Persistence;
 
 namespace AvorionLike.Core.Voxel;
 
 /// <summary>
 /// Component that contains voxel-based structure data for ships and stations
 /// </summary>
-public class VoxelStructureComponent : IComponent
+public class VoxelStructureComponent : IComponent, ISerializable
 {
     public Guid EntityId { get; set; }
     public List<VoxelBlock> Blocks { get; set; } = new();
@@ -173,5 +175,67 @@ public class VoxelStructureComponent : IComponent
     public IEnumerable<VoxelBlock> GetBlocksByType(BlockType type)
     {
         return Blocks.Where(b => b.BlockType == type);
+    }
+
+    /// <summary>
+    /// Serialize the component to a dictionary
+    /// </summary>
+    public Dictionary<string, object> Serialize()
+    {
+        var blocksData = new List<Dictionary<string, object>>();
+        foreach (var block in Blocks)
+        {
+            blocksData.Add(block.Serialize());
+        }
+
+        return new Dictionary<string, object>
+        {
+            ["EntityId"] = EntityId.ToString(),
+            ["Blocks"] = blocksData,
+            ["StructuralIntegrity"] = StructuralIntegrity
+        };
+    }
+
+    /// <summary>
+    /// Deserialize the component from a dictionary
+    /// </summary>
+    public void Deserialize(Dictionary<string, object> data)
+    {
+        EntityId = Guid.Parse(SerializationHelper.GetValue(data, "EntityId", Guid.Empty.ToString()));
+        StructuralIntegrity = SerializationHelper.GetValue(data, "StructuralIntegrity", 100f);
+        
+        Blocks.Clear();
+        
+        if (data.ContainsKey("Blocks"))
+        {
+            var blocksData = data["Blocks"];
+            
+            if (blocksData is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var blockElement in jsonElement.EnumerateArray())
+                {
+                    var blockDict = JsonSerializer.Deserialize<Dictionary<string, object>>(blockElement.GetRawText());
+                    if (blockDict != null)
+                    {
+                        var block = VoxelBlock.Deserialize(blockDict);
+                        Blocks.Add(block);
+                    }
+                }
+            }
+            else if (blocksData is List<object> blocksList)
+            {
+                foreach (var blockObj in blocksList)
+                {
+                    if (blockObj is Dictionary<string, object> blockDict)
+                    {
+                        var block = VoxelBlock.Deserialize(blockDict);
+                        Blocks.Add(block);
+                    }
+                }
+            }
+        }
+        
+        // Recalculate all derived properties
+        RecalculateProperties();
     }
 }

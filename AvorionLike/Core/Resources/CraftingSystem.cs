@@ -1,11 +1,13 @@
+using System.Text.Json;
 using AvorionLike.Core.ECS;
+using AvorionLike.Core.Persistence;
 
 namespace AvorionLike.Core.Resources;
 
 /// <summary>
 /// Component for inventory management
 /// </summary>
-public class InventoryComponent : IComponent
+public class InventoryComponent : IComponent, ISerializable
 {
     public Guid EntityId { get; set; }
     public Inventory Inventory { get; set; }
@@ -18,6 +20,52 @@ public class InventoryComponent : IComponent
     public InventoryComponent(int maxCapacity)
     {
         Inventory = new Inventory { MaxCapacity = maxCapacity };
+    }
+
+    /// <summary>
+    /// Serialize the component to a dictionary
+    /// </summary>
+    public Dictionary<string, object> Serialize()
+    {
+        var resources = Inventory.GetAllResources();
+        return new Dictionary<string, object>
+        {
+            ["EntityId"] = EntityId.ToString(),
+            ["MaxCapacity"] = Inventory.MaxCapacity,
+            ["Resources"] = SerializationHelper.SerializeDictionary(resources)
+        };
+    }
+
+    /// <summary>
+    /// Deserialize the component from a dictionary
+    /// </summary>
+    public void Deserialize(Dictionary<string, object> data)
+    {
+        EntityId = Guid.Parse(SerializationHelper.GetValue(data, "EntityId", Guid.Empty.ToString()));
+        int maxCapacity = SerializationHelper.GetValue(data, "MaxCapacity", 1000);
+        
+        Inventory = new Inventory { MaxCapacity = maxCapacity };
+        
+        if (data.ContainsKey("Resources"))
+        {
+            Dictionary<string, object> resourcesData;
+            
+            if (data["Resources"] is JsonElement jsonElement)
+            {
+                resourcesData = JsonSerializer.Deserialize<Dictionary<string, object>>(jsonElement.GetRawText()) 
+                    ?? new Dictionary<string, object>();
+            }
+            else
+            {
+                resourcesData = (Dictionary<string, object>)data["Resources"];
+            }
+            
+            var resources = SerializationHelper.DeserializeDictionary<ResourceType, int>(resourcesData);
+            foreach (var kvp in resources)
+            {
+                Inventory.AddResource(kvp.Key, kvp.Value);
+            }
+        }
     }
 }
 

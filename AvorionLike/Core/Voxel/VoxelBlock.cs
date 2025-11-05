@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Text.Json;
 
 namespace AvorionLike.Core.Voxel;
 
@@ -83,5 +84,122 @@ public class VoxelBlock
                Position.Y + Size.Y > other.Position.Y &&
                Position.Z < other.Position.Z + other.Size.Z &&
                Position.Z + Size.Z > other.Position.Z;
+    }
+
+    /// <summary>
+    /// Serialize the voxel block to a dictionary
+    /// </summary>
+    public Dictionary<string, object> Serialize()
+    {
+        return new Dictionary<string, object>
+        {
+            ["Position"] = new Dictionary<string, object>
+            {
+                ["X"] = Position.X,
+                ["Y"] = Position.Y,
+                ["Z"] = Position.Z
+            },
+            ["Size"] = new Dictionary<string, object>
+            {
+                ["X"] = Size.X,
+                ["Y"] = Size.Y,
+                ["Z"] = Size.Z
+            },
+            ["MaterialType"] = MaterialType,
+            ["BlockType"] = BlockType.ToString(),
+            ["Durability"] = Durability,
+            ["MaxDurability"] = MaxDurability,
+            ["ColorRGB"] = ColorRGB,
+            ["ThrustPower"] = ThrustPower,
+            ["PowerGeneration"] = PowerGeneration,
+            ["ShieldCapacity"] = ShieldCapacity
+        };
+    }
+
+    /// <summary>
+    /// Deserialize the voxel block from a dictionary
+    /// </summary>
+    public static VoxelBlock Deserialize(Dictionary<string, object> data)
+    {
+        // Handle Position
+        Vector3 position;
+        if (data["Position"] is JsonElement posJsonElement)
+        {
+            position = new Vector3(
+                posJsonElement.GetProperty("X").GetSingle(),
+                posJsonElement.GetProperty("Y").GetSingle(),
+                posJsonElement.GetProperty("Z").GetSingle()
+            );
+        }
+        else
+        {
+            var posData = (Dictionary<string, object>)data["Position"];
+            position = new Vector3(
+                Convert.ToSingle(posData["X"]),
+                Convert.ToSingle(posData["Y"]),
+                Convert.ToSingle(posData["Z"])
+            );
+        }
+        
+        // Handle Size
+        Vector3 size;
+        if (data["Size"] is JsonElement sizeJsonElement)
+        {
+            size = new Vector3(
+                sizeJsonElement.GetProperty("X").GetSingle(),
+                sizeJsonElement.GetProperty("Y").GetSingle(),
+                sizeJsonElement.GetProperty("Z").GetSingle()
+            );
+        }
+        else
+        {
+            var sizeData = (Dictionary<string, object>)data["Size"];
+            size = new Vector3(
+                Convert.ToSingle(sizeData["X"]),
+                Convert.ToSingle(sizeData["Y"]),
+                Convert.ToSingle(sizeData["Z"])
+            );
+        }
+        
+        var materialType = data["MaterialType"].ToString() ?? "Iron";
+        var blockTypeStr = data["BlockType"].ToString() ?? "Hull";
+        var blockType = Enum.Parse<BlockType>(blockTypeStr);
+        
+        // Create block with basic properties
+        var block = new VoxelBlock(position, size, materialType, blockType);
+        
+        // Restore damage state
+        if (data.ContainsKey("Durability"))
+        {
+            var durability = data["Durability"];
+            block.Durability = durability is JsonElement durJsonElement 
+                ? durJsonElement.GetSingle() 
+                : Convert.ToSingle(durability);
+        }
+        
+        // Override functional properties if they were saved
+        if (data.ContainsKey("ThrustPower"))
+        {
+            var thrust = data["ThrustPower"];
+            block.ThrustPower = thrust is JsonElement thrustJsonElement 
+                ? thrustJsonElement.GetSingle() 
+                : Convert.ToSingle(thrust);
+        }
+        if (data.ContainsKey("PowerGeneration"))
+        {
+            var power = data["PowerGeneration"];
+            block.PowerGeneration = power is JsonElement powerJsonElement 
+                ? powerJsonElement.GetSingle() 
+                : Convert.ToSingle(power);
+        }
+        if (data.ContainsKey("ShieldCapacity"))
+        {
+            var shield = data["ShieldCapacity"];
+            block.ShieldCapacity = shield is JsonElement shieldJsonElement 
+                ? shieldJsonElement.GetSingle() 
+                : Convert.ToSingle(shield);
+        }
+        
+        return block;
     }
 }
