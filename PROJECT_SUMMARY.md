@@ -2,6 +2,8 @@
 
 **Last Updated:** November 5, 2025
 
+> **❓ Is this game playable yet?** See [PLAYABILITY_STATUS.md](PLAYABILITY_STATUS.md) for a comprehensive assessment.
+
 ---
 
 ## 📊 Project Statistics
@@ -49,8 +51,11 @@
 - ✅ Manage resources and crafting
 - ✅ Track progression and factions
 - ✅ Debug and profile performance
-- ✅ **Render in real-time 3D** 🎉
+- ✅ Render 3D voxel ships (view only)
 - ⚠️ Save/Load games (partial)
+- ❌ Playable game loop (MISSING)
+- ❌ Player controls (MISSING)
+- ❌ Interactive UI (MISSING)
 - ❌ AI behaviors (MISSING)
 - ❌ UI/HUD (MISSING)
 
