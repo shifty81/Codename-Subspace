@@ -294,6 +294,7 @@ The application provides an interactive console menu with various demos:
 8. **Multiplayer** - Start multiplayer server
 9. **Statistics** - View engine statistics
 10. **3D Graphics Demo** - **NEW!** 🎨 Visualize voxel ships in real-time 3D
+11. **Persistence Demo** - **NEW!** 💾 Save and load game state
 
 #### Using 3D Graphics Visualization
 
@@ -462,10 +463,11 @@ For detailed credits and acknowledgments, see [CREDITS.md](CREDITS.md).
 ✅ **Structured logging with file output** 🎉  
 ✅ **Event system for decoupled communication** 🎉  
 ✅ **Validation and error handling utilities** 🎉  
-✅ **Save/Load persistence system** 🎉  
+✅ **Save/Load persistence system** 🎉 💾  
 ✅ **Real-time 3D graphics rendering** 🎨  
 ✅ **OpenGL-based voxel visualization** 🎨  
 ✅ **Interactive camera controls** 🎨  
+✅ **ImGui.NET UI framework with HUD** 🎨  
 
 ## Future Enhancements
 
@@ -498,6 +500,7 @@ For detailed credits and acknowledgments, see [CREDITS.md](CREDITS.md).
 - **[Dependencies](DEPENDENCIES.md)** - Complete list of project dependencies
 - **[Contributing](CONTRIBUTING.md)** - How to contribute to the project
 - **[Credits](CREDITS.md)** - Acknowledgments and licenses
+- **[Persistence Guide](PERSISTENCE_GUIDE.md)** - 💾 **NEW!** - Complete guide to save/load system
 
 ## Troubleshooting
 
