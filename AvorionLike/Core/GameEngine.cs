@@ -13,6 +13,7 @@ using AvorionLike.Core.Mining;
 using AvorionLike.Core.Fleet;
 using AvorionLike.Core.Navigation;
 using AvorionLike.Core.Voxel;
+using AvorionLike.Core.Economy;
 
 namespace AvorionLike.Core;
 
@@ -38,6 +39,7 @@ public class GameEngine
     public FleetManagementSystem FleetManagementSystem { get; private set; } = null!;
     public NavigationSystem NavigationSystem { get; private set; } = null!;
     public BuildSystem BuildSystem { get; private set; } = null!;
+    public EconomySystem EconomySystem { get; private set; } = null!;
     
     // Networking
     public GameServer? GameServer { get; private set; }
@@ -95,6 +97,7 @@ public class GameEngine
         FleetManagementSystem = new FleetManagementSystem(EntityManager);
         NavigationSystem = new NavigationSystem(EntityManager);
         BuildSystem = new BuildSystem(EntityManager);
+        EconomySystem = new EconomySystem(EntityManager);
         Logger.Instance.Info("GameEngine", "All systems initialized");
 
         // Register systems with entity manager
@@ -104,6 +107,7 @@ public class GameEngine
         EntityManager.RegisterSystem(FleetManagementSystem);
         EntityManager.RegisterSystem(NavigationSystem);
         EntityManager.RegisterSystem(BuildSystem);
+        EntityManager.RegisterSystem(EconomySystem);
 
         // Register engine API for scripting
         ScriptingEngine.RegisterObject("Engine", this);
