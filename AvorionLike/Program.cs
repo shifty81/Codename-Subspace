@@ -59,6 +59,7 @@ class Program
             Console.WriteLine("8. Multiplayer - Start Server");
             Console.WriteLine("9. View Statistics");
             Console.WriteLine("10. 3D Graphics Demo - Visualize Voxel Ships [NEW]");
+            Console.WriteLine("11. Persistence Demo - Save/Load Game [NEW]");
             Console.WriteLine("0. Exit");
             Console.Write("\nSelect option: ");
 
@@ -95,6 +96,9 @@ class Program
                     break;
                 case "10":
                     GraphicsDemo();
+                    break;
+                case "11":
+                    PersistenceDemo();
                     break;
                 case "0":
                     _running = false;
@@ -627,6 +631,160 @@ class Program
         }
 
         Console.WriteLine("Returned to console mode.");
+    }
+
+    static void PersistenceDemo()
+    {
+        if (_gameEngine == null) return;
+
+        Console.WriteLine("\n=== Persistence System Demo ===");
+        Console.WriteLine("This demo tests the save/load functionality.\n");
+
+        Console.WriteLine("1. Save Current Game State");
+        Console.WriteLine("2. Load Game State");
+        Console.WriteLine("3. List Save Games");
+        Console.WriteLine("4. Quick Save");
+        Console.WriteLine("5. Quick Load");
+        Console.WriteLine("0. Back to Main Menu");
+        Console.Write("\nSelect option: ");
+
+        var choice = Console.ReadLine();
+
+        switch (choice)
+        {
+            case "1":
+                Console.Write("Enter save name: ");
+                var saveName = Console.ReadLine();
+                if (!string.IsNullOrWhiteSpace(saveName))
+                {
+                    Console.WriteLine($"\nSaving game as '{saveName}'...");
+                    
+                    // Show current state before saving
+                    var entitiesBeforeSave = _gameEngine.EntityManager.GetAllEntities().ToList();
+                    Console.WriteLine($"Current entities: {entitiesBeforeSave.Count}");
+                    foreach (var entity in entitiesBeforeSave)
+                    {
+                        Console.WriteLine($"  - {entity.Name} (ID: {entity.Id})");
+                        if (_gameEngine.EntityManager.HasComponent<PhysicsComponent>(entity.Id))
+                        {
+                            var physics = _gameEngine.EntityManager.GetComponent<PhysicsComponent>(entity.Id);
+                            Console.WriteLine($"    Physics: Position=({physics.Position.X:F1}, {physics.Position.Y:F1}, {physics.Position.Z:F1})");
+                        }
+                        if (_gameEngine.EntityManager.HasComponent<VoxelStructureComponent>(entity.Id))
+                        {
+                            var voxel = _gameEngine.EntityManager.GetComponent<VoxelStructureComponent>(entity.Id);
+                            Console.WriteLine($"    Voxels: {voxel.Blocks.Count} blocks, Mass={voxel.TotalMass:F1}kg");
+                        }
+                        if (_gameEngine.EntityManager.HasComponent<InventoryComponent>(entity.Id))
+                        {
+                            var inventory = _gameEngine.EntityManager.GetComponent<InventoryComponent>(entity.Id);
+                            Console.WriteLine($"    Inventory: {inventory.Inventory.CurrentCapacity}/{inventory.Inventory.MaxCapacity}");
+                        }
+                    }
+                    
+                    bool success = _gameEngine.SaveGame(saveName);
+                    if (success)
+                    {
+                        Console.WriteLine($"✓ Game saved successfully as '{saveName}'");
+                    }
+                    else
+                    {
+                        Console.WriteLine("✗ Failed to save game");
+                    }
+                }
+                break;
+
+            case "2":
+                Console.Write("Enter save name to load: ");
+                var loadName = Console.ReadLine();
+                if (!string.IsNullOrWhiteSpace(loadName))
+                {
+                    Console.WriteLine($"\nLoading game '{loadName}'...");
+                    
+                    bool success = _gameEngine.LoadGame(loadName);
+                    if (success)
+                    {
+                        Console.WriteLine($"✓ Game loaded successfully from '{loadName}'");
+                        
+                        // Show loaded state
+                        var entitiesAfterLoad = _gameEngine.EntityManager.GetAllEntities().ToList();
+                        Console.WriteLine($"\nLoaded entities: {entitiesAfterLoad.Count}");
+                        foreach (var entity in entitiesAfterLoad)
+                        {
+                            Console.WriteLine($"  - {entity.Name} (ID: {entity.Id})");
+                            if (_gameEngine.EntityManager.HasComponent<PhysicsComponent>(entity.Id))
+                            {
+                                var physics = _gameEngine.EntityManager.GetComponent<PhysicsComponent>(entity.Id);
+                                Console.WriteLine($"    Physics: Position=({physics.Position.X:F1}, {physics.Position.Y:F1}, {physics.Position.Z:F1})");
+                            }
+                            if (_gameEngine.EntityManager.HasComponent<VoxelStructureComponent>(entity.Id))
+                            {
+                                var voxel = _gameEngine.EntityManager.GetComponent<VoxelStructureComponent>(entity.Id);
+                                Console.WriteLine($"    Voxels: {voxel.Blocks.Count} blocks, Mass={voxel.TotalMass:F1}kg");
+                            }
+                            if (_gameEngine.EntityManager.HasComponent<InventoryComponent>(entity.Id))
+                            {
+                                var inventory = _gameEngine.EntityManager.GetComponent<InventoryComponent>(entity.Id);
+                                Console.WriteLine($"    Inventory: {inventory.Inventory.CurrentCapacity}/{inventory.Inventory.MaxCapacity}");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("✗ Failed to load game");
+                    }
+                }
+                break;
+
+            case "3":
+                Console.WriteLine("\nAvailable save games:");
+                var saves = _gameEngine.GetSaveGameInfo();
+                if (saves.Count == 0)
+                {
+                    Console.WriteLine("  No save games found.");
+                }
+                else
+                {
+                    foreach (var save in saves)
+                    {
+                        Console.WriteLine($"  - {save.SaveName} ({save.FileName})");
+                        Console.WriteLine($"    Saved: {save.SaveTime:yyyy-MM-dd HH:mm:ss}");
+                        Console.WriteLine($"    Version: {save.Version}");
+                    }
+                }
+                break;
+
+            case "4":
+                Console.WriteLine("\nQuick saving...");
+                if (_gameEngine.QuickSave())
+                {
+                    Console.WriteLine("✓ Quick save successful");
+                }
+                else
+                {
+                    Console.WriteLine("✗ Quick save failed");
+                }
+                break;
+
+            case "5":
+                Console.WriteLine("\nQuick loading...");
+                if (_gameEngine.QuickLoad())
+                {
+                    Console.WriteLine("✓ Quick load successful");
+                }
+                else
+                {
+                    Console.WriteLine("✗ Quick load failed (no quicksave found?)");
+                }
+                break;
+
+            case "0":
+                break;
+
+            default:
+                Console.WriteLine("Invalid option!");
+                break;
+        }
     }
 }
 
