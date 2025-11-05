@@ -1,6 +1,6 @@
 # AvorionLike - Custom Game Engine
 
-A custom game engine implementation inspired by Avorion, featuring real-time 3D graphics rendering with OpenGL. Built using C# and .NET 9.0, cross-platform compatible.
+A custom game engine implementation inspired by Avorion, featuring real-time 3D graphics rendering with OpenGL. Built with C# and .NET 9.0, cross-platform compatible (Windows, Linux, macOS).
 
 > **🚀 New to AvorionLike?** Check out our [Quick Start Guide](QUICKSTART.md) for one-click setup!
 > 

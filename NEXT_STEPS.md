@@ -1021,12 +1021,11 @@ Secondary needs:
 4. ✅ Generate cube meshes for voxel blocks
 5. ✅ Render ships from VoxelStructureComponent
 6. ✅ Add Phong lighting (ambient, diffuse, specular)
-7. ⚠️ Take screenshot and share!
 
 **Success Criteria:**
 - See your first voxel ship in 3D ✅
 - Move camera around ship ✅
-- Screenshot to share ⚠️ (TODO)
+- Capture demonstration screenshots (recommended next step)
 
 **Graphics Implementation Details:**
 - **Files:** GraphicsWindow.cs, Camera.cs, VoxelRenderer.cs, Shader.cs

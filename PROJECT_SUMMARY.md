@@ -10,8 +10,8 @@
 |--------|-------|
 | **Total Systems** | 15 major systems |
 | **C# Files** | 35+ files |
-| **Lines of Code** | 4,760+ lines |
-| **Documentation** | 3,196+ lines (5+ docs) |
+| **Lines of Code** | ~4,760 lines |
+| **Documentation** | ~3,200 lines (5 docs) |
 | **Build Status** | ✅ 0 warnings, 0 errors |
 | **Platform** | Cross-platform (.NET 9.0) |
 | **Project Type** | Game Engine with 3D Graphics |
