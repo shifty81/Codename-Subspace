@@ -23,7 +23,7 @@ class Program
     static void Main(string[] args)
     {
         Console.WriteLine("==============================================");
-        Console.WriteLine("  Codename:Subspace - Space Game Engine");
+        Console.WriteLine($"  {VersionInfo.FullVersion}");
         Console.WriteLine("==============================================");
         Console.WriteLine();
 
@@ -66,6 +66,9 @@ class Program
             Console.WriteLine("12. Persistence Demo - Save/Load Game");
             Console.WriteLine("13. Player Pod Demo - Character System");
             Console.WriteLine("14. Enhanced Pod Demo - Skills & Abilities");
+            Console.WriteLine();
+            Console.WriteLine("--- INFO ---");
+            Console.WriteLine("15. About / Version Info");
             Console.WriteLine("0. Exit");
             Console.Write("\nSelect option: ");
 
@@ -114,6 +117,9 @@ class Program
                     break;
                 case "14":
                     EnhancedPlayerPodDemo();
+                    break;
+                case "15":
+                    ShowVersionInfo();
                     break;
                 case "0":
                     _running = false;
@@ -1525,6 +1531,36 @@ class Program
         Console.WriteLine("  - Path to becoming unstoppable force!");
 
         Console.WriteLine("\nPress Enter to return to main menu...");
+        Console.ReadLine();
+    }
+    
+    static void ShowVersionInfo()
+    {
+        Console.WriteLine("\n=== About Codename:Subspace ===");
+        Console.WriteLine();
+        Console.WriteLine(VersionInfo.GetVersionInfo());
+        Console.WriteLine();
+        Console.WriteLine("Project: Open-source space game engine");
+        Console.WriteLine("Inspired by: Avorion's gameplay mechanics");
+        Console.WriteLine("Built with: C# and .NET 9.0");
+        Console.WriteLine();
+        Console.WriteLine("Features:");
+        Console.WriteLine("  • Entity-Component System (ECS) architecture");
+        Console.WriteLine("  • Real-time 3D graphics with OpenGL");
+        Console.WriteLine("  • Integrated Player UI with ImGui.NET");
+        Console.WriteLine("  • Voxel-based ship building");
+        Console.WriteLine("  • Newtonian physics simulation");
+        Console.WriteLine("  • Procedural galaxy generation");
+        Console.WriteLine("  • Multiplayer networking support");
+        Console.WriteLine("  • Lua scripting and modding");
+        Console.WriteLine("  • Faction and politics system");
+        Console.WriteLine("  • Player pod progression system");
+        Console.WriteLine();
+        Console.WriteLine(VersionInfo.GetSystemRequirements());
+        Console.WriteLine();
+        Console.WriteLine("GitHub: https://github.com/shifty81/AvorionLike");
+        Console.WriteLine();
+        Console.WriteLine("Press Enter to return to main menu...");
         Console.ReadLine();
     }
 }

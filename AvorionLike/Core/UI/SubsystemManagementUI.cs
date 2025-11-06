@@ -245,7 +245,7 @@ public class SubsystemManagementUI
             if (ImGui.Button($"Unequip##unequip{slotIndex}", new Vector2(90, 40)))
             {
                 var unequipped = unequipAction();
-                if (unequipped != null)
+                if (unequipped != null && _selectedEntityId.HasValue)
                 {
                     // Add back to storage
                     var storage = _gameEngine.EntityManager.GetComponent<SubsystemInventoryComponent>(_selectedEntityId.Value);

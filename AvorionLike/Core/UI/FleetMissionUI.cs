@@ -15,10 +15,12 @@ public class FleetMissionUI
     
     // Mission assignment
     private FleetMission? _selectedMission = null;
-    private List<Guid> _selectedShips = new();
+    private readonly List<Guid> _selectedShips = new();
     
-    // Tab selection
+    // Tab selection - reserved for future UI expansion
+#pragma warning disable CS0414 // Field is assigned but its value is never used
     private int _selectedTab = 0; // 0 = Available, 1 = Active, 2 = Completed
+#pragma warning restore CS0414
     
     public bool IsOpen => _isOpen;
     

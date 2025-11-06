@@ -386,7 +386,7 @@ public class CrewComponent : IComponent, ISerializable
             ["CurrentCrew"] = CurrentCrew,
             ["MaxCrew"] = MaxCrew,
             ["CrewQuartersCapacity"] = CrewQuartersCapacity,
-            ["AssignedPilot"] = AssignedPilot?.Serialize(),
+            ["AssignedPilot"] = (object?)AssignedPilot?.Serialize() ?? DBNull.Value,
             ["CrewEfficiency"] = CrewEfficiency
         };
     }
@@ -396,7 +396,7 @@ public class CrewComponent : IComponent, ISerializable
     /// </summary>
     public void Deserialize(Dictionary<string, object> data)
     {
-        EntityId = Guid.Parse(data["EntityId"].ToString()!);
+        EntityId = Guid.Parse(data["EntityId"].ToString() ?? string.Empty);
         MinimumCrew = Convert.ToInt32(data["MinimumCrew"]);
         CurrentCrew = Convert.ToInt32(data["CurrentCrew"]);
         MaxCrew = Convert.ToInt32(data["MaxCrew"]);

@@ -23,9 +23,11 @@ public class FactionSystem : SystemBase
     private Dictionary<string, Pop> _pops = new();
     private Dictionary<string, Planet> _planets = new();
     
-    // Configuration
-    private float _factionFormationThreshold = 100; // Min pops to form new faction
-    private float _rebellionThreshold = 80f; // Unrest level that triggers rebellion
+    // Configuration - reserved for future faction mechanics
+#pragma warning disable CS0414 // Field is assigned but its value is never used
+    private readonly float _factionFormationThreshold = 100; // Min pops to form new faction
+    private readonly float _rebellionThreshold = 80f; // Unrest level that triggers rebellion
+#pragma warning restore CS0414
     private bool _allowFactionSuppression = false; // Government can suppress factions
     
     // Timing
