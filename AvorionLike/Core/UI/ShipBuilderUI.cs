@@ -33,6 +33,13 @@ public class ShipBuilderUI
     private string _statusMessage = "";
     private float _statusMessageTimer = 0f;
     
+    // Blueprint save/load
+    private bool _showSaveBlueprintDialog = false;
+    private bool _showLoadBlueprintDialog = false;
+    private string _blueprintName = "MyShip";
+    private List<string> _availableBlueprints = new List<string>();
+    private int _selectedBlueprintIndex = 0;
+    
     // Statistics
     private int _totalBlocks = 0;
     private float _totalMass = 0f;
@@ -305,14 +312,13 @@ public class ShipBuilderUI
             
             if (ImGui.Button("Save Blueprint", new Vector2(-1, 25)))
             {
-                // TODO: Implement blueprint saving
-                SetStatusMessage("Blueprint saving coming soon", 2f);
+                _showSaveBlueprintDialog = true;
             }
             
             if (ImGui.Button("Load Blueprint", new Vector2(-1, 25)))
             {
-                // TODO: Implement blueprint loading
-                SetStatusMessage("Blueprint loading coming soon", 2f);
+                _availableBlueprints = ShipBlueprint.ListBlueprints();
+                _showLoadBlueprintDialog = true;
             }
             
             ImGui.Separator();
@@ -325,6 +331,13 @@ public class ShipBuilderUI
             ImGui.TextDisabled("  Shift+Click - Multi-place");
         }
         ImGui.End();
+        
+        // Render dialogs
+        if (_showSaveBlueprintDialog)
+            RenderSaveBlueprintDialog();
+        
+        if (_showLoadBlueprintDialog)
+            RenderLoadBlueprintDialog();
         
         if (!_isOpen && _buildModeActive)
         {
@@ -488,5 +501,156 @@ public class ShipBuilderUI
             BlockType.PodDocking => "Pod docking",
             _ => ""
         };
+    }
+    
+    private void RenderSaveBlueprintDialog()
+    {
+        var io = ImGui.GetIO();
+        ImGui.SetNextWindowPos(new Vector2(io.DisplaySize.X * 0.5f, io.DisplaySize.Y * 0.5f), ImGuiCond.Always, new Vector2(0.5f, 0.5f));
+        ImGui.SetNextWindowSize(new Vector2(400, 180), ImGuiCond.Always);
+        
+        ImGuiWindowFlags windowFlags = ImGuiWindowFlags.NoResize | 
+                                       ImGuiWindowFlags.NoCollapse |
+                                       ImGuiWindowFlags.NoMove;
+        
+        if (ImGui.Begin("Save Blueprint", ref _showSaveBlueprintDialog, windowFlags))
+        {
+            if (_currentShipId == Guid.Empty || !_gameEngine.EntityManager.HasComponent<VoxelStructureComponent>(_currentShipId))
+            {
+                ImGui.Text("No ship to save! Build a ship first.");
+                ImGui.Dummy(new Vector2(0, 20));
+                
+                ImGui.SetCursorPosX(150);
+                if (ImGui.Button("OK", new Vector2(100, 40)))
+                {
+                    _showSaveBlueprintDialog = false;
+                }
+            }
+            else
+            {
+                ImGui.Text("Enter blueprint name:");
+                ImGui.SetNextItemWidth(360);
+                ImGui.InputText("##blueprintname", ref _blueprintName, 100);
+                
+                ImGui.Dummy(new Vector2(0, 20));
+                
+                ImGui.SetCursorPosX(80);
+                if (ImGui.Button("Save", new Vector2(100, 40)))
+                {
+                    if (!string.IsNullOrWhiteSpace(_blueprintName))
+                    {
+                        var structure = _gameEngine.EntityManager.GetComponent<VoxelStructureComponent>(_currentShipId);
+                        if (structure != null)
+                        {
+                            var blueprint = ShipBlueprint.FromVoxelStructure(_blueprintName, structure);
+                            var filePath = Path.Combine(ShipBlueprint.GetBlueprintsDirectory(), $"{_blueprintName}.blueprint");
+                            
+                            if (blueprint.SaveToFile(filePath))
+                            {
+                                SetStatusMessage($"Blueprint '{_blueprintName}' saved!", 3f);
+                                _showSaveBlueprintDialog = false;
+                            }
+                            else
+                            {
+                                SetStatusMessage("Failed to save blueprint!", 3f);
+                            }
+                        }
+                    }
+                }
+                
+                ImGui.SameLine();
+                ImGui.SetCursorPosX(220);
+                if (ImGui.Button("Cancel", new Vector2(100, 40)))
+                {
+                    _showSaveBlueprintDialog = false;
+                }
+            }
+            
+            ImGui.End();
+        }
+    }
+    
+    private void RenderLoadBlueprintDialog()
+    {
+        var io = ImGui.GetIO();
+        ImGui.SetNextWindowPos(new Vector2(io.DisplaySize.X * 0.5f, io.DisplaySize.Y * 0.5f), ImGuiCond.Always, new Vector2(0.5f, 0.5f));
+        ImGui.SetNextWindowSize(new Vector2(400, 400), ImGuiCond.Always);
+        
+        ImGuiWindowFlags windowFlags = ImGuiWindowFlags.NoResize | 
+                                       ImGuiWindowFlags.NoCollapse |
+                                       ImGuiWindowFlags.NoMove;
+        
+        if (ImGui.Begin("Load Blueprint", ref _showLoadBlueprintDialog, windowFlags))
+        {
+            ImGui.Text("Select a blueprint to load:");
+            ImGui.Dummy(new Vector2(0, 10));
+            
+            if (_availableBlueprints.Count == 0)
+            {
+                ImGui.Text("No blueprints found.");
+            }
+            else
+            {
+                if (ImGui.BeginChild("BlueprintsList", new Vector2(360, 250)))
+                {
+                    for (int i = 0; i < _availableBlueprints.Count; i++)
+                    {
+                        bool isSelected = (_selectedBlueprintIndex == i);
+                        if (ImGui.Selectable(_availableBlueprints[i], isSelected))
+                        {
+                            _selectedBlueprintIndex = i;
+                        }
+                    }
+                    
+                    ImGui.EndChild();
+                }
+            }
+            
+            ImGui.Dummy(new Vector2(0, 10));
+            
+            ImGui.SetCursorPosX(80);
+            bool canLoad = _availableBlueprints.Count > 0 && _selectedBlueprintIndex >= 0 && _selectedBlueprintIndex < _availableBlueprints.Count;
+            
+            if (!canLoad)
+                ImGui.BeginDisabled();
+                
+            if (ImGui.Button("Load", new Vector2(100, 40)))
+            {
+                if (canLoad && _currentShipId != Guid.Empty)
+                {
+                    var blueprintName = _availableBlueprints[_selectedBlueprintIndex];
+                    var filePath = Path.Combine(ShipBlueprint.GetBlueprintsDirectory(), $"{blueprintName}.blueprint");
+                    var blueprint = ShipBlueprint.LoadFromFile(filePath);
+                    
+                    if (blueprint != null)
+                    {
+                        var structure = _gameEngine.EntityManager.GetComponent<VoxelStructureComponent>(_currentShipId);
+                        if (structure != null)
+                        {
+                            blueprint.ApplyToVoxelStructure(structure);
+                            UpdateStatistics();
+                            SetStatusMessage($"Blueprint '{blueprintName}' loaded!", 3f);
+                            _showLoadBlueprintDialog = false;
+                        }
+                    }
+                    else
+                    {
+                        SetStatusMessage("Failed to load blueprint!", 3f);
+                    }
+                }
+            }
+            
+            if (!canLoad)
+                ImGui.EndDisabled();
+            
+            ImGui.SameLine();
+            ImGui.SetCursorPosX(220);
+            if (ImGui.Button("Cancel", new Vector2(100, 40)))
+            {
+                _showLoadBlueprintDialog = false;
+            }
+            
+            ImGui.End();
+        }
     }
 }

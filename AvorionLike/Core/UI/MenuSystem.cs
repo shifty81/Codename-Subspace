@@ -13,6 +13,11 @@ public class MenuSystem
     private bool _showMainMenu = false;
     private bool _showPauseMenu = false;
     private bool _showSettingsMenu = false;
+    private bool _showSaveDialog = false;
+    private bool _showLoadDialog = false;
+    private string _saveGameName = "QuickSave";
+    private List<string> _availableSaves = new List<string>();
+    private int _selectedSaveIndex = 0;
     
     // Settings values
     private float _masterVolume = 1.0f;
@@ -68,6 +73,12 @@ public class MenuSystem
         
         if (_showSettingsMenu)
             RenderSettingsMenu();
+        
+        if (_showSaveDialog)
+            RenderSaveDialog();
+        
+        if (_showLoadDialog)
+            RenderLoadDialog();
     }
     
     private void RenderMainMenu()
@@ -117,7 +128,8 @@ public class MenuSystem
             ImGui.SetCursorPosX(20);
             if (ImGui.Button("Load Game", buttonSize))
             {
-                Console.WriteLine("Loading game...");
+                _availableSaves = _gameEngine.GetSaveGames();
+                _showLoadDialog = true;
             }
             
             ImGui.SetCursorPosX(20);
@@ -191,8 +203,14 @@ public class MenuSystem
             ImGui.SetCursorPosX(20);
             if (ImGui.Button("Save Game", buttonSize))
             {
-                Console.WriteLine("Saving game...");
-                // TODO: Implement save functionality
+                _showSaveDialog = true;
+            }
+            
+            ImGui.SetCursorPosX(20);
+            if (ImGui.Button("Load Game", buttonSize))
+            {
+                _availableSaves = _gameEngine.GetSaveGames();
+                _showLoadDialog = true;
             }
             
             ImGui.Dummy(new Vector2(0, 20));
@@ -337,6 +355,131 @@ public class MenuSystem
         Console.WriteLine($"  SFX Volume: {_sfxVolume * 100:F0}%");
         
         // TODO: Apply settings to game engine
+    }
+    
+    private void RenderSaveDialog()
+    {
+        var io = ImGui.GetIO();
+        ImGui.SetNextWindowPos(new Vector2(io.DisplaySize.X * 0.5f, io.DisplaySize.Y * 0.5f), ImGuiCond.Always, new Vector2(0.5f, 0.5f));
+        ImGui.SetNextWindowSize(new Vector2(400, 200), ImGuiCond.Always);
+        
+        ImGuiWindowFlags windowFlags = ImGuiWindowFlags.NoResize | 
+                                       ImGuiWindowFlags.NoCollapse |
+                                       ImGuiWindowFlags.NoMove;
+        
+        if (ImGui.Begin("Save Game", ref _showSaveDialog, windowFlags))
+        {
+            ImGui.Text("Enter save name:");
+            ImGui.SetNextItemWidth(360);
+            ImGui.InputText("##savename", ref _saveGameName, 100);
+            
+            ImGui.Dummy(new Vector2(0, 20));
+            
+            ImGui.SetCursorPosX(80);
+            if (ImGui.Button("Save", new Vector2(100, 40)))
+            {
+                if (!string.IsNullOrWhiteSpace(_saveGameName))
+                {
+                    bool success = _gameEngine.SaveGame(_saveGameName);
+                    if (success)
+                    {
+                        Console.WriteLine($"Game saved successfully: {_saveGameName}");
+                        _showSaveDialog = false;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Failed to save game!");
+                    }
+                }
+            }
+            
+            ImGui.SameLine();
+            ImGui.SetCursorPosX(220);
+            if (ImGui.Button("Cancel", new Vector2(100, 40)))
+            {
+                _showSaveDialog = false;
+            }
+            
+            ImGui.End();
+        }
+    }
+    
+    private void RenderLoadDialog()
+    {
+        var io = ImGui.GetIO();
+        ImGui.SetNextWindowPos(new Vector2(io.DisplaySize.X * 0.5f, io.DisplaySize.Y * 0.5f), ImGuiCond.Always, new Vector2(0.5f, 0.5f));
+        ImGui.SetNextWindowSize(new Vector2(400, 400), ImGuiCond.Always);
+        
+        ImGuiWindowFlags windowFlags = ImGuiWindowFlags.NoResize | 
+                                       ImGuiWindowFlags.NoCollapse |
+                                       ImGuiWindowFlags.NoMove;
+        
+        if (ImGui.Begin("Load Game", ref _showLoadDialog, windowFlags))
+        {
+            ImGui.Text("Select a save to load:");
+            ImGui.Dummy(new Vector2(0, 10));
+            
+            // List available saves
+            if (_availableSaves.Count == 0)
+            {
+                ImGui.Text("No saved games found.");
+            }
+            else
+            {
+                if (ImGui.BeginChild("SavesList", new Vector2(360, 250)))
+                {
+                    for (int i = 0; i < _availableSaves.Count; i++)
+                    {
+                        bool isSelected = (_selectedSaveIndex == i);
+                        if (ImGui.Selectable(_availableSaves[i], isSelected))
+                        {
+                            _selectedSaveIndex = i;
+                        }
+                    }
+                    
+                    ImGui.EndChild();
+                }
+            }
+            
+            ImGui.Dummy(new Vector2(0, 10));
+            
+            ImGui.SetCursorPosX(80);
+            bool canLoad = _availableSaves.Count > 0 && _selectedSaveIndex >= 0 && _selectedSaveIndex < _availableSaves.Count;
+            
+            if (!canLoad)
+                ImGui.BeginDisabled();
+                
+            if (ImGui.Button("Load", new Vector2(100, 40)))
+            {
+                if (canLoad)
+                {
+                    string selectedSave = _availableSaves[_selectedSaveIndex];
+                    bool success = _gameEngine.LoadGame(selectedSave);
+                    if (success)
+                    {
+                        Console.WriteLine($"Game loaded successfully: {selectedSave}");
+                        _showLoadDialog = false;
+                        HideMenu(); // Close all menus after loading
+                    }
+                    else
+                    {
+                        Console.WriteLine("Failed to load game!");
+                    }
+                }
+            }
+            
+            if (!canLoad)
+                ImGui.EndDisabled();
+            
+            ImGui.SameLine();
+            ImGui.SetCursorPosX(220);
+            if (ImGui.Button("Cancel", new Vector2(100, 40)))
+            {
+                _showLoadDialog = false;
+            }
+            
+            ImGui.End();
+        }
     }
     
     public void HandleInput()
