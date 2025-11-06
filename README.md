@@ -2,24 +2,44 @@
 
 A cutting-edge game engine for voxel-based space exploration and combat, featuring real-time 3D graphics rendering with OpenGL. Built with C# and .NET 9.0, cross-platform compatible (Windows, Linux, macOS).
 
-> **🎮 Project Status:** Early Development - Core systems operational
+> **🎮 Project Status:** Early Development - Core systems operational & **NOW PLAYABLE!**
 > **🌌 Inspired by:** Avorion's gameplay mechanics
 > **🎯 Goal:** Create an extensible, moddable space game engine
 
 > **🚀 New to Codename:Subspace?** Check out our [Quick Start Guide](QUICKSTART.md) for one-click setup!
 > 
 > **✨ LATEST FEATURES:** 
-> - 🎭 **Stellaris-Style Faction System** - Dynamic faction politics with pops, policies, and influence ✨ **NEW!**
-> - 🎮 **Enhanced Lua Modding** - Comprehensive API, mod manager, and auto-discovery ✨ **NEW!**
+> - 🎮 **INTEGRATED PLAYER UI** - Full gameplay experience with player-controlled ships! ✨ **NEW!**
+> - 🕹️ **6DOF Ship Controls** - Realistic space flight with thrust, rotation, and braking
+> - 📊 **Player Status HUD** - Real-time ship stats, inventory, and mission tracking
+> - 🎭 **Stellaris-Style Faction System** - Dynamic faction politics with pops, policies, and influence
+> - 🎮 **Enhanced Lua Modding** - Comprehensive API, mod manager, and auto-discovery
 > - ⚡ **Power Management System** - Dynamic power distribution with priority controls
 > - 🔨 **Block Stretching** - Create elaborate ship designs with size-based stat scaling  
 > - 🌐 **Strategy Grid** - RTS-style fleet management with Octree spatial partitioning
 > - 🎨 **3D Graphics** - Real-time OpenGL rendering with PBR materials and starfield
 > - 🛡️ **Futuristic HUD** - Holographic-style interface with radar and ship status
 
+## 🎮 How to Play
+
+**[See detailed build & run instructions](HOW_TO_BUILD_AND_RUN.md)**
+
+Quick start:
+```bash
+dotnet run
+# Select Option 1: NEW GAME - Start Full Gameplay Experience
+```
+
+**Controls:**
+- **C** - Toggle between Camera and Ship Control
+- **WASD + Space/Shift** - Movement/Thrust
+- **Arrow Keys + Q/E** - Ship rotation
+- **TAB** - Player Status, **I** - Inventory, **B** - Ship Builder
+- **ESC** - Exit
+
 ## 🌟 Overview
 
-Codename:Subspace is a powerful game engine designed for creating voxel-based space games. It features a modular architecture with support for dynamic ship building, Newtonian physics, procedural generation, multiplayer networking, extensive modding capabilities through Lua scripting, and **real-time 3D graphics visualization**.
+Codename:Subspace is a powerful game engine designed for creating voxel-based space games. It features a modular architecture with support for dynamic ship building, Newtonian physics, procedural generation, multiplayer networking, extensive modding capabilities through Lua scripting, and **real-time 3D graphics visualization with integrated player UI**.
 
 ## Core Systems
 

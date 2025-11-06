@@ -25,6 +25,7 @@ public class GraphicsWindow : IDisposable
     private ImGuiController? _imguiController;
     private PlayerUIManager? _playerUIManager;
     private PlayerControlSystem? _playerControlSystem;
+    private TitleScreen? _titleScreen;
     
     // Individual UI systems (managed by PlayerUIManager)
     private HUDSystem? _hudSystem;
@@ -102,6 +103,7 @@ public class GraphicsWindow : IDisposable
 
         // Initialize ImGui
         _imguiController = new ImGuiController(_gl, _window!, _inputContext);
+        _titleScreen = new TitleScreen(_gameEngine);
         _hudSystem = new HUDSystem(_gameEngine);
         _menuSystem = new MenuSystem(_gameEngine);
         _inventoryUI = new InventoryUI(_gameEngine);
@@ -173,10 +175,21 @@ public class GraphicsWindow : IDisposable
     {
         _deltaTime = (float)deltaTime;
 
-        if (_camera == null || _imguiController == null || _playerUIManager == null || _playerControlSystem == null) return;
+        if (_camera == null || _imguiController == null || _playerUIManager == null || 
+            _playerControlSystem == null || _titleScreen == null) return;
 
         // Update ImGui
         _imguiController.Update(_deltaTime);
+        
+        // Update title screen
+        _titleScreen.Update(_deltaTime);
+        
+        // If title screen is active, only handle its input
+        if (_titleScreen.IsActive)
+        {
+            _titleScreen.HandleInput();
+            return;
+        }
         
         // Check if ImGui wants mouse input
         var io = ImGuiNET.ImGui.GetIO();
@@ -234,7 +247,7 @@ public class GraphicsWindow : IDisposable
     private void OnRender(double deltaTime)
     {
         if (_gl == null || _voxelRenderer == null || _starfieldRenderer == null || _camera == null || 
-            _window == null || _imguiController == null || _playerUIManager == null) return;
+            _window == null || _imguiController == null || _playerUIManager == null || _titleScreen == null) return;
 
         // Clear the screen
         _gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
@@ -265,8 +278,16 @@ public class GraphicsWindow : IDisposable
             }
         }
         
-        // Render Player UI Manager (handles all UI panels)
-        _playerUIManager.Render();
+        // Render title screen if active (overlays everything)
+        if (_titleScreen.IsActive)
+        {
+            _titleScreen.Render();
+        }
+        else
+        {
+            // Render Player UI Manager (handles all UI panels)
+            _playerUIManager.Render();
+        }
         
         _imguiController.Render();
     }
