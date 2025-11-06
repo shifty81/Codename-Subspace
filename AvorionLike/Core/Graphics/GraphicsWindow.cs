@@ -6,6 +6,7 @@ using AvorionLike.Core.ECS;
 using AvorionLike.Core.Voxel;
 using AvorionLike.Core.Physics;
 using AvorionLike.Core.UI;
+using AvorionLike.Core.Input;
 
 namespace AvorionLike.Core.Graphics;
 
@@ -22,14 +23,22 @@ public class GraphicsWindow : IDisposable
     private Camera? _camera;
     private IInputContext? _inputContext;
     private ImGuiController? _imguiController;
+    private PlayerUIManager? _playerUIManager;
+    private PlayerControlSystem? _playerControlSystem;
+    
+    // Individual UI systems (managed by PlayerUIManager)
     private HUDSystem? _hudSystem;
     private MenuSystem? _menuSystem;
     private InventoryUI? _inventoryUI;
     private ShipBuilderUI? _shipBuilderUI;
     private FuturisticHUD? _futuristicHUD;
+    private CrewManagementUI? _crewManagementUI;
+    private SubsystemManagementUI? _subsystemManagementUI;
+    private FleetMissionUI? _fleetMissionUI;
     
     private readonly GameEngine _gameEngine;
     private bool _disposed = false;
+    private bool _playerControlMode = false; // Toggle between camera and ship control
     
     // Mouse state
     private Vector2 _lastMousePos;
@@ -45,6 +54,21 @@ public class GraphicsWindow : IDisposable
     public GraphicsWindow(GameEngine gameEngine)
     {
         _gameEngine = gameEngine;
+    }
+    
+    /// <summary>
+    /// Sets the player ship for control and UI tracking
+    /// </summary>
+    public void SetPlayerShip(Guid shipId)
+    {
+        if (_playerControlSystem != null)
+        {
+            _playerControlSystem.ControlledShipId = shipId;
+        }
+        if (_playerUIManager != null)
+        {
+            _playerUIManager.PlayerShipId = shipId;
+        }
     }
 
     public void Run()
@@ -83,6 +107,25 @@ public class GraphicsWindow : IDisposable
         _inventoryUI = new InventoryUI(_gameEngine);
         _shipBuilderUI = new ShipBuilderUI(_gameEngine);
         _futuristicHUD = new FuturisticHUD(_gameEngine);
+        _crewManagementUI = new CrewManagementUI(_gameEngine);
+        _subsystemManagementUI = new SubsystemManagementUI(_gameEngine);
+        _fleetMissionUI = new FleetMissionUI(_gameEngine);
+        
+        // Initialize Player UI Manager
+        _playerUIManager = new PlayerUIManager(
+            _gameEngine,
+            _hudSystem,
+            _menuSystem,
+            _inventoryUI,
+            _shipBuilderUI,
+            _futuristicHUD,
+            _crewManagementUI,
+            _subsystemManagementUI,
+            _fleetMissionUI
+        );
+        
+        // Initialize Player Control System
+        _playerControlSystem = new PlayerControlSystem(_gameEngine.EntityManager);
 
         // Enable depth testing
         _gl.Enable(EnableCap.DepthTest);
@@ -105,14 +148,24 @@ public class GraphicsWindow : IDisposable
 
         Console.WriteLine("\n=== 3D Graphics Window Active ===");
         Console.WriteLine("Controls:");
-        Console.WriteLine("  WASD - Move camera");
-        Console.WriteLine("  Space/Shift - Move up/down");
-        Console.WriteLine("  Mouse - Look around");
-        Console.WriteLine("  F1/F2/F3 - Toggle UI panels");
-        Console.WriteLine("  F4 - Toggle Futuristic HUD");
-        Console.WriteLine("  I - Toggle Inventory");
-        Console.WriteLine("  B - Toggle Ship Builder");
-        Console.WriteLine("  ESC - Exit");
+        Console.WriteLine("  Camera Mode (Default):");
+        Console.WriteLine("    WASD - Move camera");
+        Console.WriteLine("    Space/Shift - Move up/down");
+        Console.WriteLine("    Mouse - Look around");
+        Console.WriteLine("  Ship Control Mode (Press C to toggle):");
+        Console.WriteLine("    WASD - Thrust (Forward/Back/Left/Right)");
+        Console.WriteLine("    Space/Shift - Thrust Up/Down");
+        Console.WriteLine("    Arrow Keys - Pitch/Yaw");
+        Console.WriteLine("    Q/E - Roll");
+        Console.WriteLine("    X - Emergency Brake");
+        Console.WriteLine("  UI Controls:");
+        Console.WriteLine("    F1/F2/F3 - Toggle debug panels");
+        Console.WriteLine("    F4 - Toggle Futuristic HUD");
+        Console.WriteLine("    I - Toggle Inventory");
+        Console.WriteLine("    B - Toggle Ship Builder");
+        Console.WriteLine("    TAB - Toggle Player Status");
+        Console.WriteLine("    J - Toggle Mission Info");
+        Console.WriteLine("    ESC - Exit");
         Console.WriteLine("=====================================\n");
     }
 
@@ -120,7 +173,7 @@ public class GraphicsWindow : IDisposable
     {
         _deltaTime = (float)deltaTime;
 
-        if (_camera == null || _imguiController == null || _hudSystem == null || _menuSystem == null || _inventoryUI == null || _shipBuilderUI == null || _futuristicHUD == null) return;
+        if (_camera == null || _imguiController == null || _playerUIManager == null || _playerControlSystem == null) return;
 
         // Update ImGui
         _imguiController.Update(_deltaTime);
@@ -129,41 +182,59 @@ public class GraphicsWindow : IDisposable
         var io = ImGuiNET.ImGui.GetIO();
         _uiWantsMouse = io.WantCaptureMouse;
 
-        // Process keyboard input for camera (only if UI doesn't want it and menu is not open)
-        bool anyUIOpen = _menuSystem.IsMenuOpen || _inventoryUI.IsOpen || _shipBuilderUI.IsOpen;
+        // Process keyboard input
+        bool anyUIOpen = _playerUIManager.IsAnyPanelOpen;
+        
         if (!io.WantCaptureKeyboard && !anyUIOpen)
         {
-            if (_keysPressed.Contains(Key.W))
-                _camera.ProcessKeyboard(CameraMovement.Forward, _deltaTime);
-            if (_keysPressed.Contains(Key.S))
-                _camera.ProcessKeyboard(CameraMovement.Backward, _deltaTime);
-            if (_keysPressed.Contains(Key.A))
-                _camera.ProcessKeyboard(CameraMovement.Left, _deltaTime);
-            if (_keysPressed.Contains(Key.D))
-                _camera.ProcessKeyboard(CameraMovement.Right, _deltaTime);
-            if (_keysPressed.Contains(Key.Space))
-                _camera.ProcessKeyboard(CameraMovement.Up, _deltaTime);
-            if (_keysPressed.Contains(Key.ShiftLeft))
-                _camera.ProcessKeyboard(CameraMovement.Down, _deltaTime);
+            if (_playerControlMode && _playerControlSystem.ControlledShipId.HasValue)
+            {
+                // Ship control mode
+                _playerControlSystem.Update(_deltaTime);
+                
+                // Follow player ship with camera
+                var physics = _gameEngine.EntityManager.GetComponent<PhysicsComponent>(_playerControlSystem.ControlledShipId.Value);
+                if (physics != null)
+                {
+                    // Position camera behind and above the ship
+                    _camera.Position = physics.Position + new Vector3(-50, 30, 50);
+                    // TODO: Implement proper chase camera
+                }
+            }
+            else
+            {
+                // Camera control mode
+                if (_keysPressed.Contains(Key.W))
+                    _camera.ProcessKeyboard(CameraMovement.Forward, _deltaTime);
+                if (_keysPressed.Contains(Key.S))
+                    _camera.ProcessKeyboard(CameraMovement.Backward, _deltaTime);
+                if (_keysPressed.Contains(Key.A))
+                    _camera.ProcessKeyboard(CameraMovement.Left, _deltaTime);
+                if (_keysPressed.Contains(Key.D))
+                    _camera.ProcessKeyboard(CameraMovement.Right, _deltaTime);
+                if (_keysPressed.Contains(Key.Space))
+                    _camera.ProcessKeyboard(CameraMovement.Up, _deltaTime);
+                if (_keysPressed.Contains(Key.ShiftLeft))
+                    _camera.ProcessKeyboard(CameraMovement.Down, _deltaTime);
+            }
         }
         
-        // Handle UI and menu input
-        _hudSystem.HandleInput();
-        _menuSystem.HandleInput();
-        _inventoryUI.HandleInput();
-        _shipBuilderUI.HandleInput();
-        _futuristicHUD.HandleInput();
+        // Handle UI input
+        _playerUIManager.HandleInput();
 
         // Update game engine (pause if menu is open)
         if (!anyUIOpen)
         {
             _gameEngine.Update();
         }
+        
+        _playerUIManager.Update(_deltaTime);
     }
 
     private void OnRender(double deltaTime)
     {
-        if (_gl == null || _voxelRenderer == null || _starfieldRenderer == null || _camera == null || _window == null || _imguiController == null || _hudSystem == null || _menuSystem == null || _inventoryUI == null || _shipBuilderUI == null || _futuristicHUD == null) return;
+        if (_gl == null || _voxelRenderer == null || _starfieldRenderer == null || _camera == null || 
+            _window == null || _imguiController == null || _playerUIManager == null) return;
 
         // Clear the screen
         _gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
@@ -194,26 +265,8 @@ public class GraphicsWindow : IDisposable
             }
         }
         
-        // Render ImGui UI on top
-        if (_menuSystem.IsMenuOpen)
-        {
-            // Only render menu when menu is open
-            _menuSystem.Render();
-        }
-        else
-        {
-            // Render HUD when menu is closed
-            _hudSystem.Render();
-            
-            // Render futuristic HUD if enabled
-            _futuristicHUD.Render();
-            
-            // Render inventory if open
-            _inventoryUI.Render();
-            
-            // Render ship builder if open
-            _shipBuilderUI.Render();
-        }
+        // Render Player UI Manager (handles all UI panels)
+        _playerUIManager.Render();
         
         _imguiController.Render();
     }
@@ -221,6 +274,16 @@ public class GraphicsWindow : IDisposable
     private void OnKeyDown(IKeyboard keyboard, Key key, int keyCode)
     {
         _keysPressed.Add(key);
+        
+        // Pass to player control system
+        _playerControlSystem?.OnKeyDown(key);
+
+        // Toggle control mode
+        if (key == Key.C)
+        {
+            _playerControlMode = !_playerControlMode;
+            Console.WriteLine($"Control Mode: {(_playerControlMode ? "Ship Control" : "Camera")}");
+        }
 
         if (key == Key.Escape)
         {
@@ -231,6 +294,9 @@ public class GraphicsWindow : IDisposable
     private void OnKeyUp(IKeyboard keyboard, Key key, int keyCode)
     {
         _keysPressed.Remove(key);
+        
+        // Pass to player control system
+        _playerControlSystem?.OnKeyUp(key);
     }
 
     private void OnMouseMove(IMouse mouse, Vector2 position)
