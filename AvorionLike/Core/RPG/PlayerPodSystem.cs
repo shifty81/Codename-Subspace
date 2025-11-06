@@ -428,7 +428,7 @@ public class PodDockingSystem
     }
     
     /// <summary>
-    /// Dock a pod to a ship - transfers pod stats to the ship
+    /// Dock a pod to a ship - transfers pod stats to the ship and grants player control
     /// </summary>
     public bool DockPod(Guid podEntityId, Guid shipEntityId)
     {
@@ -457,6 +457,10 @@ public class PodDockingSystem
         
         // Apply pod bonuses to ship
         ApplyPodBonuses(podEntityId, shipEntityId);
+        
+        // When player pod docks, player takes control of the ship
+        // The pod acts as the pilot, overriding the need for a hired pilot
+        // This is checked in CrewSystem.CanShipOperate()
         
         return true;
     }

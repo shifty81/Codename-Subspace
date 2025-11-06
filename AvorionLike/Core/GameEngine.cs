@@ -41,7 +41,8 @@ public class GameEngine
     public CombatSystem CombatSystem { get; private set; } = null!;
     public DamageSystem DamageSystem { get; private set; } = null!;
     public MiningSystem MiningSystem { get; private set; } = null!;
-    public FleetManagementSystem FleetManagementSystem { get; private set; } = null!;
+    public FleetMissionSystem FleetMissionSystem { get; private set; } = null!;
+    public CrewManagementSystem CrewManagementSystem { get; private set; } = null!;
     public NavigationSystem NavigationSystem { get; private set; } = null!;
     public BuildSystem BuildSystem { get; private set; } = null!;
     public EconomySystem EconomySystem { get; private set; } = null!;
@@ -105,7 +106,8 @@ public class GameEngine
         CombatSystem = new CombatSystem(EntityManager);
         DamageSystem = new DamageSystem(EntityManager);
         MiningSystem = new MiningSystem(EntityManager);
-        FleetManagementSystem = new FleetManagementSystem(EntityManager);
+        FleetMissionSystem = new FleetMissionSystem(EntityManager);
+        CrewManagementSystem = new CrewManagementSystem(EntityManager);
         NavigationSystem = new NavigationSystem(EntityManager);
         BuildSystem = new BuildSystem(EntityManager);
         EconomySystem = new EconomySystem(EntityManager);
@@ -118,7 +120,7 @@ public class GameEngine
         EntityManager.RegisterSystem(CombatSystem);
         EntityManager.RegisterSystem(DamageSystem);
         EntityManager.RegisterSystem(MiningSystem);
-        EntityManager.RegisterSystem(FleetManagementSystem);
+        // Note: FleetMissionSystem and CrewManagementSystem don't need registration (no Update loop)
         EntityManager.RegisterSystem(NavigationSystem);
         EntityManager.RegisterSystem(BuildSystem);
         EntityManager.RegisterSystem(EconomySystem);
