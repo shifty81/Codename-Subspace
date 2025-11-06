@@ -378,9 +378,30 @@ public class PodAbilitiesComponent : IComponent, ISerializable
                     if (Abilities.ContainsKey(id))
                     {
                         var ability = Abilities[id];
-                        ability.LastUsed = DateTime.Parse(abilityElement.GetProperty("LastUsed").GetString() ?? DateTime.MinValue.ToString("o"));
+                        
+                        // Parse LastUsed with fallback
+                        var lastUsedStr = abilityElement.GetProperty("LastUsed").GetString();
+                        if (DateTime.TryParse(lastUsedStr, out var lastUsed))
+                        {
+                            ability.LastUsed = lastUsed;
+                        }
+                        else
+                        {
+                            ability.LastUsed = DateTime.MinValue;
+                        }
+                        
                         ability.IsActive = abilityElement.GetProperty("IsActive").GetBoolean();
-                        ability.ActiveUntil = DateTime.Parse(abilityElement.GetProperty("ActiveUntil").GetString() ?? DateTime.MinValue.ToString("o"));
+                        
+                        // Parse ActiveUntil with fallback
+                        var activeUntilStr = abilityElement.GetProperty("ActiveUntil").GetString();
+                        if (DateTime.TryParse(activeUntilStr, out var activeUntil))
+                        {
+                            ability.ActiveUntil = activeUntil;
+                        }
+                        else
+                        {
+                            ability.ActiveUntil = DateTime.MinValue;
+                        }
                     }
                 }
             }

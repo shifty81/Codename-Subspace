@@ -262,18 +262,21 @@ This makes every ship you pilot feel personal, every upgrade you find valuable, 
 
 ## Demo
 
-To see the pod system in action:
-1. Run the game
-2. Select option **12. Player Pod Demo - Character System** (basic pod system)
-3. Select option **13. Enhanced Pod Demo - Skills & Abilities [NEW]** (full feature showcase)
+To see the pod system in action, run the game and choose one of the following:
 
-The enhanced demo showcases:
-- Pod creation with all components
-- Skill learning and progression
-- Ability equipping and activation
-- Combined stat bonuses
-- Docking mechanics with full bonuses
-- Path to becoming unstoppable force
+- **Option 12: Player Pod Demo - Character System**
+  - Basic pod system demonstration
+  - Shows core mechanics: pod creation, upgrades, docking
+  
+- **Option 13: Enhanced Pod Demo - Skills & Abilities [NEW]**
+  - Full feature showcase with skills and abilities
+  - Demonstrates:
+    - Pod creation with all components
+    - Skill learning and progression
+    - Ability equipping and activation
+    - Combined stat bonuses
+    - Docking mechanics with full bonuses
+    - Path to becoming unstoppable force
 
 ## Technical Details
 
