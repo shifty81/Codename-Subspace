@@ -221,7 +221,16 @@ public class Logger
         Info("Logger", "Shutting down logger...");
         
         _cancellationTokenSource?.Cancel();
-        _logProcessorTask?.Wait(1000); // Wait up to 1 second for processing to complete
+        
+        // Wait for the task to complete, handling TaskCanceledException
+        try
+        {
+            _logProcessorTask?.Wait(1000); // Wait up to 1 second for processing to complete
+        }
+        catch (AggregateException ex) when (ex.InnerException is TaskCanceledException)
+        {
+            // Expected when cancelling the task
+        }
 
         // Process any remaining entries
         while (_logQueue.TryDequeue(out var entry))
