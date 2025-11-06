@@ -6,7 +6,9 @@ A custom game engine implementation inspired by Avorion, featuring real-time 3D 
 
 > **🚀 New to AvorionLike?** Check out our [Quick Start Guide](QUICKSTART.md) for one-click setup!
 > 
-> **✨ WHAT'S NEW:** 3D Graphics Rendering is now available! Select option 10 from the main menu to visualize your voxel ships in real-time 3D with OpenGL. 🎨
+> **✨ WHAT'S NEW:** 
+> - 3D Graphics Rendering is now available! Select option 10 from the main menu to visualize your voxel ships in real-time 3D with OpenGL. 🎨
+> - **Futuristic Sci-Fi HUD** with holographic-style elements! Press F4 in 3D view to toggle an immersive HUD featuring radar scanner, ship status gauges, target tracking, and navigation compass. 🚀
 
 ## Overview
 
@@ -468,6 +470,7 @@ For detailed credits and acknowledgments, see [CREDITS.md](CREDITS.md).
 ✅ **OpenGL-based voxel visualization** 🎨  
 ✅ **Interactive camera controls** 🎨  
 ✅ **ImGui.NET UI framework with HUD** 🎨  
+✅ **Futuristic sci-fi HUD with radar, ship status, and target tracking** 🎨 **NEW!**  
 
 ## Future Enhancements
 

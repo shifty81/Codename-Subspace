@@ -118,6 +118,63 @@ The AvorionLike game engine now includes a comprehensive UI framework built with
 - **Avorion** - Red
 - **Credits** - Gold/Yellow
 
+### Futuristic HUD System
+
+The game now includes a comprehensive sci-fi HUD overlay with holographic-style elements, providing an immersive space game experience.
+
+#### Features
+
+**Corner Frames:**
+- Animated holographic corner decorations
+- Pulsing cyan frames with diagonal accents
+- Creates a futuristic sci-fi aesthetic
+
+**Radar/Scanner:**
+- Top-right circular radar display
+- Shows nearby entities as colored blips
+- Animated scanning line effect
+- Range indicator (default: 1000m)
+- Selected targets pulse on radar
+
+**Ship Status Panel:**
+- Bottom-left ship status display
+- Visual gauges for:
+  - Hull integrity (cyan/green)
+  - Shield strength (cyan)
+  - Energy levels (yellow)
+- Real-time ship mass and block count
+- Color-coded warnings (low levels show orange/red)
+
+**Target Information:**
+- Right-side panel showing selected target details
+- Displays target ID, position, distance
+- Shows target structure information
+- Pulse effect on selected target
+- Press Tab to cycle through targets
+
+**Navigation Compass:**
+- Top-center circular compass
+- Cardinal direction indicators (N/E/S/W)
+- Animated heading indicator
+- Real-time orientation display
+
+**Holographic Effects:**
+- Animated scan lines
+- Subtle grid overlay
+- Pulsing elements
+- Semi-transparent panels
+
+#### Controls
+- `F4` - Toggle Futuristic HUD on/off
+- `Tab` - Cycle through available targets
+
+#### Color Scheme
+- Primary: Cyan (#00CCFF) - Main UI elements
+- Secondary: Bright Teal (#33FFCC) - Highlights
+- Warning: Orange (#FF8000) - Alerts
+- Danger: Red (#FF3333) - Critical status
+- Frame: Semi-transparent Cyan - Decorative elements
+
 ## Controls
 
 ### Camera Controls
@@ -133,8 +190,10 @@ The AvorionLike game engine now includes a comprehensive UI framework built with
 - `F1` - Toggle Debug Overlay
 - `F2` - Toggle Entity List
 - `F3` - Toggle Resource Panel
+- `F4` - Toggle Futuristic HUD
 - `I` - Toggle Inventory UI
 - `ESC` - Pause Menu / Exit
+- `Tab` - Cycle Targets (when Futuristic HUD is active)
 
 ## Integration
 
@@ -148,6 +207,9 @@ _imguiController = new ImGuiController(_gl, _window, _inputContext);
 _hudSystem = new HUDSystem(_gameEngine);
 _menuSystem = new MenuSystem(_gameEngine);
 _inventoryUI = new InventoryUI(_gameEngine);
+_shipBuilderUI = new ShipBuilderUI(_gameEngine);
+_futuristicHUD = new FuturisticHUD(_gameEngine);
+```
 ```
 
 ### Rendering Order

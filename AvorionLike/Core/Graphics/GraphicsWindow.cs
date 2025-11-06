@@ -25,6 +25,7 @@ public class GraphicsWindow : IDisposable
     private MenuSystem? _menuSystem;
     private InventoryUI? _inventoryUI;
     private ShipBuilderUI? _shipBuilderUI;
+    private FuturisticHUD? _futuristicHUD;
     
     private readonly GameEngine _gameEngine;
     private bool _disposed = false;
@@ -79,6 +80,7 @@ public class GraphicsWindow : IDisposable
         _menuSystem = new MenuSystem(_gameEngine);
         _inventoryUI = new InventoryUI(_gameEngine);
         _shipBuilderUI = new ShipBuilderUI(_gameEngine);
+        _futuristicHUD = new FuturisticHUD(_gameEngine);
 
         // Enable depth testing
         _gl.Enable(EnableCap.DepthTest);
@@ -105,6 +107,7 @@ public class GraphicsWindow : IDisposable
         Console.WriteLine("  Space/Shift - Move up/down");
         Console.WriteLine("  Mouse - Look around");
         Console.WriteLine("  F1/F2/F3 - Toggle UI panels");
+        Console.WriteLine("  F4 - Toggle Futuristic HUD");
         Console.WriteLine("  I - Toggle Inventory");
         Console.WriteLine("  B - Toggle Ship Builder");
         Console.WriteLine("  ESC - Exit");
@@ -115,7 +118,7 @@ public class GraphicsWindow : IDisposable
     {
         _deltaTime = (float)deltaTime;
 
-        if (_camera == null || _imguiController == null || _hudSystem == null || _menuSystem == null || _inventoryUI == null || _shipBuilderUI == null) return;
+        if (_camera == null || _imguiController == null || _hudSystem == null || _menuSystem == null || _inventoryUI == null || _shipBuilderUI == null || _futuristicHUD == null) return;
 
         // Update ImGui
         _imguiController.Update(_deltaTime);
@@ -147,6 +150,7 @@ public class GraphicsWindow : IDisposable
         _menuSystem.HandleInput();
         _inventoryUI.HandleInput();
         _shipBuilderUI.HandleInput();
+        _futuristicHUD.HandleInput();
 
         // Update game engine (pause if menu is open)
         if (!anyUIOpen)
@@ -157,7 +161,7 @@ public class GraphicsWindow : IDisposable
 
     private void OnRender(double deltaTime)
     {
-        if (_gl == null || _voxelRenderer == null || _camera == null || _window == null || _imguiController == null || _hudSystem == null || _menuSystem == null || _inventoryUI == null || _shipBuilderUI == null) return;
+        if (_gl == null || _voxelRenderer == null || _camera == null || _window == null || _imguiController == null || _hudSystem == null || _menuSystem == null || _inventoryUI == null || _shipBuilderUI == null || _futuristicHUD == null) return;
 
         // Clear the screen
         _gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
@@ -195,6 +199,9 @@ public class GraphicsWindow : IDisposable
         {
             // Render HUD when menu is closed
             _hudSystem.Render();
+            
+            // Render futuristic HUD if enabled
+            _futuristicHUD.Render();
             
             // Render inventory if open
             _inventoryUI.Render();
