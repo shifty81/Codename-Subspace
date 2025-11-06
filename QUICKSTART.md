@@ -55,7 +55,27 @@ cd AvorionLike
 dotnet run
 ```
 
-You'll see an interactive menu with various demos:
+### 🎮 NEW! Full Gameplay Experience
+
+Select option **1 - NEW GAME** from the main menu to launch the complete gameplay experience with:
+- ✨ **Player-controlled ship** with full 6DOF movement
+- 🎨 **Integrated Player UI** showing ship status, inventory, and controls
+- 🌌 **3D graphics window** with real-time rendering
+- 🎯 **Explorable space** with asteroids and interactive elements
+- 📊 **All UI panels**: Inventory, Ship Builder, HUD, and more
+
+**Controls in 3D Mode:**
+- **C** - Toggle between Camera and Ship Control mode
+- **WASD** - Movement (Camera mode) or Thrust (Ship mode)
+- **Arrow Keys** - Pitch/Yaw (Ship mode)
+- **Q/E** - Roll (Ship mode)
+- **X** - Emergency Brake (Ship mode)
+- **I** - Inventory, **B** - Ship Builder, **TAB** - Player Status
+- **ESC** - Exit to menu
+
+### Demo Menu Options
+
+Or explore individual systems via demos:
 - Engine Demo
 - Voxel System Demo
 - Physics Demo

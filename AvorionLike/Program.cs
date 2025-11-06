@@ -49,19 +49,23 @@ class Program
         while (_running)
         {
             Console.WriteLine("\n=== Main Menu ===");
-            Console.WriteLine("1. Engine Demo - Create Test Ship");
-            Console.WriteLine("2. Voxel System Demo - Build Ship Structure");
-            Console.WriteLine("3. Physics Demo - Simulate Movement");
-            Console.WriteLine("4. Procedural Generation - Generate Galaxy Sector");
-            Console.WriteLine("5. Resource Management Demo");
-            Console.WriteLine("6. RPG Systems Demo - Trading & Progression");
-            Console.WriteLine("7. Scripting Demo - Execute Lua Script");
-            Console.WriteLine("8. Multiplayer - Start Server");
-            Console.WriteLine("9. View Statistics");
-            Console.WriteLine("10. 3D Graphics Demo - Visualize Voxel Ships");
-            Console.WriteLine("11. Persistence Demo - Save/Load Game");
-            Console.WriteLine("12. Player Pod Demo - Character System");
-            Console.WriteLine("13. Enhanced Pod Demo - Skills & Abilities [NEW]");
+            Console.WriteLine("--- PLAY GAME ---");
+            Console.WriteLine("1. NEW GAME - Start Full Gameplay Experience [NEW!]");
+            Console.WriteLine();
+            Console.WriteLine("--- DEMOS & TESTS ---");
+            Console.WriteLine("2. Engine Demo - Create Test Ship");
+            Console.WriteLine("3. Voxel System Demo - Build Ship Structure");
+            Console.WriteLine("4. Physics Demo - Simulate Movement");
+            Console.WriteLine("5. Procedural Generation - Generate Galaxy Sector");
+            Console.WriteLine("6. Resource Management Demo");
+            Console.WriteLine("7. RPG Systems Demo - Trading & Progression");
+            Console.WriteLine("8. Scripting Demo - Execute Lua Script");
+            Console.WriteLine("9. Multiplayer - Start Server");
+            Console.WriteLine("10. View Statistics");
+            Console.WriteLine("11. 3D Graphics Demo - Visualize Voxel Ships");
+            Console.WriteLine("12. Persistence Demo - Save/Load Game");
+            Console.WriteLine("13. Player Pod Demo - Character System");
+            Console.WriteLine("14. Enhanced Pod Demo - Skills & Abilities");
             Console.WriteLine("0. Exit");
             Console.Write("\nSelect option: ");
 
@@ -70,42 +74,45 @@ class Program
             switch (choice)
             {
                 case "1":
-                    CreateTestShipDemo();
+                    StartNewGame();
                     break;
                 case "2":
-                    VoxelSystemDemo();
+                    CreateTestShipDemo();
                     break;
                 case "3":
-                    PhysicsDemo();
+                    VoxelSystemDemo();
                     break;
                 case "4":
-                    ProceduralGenerationDemo();
+                    PhysicsDemo();
                     break;
                 case "5":
-                    ResourceManagementDemo();
+                    ProceduralGenerationDemo();
                     break;
                 case "6":
-                    RPGSystemsDemo();
+                    ResourceManagementDemo();
                     break;
                 case "7":
-                    ScriptingDemo();
+                    RPGSystemsDemo();
                     break;
                 case "8":
-                    MultiplayerDemo();
+                    ScriptingDemo();
                     break;
                 case "9":
-                    ShowStatistics();
+                    MultiplayerDemo();
                     break;
                 case "10":
-                    GraphicsDemo();
+                    ShowStatistics();
                     break;
                 case "11":
-                    PersistenceDemo();
+                    GraphicsDemo();
                     break;
                 case "12":
-                    PlayerPodDemo();
+                    PersistenceDemo();
                     break;
                 case "13":
+                    PlayerPodDemo();
+                    break;
+                case "14":
                     EnhancedPlayerPodDemo();
                     break;
                 case "0":
@@ -116,6 +123,205 @@ class Program
                     break;
             }
         }
+    }
+
+    static void StartNewGame()
+    {
+        Console.WriteLine("\n=== NEW GAME - Full Gameplay Experience ===");
+        Console.WriteLine("Initializing player ship and game world...\n");
+        
+        // Create player ship
+        var playerShip = _gameEngine!.EntityManager.CreateEntity("Player Ship");
+        
+        // Add voxel structure - create a functional starter ship
+        var voxelComponent = new VoxelStructureComponent();
+        
+        Console.WriteLine("Building your starter ship...");
+        
+        // Core hull (center)
+        voxelComponent.AddBlock(new VoxelBlock(
+            new Vector3(0, 0, 0),
+            new Vector3(3, 3, 3),
+            "Titanium",
+            BlockType.Hull
+        ));
+        
+        // Main engines (rear)
+        voxelComponent.AddBlock(new VoxelBlock(
+            new Vector3(-5, 0, 0),
+            new Vector3(2, 2, 2),
+            "Iron",
+            BlockType.Engine
+        ));
+        
+        voxelComponent.AddBlock(new VoxelBlock(
+            new Vector3(-5, 2, 0),
+            new Vector3(2, 2, 2),
+            "Iron",
+            BlockType.Engine
+        ));
+        
+        // Maneuvering thrusters
+        voxelComponent.AddBlock(new VoxelBlock(
+            new Vector3(0, 4, 0),
+            new Vector3(1.5f, 1.5f, 1.5f),
+            "Iron",
+            BlockType.Thruster
+        ));
+        
+        voxelComponent.AddBlock(new VoxelBlock(
+            new Vector3(0, -4, 0),
+            new Vector3(1.5f, 1.5f, 1.5f),
+            "Iron",
+            BlockType.Thruster
+        ));
+        
+        // Generator
+        voxelComponent.AddBlock(new VoxelBlock(
+            new Vector3(3, 0, 0),
+            new Vector3(2, 2, 2),
+            "Iron",
+            BlockType.Generator
+        ));
+        
+        // Shield generator
+        voxelComponent.AddBlock(new VoxelBlock(
+            new Vector3(0, 0, 3),
+            new Vector3(2, 2, 2),
+            "Titanium",
+            BlockType.ShieldGenerator
+        ));
+        
+        // Gyro arrays for rotation
+        voxelComponent.AddBlock(new VoxelBlock(
+            new Vector3(0, 2, 2),
+            new Vector3(1.5f, 1.5f, 1.5f),
+            "Iron",
+            BlockType.GyroArray
+        ));
+        
+        voxelComponent.AddBlock(new VoxelBlock(
+            new Vector3(0, -2, -2),
+            new Vector3(1.5f, 1.5f, 1.5f),
+            "Iron",
+            BlockType.GyroArray
+        ));
+        
+        _gameEngine.EntityManager.AddComponent(playerShip.Id, voxelComponent);
+        
+        // Add physics
+        var physicsComponent = new PhysicsComponent
+        {
+            Position = new Vector3(0, 0, 0),
+            Velocity = Vector3.Zero,
+            Mass = voxelComponent.TotalMass,
+            MomentOfInertia = voxelComponent.MomentOfInertia,
+            MaxThrust = voxelComponent.TotalThrust,
+            MaxTorque = voxelComponent.TotalTorque
+        };
+        _gameEngine.EntityManager.AddComponent(playerShip.Id, physicsComponent);
+        
+        // Add inventory
+        var inventoryComponent = new InventoryComponent(1000);
+        inventoryComponent.Inventory.AddResource(ResourceType.Credits, 10000);
+        inventoryComponent.Inventory.AddResource(ResourceType.Iron, 500);
+        inventoryComponent.Inventory.AddResource(ResourceType.Titanium, 200);
+        _gameEngine.EntityManager.AddComponent(playerShip.Id, inventoryComponent);
+
+        // Add progression
+        var progressionComponent = new ProgressionComponent
+        {
+            EntityId = playerShip.Id,
+            Level = 1,
+            Experience = 0,
+            SkillPoints = 0
+        };
+        _gameEngine.EntityManager.AddComponent(playerShip.Id, progressionComponent);
+        
+        // Add combat capabilities
+        var combatComponent = new CombatComponent
+        {
+            EntityId = playerShip.Id,
+            MaxShields = voxelComponent.ShieldCapacity,
+            CurrentShields = voxelComponent.ShieldCapacity,
+            MaxEnergy = voxelComponent.PowerGeneration,
+            CurrentEnergy = voxelComponent.PowerGeneration
+        };
+        _gameEngine.EntityManager.AddComponent(playerShip.Id, combatComponent);
+        
+        // Add hyperdrive
+        var hyperdriveComponent = new HyperdriveComponent
+        {
+            EntityId = playerShip.Id,
+            JumpRange = 5f
+        };
+        _gameEngine.EntityManager.AddComponent(playerShip.Id, hyperdriveComponent);
+        
+        // Add sector location
+        var locationComponent = new SectorLocationComponent
+        {
+            EntityId = playerShip.Id,
+            CurrentSector = new SectorCoordinate(0, 0, 0)
+        };
+        _gameEngine.EntityManager.AddComponent(playerShip.Id, locationComponent);
+        
+        Console.WriteLine($"\n✓ Player ship created!");
+        Console.WriteLine($"  Name: {playerShip.Name}");
+        Console.WriteLine($"  Blocks: {voxelComponent.Blocks.Count}");
+        Console.WriteLine($"  Mass: {voxelComponent.TotalMass:F2} kg");
+        Console.WriteLine($"  Thrust: {voxelComponent.TotalThrust:F2} N");
+        Console.WriteLine($"  Torque: {voxelComponent.TotalTorque:F2} Nm");
+        Console.WriteLine($"  Power: {voxelComponent.PowerGeneration:F2} W");
+        Console.WriteLine($"  Shields: {voxelComponent.ShieldCapacity:F2}");
+        Console.WriteLine($"  Credits: {inventoryComponent.Inventory.GetResourceAmount(ResourceType.Credits):N0}");
+        
+        // Create some nearby asteroids for mining
+        Console.WriteLine("\nPopulating nearby space...");
+        var random = new Random();
+        for (int i = 0; i < 5; i++)
+        {
+            var asteroid = _gameEngine.EntityManager.CreateEntity($"Asteroid {i + 1}");
+            
+            var asteroidVoxel = new VoxelStructureComponent();
+            asteroidVoxel.AddBlock(new VoxelBlock(
+                new Vector3(0, 0, 0),
+                new Vector3(5, 5, 5),
+                "Iron",
+                BlockType.Armor
+            ));
+            _gameEngine.EntityManager.AddComponent(asteroid.Id, asteroidVoxel);
+            
+            var asteroidPhysics = new PhysicsComponent
+            {
+                Position = new Vector3(
+                    random.Next(-100, 100),
+                    random.Next(-100, 100),
+                    random.Next(-100, 100)
+                ),
+                Mass = 10000f
+            };
+            _gameEngine.EntityManager.AddComponent(asteroid.Id, asteroidPhysics);
+            
+            Console.WriteLine($"  ✓ Created {asteroid.Name} at position ({asteroidPhysics.Position.X:F0}, {asteroidPhysics.Position.Y:F0}, {asteroidPhysics.Position.Z:F0})");
+        }
+        
+        Console.WriteLine("\n=== Launching Full Game Experience ===");
+        Console.WriteLine("Opening 3D window with Player UI...");
+        Console.WriteLine("You can now control your ship and explore!\n");
+        
+        try
+        {
+            using var graphicsWindow = new GraphicsWindow(_gameEngine);
+            graphicsWindow.SetPlayerShip(playerShip.Id);
+            graphicsWindow.Run();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error running game: {ex.Message}");
+            Console.WriteLine("Graphics rendering may not be available on this system.");
+        }
+
+        Console.WriteLine("\nReturned to main menu.");
     }
 
     static void CreateTestShipDemo()
