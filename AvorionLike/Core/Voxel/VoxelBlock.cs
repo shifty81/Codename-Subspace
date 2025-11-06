@@ -39,9 +39,15 @@ public class VoxelBlock
         Durability = MaxDurability;
         ColorRGB = material.Color;
         
-        // Set functional properties based on block type
+        // Apply block-specific modifiers
         switch (blockType)
         {
+            case BlockType.Armor:
+                // Armor is 5x more durable but 1.5x heavier than hull
+                MaxDurability *= 5.0f;
+                Durability = MaxDurability;
+                Mass *= 1.5f;
+                break;
             case BlockType.Engine:
                 ThrustPower = 50f * volume * material.EnergyEfficiency;
                 break;

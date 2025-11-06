@@ -17,7 +17,8 @@ public class GraphicsWindow : IDisposable
 {
     private IWindow? _window;
     private GL? _gl;
-    private VoxelRenderer? _voxelRenderer;
+    private EnhancedVoxelRenderer? _voxelRenderer;
+    private StarfieldRenderer? _starfieldRenderer;
     private Camera? _camera;
     private IInputContext? _inputContext;
     private ImGuiController? _imguiController;
@@ -71,8 +72,9 @@ public class GraphicsWindow : IDisposable
         // Initialize camera
         _camera = new Camera(new Vector3(0, 50, 150));
 
-        // Initialize renderer
-        _voxelRenderer = new VoxelRenderer(_gl);
+        // Initialize renderers
+        _voxelRenderer = new EnhancedVoxelRenderer(_gl);
+        _starfieldRenderer = new StarfieldRenderer(_gl);
 
         // Initialize ImGui
         _imguiController = new ImGuiController(_gl, _window!, _inputContext);
@@ -161,14 +163,17 @@ public class GraphicsWindow : IDisposable
 
     private void OnRender(double deltaTime)
     {
-        if (_gl == null || _voxelRenderer == null || _camera == null || _window == null || _imguiController == null || _hudSystem == null || _menuSystem == null || _inventoryUI == null || _shipBuilderUI == null || _futuristicHUD == null) return;
+        if (_gl == null || _voxelRenderer == null || _starfieldRenderer == null || _camera == null || _window == null || _imguiController == null || _hudSystem == null || _menuSystem == null || _inventoryUI == null || _shipBuilderUI == null || _futuristicHUD == null) return;
 
         // Clear the screen
         _gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
-        _gl.ClearColor(0.1f, 0.1f, 0.15f, 1.0f);
+        _gl.ClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Pure black for space
 
         // Calculate aspect ratio from window size
         float aspectRatio = (float)_window.Size.X / _window.Size.Y;
+
+        // Render starfield background first (without depth write)
+        _starfieldRenderer.Render(_camera, aspectRatio);
 
         // Render all entities with voxel structures
         var entities = _gameEngine.EntityManager.GetAllEntities();
@@ -261,6 +266,7 @@ public class GraphicsWindow : IDisposable
         {
             _imguiController?.Dispose();
             _voxelRenderer?.Dispose();
+            _starfieldRenderer?.Dispose();
             _inputContext?.Dispose();
             _gl?.Dispose();
             _disposed = true;
