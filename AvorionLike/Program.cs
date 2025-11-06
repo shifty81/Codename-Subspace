@@ -458,12 +458,35 @@ class Program
         // Loot system
         Console.WriteLine("\n--- Loot System ---");
         var lootSystem = _gameEngine.LootSystem;
-        var loot = lootSystem.GenerateLoot(5);
+        var loot = lootSystem.GenerateLoot(5, includePodLoot: false);
         
         Console.WriteLine("Loot dropped from level 5 enemy:");
         foreach (var drop in loot)
         {
             Console.WriteLine($"  {drop.Resource}: {drop.Amount} (Chance: {drop.DropChance * 100:F0}%)");
+        }
+        
+        // Pod loot system
+        Console.WriteLine("\n--- Pod Loot System (NEW) ---");
+        var podLoot = lootSystem.GenerateLoot(10, includePodLoot: true);
+        
+        Console.WriteLine("Loot dropped from level 10 boss:");
+        foreach (var drop in podLoot)
+        {
+            if (drop.Resource.HasValue)
+            {
+                Console.WriteLine($"  {drop.Resource}: {drop.Amount}");
+            }
+            if (drop.PodUpgrade != null)
+            {
+                var upgrade = drop.PodUpgrade;
+                Console.WriteLine($"  🌟 Pod Upgrade: {upgrade.Name} (Rarity: {upgrade.Rarity}/5)");
+                Console.WriteLine($"     {upgrade.Description}");
+            }
+            if (!string.IsNullOrEmpty(drop.AbilityId))
+            {
+                Console.WriteLine($"  ⚡ Ability Unlock: {drop.AbilityId}");
+            }
         }
     }
 

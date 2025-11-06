@@ -176,6 +176,10 @@ public class LootDrop
     public ResourceType? Resource { get; set; }
     public int Amount { get; set; }
     public float DropChance { get; set; } = 1.0f;
+    
+    // Pod-specific loot
+    public PodUpgrade? PodUpgrade { get; set; }
+    public string? AbilityId { get; set; }
 }
 
 /// <summary>
@@ -188,7 +192,7 @@ public class LootSystem
     /// <summary>
     /// Generate loot drops based on entity level
     /// </summary>
-    public List<LootDrop> GenerateLoot(int entityLevel)
+    public List<LootDrop> GenerateLoot(int entityLevel, bool includePodLoot = false)
     {
         var loot = new List<LootDrop>();
 
@@ -222,8 +226,128 @@ public class LootSystem
                 DropChance = 0.7f
             });
         }
+        
+        // Add pod-specific loot
+        if (includePodLoot)
+        {
+            // Pod upgrade drops (rare)
+            if (_random.NextDouble() < 0.15f) // 15% chance
+            {
+                var upgrade = GenerateRandomPodUpgrade(entityLevel);
+                loot.Add(new LootDrop
+                {
+                    PodUpgrade = upgrade,
+                    DropChance = 1.0f
+                });
+            }
+            
+            // Ability unlock drops (very rare)
+            if (entityLevel >= 5 && _random.NextDouble() < 0.05f) // 5% chance for level 5+
+            {
+                var abilityId = GenerateRandomAbilityId();
+                if (!string.IsNullOrEmpty(abilityId))
+                {
+                    loot.Add(new LootDrop
+                    {
+                        AbilityId = abilityId,
+                        DropChance = 1.0f
+                    });
+                }
+            }
+        }
 
         return loot;
+    }
+    
+    /// <summary>
+    /// Generate a random pod upgrade based on entity level
+    /// </summary>
+    private PodUpgrade GenerateRandomPodUpgrade(int entityLevel)
+    {
+        var upgradeTypes = Enum.GetValues<PodUpgradeType>();
+        var type = upgradeTypes[_random.Next(upgradeTypes.Length)];
+        
+        // Rarity scales with level (capped at 5)
+        int rarity = Math.Min(5, 1 + (entityLevel / 5) + _random.Next(0, 2));
+        
+        // Effect value scales with rarity
+        float effectValue = type switch
+        {
+            PodUpgradeType.ThrustBoost => 15f + (rarity * 10f),
+            PodUpgradeType.ShieldBoost => 50f + (rarity * 25f),
+            PodUpgradeType.PowerBoost => 30f + (rarity * 20f),
+            PodUpgradeType.EfficiencyBoost => 0.05f + (rarity * 0.02f),
+            PodUpgradeType.ExperienceBoost => 0.10f + (rarity * 0.05f),
+            PodUpgradeType.SkillBoost => rarity,
+            _ => 10f
+        };
+        
+        string name = GenerateUpgradeName(type, rarity);
+        string description = GenerateUpgradeDescription(type, effectValue);
+        
+        return new PodUpgrade(name, description, type, effectValue, rarity);
+    }
+    
+    /// <summary>
+    /// Generate a random ability ID for unlocking
+    /// </summary>
+    private string GenerateRandomAbilityId()
+    {
+        var abilityIds = new[]
+        {
+            "shield_overcharge", "emergency_shields",
+            "overload_weapons", "precision_strike",
+            "afterburner", "emergency_warp",
+            "energy_drain", "scan_pulse"
+        };
+        
+        return abilityIds[_random.Next(abilityIds.Length)];
+    }
+    
+    /// <summary>
+    /// Generate upgrade name based on type and rarity
+    /// </summary>
+    private string GenerateUpgradeName(PodUpgradeType type, int rarity)
+    {
+        var rarityPrefix = rarity switch
+        {
+            1 => "Basic",
+            2 => "Improved",
+            3 => "Advanced",
+            4 => "Superior",
+            5 => "Legendary",
+            _ => "Unknown"
+        };
+        
+        var typeName = type switch
+        {
+            PodUpgradeType.ThrustBoost => "Thruster Module",
+            PodUpgradeType.ShieldBoost => "Shield Amplifier",
+            PodUpgradeType.PowerBoost => "Power Core",
+            PodUpgradeType.EfficiencyBoost => "Efficiency Optimizer",
+            PodUpgradeType.ExperienceBoost => "Knowledge Matrix",
+            PodUpgradeType.SkillBoost => "Neural Enhancer",
+            _ => "Pod Module"
+        };
+        
+        return $"{rarityPrefix} {typeName}";
+    }
+    
+    /// <summary>
+    /// Generate upgrade description
+    /// </summary>
+    private string GenerateUpgradeDescription(PodUpgradeType type, float effectValue)
+    {
+        return type switch
+        {
+            PodUpgradeType.ThrustBoost => $"Increases thrust power by {effectValue:F0}N",
+            PodUpgradeType.ShieldBoost => $"Increases shield capacity by {effectValue:F0}",
+            PodUpgradeType.PowerBoost => $"Increases power generation by {effectValue:F0}W",
+            PodUpgradeType.EfficiencyBoost => $"Increases efficiency by {effectValue * 100:F0}%",
+            PodUpgradeType.ExperienceBoost => $"Increases experience gain by {effectValue * 100:F0}%",
+            PodUpgradeType.SkillBoost => $"Grants {effectValue:F0} bonus skill points per level",
+            _ => "Unknown effect"
+        };
     }
 
     /// <summary>
@@ -238,6 +362,35 @@ public class LootSystem
                 inventory.AddResource(drop.Resource.Value, drop.Amount);
             }
         }
+    }
+    
+    /// <summary>
+    /// Process loot drops including pod upgrades
+    /// Returns list of pod upgrades found
+    /// </summary>
+    public List<PodUpgrade> ProcessLootWithPodUpgrades(List<LootDrop> loot, Inventory inventory)
+    {
+        var podUpgrades = new List<PodUpgrade>();
+        
+        foreach (var drop in loot)
+        {
+            if (_random.NextDouble() <= drop.DropChance)
+            {
+                // Add resources
+                if (drop.Resource.HasValue)
+                {
+                    inventory.AddResource(drop.Resource.Value, drop.Amount);
+                }
+                
+                // Collect pod upgrades
+                if (drop.PodUpgrade != null)
+                {
+                    podUpgrades.Add(drop.PodUpgrade);
+                }
+            }
+        }
+        
+        return podUpgrades;
     }
 }
 
