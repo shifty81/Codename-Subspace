@@ -38,6 +38,7 @@ public class GameEngine
     
     // New systems
     public CombatSystem CombatSystem { get; private set; } = null!;
+    public DamageSystem DamageSystem { get; private set; } = null!;
     public MiningSystem MiningSystem { get; private set; } = null!;
     public FleetManagementSystem FleetManagementSystem { get; private set; } = null!;
     public NavigationSystem NavigationSystem { get; private set; } = null!;
@@ -100,6 +101,7 @@ public class GameEngine
         PodDockingSystem = new PodDockingSystem(EntityManager);
         PodAbilitySystem = new PodAbilitySystem(EntityManager);
         CombatSystem = new CombatSystem(EntityManager);
+        DamageSystem = new DamageSystem(EntityManager);
         MiningSystem = new MiningSystem(EntityManager);
         FleetManagementSystem = new FleetManagementSystem(EntityManager);
         NavigationSystem = new NavigationSystem(EntityManager);
@@ -111,6 +113,7 @@ public class GameEngine
         EntityManager.RegisterSystem(PhysicsSystem);
         EntityManager.RegisterSystem(CollisionSystem);
         EntityManager.RegisterSystem(CombatSystem);
+        EntityManager.RegisterSystem(DamageSystem);
         EntityManager.RegisterSystem(MiningSystem);
         EntityManager.RegisterSystem(FleetManagementSystem);
         EntityManager.RegisterSystem(NavigationSystem);
