@@ -125,8 +125,10 @@ public class GameEngine
         EntityManager.RegisterSystem(PowerSystem);
 
         // Register engine API for scripting
+        ScriptingEngine.InitializeAPI(this);
         ScriptingEngine.RegisterObject("Engine", this);
         ScriptingEngine.RegisterObject("EntityManager", EntityManager);
+        Logger.Instance.Info("GameEngine", "Scripting API registered");
 
         _lastUpdateTime = DateTime.UtcNow;
 
