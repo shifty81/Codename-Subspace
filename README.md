@@ -9,6 +9,8 @@ A cutting-edge game engine for voxel-based space exploration and combat, featuri
 > **🚀 New to Codename:Subspace?** Check out our [Quick Start Guide](QUICKSTART.md) for one-click setup!
 > 
 > **✨ LATEST FEATURES:** 
+> - 🎭 **Stellaris-Style Faction System** - Dynamic faction politics with pops, policies, and influence ✨ **NEW!**
+> - 🎮 **Enhanced Lua Modding** - Comprehensive API, mod manager, and auto-discovery ✨ **NEW!**
 > - ⚡ **Power Management System** - Dynamic power distribution with priority controls
 > - 🔨 **Block Stretching** - Create elaborate ship designs with size-based stat scaling  
 > - 🌐 **Strategy Grid** - RTS-style fleet management with Octree spatial partitioning
@@ -141,14 +143,29 @@ Codename:Subspace is a powerful game engine designed for creating voxel-based sp
 - `GalaxySector` - Represents a sector in the galaxy
 - `AsteroidData`, `StationData`, `ShipData` - Data structures for sector objects
 
-### 11. Scripting API (Lua Integration)
-- NLua-based scripting engine for modding support
-- Register C# objects for Lua access
-- Execute scripts and call Lua functions from C#
-- Mod loading system
+### 11. Scripting API (Lua Integration) **ENHANCED** 🎮
+- NLua-based scripting engine for comprehensive modding support
+- Powerful Lua API wrapper with 30+ functions for game system access
+- Automatic mod discovery from AppData/Mods directory
+- Mod dependency management and load ordering
+- Hot-reloading support for rapid development
+- Sample mod templates and extensive documentation
 
 **Key Classes:**
 - `ScriptingEngine` - Manages Lua scripting and mod loading
+- `LuaAPI` - Comprehensive API wrapper for Lua scripts
+- `ModManager` - Handles mod discovery, dependencies, and loading
+- `ScriptCompiler` - Runtime compilation and hot-reloading
+
+**Lua API Features:**
+- Entity management (create, destroy, query)
+- Voxel system access (add blocks, materials)
+- Physics control (forces, velocity, position)
+- Resource management (inventory, resources)
+- Event system integration
+- Galaxy generation access
+
+**See [MODDING_GUIDE.md](MODDING_GUIDE.md) for complete documentation**
 
 ### 12. Networking/Multiplayer
 - TCP-based client-server architecture
@@ -186,7 +203,41 @@ Codename:Subspace is a powerful game engine designed for creating voxel-based sp
 - `LootSystem` - Generates loot drops
 - `TradingSystem` - Manages resource trading
 
-### 15. Development Tools
+### 15. Grand Strategy: Stellaris-Style Faction System **NEW** 🎭
+- Comprehensive faction political simulation inspired by Stellaris
+- Pop-based society with individual happiness and faction alignment
+- 11 ethics types (Militarist, Pacifist, Materialist, Xenophile, etc.)
+- 7 government types affecting faction behavior (Democracy, Autocracy, etc.)
+- Dynamic policy system with 11+ policies affecting faction approval
+- Influence resource generation based on faction approval and support
+- Rebellion risk system for unhappy factions
+- Planet stability calculations based on pop happiness
+
+**Key Features:**
+- **Pops (Population Units)**: Individual citizens with ethics, happiness, and faction loyalty
+- **Faction Demands**: Each faction has 2-4 demands that must be met for approval
+- **Policy Management**: Enact policies that please some factions while angering others
+- **Approval & Influence**: Happy factions generate influence for diplomacy and expansion
+- **Government Types**: Different governments (Democracy, Oligarchy, etc.) handle factions differently
+- **Dynamic Support**: Pop alignment shifts based on living conditions and faction approval
+- **Rebellion System**: Very unhappy factions with high unrest may rebel
+
+**Key Classes:**
+- `FactionSystem` - Main system managing all faction mechanics
+- `Faction` - Individual faction with ethics, approval, demands
+- `Pop` - Population unit with happiness and faction alignment
+- `Planet` - Contains pops with stability calculations
+- `Policy` - Game policies with faction approval modifiers
+- `PolicyManager` - Manages policy enactment and effects
+
+**Example Use Cases:**
+- Build a militaristic empire by pleasing the Militarist faction
+- Balance competing faction demands for stable rule
+- Suppress dissenting factions in authoritarian governments
+- Watch faction support shift based on your policies
+- Manage planetary stability through pop happiness
+
+### 16. Development Tools
 - **Debug Renderer** - Debug visualization for game objects and physics
 - **Performance Profiler** - FPS and frame timing tracking
 - **Memory Tracker** - Memory usage monitoring (including GPU when available)
@@ -456,11 +507,17 @@ For detailed credits and acknowledgments, see [CREDITS.md](CREDITS.md).
 ✅ Voxel-based ship/station building  
 ✅ Newtonian physics simulation  
 ✅ Procedural galaxy generation  
-✅ Lua scripting for modding  
+✅ **Enhanced Lua scripting with comprehensive API** 🎮 **NEW!**  
+✅ **Automatic mod discovery and management** 🎮 **NEW!**  
+✅ **Mod dependency resolution** 🎮 **NEW!**  
 ✅ TCP multiplayer networking  
 ✅ Resource and inventory management  
 ✅ Crafting system  
 ✅ RPG progression and faction systems  
+✅ **Stellaris-style faction political system** 🎭 **NEW!**  
+✅ **Pop-based society simulation** 🎭 **NEW!**  
+✅ **Policy management with faction reactions** 🎭 **NEW!**  
+✅ **Influence generation and approval mechanics** 🎭 **NEW!**  
 ✅ Trading system  
 ✅ Loot generation  
 ✅ Development tools (Debug Console, Profiler, Memory Tracker)  

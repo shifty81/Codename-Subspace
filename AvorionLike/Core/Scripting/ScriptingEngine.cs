@@ -1,4 +1,5 @@
 using NLua;
+using AvorionLike.Core.Logging;
 
 namespace AvorionLike.Core.Scripting;
 
@@ -9,11 +10,26 @@ public class ScriptingEngine
 {
     private readonly Lua _luaState;
     private readonly Dictionary<string, object> _registeredObjects = new();
+    private readonly Logger _logger;
+    private LuaAPI? _luaAPI;
+
+    public LuaAPI? API => _luaAPI;
 
     public ScriptingEngine()
     {
         _luaState = new Lua();
+        _logger = Logger.Instance;
         InitializeStandardLibraries();
+    }
+
+    /// <summary>
+    /// Initialize the Lua API wrapper
+    /// </summary>
+    public void InitializeAPI(GameEngine engine)
+    {
+        _luaAPI = new LuaAPI(engine);
+        RegisterObject("API", _luaAPI);
+        _logger.Info("ScriptingEngine", "Lua API initialized and registered");
     }
 
     private void InitializeStandardLibraries()
@@ -24,7 +40,23 @@ public class ScriptingEngine
             function log(message)
                 print('[LUA] ' .. tostring(message))
             end
+            
+            -- Helper function to access API safely
+            function SafeAPICall(funcName, ...)
+                if API == nil then
+                    log('ERROR: API not initialized!')
+                    return nil
+                end
+                local success, result = pcall(API[funcName], API, ...)
+                if not success then
+                    log('ERROR calling ' .. funcName .. ': ' .. tostring(result))
+                    return nil
+                end
+                return result
+            end
         ");
+        
+        _logger.Info("ScriptingEngine", "Standard Lua libraries initialized");
     }
 
     /// <summary>
@@ -34,10 +66,12 @@ public class ScriptingEngine
     {
         try
         {
+            _logger.Debug("ScriptingEngine", "Executing Lua script");
             return _luaState.DoString(script);
         }
         catch (Exception ex)
         {
+            _logger.Error("ScriptingEngine", $"Lua script error: {ex.Message}");
             Console.WriteLine($"Lua script error: {ex.Message}");
             return null;
         }
@@ -50,10 +84,12 @@ public class ScriptingEngine
     {
         try
         {
+            _logger.Info("ScriptingEngine", $"Executing Lua file: {filePath}");
             return _luaState.DoFile(filePath);
         }
         catch (Exception ex)
         {
+            _logger.Error("ScriptingEngine", $"Lua file error: {ex.Message}");
             Console.WriteLine($"Lua file error: {ex.Message}");
             return null;
         }
