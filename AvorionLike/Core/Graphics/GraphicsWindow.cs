@@ -73,7 +73,7 @@ public class GraphicsWindow : IDisposable
         _voxelRenderer = new VoxelRenderer(_gl);
 
         // Initialize ImGui
-        _imguiController = new ImGuiController(_gl, _window, _inputContext);
+        _imguiController = new ImGuiController(_gl, _window!, _inputContext);
         _hudSystem = new HUDSystem(_gameEngine);
         _menuSystem = new MenuSystem(_gameEngine);
         _inventoryUI = new InventoryUI(_gameEngine);

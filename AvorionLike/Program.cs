@@ -668,17 +668,26 @@ class Program
                         if (_gameEngine.EntityManager.HasComponent<PhysicsComponent>(entity.Id))
                         {
                             var physics = _gameEngine.EntityManager.GetComponent<PhysicsComponent>(entity.Id);
-                            Console.WriteLine($"    Physics: Position=({physics.Position.X:F1}, {physics.Position.Y:F1}, {physics.Position.Z:F1})");
+                            if (physics != null)
+                            {
+                                Console.WriteLine($"    Physics: Position=({physics.Position.X:F1}, {physics.Position.Y:F1}, {physics.Position.Z:F1})");
+                            }
                         }
                         if (_gameEngine.EntityManager.HasComponent<VoxelStructureComponent>(entity.Id))
                         {
                             var voxel = _gameEngine.EntityManager.GetComponent<VoxelStructureComponent>(entity.Id);
-                            Console.WriteLine($"    Voxels: {voxel.Blocks.Count} blocks, Mass={voxel.TotalMass:F1}kg");
+                            if (voxel != null)
+                            {
+                                Console.WriteLine($"    Voxels: {voxel.Blocks.Count} blocks, Mass={voxel.TotalMass:F1}kg");
+                            }
                         }
                         if (_gameEngine.EntityManager.HasComponent<InventoryComponent>(entity.Id))
                         {
                             var inventory = _gameEngine.EntityManager.GetComponent<InventoryComponent>(entity.Id);
-                            Console.WriteLine($"    Inventory: {inventory.Inventory.CurrentCapacity}/{inventory.Inventory.MaxCapacity}");
+                            if (inventory != null)
+                            {
+                                Console.WriteLine($"    Inventory: {inventory.Inventory.CurrentCapacity}/{inventory.Inventory.MaxCapacity}");
+                            }
                         }
                     }
                     
@@ -715,17 +724,26 @@ class Program
                             if (_gameEngine.EntityManager.HasComponent<PhysicsComponent>(entity.Id))
                             {
                                 var physics = _gameEngine.EntityManager.GetComponent<PhysicsComponent>(entity.Id);
-                                Console.WriteLine($"    Physics: Position=({physics.Position.X:F1}, {physics.Position.Y:F1}, {physics.Position.Z:F1})");
+                                if (physics != null)
+                                {
+                                    Console.WriteLine($"    Physics: Position=({physics.Position.X:F1}, {physics.Position.Y:F1}, {physics.Position.Z:F1})");
+                                }
                             }
                             if (_gameEngine.EntityManager.HasComponent<VoxelStructureComponent>(entity.Id))
                             {
                                 var voxel = _gameEngine.EntityManager.GetComponent<VoxelStructureComponent>(entity.Id);
-                                Console.WriteLine($"    Voxels: {voxel.Blocks.Count} blocks, Mass={voxel.TotalMass:F1}kg");
+                                if (voxel != null)
+                                {
+                                    Console.WriteLine($"    Voxels: {voxel.Blocks.Count} blocks, Mass={voxel.TotalMass:F1}kg");
+                                }
                             }
                             if (_gameEngine.EntityManager.HasComponent<InventoryComponent>(entity.Id))
                             {
                                 var inventory = _gameEngine.EntityManager.GetComponent<InventoryComponent>(entity.Id);
-                                Console.WriteLine($"    Inventory: {inventory.Inventory.CurrentCapacity}/{inventory.Inventory.MaxCapacity}");
+                                if (inventory != null)
+                                {
+                                    Console.WriteLine($"    Inventory: {inventory.Inventory.CurrentCapacity}/{inventory.Inventory.MaxCapacity}");
+                                }
                             }
                         }
                     }
