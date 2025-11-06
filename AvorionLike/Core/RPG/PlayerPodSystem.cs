@@ -464,14 +464,14 @@ public class PodDockingSystem
         }
         
         // Apply pod bonuses if docked
-        if (dockingComponent != null && dockingComponent.HasDockedPod())
+        if (dockingComponent != null && dockingComponent.HasDockedPod() && dockingComponent.DockedPodId.HasValue)
         {
-            var podComponent = _entityManager.GetComponent<PlayerPodComponent>(dockingComponent.DockedPodId!.Value);
+            var podComponent = _entityManager.GetComponent<PlayerPodComponent>(dockingComponent.DockedPodId.Value);
             
             if (podComponent != null)
             {
                 // Pod skills and abilities considerably affect the ship
-                var podProgression = _entityManager.GetComponent<ProgressionComponent>(dockingComponent.DockedPodId!.Value);
+                var podProgression = _entityManager.GetComponent<ProgressionComponent>(dockingComponent.DockedPodId.Value);
                 float levelBonus = podProgression != null ? 1.0f + (podProgression.Level * 0.05f) : 1.0f;
                 
                 stats.TotalThrust *= levelBonus;

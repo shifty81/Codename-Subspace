@@ -819,7 +819,7 @@ class Program
 
         // Create the player pod entity
         var pod = _gameEngine.EntityManager.CreateEntity("Player Pod");
-        Console.WriteLine($"✓ Created Player Pod (ID: {pod.Id.ToString()[..8]}...)");
+        Console.WriteLine($"✓ Created Player Pod (ID: {pod.Id.ToString("N")[..8]}...)");
 
         // Add the player pod component
         var podComponent = new PlayerPodComponent
