@@ -51,7 +51,7 @@ public class GraphicsWindow : IDisposable
     {
         var options = WindowOptions.Default;
         options.Size = new Silk.NET.Maths.Vector2D<int>(1280, 720);
-        options.Title = "AvorionLike - 3D Voxel Viewer";
+        options.Title = "Codename:Subspace - 3D Visualization";
         options.VSync = true;
 
         _window = Window.Create(options);

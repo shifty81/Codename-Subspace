@@ -1,18 +1,23 @@
-# AvorionLike - Custom Game Engine
+# Codename:Subspace - Advanced Space Game Engine
 
-A custom game engine implementation inspired by Avorion, featuring real-time 3D graphics rendering with OpenGL. Built with C# and .NET 9.0, cross-platform compatible (Windows, Linux, macOS).
+A cutting-edge game engine for voxel-based space exploration and combat, featuring real-time 3D graphics rendering with OpenGL. Built with C# and .NET 9.0, cross-platform compatible (Windows, Linux, macOS).
 
-> **❓ Is this game playable yet?** **No** - See our [Playability FAQ](PLAYABILITY_FAQ.md) for quick answers or [Playability Status Assessment](PLAYABILITY_STATUS.md) for a detailed analysis.
+> **🎮 Project Status:** Early Development - Core systems operational
+> **🌌 Inspired by:** Avorion's gameplay mechanics
+> **🎯 Goal:** Create an extensible, moddable space game engine
 
-> **🚀 New to AvorionLike?** Check out our [Quick Start Guide](QUICKSTART.md) for one-click setup!
+> **🚀 New to Codename:Subspace?** Check out our [Quick Start Guide](QUICKSTART.md) for one-click setup!
 > 
-> **✨ WHAT'S NEW:** 
-> - 3D Graphics Rendering is now available! Select option 10 from the main menu to visualize your voxel ships in real-time 3D with OpenGL. 🎨
-> - **Futuristic Sci-Fi HUD** with holographic-style elements! Press F4 in 3D view to toggle an immersive HUD featuring radar scanner, ship status gauges, target tracking, and navigation compass. 🚀
+> **✨ LATEST FEATURES:** 
+> - ⚡ **Power Management System** - Dynamic power distribution with priority controls
+> - 🔨 **Block Stretching** - Create elaborate ship designs with size-based stat scaling  
+> - 🌐 **Strategy Grid** - RTS-style fleet management with Octree spatial partitioning
+> - 🎨 **3D Graphics** - Real-time OpenGL rendering with PBR materials and starfield
+> - 🛡️ **Futuristic HUD** - Holographic-style interface with radar and ship status
 
-## Overview
+## 🌟 Overview
 
-AvorionLike is a custom-built game engine that replicates the core systems found in Avorion. It features a modular architecture with support for voxel-based ship building, Newtonian physics, procedural generation, multiplayer networking, extensive modding capabilities through Lua scripting, **and now real-time 3D graphics visualization**.
+Codename:Subspace is a powerful game engine designed for creating voxel-based space games. It features a modular architecture with support for dynamic ship building, Newtonian physics, procedural generation, multiplayer networking, extensive modding capabilities through Lua scripting, and **real-time 3D graphics visualization**.
 
 ## Core Systems
 

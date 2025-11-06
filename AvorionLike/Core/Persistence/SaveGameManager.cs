@@ -57,7 +57,7 @@ public class SaveGameManager
     {
         _saveDirectory = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "AvorionLike",
+            "Codename-Subspace",
             "Saves"
         );
 

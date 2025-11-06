@@ -24,7 +24,7 @@ public class ConfigurationManager
     {
         _configPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "AvorionLike",
+            "Codename-Subspace",
             "config.json"
         );
 

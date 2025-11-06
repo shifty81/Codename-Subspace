@@ -1,14 +1,14 @@
 # 🔨 ADVANCED SHIP BUILDING GUIDE
 ```
 ╔═══════════════════════════════════════════════════════════════════════════╗
-║               AVORIONLIKE BLOCK STRETCHING & CONSTRUCTION                 ║
+║            CODENAME:SUBSPACE BLOCK STRETCHING & CONSTRUCTION              ║
 ║                    Craft Your Perfect Starship                            ║
 ╚═══════════════════════════════════════════════════════════════════════════╝
 ```
 
 ## 🎨 Overview
 
-Ship building in AvorionLike goes beyond simple block placement. Our **Block Stretching System** allows you to create elaborate, efficient designs by dynamically sizing blocks along multiple axes. Every cubic meter matters!
+Ship building in Codename:Subspace goes beyond simple block placement. Our **Block Stretching System** allows you to create elaborate, efficient designs by dynamically sizing blocks along multiple axes. Every cubic meter matters!
 
 ---
 

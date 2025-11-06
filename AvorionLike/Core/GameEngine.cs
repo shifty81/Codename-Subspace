@@ -74,7 +74,7 @@ public class GameEngine
         {
             var logPath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "AvorionLike",
+                "Codename-Subspace",
                 "Logs"
             );
             Logger.Instance.EnableFileLogging(logPath);
@@ -86,7 +86,7 @@ public class GameEngine
             : LogLevel.Info;
         Logger.Instance.SetMinimumLevel(logLevel);
 
-        Logger.Instance.Info("GameEngine", "Initializing AvorionLike Game Engine...");
+        Logger.Instance.Info("GameEngine", "Initializing Codename:Subspace Game Engine...");
 
         // Initialize ECS
         EntityManager = new EntityManager();

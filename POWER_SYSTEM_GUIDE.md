@@ -1,7 +1,7 @@
 # ⚡ POWER SYSTEM GUIDE
 ```
 ╔═══════════════════════════════════════════════════════════════════════════╗
-║                    AVORIONLIKE POWER MANAGEMENT SYSTEM                    ║
+║              CODENAME:SUBSPACE POWER MANAGEMENT SYSTEM                    ║
 ║                          Energy is Everything                             ║
 ╚═══════════════════════════════════════════════════════════════════════════╝
 ```

@@ -23,7 +23,7 @@ class Program
     static void Main(string[] args)
     {
         Console.WriteLine("==============================================");
-        Console.WriteLine("   AvorionLike - Custom Game Engine Demo");
+        Console.WriteLine("  Codename:Subspace - Space Game Engine");
         Console.WriteLine("==============================================");
         Console.WriteLine();
 
@@ -41,7 +41,7 @@ class Program
 
         // Cleanup
         _gameEngine.Stop();
-        Console.WriteLine("\nThank you for using AvorionLike!");
+        Console.WriteLine("\nThank you for testing Codename:Subspace!");
     }
 
     static void ShowMainMenu()
