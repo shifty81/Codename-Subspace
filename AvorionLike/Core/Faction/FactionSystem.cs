@@ -28,6 +28,10 @@ public class FactionSystem : SystemBase
     private float _rebellionThreshold = 80f; // Unrest level that triggers rebellion
     private bool _allowFactionSuppression = false; // Government can suppress factions
     
+    // Timing
+    private float _timeSinceLastRealignment = 0f;
+    private const float REALIGNMENT_INTERVAL = 10f; // Seconds between realignments
+    
     public IReadOnlyDictionary<string, Faction> Factions => _factions;
     public IReadOnlyDictionary<string, Pop> Pops => _pops;
     public IReadOnlyDictionary<string, Planet> Planets => _planets;
@@ -374,14 +378,16 @@ public class FactionSystem : SystemBase
             }
         }
         
-        // Periodically realign pops with factions
-        if (DateTime.UtcNow.Second % 10 == 0)
+        // Periodically realign pops with factions (every 10 seconds)
+        _timeSinceLastRealignment += deltaTime;
+        if (_timeSinceLastRealignment >= REALIGNMENT_INTERVAL)
         {
             foreach (var pop in _pops.Values)
             {
                 pop.AlignWithFaction(_factions.Values.ToList());
             }
             UpdateFactionSupport();
+            _timeSinceLastRealignment = 0f;
         }
     }
     

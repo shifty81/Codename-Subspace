@@ -345,15 +345,15 @@ public class ModManager
             });
             File.WriteAllText(Path.Combine(modDir, "mod.json"), json);
 
-            // Create main.lua
-            var luaTemplate = @"-- " + modName + @" Mod
+            // Create main.lua using string interpolation
+            var luaTemplate = $@"-- {modName} Mod
 -- Main script file
 
-log('Loading " + modName + @" mod...')
+log('Loading {modName} mod...')
 
 -- Your mod initialization code here
 function OnModLoad()
-    log('" + modName + @" mod loaded successfully!')
+    log('{modName} mod loaded successfully!')
 end
 
 -- Call initialization

@@ -16,11 +16,13 @@ public class LuaAPI
 {
     private readonly GameEngine _engine;
     private readonly Logger _logger;
+    private readonly DateTime _startTime;
 
     public LuaAPI(GameEngine engine)
     {
         _engine = engine;
         _logger = Logger.Instance;
+        _startTime = DateTime.UtcNow;
     }
 
     #region Entity Management
@@ -315,11 +317,12 @@ public class LuaAPI
     }
 
     /// <summary>
-    /// Get game time
+    /// Get game time (seconds since API initialization)
     /// </summary>
     public double GetGameTime()
     {
-        return DateTime.UtcNow.Ticks / (double)TimeSpan.TicksPerSecond;
+        // Use time since API was created for stable game time
+        return (DateTime.UtcNow - _startTime).TotalSeconds;
     }
 
     #endregion
