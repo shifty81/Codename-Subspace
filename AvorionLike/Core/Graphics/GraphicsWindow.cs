@@ -80,7 +80,10 @@ public class GraphicsWindow : IDisposable
 
         // Enable depth testing
         _gl.Enable(EnableCap.DepthTest);
-        _gl.Enable(EnableCap.CullFace);
+        
+        // Disable face culling for voxel blocks (they should be visible from all angles)
+        // TODO: Re-enable with correct CCW winding order for performance optimization
+        _gl.Disable(EnableCap.CullFace);
 
         // Set up input
         foreach (var keyboard in _inputContext.Keyboards)

@@ -232,10 +232,24 @@ public class GameEngine
     /// </summary>
     public EngineStatistics GetStatistics()
     {
+        // Count all components across all component types
+        int totalComponents = 0;
+        foreach (var entity in EntityManager.GetAllEntities())
+        {
+            if (EntityManager.HasComponent<PhysicsComponent>(entity.Id)) totalComponents++;
+            if (EntityManager.HasComponent<VoxelStructureComponent>(entity.Id)) totalComponents++;
+            if (EntityManager.HasComponent<InventoryComponent>(entity.Id)) totalComponents++;
+            if (EntityManager.HasComponent<ProgressionComponent>(entity.Id)) totalComponents++;
+            if (EntityManager.HasComponent<CombatComponent>(entity.Id)) totalComponents++;
+            if (EntityManager.HasComponent<HyperdriveComponent>(entity.Id)) totalComponents++;
+            if (EntityManager.HasComponent<SectorLocationComponent>(entity.Id)) totalComponents++;
+            if (EntityManager.HasComponent<FactionComponent>(entity.Id)) totalComponents++;
+        }
+        
         return new EngineStatistics
         {
             TotalEntities = EntityManager.GetAllEntities().Count(),
-            TotalComponents = EntityManager.GetAllComponents<IComponent>().Count(),
+            TotalComponents = totalComponents,
             IsServerRunning = GameServer?.IsRunning ?? false,
             PhysicsEnabled = PhysicsSystem.IsEnabled
         };
