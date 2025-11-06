@@ -73,14 +73,17 @@ public class GraphicsWindow : IDisposable
         _voxelRenderer = new VoxelRenderer(_gl);
 
         // Initialize ImGui
-        _imguiController = new ImGuiController(_gl, _window, _inputContext);
+        _imguiController = new ImGuiController(_gl, _window!, _inputContext);
         _hudSystem = new HUDSystem(_gameEngine);
         _menuSystem = new MenuSystem(_gameEngine);
         _inventoryUI = new InventoryUI(_gameEngine);
 
         // Enable depth testing
         _gl.Enable(EnableCap.DepthTest);
-        _gl.Enable(EnableCap.CullFace);
+        
+        // Disable face culling for voxel blocks (they should be visible from all angles)
+        // TODO: Re-enable with correct CCW winding order for performance optimization
+        _gl.Disable(EnableCap.CullFace);
 
         // Set up input
         foreach (var keyboard in _inputContext.Keyboards)
