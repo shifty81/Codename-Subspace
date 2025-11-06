@@ -43,6 +43,7 @@ public class GameEngine
     public NavigationSystem NavigationSystem { get; private set; } = null!;
     public BuildSystem BuildSystem { get; private set; } = null!;
     public EconomySystem EconomySystem { get; private set; } = null!;
+    public CollisionSystem CollisionSystem { get; private set; } = null!;
     
     // Networking
     public GameServer? GameServer { get; private set; }
@@ -90,6 +91,7 @@ public class GameEngine
 
         // Initialize systems
         PhysicsSystem = new PhysicsSystem(EntityManager);
+        CollisionSystem = new CollisionSystem(EntityManager);
         ScriptingEngine = new ScriptingEngine();
         GalaxyGenerator = new GalaxyGenerator(_galaxySeed);
         CraftingSystem = new CraftingSystem();
@@ -107,6 +109,7 @@ public class GameEngine
 
         // Register systems with entity manager
         EntityManager.RegisterSystem(PhysicsSystem);
+        EntityManager.RegisterSystem(CollisionSystem);
         EntityManager.RegisterSystem(CombatSystem);
         EntityManager.RegisterSystem(MiningSystem);
         EntityManager.RegisterSystem(FleetManagementSystem);

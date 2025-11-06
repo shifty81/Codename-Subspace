@@ -33,6 +33,7 @@ public static class GameEvents
     
     // Physics events
     public const string CollisionDetected = "physics.collision";
+    public const string EntityCollision = "physics.entity.collision";
     public const string VelocityChanged = "physics.velocity";
     
     // Combat events
