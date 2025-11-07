@@ -257,7 +257,39 @@ Codename:Subspace is a powerful game engine designed for creating voxel-based sp
 - Watch faction support shift based on your policies
 - Manage planetary stability through pop happiness
 
-### 16. Development Tools
+### 16. AI System **NEW** 🤖
+- State-based AI behavior (Idle, Patrol, Mining, Combat, Fleeing, Trading, etc.)
+- AI personalities affecting decision-making (Aggressive, Defensive, Miner, Trader, etc.)
+- Perception system for environmental awareness
+- Intelligent decision-making based on threats, resources, and ship status
+- Advanced movement behaviors and combat tactics
+- Integration with combat, mining, and navigation systems
+
+**Key Classes:**
+- `AISystem` - Main AI system managing all AI entities
+- `AIComponent` - AI entity properties and state
+- `AIPerceptionSystem` - Environmental awareness and threat detection
+- `AIDecisionSystem` - State evaluation and prioritization
+- `AIMovementSystem` - Movement and combat maneuvering
+
+**AI States:**
+- Idle/Patrol - Default behavior and waypoint navigation
+- Mining/Salvaging - Resource gathering operations
+- Trading - Commerce at stations
+- Combat - Engaging hostile entities with various tactics
+- Fleeing - Retreat when severely damaged
+- ReturningToBase - Navigate home when needed
+
+**Combat Tactics:**
+- Aggressive - Direct frontal assault
+- Kiting - Maintain distance while attacking
+- Strafing - Circle around target
+- Broadsiding - Position for maximum turret coverage
+- Defensive - Stay at range and evade
+
+**See [AI_SYSTEM_GUIDE.md](AI_SYSTEM_GUIDE.md) for complete documentation**
+
+### 17. Development Tools
 - **Debug Renderer** - Debug visualization for game objects and physics
 - **Performance Profiler** - FPS and frame timing tracking
 - **Memory Tracker** - Memory usage monitoring (including GPU when available)
@@ -553,6 +585,8 @@ For detailed credits and acknowledgments, see [CREDITS.md](CREDITS.md).
 ✅ **Interactive camera controls** 🎨  
 ✅ **ImGui.NET UI framework with HUD** 🎨  
 ✅ **Futuristic sci-fi HUD with radar, ship status, and target tracking** 🎨 **NEW!**  
+✅ **AI system with state-based behavior** 🤖 **NEW!**  
+✅ **AI perception, decision-making, and movement** 🤖 **NEW!**  
 
 ## Future Enhancements
 
@@ -562,7 +596,7 @@ For detailed credits and acknowledgments, see [CREDITS.md](CREDITS.md).
 - Client-side prediction and lag compensation
 - Voxel damage and integrity system
 - Ship blueprint system
-- AI system with behavior trees
+- Advanced AI features (formation flying, learning behaviors)
 - More complex procedural generation algorithms
 - Advanced RPG features (quests, dialog systems)
 - Steam Workshop integration
@@ -586,6 +620,7 @@ For detailed credits and acknowledgments, see [CREDITS.md](CREDITS.md).
 - **[Contributing](CONTRIBUTING.md)** - How to contribute to the project
 - **[Credits](CREDITS.md)** - Acknowledgments and licenses
 - **[Persistence Guide](PERSISTENCE_GUIDE.md)** - 💾 **NEW!** - Complete guide to save/load system
+- **[AI System Guide](AI_SYSTEM_GUIDE.md)** - 🤖 **NEW!** - Complete guide to AI behavior system
 
 ## Troubleshooting
 
