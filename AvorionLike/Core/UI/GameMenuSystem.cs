@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Silk.NET.Input;
 using ImGuiNET;
 using AvorionLike.Core.Configuration;
+using AvorionLike.Core.Persistence;
 
 namespace AvorionLike.Core.UI;
 
@@ -19,6 +20,8 @@ public class GameMenuSystem
     
     private bool _isPauseMenuOpen = false;
     private bool _isSettingsMenuOpen = false;
+    private bool _isSaveDialogOpen = false;
+    private bool _isLoadDialogOpen = false;
     private int _selectedMenuItem = 0;
     private int _pauseMenuItemCount = 5; // Resume, Settings, Save, Load, Main Menu
     
@@ -28,11 +31,15 @@ public class GameMenuSystem
     private int _selectedSetting = 0;
     private int _settingsPerTab = 4; // Number of editable settings per tab
     
+    // Save/Load dialog state
+    private int _selectedSaveSlot = 0;
+    private string _newSaveName = "New Save";
+    
     // Track key presses to prevent repeat actions
     private readonly HashSet<Key> _keysPressed = new HashSet<Key>();
     private readonly HashSet<Key> _keysPressedLastFrame = new HashSet<Key>();
     
-    public bool IsMenuOpen => _isPauseMenuOpen || _isSettingsMenuOpen;
+    public bool IsMenuOpen => _isPauseMenuOpen || _isSettingsMenuOpen || _isSaveDialogOpen || _isLoadDialogOpen;
     
     public GameMenuSystem(GameEngine gameEngine, CustomUIRenderer renderer, float screenWidth, float screenHeight)
     {
@@ -77,7 +84,7 @@ public class GameMenuSystem
         
         // Update current keys pressed - only check the keys we care about
         _keysPressed.Clear();
-        Key[] keysToCheck = { Key.Up, Key.Down, Key.W, Key.S, Key.Enter, Key.Space, Key.Backspace };
+        Key[] keysToCheck = { Key.Up, Key.Down, Key.W, Key.S, Key.Enter, Key.Space, Key.Backspace, Key.Escape, Key.Left, Key.Right, Key.A, Key.D };
         foreach (var key in keysToCheck)
         {
             if (keyboard.IsKeyPressed(key))
@@ -86,7 +93,7 @@ public class GameMenuSystem
             }
         }
         
-        // Handle keyboard navigation for pause menu
+        // Handle keyboard navigation for different menu states
         if (_isPauseMenuOpen)
         {
             HandlePauseMenuInput();
@@ -94,6 +101,14 @@ public class GameMenuSystem
         else if (_isSettingsMenuOpen)
         {
             HandleSettingsMenuInput();
+        }
+        else if (_isSaveDialogOpen)
+        {
+            HandleSaveDialogInput();
+        }
+        else if (_isLoadDialogOpen)
+        {
+            HandleLoadDialogInput();
         }
         
         // Copy current keys to last frame
@@ -228,6 +243,143 @@ public class GameMenuSystem
         }
     }
     
+    private void HandleSaveDialogInput()
+    {
+        var saveManager = SaveGameManager.Instance;
+        var saves = saveManager.ListSaveGames();
+        int slotCount = Math.Max(1, saves.Count + 1); // At least 1 slot for new save
+        
+        // Navigate save slots
+        if (WasKeyJustPressed(Key.Up) || WasKeyJustPressed(Key.W))
+        {
+            _selectedSaveSlot = (_selectedSaveSlot - 1 + slotCount) % slotCount;
+        }
+        else if (WasKeyJustPressed(Key.Down) || WasKeyJustPressed(Key.S))
+        {
+            _selectedSaveSlot = (_selectedSaveSlot + 1) % slotCount;
+        }
+        
+        // Confirm save
+        if (WasKeyJustPressed(Key.Enter) || WasKeyJustPressed(Key.Space))
+        {
+            PerformSave();
+            _isSaveDialogOpen = false;
+            _isPauseMenuOpen = true;
+        }
+        
+        // Cancel
+        if (WasKeyJustPressed(Key.Backspace) || WasKeyJustPressed(Key.Escape))
+        {
+            _isSaveDialogOpen = false;
+            _isPauseMenuOpen = true;
+        }
+    }
+    
+    private void HandleLoadDialogInput()
+    {
+        var saveManager = SaveGameManager.Instance;
+        var saves = saveManager.ListSaveGames();
+        
+        if (saves.Count == 0)
+        {
+            // No saves available, return to menu
+            if (WasKeyJustPressed(Key.Backspace) || WasKeyJustPressed(Key.Escape) || 
+                WasKeyJustPressed(Key.Enter) || WasKeyJustPressed(Key.Space))
+            {
+                _isLoadDialogOpen = false;
+                _isPauseMenuOpen = true;
+            }
+            return;
+        }
+        
+        // Navigate save slots
+        if (WasKeyJustPressed(Key.Up) || WasKeyJustPressed(Key.W))
+        {
+            _selectedSaveSlot = (_selectedSaveSlot - 1 + saves.Count) % saves.Count;
+        }
+        else if (WasKeyJustPressed(Key.Down) || WasKeyJustPressed(Key.S))
+        {
+            _selectedSaveSlot = (_selectedSaveSlot + 1) % saves.Count;
+        }
+        
+        // Confirm load
+        if (WasKeyJustPressed(Key.Enter) || WasKeyJustPressed(Key.Space))
+        {
+            PerformLoad();
+            _isLoadDialogOpen = false;
+            _isPauseMenuOpen = false; // Close menu after loading
+        }
+        
+        // Cancel
+        if (WasKeyJustPressed(Key.Backspace) || WasKeyJustPressed(Key.Escape))
+        {
+            _isLoadDialogOpen = false;
+            _isPauseMenuOpen = true;
+        }
+    }
+    
+    private void PerformSave()
+    {
+        try
+        {
+            var saveManager = SaveGameManager.Instance;
+            var saveData = new SaveGameData
+            {
+                SaveName = _newSaveName,
+                GalaxySeed = 12345, // TODO: Get from game engine
+                GameState = new Dictionary<string, object>(),
+                Entities = new List<EntityData>()
+            };
+            
+            // TODO: Serialize actual game state from _gameEngine
+            // For now, just save metadata
+            
+            var fileName = $"save_{DateTime.Now:yyyyMMdd_HHmmss}";
+            if (saveManager.SaveGame(saveData, fileName))
+            {
+                Console.WriteLine($"Game saved as {fileName}");
+            }
+            else
+            {
+                Console.WriteLine("Failed to save game");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving game: {ex.Message}");
+        }
+    }
+    
+    private void PerformLoad()
+    {
+        try
+        {
+            var saveManager = SaveGameManager.Instance;
+            var saves = saveManager.ListSaveGames();
+            
+            if (_selectedSaveSlot >= 0 && _selectedSaveSlot < saves.Count)
+            {
+                var saveInfo = saves[_selectedSaveSlot];
+                var saveData = saveManager.LoadGame(saveInfo.FileName);
+                
+                if (saveData != null)
+                {
+                    Console.WriteLine($"Game loaded: {saveInfo.SaveName}");
+                    // TODO: Apply loaded data to _gameEngine
+                    // For now, just log the load
+                }
+                else
+                {
+                    Console.WriteLine("Failed to load game");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading game: {ex.Message}");
+        }
+    }
+    
     private void ExecutePauseMenuItem(int itemIndex)
     {
         switch (itemIndex)
@@ -242,12 +394,16 @@ public class GameMenuSystem
                 Console.WriteLine("Opening settings menu");
                 break;
             case 2: // Save Game
-                Console.WriteLine("Save game functionality - to be implemented");
-                // TODO: Show save dialog
+                _isPauseMenuOpen = false;
+                _isSaveDialogOpen = true;
+                _selectedSaveSlot = 0;
+                Console.WriteLine("Opening save dialog");
                 break;
             case 3: // Load Game
-                Console.WriteLine("Load game functionality - to be implemented");
-                // TODO: Show load dialog
+                _isPauseMenuOpen = false;
+                _isLoadDialogOpen = true;
+                _selectedSaveSlot = 0;
+                Console.WriteLine("Opening load dialog");
                 break;
             case 4: // Main Menu
                 Console.WriteLine("Return to main menu - to be implemented");
@@ -270,6 +426,14 @@ public class GameMenuSystem
         {
             RenderSettingsMenu();
         }
+        else if (_isSaveDialogOpen)
+        {
+            RenderSaveDialog();
+        }
+        else if (_isLoadDialogOpen)
+        {
+            RenderLoadDialog();
+        }
         
         _renderer.EndRender();
         
@@ -290,6 +454,14 @@ public class GameMenuSystem
         else if (_isSettingsMenuOpen)
         {
             RenderSettingsMenuText(drawList);
+        }
+        else if (_isSaveDialogOpen)
+        {
+            RenderSaveDialogText(drawList);
+        }
+        else if (_isLoadDialogOpen)
+        {
+            RenderLoadDialogText(drawList);
         }
     }
     
@@ -666,5 +838,265 @@ public class GameMenuSystem
         Vector4 buttonColor = new Vector4(0.1f, 0.3f, 0.4f, 0.8f);
         _renderer.DrawRectFilled(new Vector2(backButtonX, backButtonY), new Vector2(backButtonWidth, backButtonHeight), buttonColor);
         _renderer.DrawRect(new Vector2(backButtonX, backButtonY), new Vector2(backButtonWidth, backButtonHeight), panelBorderColor, 2f);
+    }
+    
+    private void RenderSaveDialog()
+    {
+        // Semi-transparent background overlay
+        Vector4 overlayColor = new Vector4(0.0f, 0.0f, 0.0f, 0.7f);
+        _renderer.DrawRectFilled(Vector2.Zero, new Vector2(_screenWidth, _screenHeight), overlayColor);
+        
+        // Dialog panel
+        float panelWidth = 500f;
+        float panelHeight = 400f;
+        float panelX = (_screenWidth - panelWidth) * 0.5f;
+        float panelY = (_screenHeight - panelHeight) * 0.5f;
+        
+        Vector4 panelBgColor = new Vector4(0.05f, 0.1f, 0.15f, 0.95f);
+        Vector4 panelBorderColor = new Vector4(0.0f, 0.8f, 1.0f, 1.0f);
+        
+        // Panel background and border
+        _renderer.DrawRectFilled(new Vector2(panelX, panelY), new Vector2(panelWidth, panelHeight), panelBgColor);
+        _renderer.DrawRect(new Vector2(panelX, panelY), new Vector2(panelWidth, panelHeight), panelBorderColor, 3f);
+        
+        // Title bar
+        float titleBarHeight = 60f;
+        Vector4 titleBarColor = new Vector4(0.0f, 0.6f, 0.8f, 0.5f);
+        _renderer.DrawRectFilled(new Vector2(panelX, panelY), new Vector2(panelWidth, titleBarHeight), titleBarColor);
+        _renderer.DrawLine(
+            new Vector2(panelX, panelY + titleBarHeight),
+            new Vector2(panelX + panelWidth, panelY + titleBarHeight),
+            panelBorderColor, 2f);
+        
+        // Save slots area
+        float contentY = panelY + titleBarHeight + 20f;
+        float slotHeight = 50f;
+        float slotSpacing = 10f;
+        float slotX = panelX + 30f;
+        float slotWidth = panelWidth - 60f;
+        
+        var saveManager = SaveGameManager.Instance;
+        var saves = saveManager.ListSaveGames();
+        int displaySlots = Math.Min(5, saves.Count + 1); // Show up to 5 slots
+        
+        Vector4 slotBgColor = new Vector4(0.1f, 0.2f, 0.3f, 0.6f);
+        Vector4 slotSelectedColor = new Vector4(0.2f, 0.4f, 0.5f, 0.8f);
+        
+        for (int i = 0; i < displaySlots; i++)
+        {
+            float slotY = contentY + i * (slotHeight + slotSpacing);
+            Vector4 bgColor = (i == _selectedSaveSlot) ? slotSelectedColor : slotBgColor;
+            
+            _renderer.DrawRectFilled(new Vector2(slotX, slotY), new Vector2(slotWidth, slotHeight), bgColor);
+            _renderer.DrawRect(new Vector2(slotX, slotY), new Vector2(slotWidth, slotHeight), panelBorderColor, 2f);
+            
+            // Selection marker
+            if (i == _selectedSaveSlot)
+            {
+                float markerSize = 12f;
+                float markerX = slotX - markerSize - 6f;
+                float markerY = slotY + slotHeight * 0.5f;
+                Vector4 markerColor = new Vector4(0.0f, 1.0f, 0.8f, 1.0f);
+                Vector2 p1 = new Vector2(markerX, markerY - markerSize * 0.3f);
+                Vector2 p2 = new Vector2(markerX, markerY + markerSize * 0.3f);
+                Vector2 p3 = new Vector2(markerX + markerSize * 0.6f, markerY);
+                _renderer.DrawLine(p1, p2, markerColor, 2f);
+                _renderer.DrawLine(p2, p3, markerColor, 2f);
+                _renderer.DrawLine(p3, p1, markerColor, 2f);
+            }
+        }
+    }
+    
+    private void RenderLoadDialog()
+    {
+        // Semi-transparent background overlay
+        Vector4 overlayColor = new Vector4(0.0f, 0.0f, 0.0f, 0.7f);
+        _renderer.DrawRectFilled(Vector2.Zero, new Vector2(_screenWidth, _screenHeight), overlayColor);
+        
+        // Dialog panel
+        float panelWidth = 500f;
+        float panelHeight = 400f;
+        float panelX = (_screenWidth - panelWidth) * 0.5f;
+        float panelY = (_screenHeight - panelHeight) * 0.5f;
+        
+        Vector4 panelBgColor = new Vector4(0.05f, 0.1f, 0.15f, 0.95f);
+        Vector4 panelBorderColor = new Vector4(0.0f, 0.8f, 1.0f, 1.0f);
+        
+        // Panel background and border
+        _renderer.DrawRectFilled(new Vector2(panelX, panelY), new Vector2(panelWidth, panelHeight), panelBgColor);
+        _renderer.DrawRect(new Vector2(panelX, panelY), new Vector2(panelWidth, panelHeight), panelBorderColor, 3f);
+        
+        // Title bar
+        float titleBarHeight = 60f;
+        Vector4 titleBarColor = new Vector4(0.0f, 0.6f, 0.8f, 0.5f);
+        _renderer.DrawRectFilled(new Vector2(panelX, panelY), new Vector2(panelWidth, titleBarHeight), titleBarColor);
+        _renderer.DrawLine(
+            new Vector2(panelX, panelY + titleBarHeight),
+            new Vector2(panelX + panelWidth, panelY + titleBarHeight),
+            panelBorderColor, 2f);
+        
+        // Load slots area
+        float contentY = panelY + titleBarHeight + 20f;
+        float slotHeight = 50f;
+        float slotSpacing = 10f;
+        float slotX = panelX + 30f;
+        float slotWidth = panelWidth - 60f;
+        
+        var saveManager = SaveGameManager.Instance;
+        var saves = saveManager.ListSaveGames();
+        int displaySlots = Math.Min(5, saves.Count);
+        
+        if (saves.Count > 0)
+        {
+            Vector4 slotBgColor = new Vector4(0.1f, 0.2f, 0.3f, 0.6f);
+            Vector4 slotSelectedColor = new Vector4(0.2f, 0.4f, 0.5f, 0.8f);
+            
+            for (int i = 0; i < displaySlots; i++)
+            {
+                float slotY = contentY + i * (slotHeight + slotSpacing);
+                Vector4 bgColor = (i == _selectedSaveSlot) ? slotSelectedColor : slotBgColor;
+                
+                _renderer.DrawRectFilled(new Vector2(slotX, slotY), new Vector2(slotWidth, slotHeight), bgColor);
+                _renderer.DrawRect(new Vector2(slotX, slotY), new Vector2(slotWidth, slotHeight), panelBorderColor, 2f);
+                
+                // Selection marker
+                if (i == _selectedSaveSlot)
+                {
+                    float markerSize = 12f;
+                    float markerX = slotX - markerSize - 6f;
+                    float markerY = slotY + slotHeight * 0.5f;
+                    Vector4 markerColor = new Vector4(0.0f, 1.0f, 0.8f, 1.0f);
+                    Vector2 p1 = new Vector2(markerX, markerY - markerSize * 0.3f);
+                    Vector2 p2 = new Vector2(markerX, markerY + markerSize * 0.3f);
+                    Vector2 p3 = new Vector2(markerX + markerSize * 0.6f, markerY);
+                    _renderer.DrawLine(p1, p2, markerColor, 2f);
+                    _renderer.DrawLine(p2, p3, markerColor, 2f);
+                    _renderer.DrawLine(p3, p1, markerColor, 2f);
+                }
+            }
+        }
+    }
+    
+    private void RenderSaveDialogText(ImDrawListPtr drawList)
+    {
+        float panelWidth = 500f;
+        float panelHeight = 400f;
+        float panelX = (_screenWidth - panelWidth) * 0.5f;
+        float panelY = (_screenHeight - panelHeight) * 0.5f;
+        float titleBarHeight = 60f;
+        
+        // Title
+        string titleText = "SAVE GAME";
+        var titleSize = ImGui.CalcTextSize(titleText);
+        float titleX = panelX + (panelWidth - titleSize.X) * 0.5f;
+        float titleY = panelY + (titleBarHeight - titleSize.Y) * 0.5f;
+        
+        uint shadowColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0f, 0f, 0f, 0.5f));
+        uint titleColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.2f, 1.0f, 0.8f, 1.0f));
+        drawList.AddText(new Vector2(titleX + 2, titleY + 2), shadowColor, titleText);
+        drawList.AddText(new Vector2(titleX, titleY), titleColor, titleText);
+        
+        // Save slots
+        float contentY = panelY + titleBarHeight + 20f;
+        float slotHeight = 50f;
+        float slotSpacing = 10f;
+        float slotX = panelX + 30f;
+        
+        var saveManager = SaveGameManager.Instance;
+        var saves = saveManager.ListSaveGames();
+        uint labelColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.7f, 0.9f, 1.0f, 1.0f));
+        uint selectedColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+        
+        int displaySlots = Math.Min(5, saves.Count + 1);
+        for (int i = 0; i < displaySlots; i++)
+        {
+            float slotY = contentY + i * (slotHeight + slotSpacing);
+            float textY = slotY + (slotHeight - ImGui.GetTextLineHeight()) * 0.5f;
+            uint color = (i == _selectedSaveSlot) ? selectedColor : labelColor;
+            
+            string slotText = (i < saves.Count) ? saves[i].SaveName : "[New Save]";
+            drawList.AddText(new Vector2(slotX + 15f, textY), color, slotText);
+            
+            if (i < saves.Count)
+            {
+                string dateText = saves[i].SaveTime.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+                var dateSize = ImGui.CalcTextSize(dateText);
+                drawList.AddText(new Vector2(slotX + 380f - dateSize.X, textY), color, dateText);
+            }
+        }
+        
+        // Instructions
+        float instructY = panelY + panelHeight - 50f;
+        string instr = "Up/Down: Select  |  Enter: Save  |  Backspace: Cancel";
+        uint instructColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.5f, 0.6f, 0.7f, 0.8f));
+        var instrSize = ImGui.CalcTextSize(instr);
+        drawList.AddText(new Vector2(panelX + (panelWidth - instrSize.X) * 0.5f, instructY), instructColor, instr);
+    }
+    
+    private void RenderLoadDialogText(ImDrawListPtr drawList)
+    {
+        float panelWidth = 500f;
+        float panelHeight = 400f;
+        float panelX = (_screenWidth - panelWidth) * 0.5f;
+        float panelY = (_screenHeight - panelHeight) * 0.5f;
+        float titleBarHeight = 60f;
+        
+        // Title
+        string titleText = "LOAD GAME";
+        var titleSize = ImGui.CalcTextSize(titleText);
+        float titleX = panelX + (panelWidth - titleSize.X) * 0.5f;
+        float titleY = panelY + (titleBarHeight - titleSize.Y) * 0.5f;
+        
+        uint shadowColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0f, 0f, 0f, 0.5f));
+        uint titleColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.2f, 1.0f, 0.8f, 1.0f));
+        drawList.AddText(new Vector2(titleX + 2, titleY + 2), shadowColor, titleText);
+        drawList.AddText(new Vector2(titleX, titleY), titleColor, titleText);
+        
+        // Save slots
+        var saveManager = SaveGameManager.Instance;
+        var saves = saveManager.ListSaveGames();
+        
+        if (saves.Count == 0)
+        {
+            // No saves message
+            string noSavesText = "No saved games found";
+            var textSize = ImGui.CalcTextSize(noSavesText);
+            float textX = panelX + (panelWidth - textSize.X) * 0.5f;
+            float textY = panelY + panelHeight * 0.5f;
+            uint textColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.7f, 0.7f, 0.7f, 1.0f));
+            drawList.AddText(new Vector2(textX, textY), textColor, noSavesText);
+        }
+        else
+        {
+            float contentY = panelY + titleBarHeight + 20f;
+            float slotHeight = 50f;
+            float slotSpacing = 10f;
+            float slotX = panelX + 30f;
+            
+            uint labelColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.7f, 0.9f, 1.0f, 1.0f));
+            uint selectedColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+            
+            int displaySlots = Math.Min(5, saves.Count);
+            for (int i = 0; i < displaySlots; i++)
+            {
+                float slotY = contentY + i * (slotHeight + slotSpacing);
+                float textY = slotY + (slotHeight - ImGui.GetTextLineHeight()) * 0.5f;
+                uint color = (i == _selectedSaveSlot) ? selectedColor : labelColor;
+                
+                string slotText = saves[i].SaveName;
+                drawList.AddText(new Vector2(slotX + 15f, textY), color, slotText);
+                
+                string dateText = saves[i].SaveTime.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
+                var dateSize = ImGui.CalcTextSize(dateText);
+                drawList.AddText(new Vector2(slotX + 380f - dateSize.X, textY), color, dateText);
+            }
+        }
+        
+        // Instructions
+        float instructY = panelY + panelHeight - 50f;
+        string instr = saves.Count > 0 ? "Up/Down: Select  |  Enter: Load  |  Backspace: Cancel" : "Press any key to return";
+        uint instructColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.5f, 0.6f, 0.7f, 0.8f));
+        var instrSize = ImGui.CalcTextSize(instr);
+        drawList.AddText(new Vector2(panelX + (panelWidth - instrSize.X) * 0.5f, instructY), instructColor, instr);
     }
 }
