@@ -142,9 +142,9 @@ class Program
         // Add voxel structure - create a functional starter ship
         var voxelComponent = new VoxelStructureComponent();
         
-        Console.WriteLine("Building your starter ship...");
+        Console.WriteLine("Building your starter ship with colorful materials...");
         
-        // Core hull (center)
+        // Core hull (center) - Titanium (silver-blue)
         voxelComponent.AddBlock(new VoxelBlock(
             new Vector3(0, 0, 0),
             new Vector3(3, 3, 3),
@@ -152,64 +152,64 @@ class Program
             BlockType.Hull
         ));
         
-        // Main engines (rear)
+        // Main engines (rear) - Ogonite (red/orange with glow)
         voxelComponent.AddBlock(new VoxelBlock(
             new Vector3(-5, 0, 0),
             new Vector3(2, 2, 2),
-            "Iron",
+            "Ogonite",
             BlockType.Engine
         ));
         
         voxelComponent.AddBlock(new VoxelBlock(
             new Vector3(-5, 2, 0),
             new Vector3(2, 2, 2),
-            "Iron",
+            "Ogonite",
             BlockType.Engine
         ));
         
-        // Maneuvering thrusters
+        // Maneuvering thrusters - Trinium (blue with glow)
         voxelComponent.AddBlock(new VoxelBlock(
             new Vector3(0, 4, 0),
             new Vector3(1.5f, 1.5f, 1.5f),
-            "Iron",
+            "Trinium",
             BlockType.Thruster
         ));
         
         voxelComponent.AddBlock(new VoxelBlock(
             new Vector3(0, -4, 0),
             new Vector3(1.5f, 1.5f, 1.5f),
-            "Iron",
+            "Trinium",
             BlockType.Thruster
         ));
         
-        // Generator
+        // Generator - Xanion (gold/yellow with glow)
         voxelComponent.AddBlock(new VoxelBlock(
             new Vector3(3, 0, 0),
             new Vector3(2, 2, 2),
-            "Iron",
+            "Xanion",
             BlockType.Generator
         ));
         
-        // Shield generator
+        // Shield generator - Naonite (green with glow)
         voxelComponent.AddBlock(new VoxelBlock(
             new Vector3(0, 0, 3),
             new Vector3(2, 2, 2),
-            "Titanium",
+            "Naonite",
             BlockType.ShieldGenerator
         ));
         
-        // Gyro arrays for rotation
+        // Gyro arrays for rotation - Avorion (purple with strong glow)
         voxelComponent.AddBlock(new VoxelBlock(
             new Vector3(0, 2, 2),
             new Vector3(1.5f, 1.5f, 1.5f),
-            "Iron",
+            "Avorion",
             BlockType.GyroArray
         ));
         
         voxelComponent.AddBlock(new VoxelBlock(
             new Vector3(0, -2, -2),
             new Vector3(1.5f, 1.5f, 1.5f),
-            "Iron",
+            "Avorion",
             BlockType.GyroArray
         ));
         
@@ -281,6 +281,15 @@ class Program
         Console.WriteLine($"  Shields: {voxelComponent.ShieldCapacity:F2}");
         Console.WriteLine($"  Credits: {inventoryComponent.Inventory.GetResourceAmount(ResourceType.Credits):N0}");
         
+        Console.WriteLine("\n--- Ship Materials (Colorful!) ---");
+        Console.WriteLine("  Core: Titanium (Silver-Blue, Metallic)");
+        Console.WriteLine("  Engines: Ogonite (Red/Orange with Glow)");
+        Console.WriteLine("  Thrusters: Trinium (Bright Blue with Glow)");
+        Console.WriteLine("  Generator: Xanion (Gold/Yellow with Strong Glow)");
+        Console.WriteLine("  Shields: Naonite (Bright Green with Glow)");
+        Console.WriteLine("  Gyros: Avorion (Purple with Strong Glow)");
+        Console.WriteLine("\n  Each block type has distinct colors to verify rendering!");
+        
         // Create some nearby asteroids for mining
         Console.WriteLine("\nPopulating nearby space...");
         var random = new Random();
@@ -339,46 +348,46 @@ class Program
         
         // Add voxel structure
         var voxelComponent = new VoxelStructureComponent();
-        Console.WriteLine("Building ship structure with voxel blocks...");
+        Console.WriteLine("Building ship structure with colorful voxel blocks...");
         
-        // Create a ship with different functional blocks
-        // Core hull
+        // Create a ship with different functional blocks using vibrant materials
+        // Core hull - Avorion (purple with strong glow)
         voxelComponent.AddBlock(new VoxelBlock(
             new Vector3(0, 0, 0),
             new Vector3(3, 3, 3),
-            "Titanium",
+            "Avorion",
             BlockType.Hull
         ));
         
-        // Engines for forward thrust
+        // Engines for forward thrust - Ogonite (red/orange with glow)
         voxelComponent.AddBlock(new VoxelBlock(
             new Vector3(-4, 0, 0),
             new Vector3(2, 2, 2),
-            "Iron",
+            "Ogonite",
             BlockType.Engine
         ));
         
-        // Thrusters for maneuvering
+        // Thrusters for maneuvering - Trinium (blue with glow)
         voxelComponent.AddBlock(new VoxelBlock(
             new Vector3(4, 0, 0),
             new Vector3(1.5f, 1.5f, 1.5f),
-            "Iron",
+            "Trinium",
             BlockType.Thruster
         ));
         
-        // Generator
+        // Generator - Xanion (gold/yellow with strong glow)
         voxelComponent.AddBlock(new VoxelBlock(
             new Vector3(0, -3, 0),
             new Vector3(2, 2, 2),
-            "Iron",
+            "Xanion",
             BlockType.Generator
         ));
         
-        // Shield generator
+        // Shield generator - Naonite (bright green with glow)
         voxelComponent.AddBlock(new VoxelBlock(
             new Vector3(0, 3, 0),
             new Vector3(2, 2, 2),
-            "Titanium",
+            "Naonite",
             BlockType.ShieldGenerator
         ));
         
@@ -453,32 +462,32 @@ class Program
     static void VoxelSystemDemo()
     {
         Console.WriteLine("\n=== Voxel System Demo ===");
-        Console.WriteLine("Building a custom ship structure with functional blocks...\n");
+        Console.WriteLine("Building a custom ship structure with colorful functional blocks...\n");
 
         var structure = new VoxelStructureComponent();
         
-        // Create a functional ship design
-        Console.WriteLine("Creating advanced ship design:");
+        // Create a functional ship design with vibrant materials
+        Console.WriteLine("Creating rainbow ship design:");
         
-        // Core (Titanium for better durability)
-        structure.AddBlock(new VoxelBlock(new Vector3(0, 0, 0), new Vector3(3, 3, 3), "Titanium", BlockType.Hull));
+        // Core (Avorion - purple for better visibility)
+        structure.AddBlock(new VoxelBlock(new Vector3(0, 0, 0), new Vector3(3, 3, 3), "Avorion", BlockType.Hull));
         
-        // Engines (back)
-        structure.AddBlock(new VoxelBlock(new Vector3(-4, 0, 0), new Vector3(2, 2, 2), "Iron", BlockType.Engine));
-        structure.AddBlock(new VoxelBlock(new Vector3(-4, 2, 0), new Vector3(2, 2, 2), "Iron", BlockType.Engine));
+        // Engines (back) - Ogonite (red/orange with glow)
+        structure.AddBlock(new VoxelBlock(new Vector3(-4, 0, 0), new Vector3(2, 2, 2), "Ogonite", BlockType.Engine));
+        structure.AddBlock(new VoxelBlock(new Vector3(-4, 2, 0), new Vector3(2, 2, 2), "Ogonite", BlockType.Engine));
         
-        // Thrusters (sides for maneuvering)
-        structure.AddBlock(new VoxelBlock(new Vector3(0, 4, 0), new Vector3(1.5f, 1.5f, 1.5f), "Iron", BlockType.Thruster));
-        structure.AddBlock(new VoxelBlock(new Vector3(0, -4, 0), new Vector3(1.5f, 1.5f, 1.5f), "Iron", BlockType.Thruster));
+        // Thrusters (sides for maneuvering) - Trinium (blue with glow)
+        structure.AddBlock(new VoxelBlock(new Vector3(0, 4, 0), new Vector3(1.5f, 1.5f, 1.5f), "Trinium", BlockType.Thruster));
+        structure.AddBlock(new VoxelBlock(new Vector3(0, -4, 0), new Vector3(1.5f, 1.5f, 1.5f), "Trinium", BlockType.Thruster));
         
-        // Gyro arrays for rotation
-        structure.AddBlock(new VoxelBlock(new Vector3(0, 0, 3), new Vector3(2, 2, 2), "Iron", BlockType.GyroArray));
-        structure.AddBlock(new VoxelBlock(new Vector3(0, 0, -3), new Vector3(2, 2, 2), "Iron", BlockType.GyroArray));
+        // Gyro arrays for rotation - Xanion (gold with glow)
+        structure.AddBlock(new VoxelBlock(new Vector3(0, 0, 3), new Vector3(2, 2, 2), "Xanion", BlockType.GyroArray));
+        structure.AddBlock(new VoxelBlock(new Vector3(0, 0, -3), new Vector3(2, 2, 2), "Xanion", BlockType.GyroArray));
         
-        // Generator
-        structure.AddBlock(new VoxelBlock(new Vector3(4, 0, 0), new Vector3(2, 2, 2), "Titanium", BlockType.Generator));
+        // Generator - Naonite (green with glow)
+        structure.AddBlock(new VoxelBlock(new Vector3(4, 0, 0), new Vector3(2, 2, 2), "Naonite", BlockType.Generator));
         
-        // Shield generator
+        // Shield generator - Titanium (silver-blue, metallic)
         structure.AddBlock(new VoxelBlock(new Vector3(2, 2, 0), new Vector3(2, 2, 2), "Titanium", BlockType.ShieldGenerator));
 
         Console.WriteLine($"  Total blocks: {structure.Blocks.Count}");
@@ -795,47 +804,54 @@ class Program
                 
                 var voxelComponent = new VoxelStructureComponent();
                 
-                // Create different ship designs
+                // Create different ship designs with colorful materials
                 switch (i)
                 {
-                    case 0: // Fighter with engines
-                        // Core
+                    case 0: // Fighter with bright colors
+                        // Core - Purple Avorion
                         voxelComponent.AddBlock(new VoxelBlock(
                             new Vector3(0, 0, 0),
                             new Vector3(3, 2, 2),
-                            "Titanium",
+                            "Avorion",
                             BlockType.Hull
                         ));
-                        // Engines
+                        // Engines - Red Ogonite
                         voxelComponent.AddBlock(new VoxelBlock(
                             new Vector3(-4, 0, 0),
                             new Vector3(2, 2, 2),
-                            "Iron",
+                            "Ogonite",
                             BlockType.Engine
                         ));
-                        // Wings
-                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 3, 0), new Vector3(2, 1, 2), "Iron", BlockType.Armor));
-                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, -3, 0), new Vector3(2, 1, 2), "Iron", BlockType.Armor));
+                        // Wings - Gold Xanion
+                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 3, 0), new Vector3(2, 1, 2), "Xanion", BlockType.Armor));
+                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, -3, 0), new Vector3(2, 1, 2), "Xanion", BlockType.Armor));
                         break;
                     
-                    case 1: // Cross-shaped ship with shields
-                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 0), new Vector3(3, 3, 3), "Titanium", BlockType.Hull));
-                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(4, 0, 0), new Vector3(2, 2, 2), "Iron", BlockType.Generator));
-                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(-4, 0, 0), new Vector3(2, 2, 2), "Iron", BlockType.Engine));
-                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 4, 0), new Vector3(2, 2, 2), "Naonite", BlockType.ShieldGenerator));
-                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, -4, 0), new Vector3(2, 2, 2), "Naonite", BlockType.Thruster));
+                    case 1: // Cross-shaped ship with rainbow colors
+                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 0), new Vector3(3, 3, 3), "Avorion", BlockType.Hull)); // Purple center
+                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(4, 0, 0), new Vector3(2, 2, 2), "Xanion", BlockType.Generator)); // Gold right
+                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(-4, 0, 0), new Vector3(2, 2, 2), "Ogonite", BlockType.Engine)); // Red left
+                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 4, 0), new Vector3(2, 2, 2), "Naonite", BlockType.ShieldGenerator)); // Green top
+                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, -4, 0), new Vector3(2, 2, 2), "Trinium", BlockType.Thruster)); // Blue bottom
                         break;
                     
-                    case 2: // Compact cargo ship
+                    case 2: // Compact cargo ship with gradient colors
                         for (int x = 0; x < 3; x++)
                         {
                             for (int y = 0; y < 2; y++)
                             {
                                 var blockType = (x == 1 && y == 0) ? BlockType.Generator : BlockType.Cargo;
+                                // Create a gradient from Naonite (green) to Trinium (blue) to Xanion (gold)
+                                string material = x switch
+                                {
+                                    0 => "Naonite",
+                                    1 => "Trinium",
+                                    _ => "Xanion"
+                                };
                                 voxelComponent.AddBlock(new VoxelBlock(
                                     new Vector3(x * 3, y * 3, 0),
                                     new Vector3(2.5f, 2.5f, 2.5f),
-                                    x == 1 ? "Trinium" : "Xanion",
+                                    material,
                                     blockType
                                 ));
                             }

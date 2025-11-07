@@ -6,6 +6,15 @@ namespace AvorionLike.Core.Graphics;
 /// <summary>
 /// Material properties for rendering
 /// Supports both color-based and texture-based materials
+/// 
+/// Default Material Colors (visible in-game):
+/// - Iron: Medium Grey (0.65, 0.65, 0.65) - Metallic
+/// - Titanium: Silver-Blue (0.75, 0.80, 0.85) - High Metallic
+/// - Naonite: Bright Green (0.2, 0.8, 0.3) with Green Glow - Semi-Metallic
+/// - Trinium: Bright Blue (0.3, 0.6, 0.9) with Blue Glow - Semi-Metallic
+/// - Xanion: Gold/Yellow (0.9, 0.75, 0.2) with Yellow Glow - Very Metallic
+/// - Ogonite: Red/Orange (0.9, 0.35, 0.2) with Red Glow - Metallic
+/// - Avorion: Purple (0.75, 0.25, 0.9) with Purple Glow - Highly Metallic
 /// </summary>
 public class Material
 {

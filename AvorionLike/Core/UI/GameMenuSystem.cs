@@ -17,12 +17,18 @@ public class GameMenuSystem
     private bool _isPauseMenuOpen = false;
     private bool _isSettingsMenuOpen = false;
     private int _selectedMenuItem = 0;
+    
+#pragma warning disable CS0414 // Field is assigned but its value is never used - reserved for future settings tab implementation
     private int _selectedSettingsTab = 0;
+#pragma warning restore CS0414
     
     // Settings values
     private float _difficulty = 1.0f;
+    
+#pragma warning disable CS0414 // Field is assigned but its value is never used - reserved for future settings implementation
     private float _mouseSensitivity = 0.5f;
     private float _masterVolume = 1.0f;
+#pragma warning restore CS0414
     
     public bool IsMenuOpen => _isPauseMenuOpen || _isSettingsMenuOpen;
     
