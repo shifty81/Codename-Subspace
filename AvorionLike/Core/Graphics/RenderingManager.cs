@@ -30,7 +30,7 @@ public class RenderingManager
         foreach (var chunk in dirtyChunks)
         {
             _meshBuilder.RequestMeshBuild(chunk, _useGreedyMeshing);
-            _chunkManager.MarkChunkClean(chunk);
+            // Don't mark clean yet - wait for successful mesh build
         }
         
         // Process completed mesh builds
@@ -40,7 +40,9 @@ public class RenderingManager
             if (result.Success && result.Mesh != null)
             {
                 _chunkMeshes[result.Chunk] = result.Mesh;
+                _chunkManager.MarkChunkClean(result.Chunk); // Mark clean after success
             }
+            // If failed, chunk remains dirty and will be retried
         }
     }
     

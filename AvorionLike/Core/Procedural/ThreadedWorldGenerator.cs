@@ -9,8 +9,7 @@ namespace AvorionLike.Core.Procedural;
 /// </summary>
 public class ThreadedWorldGenerator
 {
-    private readonly GalaxyGenerator _galaxyGenerator;
-    private readonly AsteroidVoxelGenerator _asteroidGenerator;
+    private readonly int _seed;
     private readonly ChunkManager _chunkManager;
     private readonly ConcurrentQueue<GenerationTask> _taskQueue = new();
     private readonly ConcurrentQueue<GenerationResult> _resultQueue = new();
@@ -24,8 +23,7 @@ public class ThreadedWorldGenerator
         ChunkManager chunkManager,
         int threadCount = 0)
     {
-        _galaxyGenerator = new GalaxyGenerator(seed);
-        _asteroidGenerator = new AsteroidVoxelGenerator(seed);
+        _seed = seed;
         _chunkManager = chunkManager;
         
         // Use CPU core count if not specified
@@ -168,7 +166,7 @@ public class ThreadedWorldGenerator
     }
     
     /// <summary>
-    /// Process a generation task
+    /// Process a generation task (uses thread-local generators)
     /// </summary>
     private GenerationResult ProcessTask(GenerationTask task)
     {
@@ -178,10 +176,16 @@ public class ThreadedWorldGenerator
             Task = task
         };
         
+        // Create thread-local generators with derived seeds for thread safety
+        var threadId = Thread.CurrentThread.ManagedThreadId;
+        var threadSeed = _seed ^ threadId;
+        var galaxyGenerator = new GalaxyGenerator(threadSeed);
+        var asteroidGenerator = new AsteroidVoxelGenerator(threadSeed);
+        
         switch (task.Type)
         {
             case TaskType.Sector:
-                result.Sector = _galaxyGenerator.GenerateSector(
+                result.Sector = galaxyGenerator.GenerateSector(
                     task.SectorX,
                     task.SectorY,
                     task.SectorZ
@@ -191,7 +195,7 @@ public class ThreadedWorldGenerator
             case TaskType.Asteroid:
                 if (task.AsteroidData != null)
                 {
-                    result.VoxelBlocks = _asteroidGenerator.GenerateAsteroid(
+                    result.VoxelBlocks = asteroidGenerator.GenerateAsteroid(
                         task.AsteroidData,
                         task.Resolution
                     );

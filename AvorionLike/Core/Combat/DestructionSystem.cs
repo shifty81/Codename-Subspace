@@ -14,6 +14,7 @@ public class DestructionSystem : SystemBase
     private readonly EntityManager _entityManager;
     private readonly EventSystem _eventSystem;
     private readonly List<DestructionEvent> _pendingDestructions = new();
+    private readonly Random _random = new Random(); // Reuse Random instance
     
     public DestructionSystem(EntityManager entityManager, EventSystem eventSystem) 
         : base("DestructionSystem")
@@ -228,20 +229,19 @@ public class DestructionSystem : SystemBase
         voxelComponent.AddBlock(debrisBlock);
         _entityManager.AddComponent(debris.Id, voxelComponent);
         
-        // Add physics with random velocity
-        var random = new Random();
+        // Add physics with random velocity (reuse Random instance)
         var physicsComponent = new PhysicsComponent
         {
             Position = block.Position,
             Velocity = velocity + new Vector3(
-                (float)(random.NextDouble() - 0.5) * 10,
-                (float)(random.NextDouble() - 0.5) * 10,
-                (float)(random.NextDouble() - 0.5) * 10
+                (float)(_random.NextDouble() - 0.5) * 10,
+                (float)(_random.NextDouble() - 0.5) * 10,
+                (float)(_random.NextDouble() - 0.5) * 10
             ),
             AngularVelocity = new Vector3(
-                (float)(random.NextDouble() - 0.5) * 5,
-                (float)(random.NextDouble() - 0.5) * 5,
-                (float)(random.NextDouble() - 0.5) * 5
+                (float)(_random.NextDouble() - 0.5) * 5,
+                (float)(_random.NextDouble() - 0.5) * 5,
+                (float)(_random.NextDouble() - 0.5) * 5
             ),
             Mass = voxelComponent.TotalMass
         };

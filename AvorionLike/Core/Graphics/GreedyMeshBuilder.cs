@@ -33,9 +33,15 @@ public class GreedyMeshBuilder
     
     /// <summary>
     /// Generate mesh with greedy meshing algorithm (combines adjacent faces)
+    /// NOTE: Full greedy meshing not yet implemented, falls back to standard meshing with face culling
     /// </summary>
     public static OptimizedMesh BuildGreedyMesh(IEnumerable<VoxelBlock> blocks)
     {
+        // TODO: Implement full greedy meshing algorithm
+        // For now, use standard face culling which already provides significant optimization
+        return BuildMesh(blocks);
+        
+        /* Future greedy meshing implementation would:
         var mesh = new OptimizedMesh();
         var blockList = blocks.Where(b => !b.IsDestroyed).ToList();
         
@@ -52,6 +58,7 @@ public class GreedyMeshBuilder
         }
         
         return mesh;
+        */
     }
     
     /// <summary>
@@ -234,8 +241,15 @@ public class GreedyMeshBuilder
     /// </summary>
     private static void GreedyMeshAxis(VoxelGrid grid, int axis, OptimizedMesh mesh)
     {
-        // Simplified greedy meshing - can be expanded for better optimization
-        // For now, fall back to standard face culling
+        // Simplified greedy meshing - for now, fall back to standard meshing
+        // Full greedy meshing implementation can be added in future
+        // This avoids returning empty meshes when greedy meshing is requested
+        
+        // TODO: Implement proper greedy meshing algorithm that:
+        // 1. Slices voxel grid along each axis
+        // 2. Finds rectangular regions of same material
+        // 3. Merges adjacent faces into larger quads
+        // 4. Significantly reduces face count
     }
 }
 
