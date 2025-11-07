@@ -3,6 +3,9 @@ using ImGuiNET;
 using AvorionLike.Core.ECS;
 using AvorionLike.Core.RPG;
 using AvorionLike.Core.Fleet;
+using AvorionLike.Core.Resources;
+using InventoryComponent = AvorionLike.Core.Resources.InventoryComponent;
+using SubsystemUpgrade = AvorionLike.Core.RPG.SubsystemUpgrade;
 
 namespace AvorionLike.Core.UI;
 
@@ -425,11 +428,71 @@ public class SubsystemManagementUI
             
             if (ImGui.Button($"Upgrade to +{subsystem.UpgradeLevel + 1}", new Vector2(-1, 30)))
             {
-                // TODO: Check if player has resources and perform upgrade
-                if (subsystem.Upgrade())
+                // Check if player has resources
+                if (_selectedEntityId.HasValue)
                 {
-                    // Success
+                    var inventory = _gameEngine.EntityManager.GetComponent<InventoryComponent>(_selectedEntityId.Value);
+                    if (inventory != null)
+                    {
+                        bool hasResources = true;
+                        foreach (var cost in upgradeCost)
+                        {
+                            // Convert string to ResourceType enum
+                            if (Enum.TryParse<ResourceType>(cost.Key, out var resourceType))
+                            {
+                                if (inventory.Inventory.GetResourceAmount(resourceType) < cost.Value)
+                                {
+                                    hasResources = false;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if (hasResources)
+                        {
+                            // Deduct resources
+                            foreach (var cost in upgradeCost)
+                            {
+                                if (Enum.TryParse<ResourceType>(cost.Key, out var resourceType))
+                                {
+                                    inventory.Inventory.RemoveResource(resourceType, cost.Value);
+                                }
+                            }
+                            
+                            // Perform upgrade
+                            if (subsystem.Upgrade())
+                            {
+                                ImGui.OpenPopup("UpgradeSuccess");
+                            }
+                        }
+                        else
+                        {
+                            ImGui.OpenPopup("InsufficientResources");
+                        }
+                    }
                 }
+            }
+            
+            // Popup for insufficient resources
+            if (ImGui.BeginPopupModal("InsufficientResources", ref _isOpen, ImGuiWindowFlags.AlwaysAutoResize))
+            {
+                ImGui.Text("Insufficient resources for upgrade!");
+                if (ImGui.Button("OK", new Vector2(120, 0)))
+                {
+                    ImGui.CloseCurrentPopup();
+                }
+                ImGui.EndPopup();
+            }
+            
+            // Popup for successful upgrade
+            if (ImGui.BeginPopupModal("UpgradeSuccess", ref _isOpen, ImGuiWindowFlags.AlwaysAutoResize))
+            {
+                ImGui.Text("Upgrade successful!");
+                if (ImGui.Button("OK", new Vector2(120, 0)))
+                {
+                    ImGui.CloseCurrentPopup();
+                }
+                ImGui.EndPopup();
             }
             
             ImGui.Text("Cost:");

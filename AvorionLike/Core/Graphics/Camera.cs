@@ -19,12 +19,57 @@ public class Camera
     public float MovementSpeed { get; set; } = 50.0f;
     public float MouseSensitivity { get; set; } = 0.1f;
     public float Fov { get; set; } = 45.0f;
+    
+    // Chase camera properties
+    private Vector3 _targetPosition;
+    private float _chaseDistance = 50.0f;
+    private float _chaseHeight = 30.0f;
+    private float _chaseSmoothness = 5.0f;
 
     public Camera(Vector3 position)
     {
         Position = position;
+        _targetPosition = position;
         Up = Vector3.UnitY;
         UpdateCameraVectors();
+    }
+    
+    /// <summary>
+    /// Updates camera to smoothly follow a target (chase camera)
+    /// </summary>
+    public void FollowTarget(Vector3 targetPosition, Vector3 targetVelocity, float deltaTime)
+    {
+        // Calculate desired camera position based on target velocity
+        Vector3 targetDirection = targetVelocity.Length() > 0.1f 
+            ? Vector3.Normalize(targetVelocity) 
+            : Front;
+        
+        // Position camera behind and above the target
+        Vector3 desiredPosition = targetPosition 
+            - targetDirection * _chaseDistance 
+            + Vector3.UnitY * _chaseHeight;
+        
+        // Smoothly interpolate to desired position
+        Position = Vector3.Lerp(Position, desiredPosition, deltaTime * _chaseSmoothness);
+        
+        // Look at the target
+        Vector3 direction = Vector3.Normalize(targetPosition - Position);
+        
+        // Update yaw and pitch based on look direction
+        Yaw = MathF.Atan2(direction.Z, direction.X) * (180.0f / MathF.PI);
+        Pitch = MathF.Asin(direction.Y) * (180.0f / MathF.PI);
+        
+        UpdateCameraVectors();
+    }
+    
+    /// <summary>
+    /// Sets chase camera parameters
+    /// </summary>
+    public void SetChaseParameters(float distance, float height, float smoothness)
+    {
+        _chaseDistance = distance;
+        _chaseHeight = height;
+        _chaseSmoothness = smoothness;
     }
 
     public Matrix4x4 GetViewMatrix()

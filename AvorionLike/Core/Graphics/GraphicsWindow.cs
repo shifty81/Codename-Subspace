@@ -214,13 +214,11 @@ public class GraphicsWindow : IDisposable
                 // Ship control mode
                 _playerControlSystem.Update(_deltaTime);
                 
-                // Follow player ship with camera
+                // Follow player ship with smooth chase camera
                 var physics = _gameEngine.EntityManager.GetComponent<PhysicsComponent>(_playerControlSystem.ControlledShipId.Value);
                 if (physics != null)
                 {
-                    // Position camera behind and above the ship
-                    _camera.Position = physics.Position + new Vector3(-50, 30, 50);
-                    // TODO: Implement proper chase camera
+                    _camera.FollowTarget(physics.Position, physics.Velocity, _deltaTime);
                 }
             }
             else
