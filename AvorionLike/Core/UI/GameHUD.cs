@@ -169,47 +169,49 @@ public class GameHUD
         ImGui.SetNextWindowSize(new Vector2(230, 140));
         ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0, 0, 0, 0));
         ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0, 0, 0, 0));
-        ImGui.Begin("##ShipStatus", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | 
-                    ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoInputs);
         
-        // Title
-        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.0f, 0.8f, 1.0f, 1.0f));
-        ImGui.Text("SHIP STATUS");
-        ImGui.PopStyleColor();
-        
-        ImGui.Spacing();
-        
-        // Hull
-        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.7f, 0.7f, 0.7f, 1.0f));
-        ImGui.Text("Hull Integrity");
-        ImGui.PopStyleColor();
-        float hullPercent = 100.0f;
-        if (voxelStructure != null && voxelStructure.Blocks.Count > 0)
+        if (ImGui.Begin("##ShipStatus", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | 
+                        ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoInputs))
         {
-            hullPercent = MathF.Min(100.0f, voxelStructure.Blocks.Count / 100.0f * 100.0f);
+            // Title
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.0f, 0.8f, 1.0f, 1.0f));
+            ImGui.Text("SHIP STATUS");
+            ImGui.PopStyleColor();
+            
+            ImGui.Spacing();
+            
+            // Hull
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.7f, 0.7f, 0.7f, 1.0f));
+            ImGui.Text("Hull Integrity");
+            ImGui.PopStyleColor();
+            float hullPercent = 100.0f;
+            if (voxelStructure != null && voxelStructure.Blocks.Count > 0)
+            {
+                hullPercent = MathF.Min(100.0f, voxelStructure.Blocks.Count / 100.0f * 100.0f);
+            }
+            ImGui.SameLine(180);
+            ImGui.Text($"{hullPercent:F0}%");
+            
+            ImGui.Spacing();
+            ImGui.Spacing();
+            
+            // Energy
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.7f, 0.7f, 0.7f, 1.0f));
+            ImGui.Text("Energy");
+            ImGui.PopStyleColor();
+            ImGui.SameLine(180);
+            ImGui.Text("60%");
+            
+            ImGui.Spacing();
+            ImGui.Spacing();
+            
+            // Shields
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.7f, 0.7f, 0.7f, 1.0f));
+            ImGui.Text("Shields");
+            ImGui.PopStyleColor();
+            ImGui.SameLine(180);
+            ImGui.Text("75%");
         }
-        ImGui.SameLine(180);
-        ImGui.Text($"{hullPercent:F0}%");
-        
-        ImGui.Spacing();
-        ImGui.Spacing();
-        
-        // Energy
-        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.7f, 0.7f, 0.7f, 1.0f));
-        ImGui.Text("Energy");
-        ImGui.PopStyleColor();
-        ImGui.SameLine(180);
-        ImGui.Text("60%");
-        
-        ImGui.Spacing();
-        ImGui.Spacing();
-        
-        // Shields
-        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.7f, 0.7f, 0.7f, 1.0f));
-        ImGui.Text("Shields");
-        ImGui.PopStyleColor();
-        ImGui.SameLine(180);
-        ImGui.Text("75%");
         
         ImGui.End();
         ImGui.PopStyleColor(2);
@@ -222,18 +224,20 @@ public class GameHUD
         ImGui.SetNextWindowSize(new Vector2(225, 80));
         ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.0f, 0.1f, 0.15f, 0.6f));
         ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.0f, 0.8f, 1.0f, 0.8f));
-        ImGui.Begin("##Velocity", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | 
-                    ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoInputs);
         
-        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.0f, 0.8f, 1.0f, 1.0f));
-        ImGui.Text("VELOCITY");
-        ImGui.PopStyleColor();
-        
-        float speed = physics.Velocity.Length();
-        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.9f, 0.9f, 0.9f, 1.0f));
-        ImGui.Text($"Speed: {speed:F1} m/s");
-        ImGui.Text($"Mass: {physics.Mass:F0} kg");
-        ImGui.PopStyleColor();
+        if (ImGui.Begin("##Velocity", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | 
+                        ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoInputs))
+        {
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.0f, 0.8f, 1.0f, 1.0f));
+            ImGui.Text("VELOCITY");
+            ImGui.PopStyleColor();
+            
+            float speed = physics.Velocity.Length();
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.9f, 0.9f, 0.9f, 1.0f));
+            ImGui.Text($"Speed: {speed:F1} m/s");
+            ImGui.Text($"Mass: {physics.Mass:F0} kg");
+            ImGui.PopStyleColor();
+        }
         
         ImGui.End();
         ImGui.PopStyleColor(2);
@@ -325,12 +329,14 @@ public class GameHUD
         ImGui.SetNextWindowSize(new Vector2(180, 30));
         ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0, 0, 0, 0));
         ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0, 0, 0, 0));
-        ImGui.Begin("##Radar", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | 
-                    ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoInputs);
         
-        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.0f, 0.8f, 1.0f, 1.0f));
-        ImGui.Text("RADAR (1000m)");
-        ImGui.PopStyleColor();
+        if (ImGui.Begin("##Radar", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | 
+                        ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoInputs))
+        {
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.0f, 0.8f, 1.0f, 1.0f));
+            ImGui.Text("RADAR (1000m)");
+            ImGui.PopStyleColor();
+        }
         
         ImGui.End();
         ImGui.PopStyleColor(2);
