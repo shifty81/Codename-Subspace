@@ -22,6 +22,9 @@ public class GameMenuSystem
     private bool _isSettingsMenuOpen = false;
     private bool _isSaveDialogOpen = false;
     private bool _isLoadDialogOpen = false;
+    private bool _isConfirmDialogOpen = false;
+    private string _confirmDialogMessage = "";
+    private Action? _confirmAction = null;
     private int _selectedMenuItem = 0;
     private int _pauseMenuItemCount = 5; // Resume, Settings, Save, Load, Main Menu
     
@@ -35,11 +38,15 @@ public class GameMenuSystem
     private int _selectedSaveSlot = 0;
     private string _newSaveName = "New Save";
     
+    // Mouse state
+    private Vector2 _mousePos;
+    private int _hoveredMenuItem = -1;
+    
     // Track key presses to prevent repeat actions
     private readonly HashSet<Key> _keysPressed = new HashSet<Key>();
     private readonly HashSet<Key> _keysPressedLastFrame = new HashSet<Key>();
     
-    public bool IsMenuOpen => _isPauseMenuOpen || _isSettingsMenuOpen || _isSaveDialogOpen || _isLoadDialogOpen;
+    public bool IsMenuOpen => _isPauseMenuOpen || _isSettingsMenuOpen || _isSaveDialogOpen || _isLoadDialogOpen || _isConfirmDialogOpen;
     
     public GameMenuSystem(GameEngine gameEngine, CustomUIRenderer renderer, float screenWidth, float screenHeight)
     {
@@ -74,6 +81,97 @@ public class GameMenuSystem
             _isPauseMenuOpen = true;
             _selectedMenuItem = 0;
         }
+    }
+    
+    public void HandleMouseMove(Vector2 position)
+    {
+        _mousePos = position;
+        
+        // Update hovered and selected menu item
+        if (_isPauseMenuOpen)
+        {
+            _hoveredMenuItem = GetHoveredPauseMenuItem(position);
+            if (_hoveredMenuItem >= 0)
+            {
+                _selectedMenuItem = _hoveredMenuItem;
+            }
+        }
+    }
+    
+    public void HandleMouseClick(Vector2 position, MouseButton button)
+    {
+        if (button != MouseButton.Left) return;
+        
+        if (_isPauseMenuOpen)
+        {
+            int clickedItem = GetHoveredPauseMenuItem(position);
+            if (clickedItem >= 0)
+            {
+                _selectedMenuItem = clickedItem;
+                ExecutePauseMenuItem(_selectedMenuItem);
+            }
+        }
+        else if (_isConfirmDialogOpen)
+        {
+            // Check if Yes or No button was clicked
+            float dialogWidth = 400f;
+            float dialogHeight = 200f;
+            float dialogX = (_screenWidth - dialogWidth) * 0.5f;
+            float dialogY = (_screenHeight - dialogHeight) * 0.5f;
+            
+            float buttonWidth = 120f;
+            float buttonHeight = 40f;
+            float buttonSpacing = 20f;
+            float totalButtonWidth = buttonWidth * 2 + buttonSpacing;
+            float buttonY = dialogY + dialogHeight - buttonHeight - 30f;
+            float yesButtonX = dialogX + (dialogWidth - totalButtonWidth) * 0.5f;
+            float noButtonX = yesButtonX + buttonWidth + buttonSpacing;
+            
+            // Check Yes button
+            if (position.X >= yesButtonX && position.X <= yesButtonX + buttonWidth &&
+                position.Y >= buttonY && position.Y <= buttonY + buttonHeight)
+            {
+                _confirmAction?.Invoke();
+                _isConfirmDialogOpen = false;
+                _confirmAction = null;
+            }
+            // Check No button
+            else if (position.X >= noButtonX && position.X <= noButtonX + buttonWidth &&
+                     position.Y >= buttonY && position.Y <= buttonY + buttonHeight)
+            {
+                _isConfirmDialogOpen = false;
+                _isPauseMenuOpen = true;
+                _confirmAction = null;
+            }
+        }
+    }
+    
+    private int GetHoveredPauseMenuItem(Vector2 position)
+    {
+        float panelWidth = 400f;
+        float panelHeight = 500f;
+        float panelX = (_screenWidth - panelWidth) * 0.5f;
+        float panelY = (_screenHeight - panelHeight) * 0.5f;
+        float titleBarHeight = 60f;
+        float contentY = panelY + titleBarHeight + 40f;
+        float menuItemHeight = 60f;
+        float menuItemSpacing = 15f;
+        
+        // Check each menu item
+        for (int i = 0; i < _pauseMenuItemCount; i++)
+        {
+            float itemY = contentY + i * (menuItemHeight + menuItemSpacing);
+            float itemX = panelX + 50f;
+            float itemWidth = panelWidth - 100f;
+            
+            if (position.X >= itemX && position.X <= itemX + itemWidth &&
+                position.Y >= itemY && position.Y <= itemY + menuItemHeight)
+            {
+                return i;
+            }
+        }
+        
+        return -1;
     }
     
     public void HandleInput(IKeyboard keyboard)
@@ -392,8 +490,15 @@ public class GameMenuSystem
                 Console.WriteLine("Opening load dialog");
                 break;
             case 4: // Main Menu
-                Console.WriteLine("Return to main menu - to be implemented");
-                // TODO: Show confirmation dialog, then return to main menu
+                _confirmDialogMessage = "Return to main menu?\n\nUnsaved progress will be lost.";
+                _confirmAction = () => 
+                {
+                    Console.WriteLine("Returning to main menu - closing game window");
+                    // Signal to close the game window
+                    Environment.Exit(0);
+                };
+                _isConfirmDialogOpen = true;
+                _isPauseMenuOpen = false;
                 break;
         }
     }
@@ -419,6 +524,10 @@ public class GameMenuSystem
         else if (_isLoadDialogOpen)
         {
             RenderLoadDialog();
+        }
+        else if (_isConfirmDialogOpen)
+        {
+            RenderConfirmDialog();
         }
         
         _renderer.EndRender();
@@ -448,6 +557,10 @@ public class GameMenuSystem
         else if (_isLoadDialogOpen)
         {
             RenderLoadDialogText(drawList);
+        }
+        else if (_isConfirmDialogOpen)
+        {
+            RenderConfirmDialogText(drawList);
         }
     }
     
@@ -1084,5 +1197,110 @@ public class GameMenuSystem
         uint instructColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.5f, 0.6f, 0.7f, 0.8f));
         var instrSize = ImGui.CalcTextSize(instr);
         drawList.AddText(new Vector2(panelX + (panelWidth - instrSize.X) * 0.5f, instructY), instructColor, instr);
+    }
+    
+    private void RenderConfirmDialog()
+    {
+        // Semi-transparent background overlay
+        Vector4 overlayColor = new Vector4(0.0f, 0.0f, 0.0f, 0.7f);
+        _renderer.DrawRectFilled(Vector2.Zero, new Vector2(_screenWidth, _screenHeight), overlayColor);
+        
+        // Dialog panel
+        float dialogWidth = 400f;
+        float dialogHeight = 200f;
+        float dialogX = (_screenWidth - dialogWidth) * 0.5f;
+        float dialogY = (_screenHeight - dialogHeight) * 0.5f;
+        
+        Vector4 panelBgColor = new Vector4(0.05f, 0.1f, 0.15f, 0.95f);
+        Vector4 panelBorderColor = new Vector4(0.0f, 0.8f, 1.0f, 1.0f);
+        
+        // Panel background and border
+        _renderer.DrawRectFilled(new Vector2(dialogX, dialogY), new Vector2(dialogWidth, dialogHeight), panelBgColor);
+        _renderer.DrawRect(new Vector2(dialogX, dialogY), new Vector2(dialogWidth, dialogHeight), panelBorderColor, 3f);
+        
+        // Render Yes/No buttons
+        float buttonWidth = 120f;
+        float buttonHeight = 40f;
+        float buttonSpacing = 20f;
+        float totalButtonWidth = buttonWidth * 2 + buttonSpacing;
+        float buttonY = dialogY + dialogHeight - buttonHeight - 30f;
+        float yesButtonX = dialogX + (dialogWidth - totalButtonWidth) * 0.5f;
+        float noButtonX = yesButtonX + buttonWidth + buttonSpacing;
+        
+        // Handle keyboard input
+        if (_keysPressed.Contains(Key.Enter) && !_keysPressedLastFrame.Contains(Key.Enter))
+        {
+            // Yes selected - execute confirm action
+            _confirmAction?.Invoke();
+            _isConfirmDialogOpen = false;
+            _confirmAction = null;
+        }
+        else if (_keysPressed.Contains(Key.Escape) || 
+                (_keysPressed.Contains(Key.Backspace) && !_keysPressedLastFrame.Contains(Key.Backspace)))
+        {
+            // Cancel
+            _isConfirmDialogOpen = false;
+            _isPauseMenuOpen = true;
+            _confirmAction = null;
+        }
+        
+        // Render Yes button (selected)
+        Vector4 selectedButtonColor = new Vector4(0.2f, 0.6f, 0.8f, 0.8f);
+        Vector4 buttonColor = new Vector4(0.1f, 0.2f, 0.3f, 0.6f);
+        Vector4 buttonBorderColor = new Vector4(0.0f, 0.8f, 1.0f, 1.0f);
+        
+        _renderer.DrawRectFilled(new Vector2(yesButtonX, buttonY), new Vector2(buttonWidth, buttonHeight), selectedButtonColor);
+        _renderer.DrawRect(new Vector2(yesButtonX, buttonY), new Vector2(buttonWidth, buttonHeight), buttonBorderColor, 2f);
+        
+        // Render No button
+        _renderer.DrawRectFilled(new Vector2(noButtonX, buttonY), new Vector2(buttonWidth, buttonHeight), buttonColor);
+        _renderer.DrawRect(new Vector2(noButtonX, buttonY), new Vector2(buttonWidth, buttonHeight), buttonBorderColor, 2f);
+    }
+    
+    private void RenderConfirmDialogText(ImDrawListPtr drawList)
+    {
+        float dialogWidth = 400f;
+        float dialogHeight = 200f;
+        float dialogX = (_screenWidth - dialogWidth) * 0.5f;
+        float dialogY = (_screenHeight - dialogHeight) * 0.5f;
+        
+        // Render message
+        var lines = _confirmDialogMessage.Split('\n');
+        float lineHeight = ImGui.GetTextLineHeight();
+        float totalHeight = lines.Length * lineHeight;
+        float startY = dialogY + (dialogHeight - totalHeight - 80f) * 0.5f;
+        
+        uint textColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.9f, 0.9f, 0.9f, 1.0f));
+        
+        for (int i = 0; i < lines.Length; i++)
+        {
+            var lineSize = ImGui.CalcTextSize(lines[i]);
+            float lineX = dialogX + (dialogWidth - lineSize.X) * 0.5f;
+            float lineY = startY + i * lineHeight;
+            drawList.AddText(new Vector2(lineX, lineY), textColor, lines[i]);
+        }
+        
+        // Render button labels
+        float buttonY = dialogY + dialogHeight - 55f;
+        
+        // Yes button label
+        string yesText = "Yes";
+        var yesSize = ImGui.CalcTextSize(yesText);
+        float yesX = dialogX + (dialogWidth * 0.5f - 140f);
+        uint yesColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+        drawList.AddText(new Vector2(yesX, buttonY), yesColor, yesText);
+        
+        // No button label
+        string noText = "No";
+        var noSize = ImGui.CalcTextSize(noText);
+        float noX = dialogX + (dialogWidth * 0.5f + 20f + (120f - noSize.X) * 0.5f);
+        uint noColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.7f, 0.7f, 0.7f, 1.0f));
+        drawList.AddText(new Vector2(noX, buttonY), noColor, noText);
+        
+        // Instructions
+        string instr = "Enter: Yes  |  Esc: No";
+        uint instructColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.5f, 0.6f, 0.7f, 0.8f));
+        var instrSize = ImGui.CalcTextSize(instr);
+        drawList.AddText(new Vector2(dialogX + (dialogWidth - instrSize.X) * 0.5f, dialogY + dialogHeight - 20f), instructColor, instr);
     }
 }

@@ -41,10 +41,12 @@ public class GraphicsWindow : IDisposable
     
     // Mouse state
     private Vector2 _lastMousePos;
+    private Vector2 _currentMousePos;
     private bool _firstMouse = true;
     private bool _uiWantsMouse = false;
     private bool _altKeyHeld = false; // Track if ALT is held for showing mouse cursor
     private bool _mouseLookEnabled = true; // Track if mouse look is active
+    private readonly HashSet<MouseButton> _mouseButtonsPressed = new();
     
     // Timing
     private float _deltaTime = 0.0f;
@@ -131,6 +133,8 @@ public class GraphicsWindow : IDisposable
         foreach (var mouse in _inputContext.Mice)
         {
             mouse.MouseMove += OnMouseMove;
+            mouse.MouseDown += OnMouseDown;
+            mouse.MouseUp += OnMouseUp;
             // Start with Raw mode for free look
             mouse.Cursor.CursorMode = CursorMode.Raw;
         }
@@ -239,13 +243,14 @@ public class GraphicsWindow : IDisposable
             }
         }
         
-        // Handle menu input (ESC key handling)
+        // Handle menu input (ESC key handling and mouse position)
         if (_gameMenuSystem != null)
         {
             foreach (var keyboard in _inputContext.Keyboards)
             {
                 _gameMenuSystem.HandleInput(keyboard);
             }
+            _gameMenuSystem.HandleMouseMove(_currentMousePos);
         }
 
         // Update game engine (pause if menu is open)
@@ -343,6 +348,9 @@ public class GraphicsWindow : IDisposable
     {
         if (_camera == null) return;
         
+        // Always track mouse position for UI interaction
+        _currentMousePos = position;
+        
         // Don't process mouse movement if UI wants the mouse or ALT is held or menu is open
         if (_uiWantsMouse || _altKeyHeld || !_mouseLookEnabled) return;
 
@@ -359,6 +367,22 @@ public class GraphicsWindow : IDisposable
         _lastMousePos = position;
 
         _camera.ProcessMouseMovement(xOffset, yOffset);
+    }
+    
+    private void OnMouseDown(IMouse mouse, MouseButton button)
+    {
+        _mouseButtonsPressed.Add(button);
+        
+        // Pass mouse clicks to menu system when menu is open
+        if (_gameMenuSystem != null && _gameMenuSystem.IsMenuOpen)
+        {
+            _gameMenuSystem.HandleMouseClick(_currentMousePos, button);
+        }
+    }
+    
+    private void OnMouseUp(IMouse mouse, MouseButton button)
+    {
+        _mouseButtonsPressed.Remove(button);
     }
 
     private void OnClosing()
