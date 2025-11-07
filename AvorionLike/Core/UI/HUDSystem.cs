@@ -76,9 +76,33 @@ public class HUDSystem
             ImGui.Text("F2 - Toggle Entity List");
             ImGui.Text("F3 - Toggle Resources");
             ImGui.Text("I - Toggle Inventory");
-            ImGui.Text("ESC - Exit");
+            ImGui.Text("ALT - Show Mouse Cursor");
+            ImGui.Text("ESC - Pause Menu");
         }
         ImGui.End();
+        
+        // Render centered crosshair
+        RenderCrosshair();
+    }
+    
+    private void RenderCrosshair()
+    {
+        var io = ImGui.GetIO();
+        var drawList = ImGui.GetForegroundDrawList();
+        
+        // Center of screen
+        Vector2 center = new Vector2(io.DisplaySize.X * 0.5f, io.DisplaySize.Y * 0.5f);
+        
+        // Draw a small dot as crosshair
+        float dotRadius = 2.0f;
+        uint color = ImGui.ColorConvertFloat4ToU32(new Vector4(1.0f, 1.0f, 1.0f, 0.8f));
+        
+        // Draw filled circle for the dot
+        drawList.AddCircleFilled(center, dotRadius, color, 12);
+        
+        // Optional: Add a subtle outline for better visibility
+        uint outlineColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.0f, 0.0f, 0.0f, 0.5f));
+        drawList.AddCircle(center, dotRadius + 1, outlineColor, 12, 1.5f);
     }
     
     private void RenderDebugOverlay()

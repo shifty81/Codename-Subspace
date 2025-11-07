@@ -45,6 +45,8 @@ public class GraphicsWindow : IDisposable
     private Vector2 _lastMousePos;
     private bool _firstMouse = true;
     private bool _uiWantsMouse = false;
+    private bool _altKeyHeld = false; // Track if ALT is held for showing mouse cursor
+    private bool _mouseLookEnabled = true; // Track if mouse look is active
     
     // Timing
     private float _deltaTime = 0.0f;
@@ -146,7 +148,8 @@ public class GraphicsWindow : IDisposable
         foreach (var mouse in _inputContext.Mice)
         {
             mouse.MouseMove += OnMouseMove;
-            mouse.Cursor.CursorMode = CursorMode.Raw; // Capture mouse for flight controls
+            // Start with Raw mode for free look
+            mouse.Cursor.CursorMode = CursorMode.Raw;
         }
 
         Console.WriteLine("\n=== 3D Graphics Window Active ===");
@@ -154,7 +157,7 @@ public class GraphicsWindow : IDisposable
         Console.WriteLine("  Camera Mode (Default):");
         Console.WriteLine("    WASD - Move camera");
         Console.WriteLine("    Space/Shift - Move up/down");
-        Console.WriteLine("    Mouse - Look around");
+        Console.WriteLine("    Mouse - Look around (free-look)");
         Console.WriteLine("  Ship Control Mode (Press C to toggle):");
         Console.WriteLine("    WASD - Thrust (Forward/Back/Left/Right)");
         Console.WriteLine("    Space/Shift - Thrust Up/Down");
@@ -162,13 +165,14 @@ public class GraphicsWindow : IDisposable
         Console.WriteLine("    Q/E - Roll");
         Console.WriteLine("    X - Emergency Brake");
         Console.WriteLine("  UI Controls:");
+        Console.WriteLine("    ALT - Show mouse cursor (hold, doesn't affect free-look)");
+        Console.WriteLine("    ESC - Pause Menu (press again to close)");
         Console.WriteLine("    F1/F2/F3 - Toggle debug panels");
         Console.WriteLine("    F4 - Toggle Futuristic HUD");
         Console.WriteLine("    I - Toggle Inventory");
         Console.WriteLine("    B - Toggle Ship Builder");
         Console.WriteLine("    TAB - Toggle Player Status");
         Console.WriteLine("    J - Toggle Mission Info");
-        Console.WriteLine("    ESC - Exit");
         Console.WriteLine("=====================================\n");
     }
 
@@ -177,7 +181,7 @@ public class GraphicsWindow : IDisposable
         _deltaTime = (float)deltaTime;
 
         if (_camera == null || _imguiController == null || _playerUIManager == null || 
-            _playerControlSystem == null || _titleScreen == null) return;
+            _playerControlSystem == null || _titleScreen == null || _inputContext == null) return;
 
         // Update ImGui
         _imguiController.Update(_deltaTime);
@@ -195,9 +199,39 @@ public class GraphicsWindow : IDisposable
         // Check if ImGui wants mouse input
         var io = ImGuiNET.ImGui.GetIO();
         _uiWantsMouse = io.WantCaptureMouse;
+        
+        // Check if ALT key is held
+        _altKeyHeld = _keysPressed.Contains(Key.AltLeft) || _keysPressed.Contains(Key.AltRight);
+        
+        // Determine if menu is open
+        bool menuOpen = _menuSystem != null && _menuSystem.IsMenuOpen;
+        
+        // Update mouse cursor mode based on state
+        foreach (var mouse in _inputContext.Mice)
+        {
+            if (menuOpen || _altKeyHeld)
+            {
+                // Show cursor when menu is open or ALT is held
+                if (mouse.Cursor.CursorMode != CursorMode.Normal)
+                {
+                    mouse.Cursor.CursorMode = CursorMode.Normal;
+                    _mouseLookEnabled = false;
+                }
+            }
+            else
+            {
+                // Hide cursor and enable free-look during normal gameplay
+                if (mouse.Cursor.CursorMode != CursorMode.Raw)
+                {
+                    mouse.Cursor.CursorMode = CursorMode.Raw;
+                    _firstMouse = true; // Reset mouse to avoid jumps
+                    _mouseLookEnabled = true;
+                }
+            }
+        }
 
         // Process keyboard input
-        bool anyUIOpen = _playerUIManager.IsAnyPanelOpen;
+        bool anyUIOpen = _playerUIManager.IsAnyPanelOpen || menuOpen;
         
         if (!io.WantCaptureKeyboard && !anyUIOpen)
         {
@@ -235,6 +269,12 @@ public class GraphicsWindow : IDisposable
         
         // Handle UI input
         _playerUIManager.HandleInput();
+        
+        // Handle menu input (ESC key handling)
+        if (_menuSystem != null)
+        {
+            _menuSystem.HandleInput();
+        }
 
         // Update game engine (pause if menu is open)
         if (!anyUIOpen)
@@ -306,11 +346,9 @@ public class GraphicsWindow : IDisposable
             _playerControlMode = !_playerControlMode;
             Console.WriteLine($"Control Mode: {(_playerControlMode ? "Ship Control" : "Camera")}");
         }
-
-        if (key == Key.Escape)
-        {
-            _window?.Close();
-        }
+        
+        // Don't handle ESC here - let the menu system handle it
+        // ESC is handled in MenuSystem.HandleInput()
     }
 
     private void OnKeyUp(IKeyboard keyboard, Key key, int keyCode)
@@ -325,8 +363,8 @@ public class GraphicsWindow : IDisposable
     {
         if (_camera == null) return;
         
-        // Don't process mouse movement if UI wants the mouse
-        if (_uiWantsMouse) return;
+        // Don't process mouse movement if UI wants the mouse or ALT is held or menu is open
+        if (_uiWantsMouse || _altKeyHeld || !_mouseLookEnabled) return;
 
         if (_firstMouse)
         {

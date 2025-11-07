@@ -27,6 +27,11 @@ public class MenuSystem
     private bool _vsync = true;
     private int _selectedResolution = 0;
     private readonly string[] _resolutions = new[] { "1280x720", "1920x1080", "2560x1440", "3840x2160" };
+    private float _mouseSensitivity = 0.5f;
+    private float _gameplayDifficulty = 1.0f; // 0.5 = Easy, 1.0 = Normal, 1.5 = Hard, 2.0 = Very Hard
+    private bool _showFPS = true;
+    private bool _autoSave = true;
+    private int _autoSaveInterval = 5; // minutes
     
     public bool IsMenuOpen => _currentMenu != MenuState.None;
     
@@ -237,15 +242,19 @@ public class MenuSystem
     {
         var io = ImGui.GetIO();
         ImGui.SetNextWindowPos(new Vector2(io.DisplaySize.X * 0.5f, io.DisplaySize.Y * 0.5f), ImGuiCond.Always, new Vector2(0.5f, 0.5f));
-        ImGui.SetNextWindowSize(new Vector2(500, 600), ImGuiCond.FirstUseEver);
+        ImGui.SetNextWindowSize(new Vector2(600, 650), ImGuiCond.FirstUseEver);
         
         if (ImGui.Begin("Settings", ref _showSettingsMenu))
         {
             if (ImGui.BeginTabBar("SettingsTabs"))
             {
-                if (ImGui.BeginTabItem("Graphics"))
+                if (ImGui.BeginTabItem("Video Settings"))
                 {
                     ImGui.Dummy(new Vector2(0, 10));
+                    
+                    ImGui.Text("Display Settings");
+                    ImGui.Separator();
+                    ImGui.Dummy(new Vector2(0, 5));
                     
                     ImGui.Text("Resolution:");
                     ImGui.Combo("##Resolution", ref _selectedResolution, _resolutions, _resolutions.Length);
@@ -253,11 +262,19 @@ public class MenuSystem
                     ImGui.Dummy(new Vector2(0, 10));
                     
                     ImGui.Checkbox("VSync", ref _vsync);
+                    ImGui.Checkbox("Show FPS Counter", ref _showFPS);
                     
                     ImGui.Dummy(new Vector2(0, 10));
                     
                     ImGui.Text($"Target FPS: {_targetFPS}");
                     ImGui.SliderInt("##TargetFPS", ref _targetFPS, 30, 144);
+                    
+                    ImGui.Dummy(new Vector2(0, 20));
+                    ImGui.Text("Graphics Quality");
+                    ImGui.Separator();
+                    ImGui.Dummy(new Vector2(0, 5));
+                    
+                    ImGui.TextWrapped("Rendering quality settings will be added in future updates.");
                     
                     ImGui.Dummy(new Vector2(0, 20));
                     ImGui.Separator();
@@ -268,8 +285,12 @@ public class MenuSystem
                     ImGui.EndTabItem();
                 }
                 
-                if (ImGui.BeginTabItem("Audio"))
+                if (ImGui.BeginTabItem("Sound Settings"))
                 {
+                    ImGui.Dummy(new Vector2(0, 10));
+                    
+                    ImGui.Text("Volume Controls");
+                    ImGui.Separator();
                     ImGui.Dummy(new Vector2(0, 10));
                     
                     ImGui.Text($"Master Volume: {_masterVolume * 100:F0}%");
@@ -285,6 +306,65 @@ public class MenuSystem
                     ImGui.Text($"SFX Volume: {_sfxVolume * 100:F0}%");
                     ImGui.SliderFloat("##SFXVolume", ref _sfxVolume, 0.0f, 1.0f);
                     
+                    ImGui.Dummy(new Vector2(0, 20));
+                    ImGui.Separator();
+                    ImGui.Dummy(new Vector2(0, 10));
+                    
+                    ImGui.TextWrapped("Audio system will be implemented in future updates.");
+                    
+                    ImGui.EndTabItem();
+                }
+                
+                if (ImGui.BeginTabItem("Gameplay Settings"))
+                {
+                    ImGui.Dummy(new Vector2(0, 10));
+                    
+                    ImGui.Text("Difficulty");
+                    ImGui.Separator();
+                    ImGui.Dummy(new Vector2(0, 10));
+                    
+                    string difficultyLabel = _gameplayDifficulty switch
+                    {
+                        <= 0.75f => "Easy",
+                        <= 1.25f => "Normal",
+                        <= 1.75f => "Hard",
+                        _ => "Very Hard"
+                    };
+                    
+                    ImGui.Text($"Difficulty: {difficultyLabel} ({_gameplayDifficulty:F2}x)");
+                    if (ImGui.SliderFloat("##Difficulty", ref _gameplayDifficulty, 0.5f, 2.0f))
+                    {
+                        // Snap to specific values for better UX
+                        if (Math.Abs(_gameplayDifficulty - 0.5f) < 0.1f) _gameplayDifficulty = 0.5f;
+                        else if (Math.Abs(_gameplayDifficulty - 1.0f) < 0.1f) _gameplayDifficulty = 1.0f;
+                        else if (Math.Abs(_gameplayDifficulty - 1.5f) < 0.1f) _gameplayDifficulty = 1.5f;
+                        else if (Math.Abs(_gameplayDifficulty - 2.0f) < 0.1f) _gameplayDifficulty = 2.0f;
+                    }
+                    
+                    ImGui.Dummy(new Vector2(0, 5));
+                    ImGui.TextWrapped("Affects enemy strength, resource scarcity, and mission rewards.");
+                    
+                    ImGui.Dummy(new Vector2(0, 20));
+                    ImGui.Text("Controls");
+                    ImGui.Separator();
+                    ImGui.Dummy(new Vector2(0, 10));
+                    
+                    ImGui.Text($"Mouse Sensitivity: {_mouseSensitivity:F2}");
+                    ImGui.SliderFloat("##MouseSens", ref _mouseSensitivity, 0.1f, 2.0f);
+                    
+                    ImGui.Dummy(new Vector2(0, 20));
+                    ImGui.Text("Auto-Save");
+                    ImGui.Separator();
+                    ImGui.Dummy(new Vector2(0, 10));
+                    
+                    ImGui.Checkbox("Enable Auto-Save", ref _autoSave);
+                    
+                    if (_autoSave)
+                    {
+                        ImGui.Text($"Auto-Save Interval: {_autoSaveInterval} minutes");
+                        ImGui.SliderInt("##AutoSaveInterval", ref _autoSaveInterval, 1, 30);
+                    }
+                    
                     ImGui.EndTabItem();
                 }
                 
@@ -296,15 +376,21 @@ public class MenuSystem
                     ImGui.BulletText("WASD - Move horizontally");
                     ImGui.BulletText("Space - Move up");
                     ImGui.BulletText("Shift - Move down");
-                    ImGui.BulletText("Mouse - Look around");
+                    ImGui.BulletText("Mouse - Look around (Free-look)");
                     
                     ImGui.Dummy(new Vector2(0, 10));
                     
                     ImGui.Text("UI Controls:");
+                    ImGui.BulletText("ALT - Show mouse cursor (hold)");
+                    ImGui.BulletText("ESC - Pause Menu (press again to close)");
                     ImGui.BulletText("F1 - Toggle Debug Info");
                     ImGui.BulletText("F2 - Toggle Entity List");
                     ImGui.BulletText("F3 - Toggle Resources");
-                    ImGui.BulletText("ESC - Pause Menu");
+                    ImGui.BulletText("I - Toggle Inventory");
+                    ImGui.BulletText("B - Toggle Ship Builder");
+                    
+                    ImGui.Dummy(new Vector2(0, 20));
+                    ImGui.TextWrapped("Key remapping will be added in future updates.");
                     
                     ImGui.EndTabItem();
                 }
@@ -350,11 +436,21 @@ public class MenuSystem
         Console.WriteLine($"  Resolution: {_resolutions[_selectedResolution]}");
         Console.WriteLine($"  VSync: {_vsync}");
         Console.WriteLine($"  Target FPS: {_targetFPS}");
+        Console.WriteLine($"  Show FPS: {_showFPS}");
         Console.WriteLine($"  Master Volume: {_masterVolume * 100:F0}%");
         Console.WriteLine($"  Music Volume: {_musicVolume * 100:F0}%");
         Console.WriteLine($"  SFX Volume: {_sfxVolume * 100:F0}%");
+        Console.WriteLine($"  Mouse Sensitivity: {_mouseSensitivity:F2}");
+        Console.WriteLine($"  Difficulty: {_gameplayDifficulty:F2}x");
+        Console.WriteLine($"  Auto-Save: {_autoSave} ({_autoSaveInterval} minutes)");
         
         // TODO: Apply settings to game engine
+        // This would involve:
+        // - Resizing window if resolution changed
+        // - Updating VSync setting
+        // - Applying volume changes to audio system
+        // - Updating mouse sensitivity in camera/input systems
+        // - Setting difficulty multipliers in game systems
     }
     
     private void RenderSaveDialog()
@@ -484,13 +580,30 @@ public class MenuSystem
     
     public void HandleInput()
     {
-        // Toggle pause menu with ESC (only if not in main menu)
-        if (ImGui.IsKeyPressed(ImGuiKey.Escape) && _currentMenu != MenuState.MainMenu)
+        // Toggle pause menu with ESC
+        if (ImGui.IsKeyPressed(ImGuiKey.Escape))
         {
             if (_currentMenu == MenuState.PauseMenu)
+            {
+                // ESC pressed while pause menu is open - close it
                 HideMenu();
+            }
+            else if (_currentMenu == MenuState.Settings)
+            {
+                // ESC pressed while in settings - go back to pause menu
+                _showSettingsMenu = false;
+                _showPauseMenu = true;
+                _currentMenu = MenuState.PauseMenu;
+            }
+            else if (_currentMenu == MenuState.MainMenu)
+            {
+                // Don't do anything if we're in main menu
+            }
             else if (_currentMenu == MenuState.None)
+            {
+                // ESC pressed during gameplay - open pause menu
                 ShowPauseMenu();
+            }
         }
     }
 }
