@@ -2,6 +2,7 @@ using System.Numerics;
 using System.Collections.Generic;
 using Silk.NET.Input;
 using ImGuiNET;
+using AvorionLike.Core.Configuration;
 
 namespace AvorionLike.Core.UI;
 
@@ -21,21 +22,15 @@ public class GameMenuSystem
     private int _selectedMenuItem = 0;
     private int _pauseMenuItemCount = 5; // Resume, Settings, Save, Load, Main Menu
     
-#pragma warning disable CS0414 // Field is assigned but its value is never used - reserved for future settings tab implementation
+    // Settings menu state
     private int _selectedSettingsTab = 0;
-#pragma warning restore CS0414
+    private int _settingsTabCount = 3; // Graphics, Audio, Gameplay
+    private int _selectedSetting = 0;
+    private int _settingsPerTab = 4; // Number of editable settings per tab
     
     // Track key presses to prevent repeat actions
     private readonly HashSet<Key> _keysPressed = new HashSet<Key>();
     private readonly HashSet<Key> _keysPressedLastFrame = new HashSet<Key>();
-    
-    // Settings values
-    private float _difficulty = 1.0f;
-    
-#pragma warning disable CS0414 // Field is assigned but its value is never used - reserved for future settings implementation
-    private float _mouseSensitivity = 0.5f;
-    private float _masterVolume = 1.0f;
-#pragma warning restore CS0414
     
     public bool IsMenuOpen => _isPauseMenuOpen || _isSettingsMenuOpen;
     
@@ -141,13 +136,95 @@ public class GameMenuSystem
     
     private void HandleSettingsMenuInput()
     {
-        // For now, settings menu just needs Back functionality
-        // Can be expanded later with tab navigation
-        if (WasKeyJustPressed(Key.Backspace))
+        // Tab switching with Left/Right or A/D
+        if (WasKeyJustPressed(Key.Left) || WasKeyJustPressed(Key.A))
         {
-            // Go back to pause menu
+            _selectedSettingsTab = (_selectedSettingsTab - 1 + _settingsTabCount) % _settingsTabCount;
+            _selectedSetting = 0; // Reset selection when changing tabs
+        }
+        else if (WasKeyJustPressed(Key.Right) || WasKeyJustPressed(Key.D))
+        {
+            _selectedSettingsTab = (_selectedSettingsTab + 1) % _settingsTabCount;
+            _selectedSetting = 0; // Reset selection when changing tabs
+        }
+        
+        // Navigate settings with Up/Down or W/S
+        if (WasKeyJustPressed(Key.Up) || WasKeyJustPressed(Key.W))
+        {
+            _selectedSetting = (_selectedSetting - 1 + _settingsPerTab) % _settingsPerTab;
+        }
+        else if (WasKeyJustPressed(Key.Down) || WasKeyJustPressed(Key.S))
+        {
+            _selectedSetting = (_selectedSetting + 1) % _settingsPerTab;
+        }
+        
+        // Adjust setting values with Enter (toggle) or Left/Right (adjust slider)
+        if (WasKeyJustPressed(Key.Enter) || WasKeyJustPressed(Key.Space))
+        {
+            ToggleSelectedSetting();
+        }
+        
+        // Back to pause menu
+        if (WasKeyJustPressed(Key.Backspace) || WasKeyJustPressed(Key.Escape))
+        {
+            // Save settings before going back
+            SaveSettings();
             _isSettingsMenuOpen = false;
             _isPauseMenuOpen = true;
+        }
+    }
+    
+    private void ToggleSelectedSetting()
+    {
+        var config = ConfigurationManager.Instance.Config;
+        
+        switch (_selectedSettingsTab)
+        {
+            case 0: // Graphics
+                switch (_selectedSetting)
+                {
+                    case 0: config.Graphics.Fullscreen = !config.Graphics.Fullscreen; break;
+                    case 1: config.Graphics.VSync = !config.Graphics.VSync; break;
+                    case 2: config.Graphics.EnableShadows = !config.Graphics.EnableShadows; break;
+                    case 3: config.Graphics.EnableParticles = !config.Graphics.EnableParticles; break;
+                }
+                break;
+            case 1: // Audio
+                switch (_selectedSetting)
+                {
+                    case 0: config.Audio.Muted = !config.Audio.Muted; break;
+                    case 1: config.Audio.MasterVolume = (config.Audio.MasterVolume >= 1.0f) ? 0.0f : 1.0f; break;
+                    case 2: config.Audio.MusicVolume = (config.Audio.MusicVolume >= 1.0f) ? 0.0f : 1.0f; break;
+                    case 3: config.Audio.SfxVolume = (config.Audio.SfxVolume >= 1.0f) ? 0.0f : 1.0f; break;
+                }
+                break;
+            case 2: // Gameplay
+                switch (_selectedSetting)
+                {
+                    case 0: config.Gameplay.EnableAutoSave = !config.Gameplay.EnableAutoSave; break;
+                    case 1: config.Gameplay.ShowTutorials = !config.Gameplay.ShowTutorials; break;
+                    case 2: config.Gameplay.EnableHints = !config.Gameplay.EnableHints; break;
+                    case 3: 
+                        // Cycle through difficulty levels
+                        config.Gameplay.Difficulty = (config.Gameplay.Difficulty + 1) % 3;
+                        break;
+                }
+                break;
+        }
+    }
+    
+    private void SaveSettings()
+    {
+        try
+        {
+            // Save configuration to disk
+            var configManager = ConfigurationManager.Instance;
+            configManager.SaveConfiguration();
+            Console.WriteLine("Settings saved successfully");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error saving settings: {ex.Message}");
         }
     }
     
@@ -284,23 +361,119 @@ public class GameMenuSystem
         drawList.AddText(new Vector2(titleX + 2, titleY + 2), shadowColor, titleText);
         drawList.AddText(new Vector2(titleX, titleY), titleColor, titleText);
         
-        // Content text
-        float contentY = panelY + titleBarHeight + 30f;
-        float contentX = panelX + 50f;
+        // Tab labels
+        float tabY = panelY + titleBarHeight + 10f;
+        float tabHeight = 40f;
+        float tabWidth = (panelWidth - 80f) / 3f;
+        float tabStartX = panelX + 40f;
         
-        string[] settingsText = {
-            "Settings menu coming soon!",
-            "",
-            "Press BACKSPACE to return to pause menu"
+        string[] tabs = { "Graphics", "Audio", "Gameplay" };
+        uint activeTextColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+        uint inactiveTextColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.6f, 0.7f, 0.8f, 0.8f));
+        
+        for (int i = 0; i < tabs.Length; i++)
+        {
+            float tabX = tabStartX + i * tabWidth;
+            var tabTextSize = ImGui.CalcTextSize(tabs[i]);
+            float textX = tabX + (tabWidth - 5f - tabTextSize.X) * 0.5f;
+            float textY = tabY + (tabHeight - tabTextSize.Y) * 0.5f;
+            
+            uint color = (i == _selectedSettingsTab) ? activeTextColor : inactiveTextColor;
+            drawList.AddText(new Vector2(textX, textY), color, tabs[i]);
+        }
+        
+        // Settings items
+        var config = ConfigurationManager.Instance.Config;
+        float settingsY = tabY + tabHeight + 20f;
+        float settingHeight = 50f;
+        float settingSpacing = 15f;
+        float settingX = panelX + 50f;
+        float settingWidth = panelWidth - 100f;
+        
+        string[] settingNames;
+        string[] settingValues;
+        
+        switch (_selectedSettingsTab)
+        {
+            case 0: // Graphics
+                settingNames = new[] { "Fullscreen", "VSync", "Shadows", "Particles" };
+                settingValues = new[] {
+                    config.Graphics.Fullscreen ? "ON" : "OFF",
+                    config.Graphics.VSync ? "ON" : "OFF",
+                    config.Graphics.EnableShadows ? "ON" : "OFF",
+                    config.Graphics.EnableParticles ? "ON" : "OFF"
+                };
+                break;
+            case 1: // Audio
+                settingNames = new[] { "Mute All", "Master Volume", "Music Volume", "SFX Volume" };
+                settingValues = new[] {
+                    config.Audio.Muted ? "ON" : "OFF",
+                    $"{(int)(config.Audio.MasterVolume * 100)}%",
+                    $"{(int)(config.Audio.MusicVolume * 100)}%",
+                    $"{(int)(config.Audio.SfxVolume * 100)}%"
+                };
+                break;
+            case 2: // Gameplay
+                settingNames = new[] { "Auto Save", "Show Tutorials", "Show Hints", "Difficulty" };
+                string[] difficultyNames = { "Easy", "Normal", "Hard" };
+                settingValues = new[] {
+                    config.Gameplay.EnableAutoSave ? "ON" : "OFF",
+                    config.Gameplay.ShowTutorials ? "ON" : "OFF",
+                    config.Gameplay.EnableHints ? "ON" : "OFF",
+                    difficultyNames[config.Gameplay.Difficulty]
+                };
+                break;
+            default:
+                settingNames = new[] { "", "", "", "" };
+                settingValues = new[] { "", "", "", "" };
+                break;
+        }
+        
+        uint labelColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.7f, 0.9f, 1.0f, 1.0f));
+        uint valueColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.2f, 1.0f, 0.8f, 1.0f));
+        uint selectedValueColor = ImGui.ColorConvertFloat4ToU32(new Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+        
+        for (int i = 0; i < _settingsPerTab; i++)
+        {
+            float currentY = settingsY + i * (settingHeight + settingSpacing);
+            
+            // Setting name (left aligned)
+            float nameX = settingX + 15f;
+            float nameY = currentY + (settingHeight - ImGui.GetTextLineHeight()) * 0.5f;
+            drawList.AddText(new Vector2(nameX, nameY), labelColor, settingNames[i]);
+            
+            // Setting value (right aligned)
+            var valueSize = ImGui.CalcTextSize(settingValues[i]);
+            float valueX = settingX + settingWidth - valueSize.X - 15f;
+            float valueY = currentY + (settingHeight - valueSize.Y) * 0.5f;
+            uint vColor = (i == _selectedSetting) ? selectedValueColor : valueColor;
+            drawList.AddText(new Vector2(valueX, valueY), vColor, settingValues[i]);
+        }
+        
+        // Instructions at bottom
+        float instructY = panelY + panelHeight - 100f;
+        string[] instructions = {
+            "Arrow Keys / WASD: Navigate  |  Enter/Space: Toggle",
+            "Backspace/ESC: Save & Return to Pause Menu"
         };
         
-        uint textColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.7f, 0.9f, 1.0f, 1.0f));
-        float lineHeight = ImGui.GetTextLineHeightWithSpacing();
-        
-        for (int i = 0; i < settingsText.Length; i++)
+        uint instructColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.5f, 0.6f, 0.7f, 0.8f));
+        for (int i = 0; i < instructions.Length; i++)
         {
-            drawList.AddText(new Vector2(contentX, contentY + i * lineHeight), textColor, settingsText[i]);
+            var instrSize = ImGui.CalcTextSize(instructions[i]);
+            float instrX = panelX + (panelWidth - instrSize.X) * 0.5f;
+            float instrY = instructY + i * ImGui.GetTextLineHeightWithSpacing();
+            drawList.AddText(new Vector2(instrX, instrY), instructColor, instructions[i]);
         }
+        
+        // "Back" button label
+        float backButtonY = panelY + panelHeight - 70f;
+        float backButtonHeight = 40f;
+        string backText = "Back (Backspace)";
+        var backSize = ImGui.CalcTextSize(backText);
+        float backTextX = panelX + (panelWidth - backSize.X) * 0.5f;
+        float backTextY = backButtonY + (backButtonHeight - backSize.Y) * 0.5f;
+        drawList.AddText(new Vector2(backTextX, backTextY), labelColor, backText);
     }
     
     private void RenderPauseMenu()
@@ -428,21 +601,70 @@ public class GameMenuSystem
             new Vector2(panelX + panelWidth, panelY + titleBarHeight),
             panelBorderColor, 2f);
         
-        // Text and content are rendered in RenderTextLabels() using ImGui
-        // This allows for easy text rendering while keeping the visual style consistent
+        // Render tabs
+        float tabY = panelY + titleBarHeight + 10f;
+        float tabHeight = 40f;
+        float tabWidth = (panelWidth - 80f) / 3f;
+        float tabStartX = panelX + 40f;
         
-        // For now, just render a placeholder settings panel
-        float contentY = panelY + titleBarHeight + 30f;
-        float sliderX = panelX + 50f;
-        float sliderWidth = panelWidth - 100f;
-        float sliderHeight = 10f;
+        string[] tabs = { "Graphics", "Audio", "Gameplay" };
+        Vector4 activeTabColor = new Vector4(0.0f, 0.6f, 0.8f, 0.8f);
+        Vector4 inactiveTabColor = new Vector4(0.1f, 0.2f, 0.3f, 0.6f);
         
-        // Difficulty slider placeholder
-        Vector4 sliderBgColor = new Vector4(0.1f, 0.1f, 0.1f, 0.8f);
-        Vector4 sliderFillColor = new Vector4(0.0f, 0.8f, 1.0f, 0.9f);
+        for (int i = 0; i < tabs.Length; i++)
+        {
+            float tabX = tabStartX + i * tabWidth;
+            Vector4 tabColor = (i == _selectedSettingsTab) ? activeTabColor : inactiveTabColor;
+            
+            _renderer.DrawRectFilled(new Vector2(tabX, tabY), new Vector2(tabWidth - 5f, tabHeight), tabColor);
+            _renderer.DrawRect(new Vector2(tabX, tabY), new Vector2(tabWidth - 5f, tabHeight), panelBorderColor, 2f);
+        }
         
-        _renderer.DrawRectFilled(new Vector2(sliderX, contentY), new Vector2(sliderWidth, sliderHeight), sliderBgColor);
-        _renderer.DrawRectFilled(new Vector2(sliderX, contentY), new Vector2(sliderWidth * _difficulty / 2.0f, sliderHeight), sliderFillColor);
-        _renderer.DrawRect(new Vector2(sliderX, contentY), new Vector2(sliderWidth, sliderHeight), panelBorderColor, 1.5f);
+        // Settings items area
+        float settingsY = tabY + tabHeight + 20f;
+        float settingHeight = 50f;
+        float settingSpacing = 15f;
+        float settingX = panelX + 50f;
+        float settingWidth = panelWidth - 100f;
+        
+        Vector4 settingBgColor = new Vector4(0.1f, 0.2f, 0.3f, 0.6f);
+        Vector4 settingSelectedColor = new Vector4(0.2f, 0.4f, 0.5f, 0.8f);
+        
+        // Render 4 setting items
+        for (int i = 0; i < _settingsPerTab; i++)
+        {
+            float currentY = settingsY + i * (settingHeight + settingSpacing);
+            Vector4 bgColor = (i == _selectedSetting) ? settingSelectedColor : settingBgColor;
+            
+            _renderer.DrawRectFilled(new Vector2(settingX, currentY), new Vector2(settingWidth, settingHeight), bgColor);
+            _renderer.DrawRect(new Vector2(settingX, currentY), new Vector2(settingWidth, settingHeight), panelBorderColor, 1.5f);
+            
+            // Selection marker for selected setting
+            if (i == _selectedSetting)
+            {
+                float markerSize = 15f;
+                float markerX = settingX - markerSize - 8f;
+                float markerY = currentY + settingHeight * 0.5f;
+                
+                Vector4 markerColor = new Vector4(0.0f, 1.0f, 0.8f, 1.0f);
+                Vector2 p1 = new Vector2(markerX, markerY - markerSize * 0.3f);
+                Vector2 p2 = new Vector2(markerX, markerY + markerSize * 0.3f);
+                Vector2 p3 = new Vector2(markerX + markerSize * 0.6f, markerY);
+                
+                _renderer.DrawLine(p1, p2, markerColor, 2f);
+                _renderer.DrawLine(p2, p3, markerColor, 2f);
+                _renderer.DrawLine(p3, p1, markerColor, 2f);
+            }
+        }
+        
+        // Back button at bottom
+        float backButtonY = panelY + panelHeight - 70f;
+        float backButtonWidth = 200f;
+        float backButtonHeight = 40f;
+        float backButtonX = panelX + (panelWidth - backButtonWidth) * 0.5f;
+        
+        Vector4 buttonColor = new Vector4(0.1f, 0.3f, 0.4f, 0.8f);
+        _renderer.DrawRectFilled(new Vector2(backButtonX, backButtonY), new Vector2(backButtonWidth, backButtonHeight), buttonColor);
+        _renderer.DrawRect(new Vector2(backButtonX, backButtonY), new Vector2(backButtonWidth, backButtonHeight), panelBorderColor, 2f);
     }
 }
