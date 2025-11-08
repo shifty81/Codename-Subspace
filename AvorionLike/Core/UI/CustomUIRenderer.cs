@@ -196,6 +196,97 @@ void main()
     }
     
     /// <summary>
+    /// Draw a filled rectangle with vertical gradient
+    /// </summary>
+    public void DrawRectGradient(Vector2 topLeft, Vector2 size, Vector4 topColor, Vector4 bottomColor)
+    {
+        float[] vertices = new float[]
+        {
+            topLeft.X, topLeft.Y, topColor.X, topColor.Y, topColor.Z, topColor.W,
+            topLeft.X + size.X, topLeft.Y, topColor.X, topColor.Y, topColor.Z, topColor.W,
+            topLeft.X + size.X, topLeft.Y + size.Y, bottomColor.X, bottomColor.Y, bottomColor.Z, bottomColor.W,
+            topLeft.X, topLeft.Y + size.Y, bottomColor.X, bottomColor.Y, bottomColor.Z, bottomColor.W,
+        };
+        
+        uint[] indices = new uint[] { 0, 1, 2, 2, 3, 0 };
+        
+        DrawPrimitive(vertices, indices);
+    }
+    
+    /// <summary>
+    /// Draw a filled rectangle with glow effect around edges
+    /// </summary>
+    public void DrawRectWithGlow(Vector2 topLeft, Vector2 size, Vector4 fillColor, Vector4 glowColor, float glowSize = 8f)
+    {
+        // Draw glow layers from outside to inside
+        for (int i = 0; i < 4; i++)
+        {
+            float offset = glowSize * (1f - i / 4f);
+            float alpha = glowColor.W * (i / 4f) * 0.3f;
+            Vector4 layerColor = new Vector4(glowColor.X, glowColor.Y, glowColor.Z, alpha);
+            
+            DrawRectFilled(
+                new Vector2(topLeft.X - offset, topLeft.Y - offset),
+                new Vector2(size.X + offset * 2, size.Y + offset * 2),
+                layerColor
+            );
+        }
+        
+        // Draw main fill
+        DrawRectFilled(topLeft, size, fillColor);
+    }
+    
+    /// <summary>
+    /// Draw a progress bar with enhanced visuals
+    /// </summary>
+    public void DrawProgressBar(Vector2 position, Vector2 size, float progress, Vector4 fillColor, Vector4 bgColor, Vector4 borderColor)
+    {
+        progress = Math.Clamp(progress, 0f, 1f);
+        
+        // Background with slight gradient
+        Vector4 bgDark = new Vector4(bgColor.X * 0.7f, bgColor.Y * 0.7f, bgColor.Z * 0.7f, bgColor.W);
+        DrawRectGradient(position, size, bgColor, bgDark);
+        
+        // Fill bar with glow effect
+        if (progress > 0.01f)
+        {
+            Vector2 fillSize = new Vector2(size.X * progress, size.Y);
+            Vector4 glowColor = new Vector4(fillColor.X, fillColor.Y, fillColor.Z, 0.5f);
+            
+            // Add glow effect on the fill
+            float glowWidth = 4f;
+            for (int i = 0; i < 3; i++)
+            {
+                float offset = glowWidth * (1f - i / 3f);
+                float alpha = fillColor.W * (i / 3f) * 0.2f;
+                Vector4 layerColor = new Vector4(fillColor.X * 1.2f, fillColor.Y * 1.2f, fillColor.Z * 1.2f, alpha);
+                
+                DrawRectFilled(
+                    new Vector2(position.X, position.Y - offset),
+                    new Vector2(fillSize.X, fillSize.Y + offset * 2),
+                    layerColor
+                );
+            }
+            
+            // Brighten the fill with gradient
+            Vector4 brightFill = new Vector4(
+                Math.Min(1f, fillColor.X * 1.1f),
+                Math.Min(1f, fillColor.Y * 1.1f),
+                Math.Min(1f, fillColor.Z * 1.1f),
+                fillColor.W
+            );
+            DrawRectGradient(position, fillSize, brightFill, fillColor);
+        }
+        
+        // Border with enhanced thickness
+        DrawRect(position, size, borderColor, 2f);
+        
+        // Inner highlight on top edge
+        Vector4 highlightColor = new Vector4(borderColor.X * 1.5f, borderColor.Y * 1.5f, borderColor.Z * 1.5f, borderColor.W * 0.5f);
+        DrawLine(position + new Vector2(1, 1), position + new Vector2(size.X - 1, 1), highlightColor, 1f);
+    }
+    
+    /// <summary>
     /// Draw a circle outline
     /// </summary>
     public void DrawCircle(Vector2 center, float radius, Vector4 color, int segments = 32, float thickness = 2.0f)

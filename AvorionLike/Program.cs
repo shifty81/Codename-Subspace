@@ -50,7 +50,8 @@ class Program
         {
             Console.WriteLine("\n=== Main Menu ===");
             Console.WriteLine("--- PLAY GAME ---");
-            Console.WriteLine("1. NEW GAME - Start Full Gameplay Experience [NEW!]");
+            Console.WriteLine("1. NEW GAME - Start Full Gameplay Experience");
+            Console.WriteLine("19. SHOWCASE MODE - Visual Demo with Enhanced UI [NEW! ✨]");
             Console.WriteLine();
             Console.WriteLine("--- DEMOS & TESTS ---");
             Console.WriteLine("2. Engine Demo - Create Test Ship");
@@ -67,11 +68,12 @@ class Program
             Console.WriteLine("13. Player Pod Demo - Character System");
             Console.WriteLine("14. Enhanced Pod Demo - Skills & Abilities");
             Console.WriteLine("16. Collision & Damage Test - Test Physics Collision");
-            Console.WriteLine("17. System Verification - Test All Systems [NEW!]");
-            Console.WriteLine("18. Ship Generation Demo - Procedural Ships & Textures [NEW!]");
+            Console.WriteLine("17. System Verification - Test All Systems");
+            Console.WriteLine("18. Ship Generation Demo - Procedural Ships & Textures");
             Console.WriteLine();
             Console.WriteLine("--- INFO ---");
             Console.WriteLine("15. About / Version Info");
+            Console.WriteLine("20. Generate HTML Demo Viewer [NEW! 📄]");
             Console.WriteLine("0. Exit");
             Console.Write("\nSelect option: ");
 
@@ -132,6 +134,12 @@ class Program
                     break;
                 case "18":
                     ShipGenerationDemo();
+                    break;
+                case "19":
+                    ShowcaseMode();
+                    break;
+                case "20":
+                    GenerateHTMLDemoViewer();
                     break;
                 case "0":
                     _running = false;
@@ -1857,6 +1865,432 @@ class Program
             Console.WriteLine($"\n✗ Demo error: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
             Console.ResetColor();
+        }
+        
+        Console.WriteLine("\nPress Enter to return to main menu...");
+        Console.ReadLine();
+    }
+
+    static void ShowcaseMode()
+    {
+        Console.WriteLine("\n=== SHOWCASE MODE - Visual Demo ===");
+        Console.WriteLine("Creating an impressive visual demonstration...\n");
+        
+        try
+        {
+            var showcase = new GameShowcase(_gameEngine!, seed: 42);
+            var playerShipId = showcase.CreateShowcaseScene();
+            
+            Console.WriteLine("\n=== Launching Showcase ===");
+            Console.WriteLine("Opening 3D window with enhanced UI...");
+            Console.WriteLine("This demo showcases:");
+            Console.WriteLine("  ✨ Enhanced UI with gradients and glows");
+            Console.WriteLine("  🎨 Improved visual effects and animations");
+            Console.WriteLine("  🚀 Multiple ship designs and materials");
+            Console.WriteLine("  🌌 Populated game world with asteroids");
+            Console.WriteLine("  📊 Responsive UI that scales with resolution\n");
+            
+            using var graphicsWindow = new GraphicsWindow(_gameEngine!);
+            graphicsWindow.SetPlayerShip(playerShipId);
+            graphicsWindow.Run();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error running showcase: {ex.Message}");
+            Console.WriteLine("Graphics rendering may not be available on this system.");
+        }
+
+        Console.WriteLine("\nReturned to main menu.");
+    }
+
+    static void GenerateHTMLDemoViewer()
+    {
+        Console.WriteLine("\n=== Generate HTML Demo Viewer ===");
+        Console.WriteLine("Creating interactive HTML documentation...\n");
+        
+        try
+        {
+            var outputPath = Path.Combine(Directory.GetCurrentDirectory(), "GAME_SHOWCASE.html");
+            
+            var htmlContent = @"<!DOCTYPE html>
+<html lang=""en"">
+<head>
+    <meta charset=""UTF-8"">
+    <meta name=""viewport"" content=""width=device-width, initial-scale=1.0"">
+    <title>Codename: Subspace - Game Showcase</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0a0e1a 0%, #1a1f3a 100%);
+            color: #e0e0e0;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 40px 0;
+            background: linear-gradient(135deg, #00b4d8 0%, #0077b6 100%);
+            border-radius: 10px;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 30px rgba(0, 180, 216, 0.3);
+        }
+        
+        h1 {
+            font-size: 3em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            color: #ffffff;
+        }
+        
+        .subtitle {
+            font-size: 1.2em;
+            color: #e0f7fa;
+            font-weight: 300;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin: 40px 0;
+        }
+        
+        .feature-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(0, 180, 216, 0.3);
+            border-radius: 10px;
+            padding: 30px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(0, 180, 216, 0.8);
+            box-shadow: 0 10px 30px rgba(0, 180, 216, 0.3);
+        }
+        
+        .feature-card h2 {
+            color: #00d9ff;
+            margin-bottom: 15px;
+            font-size: 1.8em;
+        }
+        
+        .feature-card ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .feature-card li {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+        }
+        
+        .feature-card li:before {
+            content: '▹';
+            position: absolute;
+            left: 0;
+            color: #00d9ff;
+            font-weight: bold;
+        }
+        
+        .controls {
+            background: linear-gradient(135deg, rgba(0, 119, 182, 0.2) 0%, rgba(0, 180, 216, 0.2) 100%);
+            border: 2px solid rgba(0, 180, 216, 0.5);
+            border-radius: 10px;
+            padding: 30px;
+            margin: 40px 0;
+        }
+        
+        .controls h2 {
+            color: #00d9ff;
+            margin-bottom: 20px;
+            font-size: 2em;
+        }
+        
+        .control-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .control-item {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 3px solid #00d9ff;
+        }
+        
+        .control-key {
+            font-weight: bold;
+            color: #00d9ff;
+            display: inline-block;
+            min-width: 100px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 40px 0;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, rgba(0, 180, 216, 0.1) 0%, rgba(0, 119, 182, 0.1) 100%);
+            border: 2px solid rgba(0, 180, 216, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #00d9ff;
+            margin: 10px 0;
+        }
+        
+        .stat-label {
+            color: #b0bec5;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 40px 0;
+            margin-top: 60px;
+            border-top: 1px solid rgba(0, 180, 216, 0.3);
+            color: #78909c;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            padding: 15px 40px;
+            background: linear-gradient(135deg, #00b4d8 0%, #0077b6 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            margin: 20px 10px;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 180, 216, 0.3);
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 180, 216, 0.5);
+        }
+        
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2em;
+            }
+            
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .control-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class=""container"">
+        <header>
+            <h1>⬡ Codename: Subspace</h1>
+            <p class=""subtitle"">Advanced Space Game Engine - Visual Showcase</p>
+        </header>
+        
+        <div class=""stats"">
+            <div class=""stat-card"">
+                <div class=""stat-value"">95%</div>
+                <div class=""stat-label"">Backend Complete</div>
+            </div>
+            <div class=""stat-card"">
+                <div class=""stat-value"">20+</div>
+                <div class=""stat-label"">Core Systems</div>
+            </div>
+            <div class=""stat-card"">
+                <div class=""stat-value"">100%</div>
+                <div class=""stat-label"">Open Source</div>
+            </div>
+            <div class=""stat-card"">
+                <div class=""stat-value"">∞</div>
+                <div class=""stat-label"">Possibilities</div>
+            </div>
+        </div>
+        
+        <div class=""feature-grid"">
+            <div class=""feature-card"">
+                <h2>🎨 Enhanced Graphics</h2>
+                <ul>
+                    <li>Real-time 3D OpenGL rendering</li>
+                    <li>Voxel-based ship visualization</li>
+                    <li>Material-based coloring system</li>
+                    <li>Phong lighting with specular highlights</li>
+                    <li>Procedural starfield background</li>
+                    <li>Smooth camera controls</li>
+                </ul>
+            </div>
+            
+            <div class=""feature-card"">
+                <h2>🎮 Improved UI</h2>
+                <ul>
+                    <li>Futuristic HUD with gradients</li>
+                    <li>Glowing progress bars</li>
+                    <li>Enhanced radar with animations</li>
+                    <li>Color-coded status indicators</li>
+                    <li>Responsive design for all resolutions</li>
+                    <li>ImGui-powered debug panels</li>
+                </ul>
+            </div>
+            
+            <div class=""feature-card"">
+                <h2>🚀 Ship Systems</h2>
+                <ul>
+                    <li>6DOF movement and rotation</li>
+                    <li>Newtonian physics simulation</li>
+                    <li>Block-based ship construction</li>
+                    <li>Multiple material types</li>
+                    <li>Dynamic thrust and torque</li>
+                    <li>Shields and energy management</li>
+                </ul>
+            </div>
+            
+            <div class=""feature-card"">
+                <h2>🌌 Game World</h2>
+                <ul>
+                    <li>Procedural galaxy generation</li>
+                    <li>Asteroid fields with resources</li>
+                    <li>Space stations and POIs</li>
+                    <li>Sector-based universe</li>
+                    <li>Dynamic entity spawning</li>
+                    <li>Persistent save/load system</li>
+                </ul>
+            </div>
+            
+            <div class=""feature-card"">
+                <h2>⚙️ Core Systems</h2>
+                <ul>
+                    <li>Entity-Component System (ECS)</li>
+                    <li>Resource & inventory management</li>
+                    <li>Combat & damage system</li>
+                    <li>Mining & salvaging</li>
+                    <li>Trading & economy</li>
+                    <li>Crafting & upgrades</li>
+                </ul>
+            </div>
+            
+            <div class=""feature-card"">
+                <h2>🔧 Modding Support</h2>
+                <ul>
+                    <li>Lua scripting engine</li>
+                    <li>Comprehensive modding API</li>
+                    <li>Automatic mod discovery</li>
+                    <li>Hot-reload capabilities</li>
+                    <li>Dependency management</li>
+                    <li>Sample mods included</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class=""controls"">
+            <h2>🎮 Controls</h2>
+            <div class=""control-grid"">
+                <div class=""control-item"">
+                    <span class=""control-key"">C Key</span>
+                    <span>Toggle Camera/Ship Control</span>
+                </div>
+                <div class=""control-item"">
+                    <span class=""control-key"">WASD</span>
+                    <span>Movement/Thrust</span>
+                </div>
+                <div class=""control-item"">
+                    <span class=""control-key"">Space/Shift</span>
+                    <span>Up/Down Thrust</span>
+                </div>
+                <div class=""control-item"">
+                    <span class=""control-key"">Arrow Keys</span>
+                    <span>Pitch/Yaw Rotation</span>
+                </div>
+                <div class=""control-item"">
+                    <span class=""control-key"">Q/E Keys</span>
+                    <span>Roll Rotation</span>
+                </div>
+                <div class=""control-item"">
+                    <span class=""control-key"">X Key</span>
+                    <span>Emergency Brake</span>
+                </div>
+                <div class=""control-item"">
+                    <span class=""control-key"">Mouse</span>
+                    <span>Free Look (Camera Mode)</span>
+                </div>
+                <div class=""control-item"">
+                    <span class=""control-key"">TAB</span>
+                    <span>Player Status Panel</span>
+                </div>
+                <div class=""control-item"">
+                    <span class=""control-key"">I Key</span>
+                    <span>Inventory Panel</span>
+                </div>
+                <div class=""control-item"">
+                    <span class=""control-key"">B Key</span>
+                    <span>Ship Builder</span>
+                </div>
+                <div class=""control-item"">
+                    <span class=""control-key"">F1-F4</span>
+                    <span>Toggle Debug Panels</span>
+                </div>
+                <div class=""control-item"">
+                    <span class=""control-key"">ESC</span>
+                    <span>Exit to Menu</span>
+                </div>
+            </div>
+        </div>
+        
+        <div style=""text-align: center; margin: 60px 0;"">
+            <h2 style=""color: #00d9ff; margin-bottom: 20px;"">Ready to Explore?</h2>
+            <p style=""margin-bottom: 30px; font-size: 1.1em;"">Run the game and select option 19 for the full showcase experience!</p>
+            <a href=""https://github.com/shifty81/Codename-Subspace"" class=""cta-button"">View on GitHub</a>
+            <a href=""README.md"" class=""cta-button"">Read Documentation</a>
+        </div>
+        
+        <footer>
+            <p>Codename: Subspace - Open Source Space Game Engine</p>
+            <p>Built with C# • .NET 9.0 • Silk.NET • OpenGL</p>
+            <p style=""margin-top: 10px;"">© 2024 - MIT License</p>
+        </footer>
+    </div>
+</body>
+</html>";
+            
+            File.WriteAllText(outputPath, htmlContent);
+            
+            Console.WriteLine($"✓ HTML demo viewer generated!");
+            Console.WriteLine($"  Location: {outputPath}");
+            Console.WriteLine($"\nOpen this file in your web browser to view the interactive showcase.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error generating HTML: {ex.Message}");
         }
         
         Console.WriteLine("\nPress Enter to return to main menu...");
