@@ -1,10 +1,13 @@
 using AvorionLike.Core.Logging;
+using AvorionLike.Core.Procedural;
 using System.Diagnostics;
+using System.Numerics;
 
 namespace AvorionLike.Core.SolarSystem;
 
 /// <summary>
 /// Manages hyperspace jumps between solar systems with loading and animation
+/// Integrates with galaxy network for stargate-based jumps
 /// </summary>
 public class HyperspaceJump
 {
@@ -12,16 +15,37 @@ public class HyperspaceJump
     private readonly HyperspaceAnimation _animation;
     private JumpState _jumpState = JumpState.Ready;
     private string _destinationSystemId = "";
+    private string _currentSystemId = "";
+    private Vector3? _exitGatePosition;
     private Stopwatch _loadingTimer = new();
+    private GalaxyNetwork? _galaxyNetwork;
 
     public JumpState State => _jumpState;
     public HyperspaceAnimation Animation => _animation;
     public bool IsJumping => _jumpState != JumpState.Ready && _jumpState != JumpState.Complete;
+    public string CurrentSystemId => _currentSystemId;
+    public Vector3? ExitGatePosition => _exitGatePosition;
 
     public HyperspaceJump()
     {
         _logger = Logger.Instance;
         _animation = new HyperspaceAnimation();
+    }
+    
+    /// <summary>
+    /// Set the galaxy network for stargate-based jumps
+    /// </summary>
+    public void SetGalaxyNetwork(GalaxyNetwork galaxyNetwork)
+    {
+        _galaxyNetwork = galaxyNetwork;
+    }
+    
+    /// <summary>
+    /// Set current system ID
+    /// </summary>
+    public void SetCurrentSystem(string systemId)
+    {
+        _currentSystemId = systemId;
     }
 
     /// <summary>
@@ -40,6 +64,9 @@ public class HyperspaceJump
         
         _logger.Info("HyperspaceJump", $"Initiating hyperspace jump to system: {destinationSystemId}");
         
+        // Determine exit gate position if using galaxy network
+        DetermineExitGatePosition();
+        
         // Start animation
         _animation.StartJump(destinationSystemId);
         
@@ -48,6 +75,104 @@ public class HyperspaceJump
         Task.Run(() => LoadSystemAsync(destinationSystemId, loadSystemCallback));
         
         return true;
+    }
+    
+    /// <summary>
+    /// Initiate a jump through a specific stargate (no cost)
+    /// </summary>
+    public bool InitiateGateJump(string destinationSystemId, string? destinationGateId, 
+        Action<string> loadSystemCallback)
+    {
+        if (_jumpState != JumpState.Ready)
+        {
+            _logger.Warning("HyperspaceJump", "Cannot initiate jump - already jumping");
+            return false;
+        }
+        
+        // Verify connection exists in galaxy network
+        if (_galaxyNetwork != null && !string.IsNullOrEmpty(_currentSystemId))
+        {
+            var path = _galaxyNetwork.FindPath(_currentSystemId, destinationSystemId);
+            if (path == null || path.Count < 2)
+            {
+                _logger.Warning("HyperspaceJump", $"No route found from {_currentSystemId} to {destinationSystemId}");
+                return false;
+            }
+        }
+        
+        _destinationSystemId = destinationSystemId;
+        _jumpState = JumpState.Initiating;
+        
+        _logger.Info("HyperspaceJump", $"Initiating gate jump to system: {destinationSystemId}");
+        
+        // Get exit gate position for the destination
+        if (_galaxyNetwork != null)
+        {
+            var destCoords = ParseSystemCoordinates(destinationSystemId);
+            var destSystem = _galaxyNetwork.GetOrGenerateSystem(destCoords);
+            
+            if (destinationGateId != null)
+            {
+                var exitGate = destSystem.Stargates.FirstOrDefault(g => g.GateId == destinationGateId);
+                _exitGatePosition = exitGate?.Position;
+            }
+            else
+            {
+                // Use first available gate
+                _exitGatePosition = destSystem.Stargates.FirstOrDefault()?.Position;
+            }
+        }
+        
+        // Start animation
+        _animation.StartJump(destinationSystemId);
+        
+        // Start loading in background
+        _loadingTimer.Restart();
+        Task.Run(() => LoadSystemAsync(destinationSystemId, loadSystemCallback));
+        
+        return true;
+    }
+    
+    /// <summary>
+    /// Determine exit gate position in destination system
+    /// </summary>
+    private void DetermineExitGatePosition()
+    {
+        if (_galaxyNetwork == null || string.IsNullOrEmpty(_destinationSystemId))
+        {
+            _exitGatePosition = null;
+            return;
+        }
+        
+        try
+        {
+            var destCoords = ParseSystemCoordinates(_destinationSystemId);
+            var destSystem = _galaxyNetwork.GetOrGenerateSystem(destCoords);
+            
+            // Use first available gate as exit point
+            _exitGatePosition = destSystem.Stargates.FirstOrDefault()?.Position;
+        }
+        catch
+        {
+            _exitGatePosition = null;
+        }
+    }
+    
+    /// <summary>
+    /// Parse system ID to coordinates
+    /// </summary>
+    private Vector3Int ParseSystemCoordinates(string systemId)
+    {
+        // Expected format: "System-X-Y-Z"
+        var parts = systemId.Split('-');
+        if (parts.Length >= 4 && 
+            int.TryParse(parts[1], out int x) &&
+            int.TryParse(parts[2], out int y) &&
+            int.TryParse(parts[3], out int z))
+        {
+            return new Vector3Int(x, y, z);
+        }
+        return Vector3Int.Zero;
     }
 
     /// <summary>
