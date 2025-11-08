@@ -165,11 +165,8 @@ public class GraphicsWindow : IDisposable
         if (_camera == null || _imguiController == null || _playerControlSystem == null || 
             _inputContext == null || _gameHUD == null || _gameMenuSystem == null) return;
 
-        // Update ImGui (for debug console only)
-        if (_showDebugUI)
-        {
-            _imguiController.Update(_deltaTime);
-        }
+        // Update ImGui (needed for GameHUD text rendering and debug UI)
+        _imguiController.Update(_deltaTime);
         
         // Update custom UI
         _gameHUD.Update(_deltaTime);
@@ -300,12 +297,14 @@ public class GraphicsWindow : IDisposable
         // Render custom game menu (pause menu, settings) if open
         _gameMenuSystem.Render();
         
-        // Render debug/console UI with ImGui (only if enabled with F1)
+        // Render debug/console UI if enabled with F1
         if (_showDebugUI && _debugHUD != null)
         {
             _debugHUD.Render();
-            _imguiController.Render();
         }
+        
+        // Always render ImGui (needed for GameHUD text and debug UI when enabled)
+        _imguiController.Render();
     }
 
     private void OnKeyDown(IKeyboard keyboard, Key key, int keyCode)

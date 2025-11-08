@@ -3,6 +3,7 @@ using AvorionLike.Core.ECS;
 using AvorionLike.Core.Physics;
 using AvorionLike.Core.Voxel;
 using AvorionLike.Core.Resources;
+using AvorionLike.Core.Combat;
 using ImGuiNET;
 
 namespace AvorionLike.Core.UI;
@@ -134,7 +135,13 @@ public class GameHUD
         // Energy bar
         barY += 35f;
         var inventory = _gameEngine.EntityManager.GetComponent<InventoryComponent>(_playerShipId.Value);
+        var combatComponent = _gameEngine.EntityManager.GetComponent<CombatComponent>(_playerShipId.Value);
+        
         float energyPercent = 0.6f; // Default
+        if (combatComponent != null && combatComponent.MaxEnergy > 0)
+        {
+            energyPercent = MathF.Max(0f, MathF.Min(1f, combatComponent.CurrentEnergy / combatComponent.MaxEnergy));
+        }
         
         Vector4 energyBarColor = new Vector4(0.2f, 0.6f, 1.0f, 0.9f);
         _renderer.DrawRectFilled(new Vector2(barX, barY), new Vector2(barWidth, barHeight), barBgColor);
@@ -144,6 +151,11 @@ public class GameHUD
         // Shield bar
         barY += 35f;
         float shieldPercent = 0.75f; // Default
+        if (combatComponent != null && combatComponent.MaxShields > 0)
+        {
+            shieldPercent = MathF.Max(0f, MathF.Min(1f, combatComponent.CurrentShields / combatComponent.MaxShields));
+        }
+        
         Vector4 shieldBarColor = new Vector4(0.0f, 0.8f, 1.0f, 0.9f);
         _renderer.DrawRectFilled(new Vector2(barX, barY), new Vector2(barWidth, barHeight), barBgColor);
         _renderer.DrawRectFilled(new Vector2(barX, barY), new Vector2(barWidth * shieldPercent, barHeight), shieldBarColor);
@@ -159,6 +171,7 @@ public class GameHUD
         
         var voxelStructure = _gameEngine.EntityManager.GetComponent<VoxelStructureComponent>(_playerShipId.Value);
         var inventory = _gameEngine.EntityManager.GetComponent<InventoryComponent>(_playerShipId.Value);
+        var combatComponent = _gameEngine.EntityManager.GetComponent<CombatComponent>(_playerShipId.Value);
         
         // Ship status panel text
         float panelX = 25f;
@@ -200,7 +213,15 @@ public class GameHUD
             ImGui.Text("Energy");
             ImGui.PopStyleColor();
             ImGui.SameLine(180);
-            ImGui.Text("60%");
+            if (combatComponent != null && combatComponent.MaxEnergy > 0)
+            {
+                float energyPct = (combatComponent.CurrentEnergy / combatComponent.MaxEnergy) * 100f;
+                ImGui.Text($"{energyPct:F0}%");
+            }
+            else
+            {
+                ImGui.Text("N/A");
+            }
             
             ImGui.Spacing();
             ImGui.Spacing();
@@ -210,18 +231,26 @@ public class GameHUD
             ImGui.Text("Shields");
             ImGui.PopStyleColor();
             ImGui.SameLine(180);
-            ImGui.Text("75%");
+            if (combatComponent != null && combatComponent.MaxShields > 0)
+            {
+                float shieldPct = (combatComponent.CurrentShields / combatComponent.MaxShields) * 100f;
+                ImGui.Text($"{shieldPct:F0}%");
+            }
+            else
+            {
+                ImGui.Text("N/A");
+            }
         }
         
         ImGui.End();
         ImGui.PopStyleColor(2);
         
-        // Velocity display in top-right
+        // Velocity and FPS display in top-right
         float velX = _screenWidth - 250f;
         float velY = 100f;
         
         ImGui.SetNextWindowPos(new Vector2(velX, velY));
-        ImGui.SetNextWindowSize(new Vector2(225, 80));
+        ImGui.SetNextWindowSize(new Vector2(225, 105));
         ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.0f, 0.1f, 0.15f, 0.6f));
         ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.0f, 0.8f, 1.0f, 0.8f));
         
@@ -236,11 +265,52 @@ public class GameHUD
             ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.9f, 0.9f, 0.9f, 1.0f));
             ImGui.Text($"Speed: {speed:F1} m/s");
             ImGui.Text($"Mass: {physics.Mass:F0} kg");
+            
+            // Add FPS counter
+            var io = ImGui.GetIO();
+            ImGui.Text($"FPS: {io.Framerate:F0}");
             ImGui.PopStyleColor();
         }
         
         ImGui.End();
         ImGui.PopStyleColor(2);
+        
+        // Resource display in top-right below velocity
+        if (inventory != null)
+        {
+            float resX = _screenWidth - 250f;
+            float resY = 220f;
+            
+            ImGui.SetNextWindowPos(new Vector2(resX, resY));
+            ImGui.SetNextWindowSize(new Vector2(225, 110));
+            ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0.0f, 0.1f, 0.15f, 0.6f));
+            ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.0f, 0.8f, 1.0f, 0.8f));
+            
+            if (ImGui.Begin("##Resources", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | 
+                            ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoInputs))
+            {
+                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.0f, 0.8f, 1.0f, 1.0f));
+                ImGui.Text("RESOURCES");
+                ImGui.PopStyleColor();
+                
+                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.9f, 0.9f, 0.9f, 1.0f));
+                
+                // Display key resources
+                var credits = inventory.Inventory.GetResourceAmount(ResourceType.Credits);
+                ImGui.Text($"Credits: {credits:N0}");
+                
+                var iron = inventory.Inventory.GetResourceAmount(ResourceType.Iron);
+                ImGui.Text($"Iron: {iron:N0}");
+                
+                var titanium = inventory.Inventory.GetResourceAmount(ResourceType.Titanium);
+                ImGui.Text($"Titanium: {titanium:N0}");
+                
+                ImGui.PopStyleColor();
+            }
+            
+            ImGui.End();
+            ImGui.PopStyleColor(2);
+        }
     }
     
     private void RenderRadar()
