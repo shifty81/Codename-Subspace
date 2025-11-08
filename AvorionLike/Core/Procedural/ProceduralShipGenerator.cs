@@ -178,10 +178,6 @@ public class ProceduralShipGenerator
     /// </summary>
     private void GenerateBlockyHull(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config)
     {
-        var centerX = 0f;
-        var centerY = 0f;
-        var centerZ = 0f;
-        
         // Create a basic rectangular hull with some internal structure
         // Bottom layer
         for (float x = -dimensions.X / 2; x < dimensions.X / 2; x += 2)
