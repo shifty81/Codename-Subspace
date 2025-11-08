@@ -33,7 +33,7 @@ public class GraphicsWindow : IDisposable
     
     // ImGui-based UI systems (for debug/console ONLY)
     private HUDSystem? _debugHUD;  // Renamed to clarify it's for debug
-    private bool _showDebugUI = false;  // Toggle for debug UI
+    private bool _showDebugUI = true;  // Toggle for debug UI - enabled by default for better UX
     
     private readonly GameEngine _gameEngine;
     private bool _disposed = false;
@@ -166,7 +166,9 @@ public class GraphicsWindow : IDisposable
         Console.WriteLine("  UI Controls:");
         Console.WriteLine("    ALT - Show mouse cursor (hold, doesn't affect free-look)");
         Console.WriteLine("    ESC - Pause Menu (press again to close)");
-        Console.WriteLine("    F1 - Toggle Debug/Console UI");
+        Console.WriteLine("    F1 - Toggle Debug HUD (enabled by default)");
+        Console.WriteLine("    F2 - Toggle Entity List");
+        Console.WriteLine("    F3 - Toggle Resource Panel");
         Console.WriteLine("=====================================\n");
     }
 
@@ -344,7 +346,7 @@ public class GraphicsWindow : IDisposable
         if (key == Key.F1)
         {
             _showDebugUI = !_showDebugUI;
-            Console.WriteLine($"Debug UI: {(_showDebugUI ? "Enabled" : "Disabled")}");
+            Console.WriteLine($"Debug HUD: {(_showDebugUI ? "Shown" : "Hidden")}");
         }
         
         // Quick Save with F5
