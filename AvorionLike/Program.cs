@@ -7,6 +7,7 @@ using AvorionLike.Core.RPG;
 using AvorionLike.Core.Graphics;
 using AvorionLike.Core.Combat;
 using AvorionLike.Core.Navigation;
+using AvorionLike.Examples;
 using System.Numerics;
 
 namespace AvorionLike;
@@ -70,6 +71,7 @@ class Program
             Console.WriteLine("16. Collision & Damage Test - Test Physics Collision");
             Console.WriteLine("17. System Verification - Test All Systems");
             Console.WriteLine("18. Ship Generation Demo - Procedural Ships & Textures");
+            Console.WriteLine("21. Integration Test - Test All Systems Together [NEW! 🧪]");
             Console.WriteLine();
             Console.WriteLine("--- INFO ---");
             Console.WriteLine("15. About / Version Info");
@@ -140,6 +142,9 @@ class Program
                     break;
                 case "20":
                     GenerateHTMLDemoViewer();
+                    break;
+                case "21":
+                    RunIntegrationTest();
                     break;
                 case "0":
                     _running = false;
@@ -2295,6 +2300,29 @@ class Program
         
         Console.WriteLine("\nPress Enter to return to main menu...");
         Console.ReadLine();
+    }
+
+    static void RunIntegrationTest()
+    {
+        Console.WriteLine("\n=== Integration Test - All Systems Together ===");
+        Console.WriteLine("Running comprehensive tests to verify all systems work correctly...");
+        Console.WriteLine();
+        
+        var integrationTest = new IntegrationTest(_gameEngine!);
+        bool passed = integrationTest.RunTests();
+        
+        if (passed)
+        {
+            Console.WriteLine("\n🎉 All systems are working correctly!");
+            Console.WriteLine("The game engine is ready for gameplay.");
+        }
+        else
+        {
+            Console.WriteLine("\n⚠️  Some tests failed. Check the output above for details.");
+        }
+        
+        Console.WriteLine("\nPress any key to return to main menu...");
+        Console.ReadKey();
     }
 }
 
