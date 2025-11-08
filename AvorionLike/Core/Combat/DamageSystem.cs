@@ -182,22 +182,11 @@ public class DamageSystem : SystemBase
             }
         }
 
-        // Remove destroyed blocks and recalculate properties
+        // Remove destroyed blocks using the component's RemoveBlock method
+        // This ensures RecalculateProperties() is properly called
         foreach (var block in destroyedBlocks)
         {
-            structure.Blocks.Remove(block);
-        }
-
-        if (destroyedBlocks.Count > 0)
-        {
-            // Force recalculation by adding/removing dummy (this triggers the recalc in the component)
-            // Actually, the component's Blocks.Remove should trigger it, but let's ensure
-            var firstBlock = structure.Blocks.FirstOrDefault();
-            if (firstBlock != null)
-            {
-                structure.Blocks.Remove(firstBlock);
-                structure.Blocks.Insert(0, firstBlock);
-            }
+            structure.RemoveBlock(block);
         }
 
         return destroyedBlocks;
