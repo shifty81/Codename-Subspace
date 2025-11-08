@@ -148,9 +148,9 @@ Select **1 - NEW GAME - Start Full Gameplay Experience** to launch the integrate
 - **J** - Toggle Mission Info
 - **I** - Toggle Inventory
 - **B** - Toggle Ship Builder
-- **F1** - Toggle Debug Info
+- **F1** - Toggle Debug HUD (shown by default)
 - **F2** - Toggle Entity List
-- **F3** - Toggle Resource Info
+- **F3** - Toggle Resource Panel
 - **F4** - Toggle Futuristic HUD
 - **ESC** - Exit to menu
 

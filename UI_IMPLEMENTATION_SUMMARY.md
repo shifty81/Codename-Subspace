@@ -146,9 +146,9 @@ Successfully implemented a complete UI framework and HUD system for the AvorionL
 - `Mouse` - Look around (free-look)
 
 ### UI
-- `F1` - Toggle Debug Overlay
-- `F2` - Toggle Entity List
-- `F3` - Toggle Resource Panel
+- `F1` - Toggle Debug HUD (shown by default, displays FPS and entity count)
+- `F2` - Toggle Entity List (detailed entity information)
+- `F3` - Toggle Resource Panel (global resource tracking)
 - `I` - Toggle Inventory
 - `ESC` - Pause Menu / Resume
 

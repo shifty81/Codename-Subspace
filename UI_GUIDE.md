@@ -187,9 +187,9 @@ The game now includes a comprehensive sci-fi HUD overlay with holographic-style 
 - `Mouse` - Look around (free-look)
 
 ### UI Controls
-- `F1` - Toggle Debug Overlay
-- `F2` - Toggle Entity List
-- `F3` - Toggle Resource Panel
+- `F1` - Toggle Debug HUD (shown by default, displays FPS and entity count)
+- `F2` - Toggle Entity List (detailed entity information)
+- `F3` - Toggle Resource Panel (global resource tracking)
 - `F4` - Toggle Futuristic HUD
 - `I` - Toggle Inventory UI
 - `ESC` - Pause Menu / Exit
