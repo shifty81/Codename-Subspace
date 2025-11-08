@@ -189,6 +189,12 @@ public class GraphicsWindow : IDisposable
         // Update ImGui (needed for GameHUD text rendering and debug UI)
         _imguiController.Update(_deltaTime);
         
+        // Handle HUD input (F1/F2/F3 toggles)
+        if (_debugHUD != null)
+        {
+            _debugHUD.HandleInput();
+        }
+        
         // Update custom UI
         _gameHUD.Update(_deltaTime);
         

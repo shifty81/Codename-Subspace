@@ -75,7 +75,6 @@ public class HUDSystem
             ImGui.Text("F1 - Toggle Debug Info");
             ImGui.Text("F2 - Toggle Entity List");
             ImGui.Text("F3 - Toggle Resources");
-            ImGui.Text("I - Toggle Inventory");
             ImGui.Text("ALT - Show Mouse Cursor");
             ImGui.Text("ESC - Pause Menu");
         }
