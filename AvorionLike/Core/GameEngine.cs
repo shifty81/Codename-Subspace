@@ -58,6 +58,8 @@ public class GameEngine
     public bool IsRunning { get; private set; }
     private DateTime _lastUpdateTime;
     private readonly int _galaxySeed;
+    private DateTime _lastAutoSaveTime;
+    private int _autoSaveCounter = 0;
 
     public GameEngine(int galaxySeed = 0)
     {
@@ -154,6 +156,7 @@ public class GameEngine
 
         IsRunning = true;
         _lastUpdateTime = DateTime.UtcNow;
+        _lastAutoSaveTime = DateTime.UtcNow;
         
         Logger.Instance.Info("GameEngine", "Game Engine started");
         Console.WriteLine("Game Engine started");
@@ -200,6 +203,30 @@ public class GameEngine
 
         // Update all systems
         EntityManager.UpdateSystems(deltaTime);
+
+        // Auto-save functionality
+        var config = ConfigurationManager.Instance.Config;
+        if (config.Gameplay.EnableAutoSave)
+        {
+            var timeSinceLastAutoSave = (currentTime - _lastAutoSaveTime).TotalSeconds;
+            if (timeSinceLastAutoSave >= config.Gameplay.AutoSaveIntervalSeconds)
+            {
+                _autoSaveCounter++;
+                string autoSaveName = $"autosave_{_autoSaveCounter}";
+                Logger.Instance.Info("GameEngine", $"Auto-saving game as '{autoSaveName}'...");
+                
+                bool success = SaveGame(autoSaveName);
+                if (success)
+                {
+                    _lastAutoSaveTime = currentTime;
+                    Logger.Instance.Info("GameEngine", $"Auto-save completed successfully");
+                }
+                else
+                {
+                    Logger.Instance.Warning("GameEngine", "Auto-save failed, will retry next interval");
+                }
+            }
+        }
     }
 
     /// <summary>

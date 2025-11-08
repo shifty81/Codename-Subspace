@@ -347,6 +347,36 @@ public class GraphicsWindow : IDisposable
             Console.WriteLine($"Debug UI: {(_showDebugUI ? "Enabled" : "Disabled")}");
         }
         
+        // Quick Save with F5
+        if (key == Key.F5)
+        {
+            Console.WriteLine("Quick saving...");
+            bool success = _gameEngine?.QuickSave() ?? false;
+            if (success)
+            {
+                Console.WriteLine("✓ Quick save completed successfully");
+            }
+            else
+            {
+                Console.WriteLine("✗ Quick save failed");
+            }
+        }
+        
+        // Quick Load with F9
+        if (key == Key.F9)
+        {
+            Console.WriteLine("Quick loading...");
+            bool success = _gameEngine?.QuickLoad() ?? false;
+            if (success)
+            {
+                Console.WriteLine("✓ Quick load completed successfully");
+            }
+            else
+            {
+                Console.WriteLine("✗ Quick load failed");
+            }
+        }
+        
         // Handle ESC for pause menu
         if (key == Key.Escape)
         {

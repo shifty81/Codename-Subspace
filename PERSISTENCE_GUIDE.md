@@ -227,15 +227,31 @@ case "AvorionLike.Core.MyNamespace.MyComponent":
 
 ### 3. Save File Management
 - Use descriptive save names
-- Implement auto-save at regular intervals
+- Auto-save is now implemented with configurable intervals
+- Use F5 for quick save and F9 for quick load when in 3D view
 - Provide UI for managing multiple save slots
 
-### 4. Performance
+### 4. Auto-Save System (NEW!)
+The game now includes an automatic save feature:
+- Configure in `GameConfiguration.Gameplay`:
+  - `EnableAutoSave` - Enable/disable auto-save (default: true)
+  - `AutoSaveIntervalSeconds` - Time between auto-saves (default: 300 = 5 minutes)
+- Auto-save files are named sequentially: `autosave_1`, `autosave_2`, etc.
+- Triggered automatically in the game loop
+- Can be configured via the in-game settings menu
+
+### 5. Quick Save/Load Hotkeys (NEW!)
+When playing in the 3D graphics window:
+- **F5** - Quick Save (saves as "quicksave")
+- **F9** - Quick Load (loads "quicksave")
+- Feedback is displayed in the console
+
+### 6. Performance
 - Save operations are I/O bound
 - Consider background saves for large game states
 - Compress save files for large games (future enhancement)
 
-### 5. Data Integrity
+### 7. Data Integrity
 - Validate data during deserialization
 - Use default values for missing data
 - Handle corrupted save files gracefully
@@ -246,11 +262,26 @@ Test the persistence system using the demo:
 
 1. Run the application
 2. Select option 1 to create test entities
-3. Select option 11 for Persistence Demo
+3. Select option 12 for Persistence Demo
 4. Save the game (option 1)
-5. Exit and restart the application
-6. Load the saved game (option 2)
-7. Verify all entities and components are restored correctly
+5. Test auto-save by waiting 5 minutes (or adjust config to 30 seconds for testing)
+6. Exit and restart the application
+7. Load the saved game (option 2)
+8. Verify all entities and components are restored correctly
+
+### Testing Quick Save/Load:
+1. Select option 1 (NEW GAME) to start the game
+2. Press F5 to quick save
+3. Make changes to the game state
+4. Press F9 to quick load
+5. Verify the game state was restored
+
+### Testing Auto-Save:
+1. Start a new game (option 1)
+2. Ensure auto-save is enabled in settings (ESC -> Settings -> Gameplay)
+3. Play for the configured interval (default 5 minutes)
+4. Check the logs for "Auto-saving game..." message
+5. Check the Saves directory for autosave_X.save files
 
 ## Limitations
 
@@ -261,6 +292,15 @@ Current limitations:
 - No cloud save support
 - Component types must be explicitly registered in GameEngine
 
+## Recent Enhancements (v0.9.0+)
+
+✅ **Implemented:**
+- Auto-save functionality with configurable intervals
+- Quick save/load hotkeys (F5/F9) in 3D view
+- Sequential auto-save file naming
+- In-game configuration through settings menu
+- Automatic retry on auto-save failure
+
 ## Future Enhancements
 
 Potential improvements:
@@ -268,10 +308,10 @@ Potential improvements:
 - Save file compression (gzip)
 - Encryption for multiplayer/competitive games
 - Cloud storage integration
-- Auto-save functionality with configurable intervals
 - Multiple save slots with thumbnails
 - Save file migration system for version updates
 - Incremental saves (delta encoding)
+- Visual save/load progress indicators
 
 ## Troubleshooting
 
