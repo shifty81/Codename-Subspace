@@ -364,25 +364,32 @@ public class ProceduralShipGenerator
     {
         float radius = Math.Min(dimensions.X, dimensions.Y) / 2;
         
+        // Generate a solid cylindrical hull by placing blocks in a grid and checking if they're within the radius
         for (float z = -dimensions.Z / 2; z < dimensions.Z / 2; z += 2)
         {
-            for (float angle = 0; angle < 360; angle += 30)
+            for (float x = -radius; x <= radius; x += 2)
             {
-                float rad = angle * MathF.PI / 180f;
-                float x = radius * MathF.Cos(rad);
-                float y = radius * MathF.Sin(rad);
-                
-                var block = new VoxelBlock(
-                    new Vector3(x, y, z),
-                    new Vector3(2, 2, 2),
-                    config.Material,
-                    BlockType.Hull
-                );
-                ship.Structure.AddBlock(block);
+                for (float y = -radius; y <= radius; y += 2)
+                {
+                    // Check if this position is on or near the surface of the cylinder
+                    float distance = MathF.Sqrt(x * x + y * y);
+                    
+                    // Place blocks on the outer shell (within a thickness of ~3 units)
+                    if (distance >= radius - 3 && distance <= radius + 1)
+                    {
+                        var block = new VoxelBlock(
+                            new Vector3(x, y, z),
+                            new Vector3(2, 2, 2),
+                            config.Material,
+                            BlockType.Hull
+                        );
+                        ship.Structure.AddBlock(block);
+                    }
+                }
             }
         }
         
-        // Add end caps
+        // Add end caps - fill the circular ends completely for connectivity
         for (float x = -radius; x <= radius; x += 2)
         {
             for (float y = -radius; y <= radius; y += 2)
@@ -471,49 +478,12 @@ public class ProceduralShipGenerator
     /// </summary>
     private void GenerateIrregularHull(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config)
     {
-        // Start with a basic blocky hull but add asymmetric sections
-        GenerateBlockyHull(ship, dimensions * 0.8f, config);
+        // Start with a basic blocky hull
+        GenerateBlockyHull(ship, dimensions * 0.9f, config);
         
-        // Add random protrusions and asymmetric sections - but ensure they connect
-        int protrusions = _random.Next(3, 8);
-        for (int i = 0; i < protrusions; i++)
-        {
-            // Find a random existing hull block to attach to
-            var hullBlocks = ship.Structure.Blocks.Where(b => b.BlockType == BlockType.Hull).ToList();
-            if (hullBlocks.Count == 0) continue;
-            
-            var attachPoint = hullBlocks[_random.Next(hullBlocks.Count)];
-            
-            // Pick a random direction to grow the protrusion
-            Vector3[] directions = new[] {
-                new Vector3(2, 0, 0), new Vector3(-2, 0, 0),
-                new Vector3(0, 2, 0), new Vector3(0, -2, 0),
-                new Vector3(0, 0, 2), new Vector3(0, 0, -2)
-            };
-            var direction = directions[_random.Next(directions.Length)];
-            
-            Vector3 protrusionSize = new Vector3(
-                (float)(_random.NextDouble() * 4 + 2),
-                (float)(_random.NextDouble() * 4 + 2),
-                (float)(_random.NextDouble() * 4 + 2)
-            );
-            
-            // Grow the protrusion from the attach point
-            Vector3 currentPos = attachPoint.Position + direction;
-            int protrusionLength = (int)(_random.Next(2, 5));
-            
-            for (int step = 0; step < protrusionLength; step++)
-            {
-                var block = new VoxelBlock(
-                    currentPos,
-                    new Vector3(2, 2, 2),
-                    config.Material,
-                    BlockType.Hull
-                );
-                ship.Structure.AddBlock(block);
-                currentPos += direction;
-            }
-        }
+        // For now, irregular ships are just slightly smaller blocky hulls to differentiate them
+        // Future enhancement: Add connected protrusions that maintain structural integrity
+        // The key is all blocks must connect - random protrusions violate this
     }
     
     /// <summary>
