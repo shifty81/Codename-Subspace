@@ -117,6 +117,15 @@ public class ProceduralShipGenerator
         // Step 9: Validate ship is functional
         ValidateShip(result, config);
         
+        // Step 10: Validate structural integrity
+        ValidateStructuralIntegrity(result, config);
+        
+        // Step 11: Validate functional requirements
+        ValidateFunctionalRequirements(result, config);
+        
+        // Step 12: Validate aesthetic guidelines
+        ValidateAesthetics(result, config);
+        
         _logger.Info("ShipGenerator", $"Generated ship with {result.Structure.Blocks.Count} blocks, " +
             $"{result.TotalThrust:F0} thrust, {result.TotalPowerGeneration:F0} power, {result.WeaponMountCount} weapons");
         
@@ -923,5 +932,112 @@ public class ProceduralShipGenerator
         {
             _logger.Warning("ShipGenerator", warning);
         }
+    }
+    
+    /// <summary>
+    /// Validate structural integrity with connectivity graph
+    /// </summary>
+    private void ValidateStructuralIntegrity(GeneratedShip ship, ShipGenerationConfig config)
+    {
+        var integritySystem = new StructuralIntegritySystem();
+        var result = integritySystem.ValidateStructure(ship.Structure);
+        
+        if (!result.IsValid)
+        {
+            foreach (var error in result.Errors)
+            {
+                ship.Warnings.Add($"STRUCTURAL INTEGRITY: {error}");
+                _logger.Warning("ShipGenerator", error);
+            }
+            
+            // Attempt to fix disconnected blocks
+            if (result.DisconnectedBlocks.Count > 0)
+            {
+                _logger.Info("ShipGenerator", $"Attempting to connect {result.DisconnectedBlocks.Count} disconnected blocks");
+                var connectingBlocks = integritySystem.SuggestConnectingBlocks(ship.Structure, result);
+                
+                foreach (var block in connectingBlocks.Take(10)) // Limit repairs to avoid bloat
+                {
+                    ship.Structure.AddBlock(block);
+                }
+                
+                // Re-validate after repair
+                var revalidation = integritySystem.ValidateStructure(ship.Structure);
+                if (revalidation.IsValid)
+                {
+                    _logger.Info("ShipGenerator", "Structural integrity restored by adding connecting blocks");
+                }
+            }
+        }
+        else
+        {
+            _logger.Info("ShipGenerator", $"Structural integrity validated - all {ship.Structure.Blocks.Count} blocks connected");
+        }
+        
+        // Store integrity percentage
+        ship.Stats["StructuralIntegrity"] = integritySystem.CalculateStructuralIntegrityPercentage(ship.Structure, result);
+    }
+    
+    /// <summary>
+    /// Validate functional requirements and connectivity
+    /// </summary>
+    private void ValidateFunctionalRequirements(GeneratedShip ship, ShipGenerationConfig config)
+    {
+        var requirementsSystem = new FunctionalRequirementsSystem();
+        var result = requirementsSystem.ValidateRequirements(ship.Structure);
+        
+        if (!result.IsValid)
+        {
+            foreach (var error in result.Errors)
+            {
+                ship.Warnings.Add($"FUNCTIONAL: {error}");
+                _logger.Warning("ShipGenerator", error);
+            }
+        }
+        
+        foreach (var warning in result.Warnings)
+        {
+            ship.Warnings.Add($"FUNCTIONAL: {warning}");
+            _logger.Warning("ShipGenerator", warning);
+        }
+        
+        // Get suggestions for improvements
+        var suggestions = requirementsSystem.GetComponentSuggestions(result);
+        foreach (var suggestion in suggestions.Take(5)) // Limit suggestions
+        {
+            _logger.Info("ShipGenerator", $"Suggestion: {suggestion}");
+        }
+        
+        // Store functional metrics
+        ship.Stats["PowerMargin"] = result.TotalPowerConsumption > 0 
+            ? result.TotalPowerGeneration / result.TotalPowerConsumption 
+            : 0f;
+        ship.Stats["EnginesConnected"] = result.EnginesConnectedToPower ? 1f : 0f;
+    }
+    
+    /// <summary>
+    /// Validate aesthetic guidelines
+    /// </summary>
+    private void ValidateAesthetics(GeneratedShip ship, ShipGenerationConfig config)
+    {
+        var aestheticsSystem = new AestheticGuidelinesSystem();
+        var result = aestheticsSystem.ValidateAesthetics(ship.Structure, config.Style);
+        
+        // Log aesthetic analysis
+        _logger.Info("ShipGenerator", 
+            $"Aesthetics - Symmetry: {result.DetectedSymmetry} ({result.SymmetryScore:F2}), " +
+            $"Balance: {result.BalanceScore:F2}, " +
+            $"Design Language: {(result.HasConsistentDesignLanguage ? "Consistent" : "Inconsistent")}");
+        
+        // Add suggestions as warnings
+        foreach (var suggestion in result.Suggestions.Take(3)) // Limit to top 3 suggestions
+        {
+            ship.Warnings.Add($"AESTHETIC: {suggestion}");
+        }
+        
+        // Store aesthetic metrics
+        ship.Stats["Symmetry"] = result.SymmetryScore;
+        ship.Stats["Balance"] = result.BalanceScore;
+        ship.Stats["DesignLanguage"] = result.HasConsistentDesignLanguage ? 1f : 0f;
     }
 }
