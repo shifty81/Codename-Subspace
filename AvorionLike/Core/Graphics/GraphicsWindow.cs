@@ -7,6 +7,7 @@ using AvorionLike.Core.Voxel;
 using AvorionLike.Core.Physics;
 using AvorionLike.Core.UI;
 using AvorionLike.Core.Input;
+using AvorionLike.Core.DevTools;
 using Silk.NET.OpenGL.Extensions.ImGui;
 
 namespace AvorionLike.Core.Graphics;
@@ -34,6 +35,11 @@ public class GraphicsWindow : IDisposable
     // ImGui-based UI systems (for debug/console ONLY)
     private HUDSystem? _debugHUD;  // Renamed to clarify it's for debug
     private bool _showDebugUI = true;  // Toggle for debug UI - enabled by default for better UX
+    
+    // In-game testing console
+    private InGameTestingConsole? _testingConsole;
+    private string _consoleInput = "";
+    private bool _consoleShiftPressed = false;
     
     private readonly GameEngine _gameEngine;
     private bool _disposed = false;
@@ -81,6 +87,10 @@ public class GraphicsWindow : IDisposable
         {
             _gameHUD.PlayerShipId = shipId;
         }
+        if (_testingConsole != null)
+        {
+            _testingConsole.SetPlayerShip(shipId);
+        }
     }
 
     public void Run()
@@ -125,6 +135,9 @@ public class GraphicsWindow : IDisposable
         _imguiController = new ImGuiController(_gl, _window!, _inputContext);
         _debugHUD = new HUDSystem(_gameEngine);
         
+        // Initialize In-Game Testing Console
+        _testingConsole = new InGameTestingConsole(_gameEngine);
+        
         // Initialize Player Control System
         _playerControlSystem = new PlayerControlSystem(_gameEngine.EntityManager);
 
@@ -164,6 +177,7 @@ public class GraphicsWindow : IDisposable
         Console.WriteLine("    Q/E - Roll");
         Console.WriteLine("    X - Emergency Brake");
         Console.WriteLine("  UI Controls:");
+        Console.WriteLine("    ~ (Tilde) - Toggle In-Game Testing Console");
         Console.WriteLine("    ALT - Show mouse cursor (hold, doesn't affect free-look)");
         Console.WriteLine("    ESC - Pause Menu (press again to close)");
         Console.WriteLine("    F1 - Toggle Debug HUD (enabled by default)");
@@ -330,13 +344,73 @@ public class GraphicsWindow : IDisposable
             _debugHUD.Render();
         }
         
+        // Render In-Game Testing Console if visible
+        if (_testingConsole != null && _testingConsole.IsVisible)
+        {
+            RenderTestingConsole();
+        }
+        
         // Always render ImGui (needed for GameHUD text and debug UI when enabled)
         _imguiController.Render();
+    }
+    
+    private void RenderTestingConsole()
+    {
+        if (_testingConsole == null || _window == null) return;
+        
+        // Create console window using ImGui
+        ImGuiNET.ImGui.SetNextWindowPos(new Vector2(10, _window.Size.Y - 310));
+        ImGuiNET.ImGui.SetNextWindowSize(new Vector2(_window.Size.X - 20, 300));
+        
+        if (ImGuiNET.ImGui.Begin("In-Game Testing Console", ImGuiNET.ImGuiWindowFlags.NoCollapse | ImGuiNET.ImGuiWindowFlags.NoMove | ImGuiNET.ImGuiWindowFlags.NoResize))
+        {
+            // Output history
+            ImGuiNET.ImGui.BeginChild("ConsoleOutput", new Vector2(0, -30), true);
+            foreach (var line in _testingConsole.OutputHistory.TakeLast(20))
+            {
+                ImGuiNET.ImGui.TextUnformatted(line);
+            }
+            // Auto-scroll to bottom
+            if (ImGuiNET.ImGui.GetScrollY() >= ImGuiNET.ImGui.GetScrollMaxY())
+                ImGuiNET.ImGui.SetScrollHereY(1.0f);
+            ImGuiNET.ImGui.EndChild();
+            
+            // Input field
+            ImGuiNET.ImGui.Text($"> {_consoleInput}");
+            ImGuiNET.ImGui.SameLine();
+            ImGuiNET.ImGui.Text("_");
+        }
+        ImGuiNET.ImGui.End();
     }
 
     private void OnKeyDown(IKeyboard keyboard, Key key, int keyCode)
     {
         _keysPressed.Add(key);
+        
+        // Track Shift for console input
+        if (key == Key.ShiftLeft || key == Key.ShiftRight)
+        {
+            _consoleShiftPressed = true;
+        }
+        
+        // Toggle testing console with tilde (~)
+        if (key == Key.GraveAccent)
+        {
+            _testingConsole?.Toggle();
+            if (_testingConsole?.IsVisible == true)
+            {
+                _consoleInput = "";
+                Console.WriteLine("Testing Console opened. Type 'help' for available commands.");
+            }
+            return; // Don't process other inputs when toggling console
+        }
+        
+        // Handle console input when console is visible
+        if (_testingConsole != null && _testingConsole.IsVisible)
+        {
+            HandleConsoleInput(key, keyCode);
+            return; // Don't process other inputs when console is open
+        }
         
         // Pass to player control system
         _playerControlSystem?.OnKeyDown(key);
@@ -385,16 +459,68 @@ public class GraphicsWindow : IDisposable
             }
         }
         
-        // Handle ESC for pause menu
+        // Handle ESC for pause menu (or close console if open)
         if (key == Key.Escape)
         {
-            _gameMenuSystem?.TogglePauseMenu();
+            if (_testingConsole != null && _testingConsole.IsVisible)
+            {
+                _testingConsole.IsVisible = false;
+            }
+            else
+            {
+                _gameMenuSystem?.TogglePauseMenu();
+            }
+        }
+    }
+    
+    private void HandleConsoleInput(Key key, int keyCode)
+    {
+        if (_testingConsole == null) return;
+        
+        if (key == Key.Enter)
+        {
+            // Execute command
+            _testingConsole.ExecuteCommand(_consoleInput);
+            _consoleInput = "";
+        }
+        else if (key == Key.Backspace)
+        {
+            // Remove last character
+            if (_consoleInput.Length > 0)
+            {
+                _consoleInput = _consoleInput.Substring(0, _consoleInput.Length - 1);
+            }
+        }
+        else if (key == Key.Space)
+        {
+            _consoleInput += " ";
+        }
+        else if (keyCode >= 32 && keyCode < 127)
+        {
+            // Add printable character
+            char c = (char)keyCode;
+            // Handle Shift for uppercase
+            if (_consoleShiftPressed)
+            {
+                c = char.ToUpper(c);
+            }
+            else
+            {
+                c = char.ToLower(c);
+            }
+            _consoleInput += c;
         }
     }
 
     private void OnKeyUp(IKeyboard keyboard, Key key, int keyCode)
     {
         _keysPressed.Remove(key);
+        
+        // Track Shift for console input
+        if (key == Key.ShiftLeft || key == Key.ShiftRight)
+        {
+            _consoleShiftPressed = false;
+        }
         
         // Pass to player control system
         _playerControlSystem?.OnKeyUp(key);

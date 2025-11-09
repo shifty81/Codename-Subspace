@@ -34,6 +34,7 @@ dotnet run
 - **C** - Toggle between Camera and Ship Control
 - **WASD + Space/Shift** - Movement/Thrust
 - **Arrow Keys + Q/E** - Ship rotation
+- **~** (Tilde) - In-Game Testing Console ✨ **NEW!**
 - **TAB** - Player Status, **I** - Inventory, **B** - Ship Builder
 - **ESC** - Exit
 
@@ -295,6 +296,7 @@ Codename:Subspace is a powerful game engine designed for creating voxel-based sp
 - **Memory Tracker** - Memory usage monitoring (including GPU when available)
 - **OpenGL Debugger** - Error detection and logging for graphics
 - **Debug Console** - Runtime command console (press `` ` `` key)
+- **In-Game Testing Console** - Comprehensive testing tools (press `~` during gameplay) ✨ **NEW!**
 - **Script Compiler** - Runtime script compilation and hot-reloading
 
 **Key Classes:**
@@ -304,7 +306,17 @@ Codename:Subspace is a powerful game engine designed for creating voxel-based sp
 - `MemoryTracker` - Memory usage monitoring
 - `OpenGLDebugger` - OpenGL error tracking
 - `DebugConsole` - Interactive debug console
+- `InGameTestingConsole` - In-game testing and entity spawning ✨ **NEW!**
 - `ScriptCompiler` - Runtime script execution
+
+**In-Game Testing Console Features:** ✨ **NEW!**
+- 40+ commands for rapid testing and iteration
+- Entity spawning (ships, asteroids, enemies, stations)
+- Combat and resource testing
+- Physics manipulation (teleport, velocity)
+- AI behavior control
+- Real-time system testing without restart
+- See [IN_GAME_TESTING_GUIDE.md](IN_GAME_TESTING_GUIDE.md) for complete documentation
 
 ## Getting Started
 
