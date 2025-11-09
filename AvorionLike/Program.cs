@@ -72,6 +72,7 @@ class Program
             Console.WriteLine("17. System Verification - Test All Systems");
             Console.WriteLine("18. Ship Generation Demo - Procedural Ships & Textures");
             Console.WriteLine("21. Integration Test - Test All Systems Together [NEW! 🧪]");
+            Console.WriteLine("22. Movement & Shape Test - Verify Smooth Movement & Ship Shapes [NEW! ✨]");
             Console.WriteLine();
             Console.WriteLine("--- INFO ---");
             Console.WriteLine("15. About / Version Info");
@@ -145,6 +146,9 @@ class Program
                     break;
                 case "21":
                     RunIntegrationTest();
+                    break;
+                case "22":
+                    RunMovementAndShapeTest();
                     break;
                 case "0":
                     _running = false;
@@ -2320,6 +2324,19 @@ class Program
         {
             Console.WriteLine("\n⚠️  Some tests failed. Check the output above for details.");
         }
+        
+        Console.WriteLine("\nPress any key to return to main menu...");
+        Console.ReadKey();
+    }
+
+    static void RunMovementAndShapeTest()
+    {
+        Console.WriteLine("\n=== Movement & Shape Test ===");
+        Console.WriteLine("Testing physics interpolation and improved ship generation...");
+        Console.WriteLine();
+        
+        var test = new MovementAndShapeTests();
+        test.RunAllTests();
         
         Console.WriteLine("\nPress any key to return to main menu...");
         Console.ReadKey();
