@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added null check in SubsystemManagementUI for safer entity operations
 - Marked unused configuration fields with pragma suppressions for future feature development
 - Application header now displays version information dynamically
+- Extracted energy regeneration rate as named constant in CombatSystem for better maintainability
 
 ### Fixed
 - Fixed 3 null reference warnings in SystemVerification.cs by adding null-forgiving operators after Assert null checks (2025-11-08)

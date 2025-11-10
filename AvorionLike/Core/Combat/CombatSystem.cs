@@ -85,6 +85,11 @@ public class CombatSystem : SystemBase
 {
     private readonly EntityManager _entityManager;
     private readonly List<Projectile> _activeProjectiles = new();
+    
+    /// <summary>
+    /// Default energy regeneration rate (energy per second)
+    /// </summary>
+    private const float DefaultEnergyRegenRate = 20f;
 
     public CombatSystem(EntityManager entityManager) : base("CombatSystem")
     {
@@ -114,7 +119,7 @@ public class CombatSystem : SystemBase
             if (combat.CurrentEnergy < combat.MaxEnergy)
             {
                 combat.CurrentEnergy = Math.Min(combat.MaxEnergy,
-                    combat.CurrentEnergy + 20f * deltaTime); // 20 energy per second
+                    combat.CurrentEnergy + DefaultEnergyRegenRate * deltaTime);
             }
             
             // Auto-targeting turrets
