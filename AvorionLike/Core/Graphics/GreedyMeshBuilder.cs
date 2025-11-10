@@ -86,6 +86,7 @@ public class GreedyMeshBuilder
         Vector3 pos = block.Position;
         Vector3 size = block.Size;
         uint color = block.ColorRGB;
+        float blockType = (float)block.BlockType; // Convert BlockType enum to float
         
         // Check each direction for neighbors
         Vector3[] directions = new[]
@@ -106,7 +107,7 @@ public class GreedyMeshBuilder
             // Only generate face if no neighbor in this direction
             if (!blockLookup.ContainsKey(neighborKey))
             {
-                AddFace(mesh, pos, size, i, color);
+                AddFace(mesh, pos, size, i, color, blockType);
             }
         }
     }
@@ -114,7 +115,7 @@ public class GreedyMeshBuilder
     /// <summary>
     /// Add a single face to the mesh
     /// </summary>
-    private static void AddFace(OptimizedMesh mesh, Vector3 pos, Vector3 size, int faceIndex, uint color)
+    private static void AddFace(OptimizedMesh mesh, Vector3 pos, Vector3 size, int faceIndex, uint color, float blockType)
     {
         Vector3 halfSize = size / 2.0f;
         int vertexStart = mesh.Vertices.Count;
@@ -175,6 +176,7 @@ public class GreedyMeshBuilder
             mesh.Vertices.Add(vertex);
             mesh.Normals.Add(normal);
             mesh.Colors.Add(color);
+            mesh.BlockTypes.Add(blockType); // Store block type for each vertex
         }
         
         // Add indices (two triangles per face)
@@ -572,6 +574,7 @@ public class OptimizedMesh
     public List<Vector3> Vertices { get; set; } = new();
     public List<Vector3> Normals { get; set; } = new();
     public List<uint> Colors { get; set; } = new();
+    public List<float> BlockTypes { get; set; } = new(); // Block type for each vertex (0=Hull, 1=Armor, 2=Engine, etc.)
     public List<int> Indices { get; set; } = new();
     
     public int VertexCount => Vertices.Count;
