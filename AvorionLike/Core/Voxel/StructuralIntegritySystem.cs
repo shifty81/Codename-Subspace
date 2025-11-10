@@ -151,16 +151,26 @@ public class StructuralIntegritySystem
 
     /// <summary>
     /// Check if two blocks are adjacent (touching or close enough)
+    /// Increased tolerance for procedurally generated ships with spacing
     /// </summary>
     private bool AreBlocksAdjacent(VoxelBlock a, VoxelBlock b)
     {
-        // Blocks are adjacent if they intersect or are within a small distance
-        const float adjacencyTolerance = 0.1f;
+        // Blocks are adjacent if they intersect or are within an acceptable distance
+        // Increased tolerance to account for block spacing in procedural generation
+        const float adjacencyTolerance = 4.5f;  // Increased from 0.1f to handle block spacing
 
-        // Calculate the minimum distance between the blocks
-        float dx = Math.Max(0, Math.Max(a.Position.X - (b.Position.X + b.Size.X), b.Position.X - (a.Position.X + a.Size.X)));
-        float dy = Math.Max(0, Math.Max(a.Position.Y - (b.Position.Y + b.Size.Y), b.Position.Y - (a.Position.Y + a.Size.Y)));
-        float dz = Math.Max(0, Math.Max(a.Position.Z - (b.Position.Z + b.Size.Z), b.Position.Z - (a.Position.Z + a.Size.Z)));
+        // Calculate the minimum distance between the block boundaries
+        float dx = Math.Max(0, Math.Max(
+            a.Position.X - b.Size.X / 2 - (b.Position.X + b.Size.X / 2),
+            b.Position.X - a.Size.X / 2 - (a.Position.X + a.Size.X / 2)));
+        
+        float dy = Math.Max(0, Math.Max(
+            a.Position.Y - b.Size.Y / 2 - (b.Position.Y + b.Size.Y / 2),
+            b.Position.Y - a.Size.Y / 2 - (a.Position.Y + a.Size.Y / 2)));
+        
+        float dz = Math.Max(0, Math.Max(
+            a.Position.Z - b.Size.Z / 2 - (b.Position.Z + b.Size.Z / 2),
+            b.Position.Z - a.Size.Z / 2 - (a.Position.Z + a.Size.Z / 2)));
 
         float distance = MathF.Sqrt(dx * dx + dy * dy + dz * dz);
 

@@ -142,6 +142,7 @@ public class MovementAndShapeTests
 
     /// <summary>
     /// Test that different ship types generate varied shapes
+    /// Verify block counts are in viable range (50-150 blocks)
     /// </summary>
     private bool TestShipShapeVariety()
     {
@@ -186,9 +187,32 @@ public class MovementAndShapeTests
                 return false;
             }
 
-            Console.WriteLine($"  ✓ Blocky ship: {blockyShip.Structure.Blocks.Count} blocks");
-            Console.WriteLine($"  ✓ Angular ship: {angularShip.Structure.Blocks.Count} blocks");
-            Console.WriteLine($"  ✓ Sleek ship: {sleekShip.Structure.Blocks.Count} blocks");
+            // Verify block counts are in viable range (50-150)
+            const int minBlocks = 50;
+            const int maxBlocks = 150;
+            
+            if (blockyShip.Structure.Blocks.Count < minBlocks || blockyShip.Structure.Blocks.Count > maxBlocks)
+            {
+                Console.WriteLine($"  ✗ Blocky ship block count out of range: {blockyShip.Structure.Blocks.Count} (expected {minBlocks}-{maxBlocks})");
+                return false;
+            }
+            
+            if (angularShip.Structure.Blocks.Count < minBlocks || angularShip.Structure.Blocks.Count > maxBlocks)
+            {
+                Console.WriteLine($"  ✗ Angular ship block count out of range: {angularShip.Structure.Blocks.Count} (expected {minBlocks}-{maxBlocks})");
+                return false;
+            }
+            
+            if (sleekShip.Structure.Blocks.Count < minBlocks || sleekShip.Structure.Blocks.Count > maxBlocks)
+            {
+                Console.WriteLine($"  ✗ Sleek ship block count out of range: {sleekShip.Structure.Blocks.Count} (expected {minBlocks}-{maxBlocks})");
+                return false;
+            }
+
+            Console.WriteLine($"  ✓ Blocky ship: {blockyShip.Structure.Blocks.Count} blocks (industrial/utilitarian)");
+            Console.WriteLine($"  ✓ Angular ship: {angularShip.Structure.Blocks.Count} blocks (military fighter with wings)");
+            Console.WriteLine($"  ✓ Sleek ship: {sleekShip.Structure.Blocks.Count} blocks (streamlined needle design)");
+            Console.WriteLine($"  ✓ All ships in viable range ({minBlocks}-{maxBlocks} blocks)");
 
             return true;
         }
