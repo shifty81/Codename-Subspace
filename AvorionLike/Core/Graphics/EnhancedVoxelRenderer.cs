@@ -21,6 +21,21 @@ public class EnhancedVoxelRenderer : IDisposable
 
     // Cube vertices with normals and texture coordinates
     private readonly float[] _cubeVertices = GenerateCubeVertices();
+    
+    // Cache for optimized meshes per structure
+    private readonly Dictionary<Guid, CachedMesh> _meshCache = new();
+    
+    /// <summary>
+    /// Represents a cached mesh for a voxel structure
+    /// </summary>
+    private class CachedMesh
+    {
+        public uint VAO { get; set; }
+        public uint VertexVBO { get; set; }
+        public uint IndexEBO { get; set; }
+        public int IndexCount { get; set; }
+        public int BlockCount { get; set; }
+    }
 
     public EnhancedVoxelRenderer(GL gl)
     {
@@ -92,11 +107,11 @@ public class EnhancedVoxelRenderer : IDisposable
 #version 330 core
 layout (location = 0) in vec3 aPosition;
 layout (location = 1) in vec3 aNormal;
-layout (location = 2) in vec2 aTexCoord;
+layout (location = 2) in vec4 aColor;
 
 out vec3 FragPos;
 out vec3 Normal;
-out vec2 TexCoord;
+out vec4 VertexColor;
 
 uniform mat4 model;
 uniform mat4 view;
@@ -107,7 +122,7 @@ void main()
     vec4 worldPos = model * vec4(aPosition, 1.0);
     FragPos = worldPos.xyz;
     Normal = mat3(transpose(inverse(model))) * aNormal;
-    TexCoord = aTexCoord;
+    VertexColor = aColor;
     gl_Position = projection * view * worldPos;
 }
 ";
@@ -118,7 +133,7 @@ out vec4 FragColor;
 
 in vec3 FragPos;
 in vec3 Normal;
-in vec2 TexCoord;
+in vec4 VertexColor;
 
 // Material properties
 uniform vec3 baseColor;
@@ -183,9 +198,12 @@ void main()
     vec3 N = normalize(Normal);
     vec3 V = normalize(viewPos - FragPos);
 
+    // Use vertex color as the base color
+    vec3 blockColor = VertexColor.rgb;
+
     // Fresnel for metals vs dielectrics
     vec3 F0 = vec3(0.04);
-    F0 = mix(F0, baseColor, metallic);
+    F0 = mix(F0, blockColor, metallic);
 
     vec3 Lo = vec3(0.0);
 
@@ -212,11 +230,11 @@ void main()
         kD *= 1.0 - metallic;
 
         float NdotL = max(dot(N, L), 0.0);
-        Lo += (kD * baseColor / PI + specular) * radiance * NdotL;
+        Lo += (kD * blockColor / PI + specular) * radiance * NdotL;
     }
 
     // Add ambient lighting
-    vec3 ambient = ambientLight * baseColor;
+    vec3 ambient = ambientLight * blockColor;
     
     // Add emissive
     vec3 emissive = emissiveColor * emissiveStrength;
@@ -236,12 +254,11 @@ void main()
         _shader = new Shader(_gl, vertexShader, fragmentShader);
     }
 
-    public void RenderVoxelStructure(VoxelStructureComponent structure, Camera camera, Vector3 entityPosition, float aspectRatio)
+    public unsafe void RenderVoxelStructure(VoxelStructureComponent structure, Camera camera, Vector3 entityPosition, float aspectRatio)
     {
         if (_shader == null || _materialManager == null) return;
 
         _shader.Use();
-        _gl.BindVertexArray(_vao);
 
         // Set view and projection matrices
         _shader.SetMatrix4("view", camera.GetViewMatrix());
@@ -256,29 +273,144 @@ void main()
             _shader.SetFloat($"lightIntensity[{i}]", _lights[i].Intensity);
         }
 
-        // Render each voxel block
-        foreach (var block in structure.Blocks)
+        // Get or create cached mesh for this structure
+        CachedMesh? cachedMesh = GetOrCreateMesh(structure);
+        if (cachedMesh == null)
+            return;
+
+        // Bind the cached mesh VAO
+        _gl.BindVertexArray(cachedMesh.VAO);
+
+        // Create model matrix for the entire structure (positioned at entity position)
+        var model = Matrix4x4.CreateTranslation(entityPosition);
+        _shader.SetMatrix4("model", model);
+
+        // Use average material properties for the whole structure
+        // In a more advanced version, we could render by material type in batches
+        var material = _materialManager.GetMaterial("Iron"); // Default material
+        _shader.SetVector3("baseColor", material.BaseColor);
+        _shader.SetVector3("emissiveColor", material.EmissiveColor);
+        _shader.SetFloat("metallic", material.Metallic);
+        _shader.SetFloat("roughness", material.Roughness);
+        _shader.SetFloat("emissiveStrength", material.EmissiveStrength);
+
+        // Draw the optimized mesh
+        _gl.DrawElements(PrimitiveType.Triangles, (uint)cachedMesh.IndexCount, DrawElementsType.UnsignedInt, (void*)0);
+
+        _gl.BindVertexArray(0);
+    }
+    
+    /// <summary>
+    /// Get or create an optimized mesh for a voxel structure
+    /// </summary>
+    private unsafe CachedMesh? GetOrCreateMesh(VoxelStructureComponent structure)
+    {
+        // Check if we have a cached mesh and if the block count matches
+        if (_meshCache.TryGetValue(structure.EntityId, out var cached) && 
+            cached.BlockCount == structure.Blocks.Count)
         {
-            // Get material for this block
-            var material = _materialManager.GetMaterial(block.MaterialType);
+            return cached;
+        }
 
-            // Create model matrix for this block
-            var model = Matrix4x4.CreateScale(block.Size) * 
-                       Matrix4x4.CreateTranslation(entityPosition + block.Position);
-            
-            _shader.SetMatrix4("model", model);
-            
-            // Set material properties
-            _shader.SetVector3("baseColor", material.BaseColor);
-            _shader.SetVector3("emissiveColor", material.EmissiveColor);
-            _shader.SetFloat("metallic", material.Metallic);
-            _shader.SetFloat("roughness", material.Roughness);
-            _shader.SetFloat("emissiveStrength", material.EmissiveStrength);
+        // If cached mesh exists but is outdated, delete it
+        if (cached != null)
+        {
+            DeleteMesh(cached);
+            _meshCache.Remove(structure.EntityId);
+        }
 
-            _gl.DrawArrays(PrimitiveType.Triangles, 0, 36);
+        // Build optimized mesh using face culling
+        var optimizedMesh = GreedyMeshBuilder.BuildMesh(structure.Blocks);
+        
+        if (optimizedMesh.VertexCount == 0)
+            return null;
+
+        // Create VAO and VBOs
+        uint vao = _gl.GenVertexArray();
+        _gl.BindVertexArray(vao);
+
+        // Create vertex buffer (interleaved: position, normal, color)
+        uint vbo = _gl.GenBuffer();
+        _gl.BindBuffer(BufferTargetARB.ArrayBuffer, vbo);
+        
+        // Prepare interleaved vertex data
+        int vertexCount = optimizedMesh.VertexCount;
+        float[] vertexData = new float[vertexCount * 10]; // 3 pos + 3 normal + 4 color (RGBA)
+        
+        for (int i = 0; i < vertexCount; i++)
+        {
+            int offset = i * 10;
+            
+            // Position
+            vertexData[offset + 0] = optimizedMesh.Vertices[i].X;
+            vertexData[offset + 1] = optimizedMesh.Vertices[i].Y;
+            vertexData[offset + 2] = optimizedMesh.Vertices[i].Z;
+            
+            // Normal
+            vertexData[offset + 3] = optimizedMesh.Normals[i].X;
+            vertexData[offset + 4] = optimizedMesh.Normals[i].Y;
+            vertexData[offset + 5] = optimizedMesh.Normals[i].Z;
+            
+            // Color (convert from uint RGB to RGBA floats)
+            uint color = optimizedMesh.Colors[i];
+            vertexData[offset + 6] = ((color >> 16) & 0xFF) / 255.0f; // R
+            vertexData[offset + 7] = ((color >> 8) & 0xFF) / 255.0f;  // G
+            vertexData[offset + 8] = (color & 0xFF) / 255.0f;         // B
+            vertexData[offset + 9] = 1.0f;                             // A
+        }
+        
+        fixed (float* v = &vertexData[0])
+        {
+            _gl.BufferData(BufferTargetARB.ArrayBuffer, (nuint)(vertexData.Length * sizeof(float)), v, BufferUsageARB.StaticDraw);
+        }
+
+        // Position attribute (location = 0)
+        _gl.VertexAttribPointer(0, 3, VertexAttribPointerType.Float, false, 10 * sizeof(float), (void*)0);
+        _gl.EnableVertexAttribArray(0);
+
+        // Normal attribute (location = 1)
+        _gl.VertexAttribPointer(1, 3, VertexAttribPointerType.Float, false, 10 * sizeof(float), (void*)(3 * sizeof(float)));
+        _gl.EnableVertexAttribArray(1);
+
+        // Color attribute (location = 2) - reusing texture coordinate attribute
+        _gl.VertexAttribPointer(2, 4, VertexAttribPointerType.Float, false, 10 * sizeof(float), (void*)(6 * sizeof(float)));
+        _gl.EnableVertexAttribArray(2);
+
+        // Create index buffer
+        uint ebo = _gl.GenBuffer();
+        _gl.BindBuffer(BufferTargetARB.ElementArrayBuffer, ebo);
+        
+        int[] indices = optimizedMesh.Indices.ToArray();
+        fixed (int* idx = &indices[0])
+        {
+            _gl.BufferData(BufferTargetARB.ElementArrayBuffer, (nuint)(indices.Length * sizeof(int)), idx, BufferUsageARB.StaticDraw);
         }
 
         _gl.BindVertexArray(0);
+
+        // Cache the mesh
+        var newCached = new CachedMesh
+        {
+            VAO = vao,
+            VertexVBO = vbo,
+            IndexEBO = ebo,
+            IndexCount = optimizedMesh.IndexCount,
+            BlockCount = structure.Blocks.Count
+        };
+        
+        _meshCache[structure.EntityId] = newCached;
+        
+        return newCached;
+    }
+    
+    /// <summary>
+    /// Delete a cached mesh and free GPU resources
+    /// </summary>
+    private void DeleteMesh(CachedMesh mesh)
+    {
+        _gl.DeleteBuffer(mesh.VertexVBO);
+        _gl.DeleteBuffer(mesh.IndexEBO);
+        _gl.DeleteVertexArray(mesh.VAO);
     }
 
     private static float[] GenerateCubeVertices()
@@ -340,6 +472,13 @@ void main()
     {
         if (!_disposed)
         {
+            // Clean up cached meshes
+            foreach (var cached in _meshCache.Values)
+            {
+                DeleteMesh(cached);
+            }
+            _meshCache.Clear();
+            
             _gl.DeleteBuffer(_vbo);
             _gl.DeleteVertexArray(_vao);
             _shader?.Dispose();
