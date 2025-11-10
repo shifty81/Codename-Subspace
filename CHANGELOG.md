@@ -25,6 +25,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Fixed 3 null reference warnings in SystemVerification.cs by adding null-forgiving operators after Assert null checks (2025-11-08)
 
+### Performance
+- Enabled OpenGL face culling for voxel rendering (~50% fewer fragments to render) (2025-11-10)
+
 ## [0.9.0] - 2025-11-05
 
 ### Added - Player UI & Full Gameplay Experience
