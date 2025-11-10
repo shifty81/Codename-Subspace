@@ -76,6 +76,7 @@ class Program
             Console.WriteLine("22. Movement & Shape Test - Verify Smooth Movement & Ship Shapes [NEW! ✨]");
             Console.WriteLine("23. Test Ship Connectivity - Verify No Floating Blocks [NEW! 🔧]");
             Console.WriteLine("24. Test Ship Shape Variety - Verify Different Hull Shapes [NEW! 🎨]");
+            Console.WriteLine("25. Ship Showcase - Generate 20 Ships for Selection [NEW! 🚀⭐]");
             Console.WriteLine();
             Console.WriteLine("--- INFO ---");
             Console.WriteLine("15. About / Version Info");
@@ -158,6 +159,9 @@ class Program
                     break;
                 case "24":
                     TestShipShapes.Run();
+                    break;
+                case "25":
+                    RunShipShowcase();
                     break;
                 case "0":
                     _running = false;
@@ -2327,6 +2331,79 @@ class Program
         
         Console.WriteLine("\nPress any key to return to main menu...");
         Console.ReadKey();
+    }
+
+    static void RunShipShowcase()
+    {
+        Console.WriteLine("\n=== SHIP SHOWCASE - 20 Procedural Ships ===");
+        Console.WriteLine("This demo generates 20 different ships with varied designs");
+        Console.WriteLine("so you can pick which generation you like best!\n");
+        
+        try
+        {
+            var showcase = new ShipShowcaseExample(_gameEngine!.EntityManager);
+            var ships = showcase.GenerateShowcase(Environment.TickCount);
+            
+            // Interactive menu
+            bool done = false;
+            while (!done)
+            {
+                Console.WriteLine("\n=== SHOWCASE MENU ===");
+                Console.WriteLine("1. View Ship Details (enter ship number 1-20)");
+                Console.WriteLine("2. View Summary (all ships)");
+                Console.WriteLine("3. Launch 3D Viewer (see all ships in scene)");
+                Console.WriteLine("0. Return to Main Menu");
+                Console.Write("\nSelect option: ");
+                
+                var choice = Console.ReadLine();
+                
+                if (choice == "0")
+                {
+                    done = true;
+                }
+                else if (choice == "2")
+                {
+                    showcase.PrintShowcaseSummary();
+                }
+                else if (choice == "3")
+                {
+                    Console.WriteLine("\nLaunching 3D viewer with all 20 ships...");
+                    Console.WriteLine("Use camera controls to inspect each ship.");
+                    Console.WriteLine("Ship numbers are displayed above each vessel.\n");
+                    
+                    try
+                    {
+                        using var graphicsWindow = new GraphicsWindow(_gameEngine!);
+                        // Set first ship as player view point
+                        if (ships.Count > 0)
+                        {
+                            graphicsWindow.SetPlayerShip(ships[0].EntityId);
+                        }
+                        graphicsWindow.Run();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error running 3D viewer: {ex.Message}");
+                        Console.WriteLine("Graphics may not be available on this system.");
+                    }
+                }
+                else if (int.TryParse(choice, out int shipNum) && shipNum >= 1 && shipNum <= 20)
+                {
+                    showcase.PrintShipDetails(shipNum);
+                }
+                else
+                {
+                    Console.WriteLine("Invalid option!");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"\n✗ Showcase error: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            Console.ResetColor();
+        }
     }
 
     static void RunMovementAndShapeTest()
