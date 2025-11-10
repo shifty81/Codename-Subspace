@@ -31,6 +31,7 @@ public class GraphicsWindow : IDisposable
     private CustomUIRenderer? _customUIRenderer;
     private GameHUD? _gameHUD;
     private GameMenuSystem? _gameMenuSystem;
+    private GalaxyMapUI? _galaxyMapUI;
     
     // ImGui-based UI systems (for debug/console ONLY)
     private HUDSystem? _debugHUD;  // Renamed to clarify it's for debug
@@ -91,6 +92,10 @@ public class GraphicsWindow : IDisposable
         {
             _testingConsole.SetPlayerShip(shipId);
         }
+        if (_galaxyMapUI != null)
+        {
+            _galaxyMapUI.PlayerShipId = shipId;
+        }
     }
 
     public void Run()
@@ -134,6 +139,9 @@ public class GraphicsWindow : IDisposable
         // Initialize ImGui for DEBUG/CONSOLE ONLY using Silk.NET extension
         _imguiController = new ImGuiController(_gl, _window!, _inputContext);
         _debugHUD = new HUDSystem(_gameEngine);
+        
+        // Initialize Galaxy Map UI (using default seed 0 for consistent generation)
+        _galaxyMapUI = new GalaxyMapUI(_gameEngine.EntityManager, _gameEngine.NavigationSystem, 0);
         
         // Initialize In-Game Testing Console
         _testingConsole = new InGameTestingConsole(_gameEngine);
@@ -179,6 +187,7 @@ public class GraphicsWindow : IDisposable
         Console.WriteLine("    Q/E - Roll");
         Console.WriteLine("    X - Emergency Brake");
         Console.WriteLine("  UI Controls:");
+        Console.WriteLine("    M - Toggle Galaxy Map");
         Console.WriteLine("    ~ (Tilde) - Toggle In-Game Testing Console");
         Console.WriteLine("    ALT - Show mouse cursor (hold, doesn't affect free-look)");
         Console.WriteLine("    ESC - Pause Menu (press again to close)");
@@ -223,13 +232,20 @@ public class GraphicsWindow : IDisposable
         
         // Determine if menu is open
         bool menuOpen = _gameMenuSystem.IsMenuOpen;
+        bool galaxyMapOpen = _galaxyMapUI?.IsOpen ?? false;
+        
+        // Handle galaxy map input
+        if (_galaxyMapUI != null)
+        {
+            _galaxyMapUI.HandleInput();
+        }
         
         // Update mouse cursor mode based on state
         foreach (var mouse in _inputContext.Mice)
         {
-            if (menuOpen || _altKeyHeld)
+            if (menuOpen || galaxyMapOpen || _altKeyHeld)
             {
-                // Show cursor when menu is open or ALT is held
+                // Show cursor when menu is open, galaxy map is open, or ALT is held
                 if (mouse.Cursor.CursorMode != CursorMode.Normal)
                 {
                     mouse.Cursor.CursorMode = CursorMode.Normal;
@@ -249,7 +265,7 @@ public class GraphicsWindow : IDisposable
         }
 
         // Process keyboard input
-        bool anyUIOpen = menuOpen;
+        bool anyUIOpen = menuOpen || galaxyMapOpen;
         
         if (!io.WantCaptureKeyboard && !anyUIOpen)
         {
@@ -356,6 +372,12 @@ public class GraphicsWindow : IDisposable
         if (_testingConsole != null && _testingConsole.IsVisible)
         {
             RenderTestingConsole();
+        }
+        
+        // Render Galaxy Map if open
+        if (_galaxyMapUI != null && _galaxyMapUI.IsOpen)
+        {
+            _galaxyMapUI.Render();
         }
         
         // Always render ImGui (needed for GameHUD text and debug UI when enabled)

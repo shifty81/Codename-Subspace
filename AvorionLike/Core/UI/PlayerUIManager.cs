@@ -5,6 +5,7 @@ using AvorionLike.Core.Physics;
 using AvorionLike.Core.RPG;
 using AvorionLike.Core.Resources;
 using AvorionLike.Core.Combat;
+using AvorionLike.Core.Navigation;
 
 namespace AvorionLike.Core.UI;
 
@@ -23,6 +24,7 @@ public class PlayerUIManager
     private readonly CrewManagementUI _crewManagementUI;
     private readonly SubsystemManagementUI _subsystemManagementUI;
     private readonly FleetMissionUI _fleetMissionUI;
+    private readonly GalaxyMapUI _galaxyMapUI;
     
     private Guid? _playerShipId;
     private bool _showPlayerStatus = true;
@@ -30,12 +32,17 @@ public class PlayerUIManager
     
     public bool IsAnyPanelOpen => _menuSystem.IsMenuOpen || _inventoryUI.IsOpen || 
                                    _shipBuilderUI.IsOpen || _crewManagementUI.IsOpen ||
-                                   _subsystemManagementUI.IsOpen || _fleetMissionUI.IsOpen;
+                                   _subsystemManagementUI.IsOpen || _fleetMissionUI.IsOpen ||
+                                   _galaxyMapUI.IsOpen;
     
     public Guid? PlayerShipId
     {
         get => _playerShipId;
-        set => _playerShipId = value;
+        set
+        {
+            _playerShipId = value;
+            _galaxyMapUI.PlayerShipId = value;
+        }
     }
     
     public PlayerUIManager(
@@ -47,7 +54,8 @@ public class PlayerUIManager
         FuturisticHUD futuristicHUD,
         CrewManagementUI crewManagementUI,
         SubsystemManagementUI subsystemManagementUI,
-        FleetMissionUI fleetMissionUI)
+        FleetMissionUI fleetMissionUI,
+        GalaxyMapUI galaxyMapUI)
     {
         _gameEngine = gameEngine;
         _hudSystem = hudSystem;
@@ -58,6 +66,7 @@ public class PlayerUIManager
         _crewManagementUI = crewManagementUI;
         _subsystemManagementUI = subsystemManagementUI;
         _fleetMissionUI = fleetMissionUI;
+        _galaxyMapUI = galaxyMapUI;
     }
     
     public void HandleInput()
@@ -85,6 +94,7 @@ public class PlayerUIManager
         _crewManagementUI.HandleInput();
         _subsystemManagementUI.HandleInput();
         _fleetMissionUI.HandleInput();
+        _galaxyMapUI.HandleInput();
     }
     
     public void Render()
@@ -118,6 +128,7 @@ public class PlayerUIManager
             _crewManagementUI.Render();
             _subsystemManagementUI.Render();
             _fleetMissionUI.Render();
+            _galaxyMapUI.Render();
         }
     }
     

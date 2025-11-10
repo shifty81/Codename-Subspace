@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Galaxy Map UI** - Interactive navigation and exploration interface (2025-11-10)
+  - 2D sector grid visualization with tech level coloring (Iron to Avorion)
+  - Zoom (0.2x to 5x) and pan controls for galaxy exploration
+  - Z-slice navigation for 3D galaxy layers
+  - Sector selection with detailed information panel
+  - Real-time hyperdrive jump initiation and status tracking
+  - Jump range visualization with circle overlay
+  - Filters for stations, asteroids, ships, and jump range
+  - Procedural sector generation with caching system
+  - Current location indicator and hover tooltips
+  - Right-click to jump, M key to toggle map
+  - Integration with NavigationSystem and HyperdriveComponent
+  - Comprehensive GALAXY_MAP_GUIDE.md documentation
 - Version tracking system with VersionInfo class
 - "About / Version Info" menu option (option 15) in main menu
 - System requirements display in version info
