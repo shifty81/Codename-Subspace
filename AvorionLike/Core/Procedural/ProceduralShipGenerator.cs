@@ -524,38 +524,34 @@ public class ProceduralShipGenerator
     /// <summary>
     /// Generate cylindrical hull (cargo/trading ships)
     /// Enhanced with cargo sections and distinctive industrial appearance
+    /// FIXED: Hollow shell design with consistent spacing
     /// </summary>
     private void GenerateCylindricalHull(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config)
     {
         float radius = Math.Min(dimensions.X, dimensions.Y) / 2;
+        float blockSize = 2f;
         
-        // Main cylindrical hull section
-        for (float z = -dimensions.Z / 2; z < dimensions.Z / 2; z += 2)
+        // Main cylindrical hull section - SPARSE SHELL only (not filled)
+        for (float z = -dimensions.Z / 2; z < dimensions.Z / 2; z += 4)  // Sparse Z spacing
         {
-            for (float x = -radius; x <= radius; x += 2)
+            // Create circular shell using angle sampling
+            for (float angle = 0; angle < 360; angle += 20)  // 18 blocks per ring (360/20)
             {
-                for (float y = -radius; y <= radius; y += 2)
-                {
-                    // Check if this position is on or near the surface of the cylinder
-                    float distance = MathF.Sqrt(x * x + y * y);
-                    
-                    // Place blocks on the outer shell (within a thickness of ~3 units)
-                    if (distance >= radius - 3 && distance <= radius + 1)
-                    {
-                        var block = new VoxelBlock(
-                            new Vector3(x, y, z),
-                            new Vector3(2, 2, 2),
-                            config.Material,
-                            BlockType.Hull
-                        );
-                        ship.Structure.AddBlock(block);
-                    }
-                }
+                float rad = angle * MathF.PI / 180f;
+                float x = radius * MathF.Cos(rad);
+                float y = radius * MathF.Sin(rad);
+                
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(x, y, z),
+                    new Vector3(blockSize, blockSize, blockSize),
+                    config.Material,
+                    BlockType.Hull
+                ));
             }
         }
         
-        // Add cargo container-like sections along the length
-        int numContainers = 3;
+        // Add cargo container-like sections along the length (smaller, less dense)
+        int numContainers = 2;  // Reduced from 3
         float containerSpacing = dimensions.Z / (numContainers + 1);
         
         for (int i = 1; i <= numContainers; i++)
@@ -563,73 +559,74 @@ public class ProceduralShipGenerator
             float zPos = -dimensions.Z / 2 + i * containerSpacing;
             float containerRadius = radius * 1.2f;
             
-            // Create bulging cargo sections
-            for (float z = zPos - 4; z <= zPos + 4; z += 2)
+            // Create bulging cargo sections - sparse
+            for (float z = zPos - 4; z <= zPos + 4; z += 4)  // Only 3 rings
             {
-                for (float angle = 0; angle < 360; angle += 30)
+                for (float angle = 0; angle < 360; angle += 30)  // 12 blocks per ring
                 {
                     float rad = angle * MathF.PI / 180f;
                     float x = containerRadius * MathF.Cos(rad);
                     float y = containerRadius * MathF.Sin(rad);
                     
-                    var block = new VoxelBlock(
+                    ship.Structure.AddBlock(new VoxelBlock(
                         new Vector3(x, y, z),
-                        new Vector3(2, 2, 2),
+                        new Vector3(blockSize, blockSize, blockSize),
                         config.Material,
                         BlockType.Hull
-                    );
-                    ship.Structure.AddBlock(block);
+                    ));
                 }
             }
         }
         
-        // Add end caps - fill the circular ends completely for connectivity
-        for (float x = -radius; x <= radius; x += 2)
+        // Add end caps - SPARSE circular ends for connectivity
+        for (float angle = 0; angle < 360; angle += 30)
         {
-            for (float y = -radius; y <= radius; y += 2)
+            float rad = angle * MathF.PI / 180f;
+            
+            // Front cap - tapered
+            for (float r = 0; r < radius; r += radius / 2)
             {
-                if (x * x + y * y <= radius * radius)
-                {
-                    // Front cap - tapered
-                    var frontBlock = new VoxelBlock(
-                        new Vector3(x * 0.8f, y * 0.8f, dimensions.Z / 2 - 2),
-                        new Vector3(2, 2, 2),
-                        config.Material,
-                        BlockType.Hull
-                    );
-                    ship.Structure.AddBlock(frontBlock);
-                    
-                    // Back cap - full size
-                    var backBlock = new VoxelBlock(
-                        new Vector3(x, y, -dimensions.Z / 2),
-                        new Vector3(2, 2, 2),
-                        config.Material,
-                        BlockType.Hull
-                    );
-                    ship.Structure.AddBlock(backBlock);
-                }
+                float x = r * 0.8f * MathF.Cos(rad);
+                float y = r * 0.8f * MathF.Sin(rad);
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(x, y, dimensions.Z / 2 - 2),
+                    new Vector3(blockSize, blockSize, blockSize),
+                    config.Material,
+                    BlockType.Hull
+                ));
+            }
+            
+            // Back cap - full size
+            for (float r = 0; r < radius; r += radius / 2)
+            {
+                float x = r * MathF.Cos(rad);
+                float y = r * MathF.Sin(rad);
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(x, y, -dimensions.Z / 2),
+                    new Vector3(blockSize, blockSize, blockSize),
+                    config.Material,
+                    BlockType.Hull
+                ));
             }
         }
         
-        // Add industrial struts/supports with proper connectivity
+        // Add longitudinal support struts - 4 main beams
         if (dimensions.Z > 20)
         {
-            for (float z = -dimensions.Z / 2 + 4; z < dimensions.Z / 2 - 4; z += 6)  // Changed from 8 to 6 for better connectivity
+            for (float angle = 0; angle < 360; angle += 90)  // 4 struts at 90 degrees
             {
-                // Add structural support rings
-                for (float angle = 0; angle < 360; angle += 45)
+                float rad = angle * MathF.PI / 180f;
+                float x = (radius + 2) * MathF.Cos(rad);
+                float y = (radius + 2) * MathF.Sin(rad);
+                
+                for (float z = -dimensions.Z / 2 + 4; z < dimensions.Z / 2 - 4; z += 4)
                 {
-                    float rad = angle * MathF.PI / 180f;
-                    float x = (radius + 2) * MathF.Cos(rad);
-                    float y = (radius + 2) * MathF.Sin(rad);
-                    
-                    var strut = new VoxelBlock(
+                    ship.Structure.AddBlock(new VoxelBlock(
                         new Vector3(x, y, z),
-                        new Vector3(2, 2, 2),
+                        GetStretchedBlockSize("z"),
                         config.Material,
                         BlockType.Hull
-                    );
-                    ship.Structure.AddBlock(strut);
+                    ));
                 }
             }
         }
