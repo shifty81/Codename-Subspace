@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - System requirements display in version info
 - Comprehensive CHANGELOG.md documenting project history
 - EditorConfig for consistent code style across contributors
+- Rarity filtering in Subsystem Management UI for easier inventory management
 
 ### Changed
 - Fixed all compiler warnings for cleaner build output
@@ -21,9 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added null check in SubsystemManagementUI for safer entity operations
 - Marked unused configuration fields with pragma suppressions for future feature development
 - Application header now displays version information dynamically
+- Extracted energy regeneration rate as named constant in CombatSystem for better maintainability
 
 ### Fixed
 - Fixed 3 null reference warnings in SystemVerification.cs by adding null-forgiving operators after Assert null checks (2025-11-08)
+
+### Performance
+- Enabled OpenGL face culling for voxel rendering (~50% fewer fragments to render) (2025-11-10)
 
 ## [0.9.0] - 2025-11-05
 
