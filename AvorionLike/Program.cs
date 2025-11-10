@@ -7,6 +7,7 @@ using AvorionLike.Core.RPG;
 using AvorionLike.Core.Graphics;
 using AvorionLike.Core.Combat;
 using AvorionLike.Core.Navigation;
+using AvorionLike.Core.Procedural;
 using AvorionLike.Examples;
 using System.Numerics;
 
@@ -354,55 +355,27 @@ class Program
     static void CreateTestShipDemo()
     {
         Console.WriteLine("\n=== Create Test Ship Demo ===");
+        Console.WriteLine("Now featuring PROCEDURAL GENERATION with enhanced aesthetics!\n");
         
-        // Create a test ship entity
+        // Use the procedural ship generator to create an impressive test ship
+        var shipGenerator = new ProceduralShipGenerator(Environment.TickCount);
+        
+        // Generate a combat frigate with vibrant Avorion material
+        var config = new ShipGenerationConfig
+        {
+            Size = ShipSize.Frigate,
+            Role = ShipRole.Combat,
+            Material = "Avorion",  // Purple with strong glow
+            Style = FactionShipStyle.GetDefaultStyle("Military"),
+            Seed = Environment.TickCount
+        };
+        
+        Console.WriteLine("Generating procedural combat frigate with colorful materials...");
+        var generatedShip = shipGenerator.GenerateShip(config);
+        
+        // Create entity and add the generated structure
         var ship = _gameEngine!.EntityManager.CreateEntity("Player Ship");
-        
-        // Add voxel structure
-        var voxelComponent = new VoxelStructureComponent();
-        Console.WriteLine("Building ship structure with colorful voxel blocks...");
-        
-        // Create a ship with different functional blocks using vibrant materials
-        // Core hull - Avorion (purple with strong glow)
-        voxelComponent.AddBlock(new VoxelBlock(
-            new Vector3(0, 0, 0),
-            new Vector3(3, 3, 3),
-            "Avorion",
-            BlockType.Hull
-        ));
-        
-        // Engines for forward thrust - Ogonite (red/orange with glow)
-        voxelComponent.AddBlock(new VoxelBlock(
-            new Vector3(-4, 0, 0),
-            new Vector3(2, 2, 2),
-            "Ogonite",
-            BlockType.Engine
-        ));
-        
-        // Thrusters for maneuvering - Trinium (blue with glow)
-        voxelComponent.AddBlock(new VoxelBlock(
-            new Vector3(4, 0, 0),
-            new Vector3(1.5f, 1.5f, 1.5f),
-            "Trinium",
-            BlockType.Thruster
-        ));
-        
-        // Generator - Xanion (gold/yellow with strong glow)
-        voxelComponent.AddBlock(new VoxelBlock(
-            new Vector3(0, -3, 0),
-            new Vector3(2, 2, 2),
-            "Xanion",
-            BlockType.Generator
-        ));
-        
-        // Shield generator - Naonite (bright green with glow)
-        voxelComponent.AddBlock(new VoxelBlock(
-            new Vector3(0, 3, 0),
-            new Vector3(2, 2, 2),
-            "Naonite",
-            BlockType.ShieldGenerator
-        ));
-        
+        var voxelComponent = generatedShip.Structure;
         _gameEngine.EntityManager.AddComponent(ship.Id, voxelComponent);
         
         // Add physics with enhanced properties
@@ -454,21 +427,40 @@ class Program
         };
         _gameEngine.EntityManager.AddComponent(ship.Id, locationComponent);
         
-        Console.WriteLine($"\n✓ Ship created successfully!");
+        Console.WriteLine($"\n✓ Procedurally generated ship created!");
         Console.WriteLine($"  Name: {ship.Name}");
         Console.WriteLine($"  ID: {ship.Id}");
         Console.WriteLine($"  Voxel blocks: {voxelComponent.Blocks.Count}");
         Console.WriteLine($"  Total mass: {voxelComponent.TotalMass:F2} kg");
         Console.WriteLine($"  Moment of inertia: {voxelComponent.MomentOfInertia:F2}");
         Console.WriteLine($"  Center of mass: {voxelComponent.CenterOfMass}");
-        Console.WriteLine($"  Total thrust: {voxelComponent.TotalThrust:F2} N");
+        Console.WriteLine($"  Total thrust: {generatedShip.TotalThrust:F2} N");
         Console.WriteLine($"  Total torque: {voxelComponent.TotalTorque:F2} Nm");
-        Console.WriteLine($"  Power generation: {voxelComponent.PowerGeneration:F2} W");
-        Console.WriteLine($"  Shield capacity: {voxelComponent.ShieldCapacity:F2}");
+        Console.WriteLine($"  Power generation: {generatedShip.TotalPowerGeneration:F2} W");
+        Console.WriteLine($"  Shield capacity: {generatedShip.TotalShieldCapacity:F2}");
         Console.WriteLine($"  Structural integrity: {voxelComponent.StructuralIntegrity:F1}%");
+        Console.WriteLine($"  Weapon mounts: {generatedShip.WeaponMountCount}");
+        Console.WriteLine($"  Cargo blocks: {generatedShip.CargoBlockCount}");
         Console.WriteLine($"  Position: {physicsComponent.Position}");
         Console.WriteLine($"  Velocity: {physicsComponent.Velocity}");
         Console.WriteLine($"  Credits: {inventoryComponent.Inventory.GetResourceAmount(ResourceType.Credits)}");
+        
+        // Show the improvements
+        Console.WriteLine($"\n--- What's New ---");
+        Console.WriteLine($"  ✨ Procedurally generated with {voxelComponent.Blocks.Count} blocks (was 5 manual blocks)");
+        Console.WriteLine($"  ✨ Cohesive design with connected structure");
+        Console.WriteLine($"  ✨ Functional components properly placed");
+        Console.WriteLine($"  ✨ Military-style angular hull shape");
+        Console.WriteLine($"  ✨ Validated structural integrity");
+        
+        if (generatedShip.Warnings.Count > 0)
+        {
+            Console.WriteLine($"\n--- Generation Warnings ({generatedShip.Warnings.Count}) ---");
+            foreach (var warning in generatedShip.Warnings.Take(5))
+            {
+                Console.WriteLine($"  ⚠ {warning}");
+            }
+        }
     }
 
     static void VoxelSystemDemo()
