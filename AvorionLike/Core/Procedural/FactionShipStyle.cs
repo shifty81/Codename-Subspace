@@ -35,11 +35,15 @@ public class FactionShipStyle
     /// </summary>
     public static FactionShipStyle GetDefaultStyle(string factionName)
     {
+        // Normalize faction name for matching
+        var normalized = factionName.ToLower();
+        
         // Create styles based on common faction archetypes
-        return factionName.ToLower() switch
+        // Militaristic - angular, armored, weapon-heavy
+        if (normalized.Contains("military") || normalized.Contains("empire") || 
+            normalized.Contains("federation") || normalized.Contains("defense"))
         {
-            // Militaristic - angular, armored, weapon-heavy
-            "military" or "empire" or "federation" => new FactionShipStyle
+            return new FactionShipStyle
             {
                 FactionName = factionName,
                 PreferredHullShape = ShipHullShape.Angular,
@@ -52,10 +56,14 @@ public class FactionShipStyle
                 ExternalSystemsPreference = 0.3f,
                 WeaponDensity = 0.8f,
                 Philosophy = DesignPhilosophy.CombatFocused
-            },
-            
-            // Traders - practical, cargo-focused, efficient
-            "traders" or "merchant" or "commerce" => new FactionShipStyle
+            };
+        }
+        
+        // Traders - practical, cargo-focused, efficient
+        if (normalized.Contains("trad") || normalized.Contains("merchant") || 
+            normalized.Contains("commerce") || normalized.Contains("cargo"))
+        {
+            return new FactionShipStyle
             {
                 FactionName = factionName,
                 PreferredHullShape = ShipHullShape.Cylindrical,
@@ -68,10 +76,14 @@ public class FactionShipStyle
                 ExternalSystemsPreference = 0.4f,
                 WeaponDensity = 0.2f,
                 Philosophy = DesignPhilosophy.UtilityFocused
-            },
-            
-            // Pirates - asymmetric, cobbled-together, aggressive
-            "pirates" or "raiders" or "outlaws" => new FactionShipStyle
+            };
+        }
+        
+        // Pirates - asymmetric, cobbled-together, aggressive
+        if (normalized.Contains("pirate") || normalized.Contains("raider") || 
+            normalized.Contains("outlaw") || normalized.Contains("bandit"))
+        {
+            return new FactionShipStyle
             {
                 FactionName = factionName,
                 PreferredHullShape = ShipHullShape.Irregular,
@@ -84,10 +96,14 @@ public class FactionShipStyle
                 ExternalSystemsPreference = 0.6f,
                 WeaponDensity = 0.7f,
                 Philosophy = DesignPhilosophy.CombatFocused
-            },
-            
-            // Scientists/Explorers - sleek, sensor-heavy, minimal weapons
-            "scientists" or "explorers" or "research" => new FactionShipStyle
+            };
+        }
+        
+        // Scientists/Explorers - sleek, sensor-heavy, minimal weapons
+        if (normalized.Contains("scien") || normalized.Contains("explor") || 
+            normalized.Contains("research") || normalized.Contains("academic"))
+        {
+            return new FactionShipStyle
             {
                 FactionName = factionName,
                 PreferredHullShape = ShipHullShape.Sleek,
@@ -100,10 +116,14 @@ public class FactionShipStyle
                 ExternalSystemsPreference = 0.5f,
                 WeaponDensity = 0.2f,
                 Philosophy = DesignPhilosophy.ScienceFocused
-            },
-            
-            // Miners - industrial, bulky, utility-focused
-            "miners" or "industrial" or "mining" => new FactionShipStyle
+            };
+        }
+        
+        // Miners - industrial, bulky, utility-focused
+        if (normalized.Contains("miner") || normalized.Contains("industrial") || 
+            normalized.Contains("mining") || normalized.Contains("construct"))
+        {
+            return new FactionShipStyle
             {
                 FactionName = factionName,
                 PreferredHullShape = ShipHullShape.Blocky,
@@ -116,23 +136,23 @@ public class FactionShipStyle
                 ExternalSystemsPreference = 0.7f,
                 WeaponDensity = 0.3f,
                 Philosophy = DesignPhilosophy.UtilityFocused
-            },
-            
-            // Default - balanced approach
-            _ => new FactionShipStyle
-            {
-                FactionName = factionName,
-                PreferredHullShape = ShipHullShape.Blocky,
-                SymmetryLevel = 0.75f,
-                Sleekness = 0.5f,
-                PrimaryColor = 0x808080, // Gray
-                SecondaryColor = 0x696969, // Dim Gray
-                AccentColor = 0xC0C0C0, // Silver
-                ArmorToHullRatio = 0.3f,
-                ExternalSystemsPreference = 0.3f,
-                WeaponDensity = 0.5f,
-                Philosophy = DesignPhilosophy.Balanced
-            }
+            };
+        }
+        
+        // Default - balanced approach
+        return new FactionShipStyle
+        {
+            FactionName = factionName,
+            PreferredHullShape = ShipHullShape.Blocky,
+            SymmetryLevel = 0.75f,
+            Sleekness = 0.5f,
+            PrimaryColor = 0x808080, // Gray
+            SecondaryColor = 0x696969, // Dim Gray
+            AccentColor = 0xC0C0C0, // Silver
+            ArmorToHullRatio = 0.3f,
+            ExternalSystemsPreference = 0.3f,
+            WeaponDensity = 0.5f,
+            Philosophy = DesignPhilosophy.Balanced
         };
     }
 }
