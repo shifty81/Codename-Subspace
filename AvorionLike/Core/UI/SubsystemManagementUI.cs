@@ -23,6 +23,9 @@ public class SubsystemManagementUI
     private SubsystemUpgrade? _selectedSubsystem = null;
     private int _selectedSlotIndex = -1;
     
+    // Storage filtering
+    private SubsystemRarity? _rarityFilter = null; // null means "All Rarities"
+    
     public bool IsOpen => _isOpen;
     
     public SubsystemManagementUI(GameEngine gameEngine)
@@ -295,9 +298,25 @@ public class SubsystemManagementUI
         ImGui.Text("Filter:");
         ImGui.SameLine();
         
-        if (ImGui.BeginCombo("##RarityFilter", "All Rarities"))
+        string filterLabel = _rarityFilter.HasValue ? _rarityFilter.Value.ToString() : "All Rarities";
+        if (ImGui.BeginCombo("##RarityFilter", filterLabel))
         {
-            // TODO: Add filtering
+            // All rarities option
+            if (ImGui.Selectable("All Rarities", !_rarityFilter.HasValue))
+            {
+                _rarityFilter = null;
+            }
+            
+            // Individual rarity options
+            foreach (SubsystemRarity rarity in Enum.GetValues(typeof(SubsystemRarity)))
+            {
+                bool isSelected = _rarityFilter.HasValue && _rarityFilter.Value == rarity;
+                if (ImGui.Selectable(rarity.ToString(), isSelected))
+                {
+                    _rarityFilter = rarity;
+                }
+            }
+            
             ImGui.EndCombo();
         }
         
@@ -305,7 +324,12 @@ public class SubsystemManagementUI
         
         if (ImGui.BeginChild("StorageList", new Vector2(0, -100)))
         {
-            foreach (var subsystem in storage.StoredSubsystems)
+            // Apply rarity filter
+            var filteredSubsystems = _rarityFilter.HasValue
+                ? storage.StoredSubsystems.Where(s => s.Rarity == _rarityFilter.Value)
+                : storage.StoredSubsystems;
+            
+            foreach (var subsystem in filteredSubsystems)
             {
                 ImGui.PushID(subsystem.Id.ToString());
                 

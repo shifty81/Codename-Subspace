@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - System requirements display in version info
 - Comprehensive CHANGELOG.md documenting project history
 - EditorConfig for consistent code style across contributors
+- Rarity filtering in Subsystem Management UI for easier inventory management
 
 ### Changed
 - Fixed all compiler warnings for cleaner build output
