@@ -87,22 +87,63 @@ public class GameWorldPopulator
         // Create voxel structure
         var voxelComponent = new VoxelStructureComponent();
         
-        // Create multiple blocks for interesting asteroid shape
-        int blockCount = Math.Max(2, (int)(size / 3));
+        // Choose material based on resource type for visual distinction
+        string asteroidMaterial = resourceType switch
+        {
+            ResourceType.Iron => "Iron",        // Gray - basic asteroids
+            ResourceType.Titanium => "Titanium", // Blue-gray - rare asteroids
+            ResourceType.Naonite => "Naonite",   // Green - exotic asteroids
+            ResourceType.Trinium => "Trinium",   // Blue - valuable asteroids
+            ResourceType.Xanion => "Xanion",     // Gold - precious asteroids
+            ResourceType.Ogonite => "Ogonite",   // Red/Orange - rare asteroids
+            ResourceType.Avorion => "Avorion",   // Purple - ultra-rare asteroids
+            _ => "Iron"
+        };
+        
+        // Create MORE blocks for substantial asteroid appearance (10-20 blocks)
+        int blockCount = Math.Max(10, (int)(size / 2) + _random.Next(5, 10));
+        
+        // Create a core cluster
         for (int i = 0; i < blockCount; i++)
         {
+            // Create irregular, organic asteroid shape
+            float angle = (float)(i * 2 * Math.PI / blockCount);
+            float distance = (float)(_random.NextDouble() * size * 0.4f);
+            
             var blockOffset = new Vector3(
-                (float)(_random.NextDouble() * 2 - 1) * size * 0.3f,
-                (float)(_random.NextDouble() * 2 - 1) * size * 0.3f,
-                (float)(_random.NextDouble() * 2 - 1) * size * 0.3f
+                (float)(Math.Cos(angle) * distance + (_random.NextDouble() * 2 - 1) * size * 0.2f),
+                (float)(_random.NextDouble() * 2 - 1) * size * 0.4f,
+                (float)(Math.Sin(angle) * distance + (_random.NextDouble() * 2 - 1) * size * 0.2f)
             );
             
-            var blockSize = size * (0.6f + (float)_random.NextDouble() * 0.4f);
+            // Vary block sizes for irregular appearance
+            float blockSizeVariation = (float)(_random.NextDouble() * 0.5f + 0.5f); // 0.5 to 1.0
+            var blockSize = size * 0.5f * blockSizeVariation;
             
             voxelComponent.AddBlock(new VoxelBlock(
                 blockOffset,
-                new Vector3(blockSize, blockSize, blockSize),
-                "Iron", // Asteroids are made of iron/stone
+                new Vector3(blockSize, blockSize * (0.8f + (float)_random.NextDouble() * 0.4f), blockSize),
+                asteroidMaterial,
+                BlockType.Armor // Use Armor block type for rough, rocky appearance
+            ));
+        }
+        
+        // Add some outlying chunks for more interesting shape (3-6 extra blocks)
+        int outlierCount = _random.Next(3, 7);
+        for (int i = 0; i < outlierCount; i++)
+        {
+            var outlierOffset = new Vector3(
+                (float)(_random.NextDouble() * 2 - 1) * size * 0.8f,
+                (float)(_random.NextDouble() * 2 - 1) * size * 0.6f,
+                (float)(_random.NextDouble() * 2 - 1) * size * 0.8f
+            );
+            
+            float outlierSize = size * 0.3f * (0.5f + (float)_random.NextDouble() * 0.5f);
+            
+            voxelComponent.AddBlock(new VoxelBlock(
+                outlierOffset,
+                new Vector3(outlierSize, outlierSize, outlierSize),
+                asteroidMaterial,
                 BlockType.Armor
             ));
         }
@@ -195,40 +236,111 @@ public class GameWorldPopulator
     {
         var ship = _gameEngine.EntityManager.CreateEntity($"{typePrefix} Ship {number}");
         
-        // Create ship structure based on personality
+        // Create ship structure based on personality with MORE blocks for better appearance
         var voxelComponent = new VoxelStructureComponent();
         
         switch (personality)
         {
             case AIPersonality.Trader:
-                // Cargo-heavy ship
+                // Cargo-heavy ship with substantial hull
+                // Central hull spine (5 blocks)
                 voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 0), new Vector3(4, 3, 3), "Titanium", BlockType.Hull));
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-4, 0, 0), new Vector3(2, 2, 2), "Iron", BlockType.Engine));
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(4, 0, 0), new Vector3(3, 3, 3), "Iron", BlockType.Cargo));
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 3, 0), new Vector3(2, 2, 2), "Titanium", BlockType.ShieldGenerator));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(4, 0, 0), new Vector3(3, 3, 3), "Titanium", BlockType.Hull));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-4, 0, 0), new Vector3(3, 3, 3), "Titanium", BlockType.Hull));
+                
+                // Large cargo containers (4 blocks)
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(8, 0, 0), new Vector3(4, 4, 4), "Iron", BlockType.Cargo));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(12, 0, 0), new Vector3(4, 4, 4), "Iron", BlockType.Cargo));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 4, 0), new Vector3(3, 3, 3), "Iron", BlockType.Cargo));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, -4, 0), new Vector3(3, 3, 3), "Iron", BlockType.Cargo));
+                
+                // Engines (2 blocks)
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-8, 0, 0), new Vector3(2.5f, 2.5f, 2.5f), "Naonite", BlockType.Engine));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-8, 0, 3), new Vector3(2.5f, 2.5f, 2.5f), "Naonite", BlockType.Engine));
+                
+                // Shield generator (1 block)
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 4), new Vector3(2, 2, 2), "Titanium", BlockType.ShieldGenerator));
+                
+                // Generator (1 block)
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, -4), new Vector3(2, 2, 2), "Xanion", BlockType.Generator));
+                
+                // Armor plating on sides (4 blocks)
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(4, 4, 0), new Vector3(2.5f, 2, 2.5f), "Iron", BlockType.Armor));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(4, -4, 0), new Vector3(2.5f, 2, 2.5f), "Iron", BlockType.Armor));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-4, 4, 0), new Vector3(2.5f, 2, 2.5f), "Iron", BlockType.Armor));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-4, -4, 0), new Vector3(2.5f, 2, 2.5f), "Iron", BlockType.Armor));
                 break;
                 
             case AIPersonality.Miner:
-                // Functional mining ship
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 0), new Vector3(3, 3, 3), "Titanium", BlockType.Hull));
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-3, 0, 0), new Vector3(2, 2, 2), "Naonite", BlockType.Engine));
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(3, 0, 0), new Vector3(2, 2, 2), "Naonite", BlockType.Generator));
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 3, 0), new Vector3(2, 2, 2), "Iron", BlockType.Cargo));
+                // Functional mining ship with industrial look
+                // Core hull (3 blocks)
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 0), new Vector3(4, 3, 3), "Titanium", BlockType.Hull));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(4, 0, 0), new Vector3(3, 3, 3), "Titanium", BlockType.Hull));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-4, 0, 0), new Vector3(3, 3, 3), "Titanium", BlockType.Hull));
+                
+                // Cargo holds for ore (3 blocks)
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(8, 0, 0), new Vector3(3, 3, 3), "Iron", BlockType.Cargo));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 4, 0), new Vector3(3, 2.5f, 3), "Iron", BlockType.Cargo));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, -4, 0), new Vector3(3, 2.5f, 3), "Iron", BlockType.Cargo));
+                
+                // Engines (2 blocks)
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-8, 1, 0), new Vector3(2.5f, 2, 2.5f), "Naonite", BlockType.Engine));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-8, -1, 0), new Vector3(2.5f, 2, 2.5f), "Naonite", BlockType.Engine));
+                
+                // Generators for mining lasers (2 blocks)
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(11, 0, 0), new Vector3(2, 2, 2), "Xanion", BlockType.Generator));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 4), new Vector3(2, 2, 2), "Xanion", BlockType.Generator));
+                
+                // Shield (1 block)
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, -4), new Vector3(2, 2, 2), "Naonite", BlockType.ShieldGenerator));
+                
+                // Thrusters for maneuverability (2 blocks)
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(4, 0, 4), new Vector3(1.5f, 1.5f, 1.5f), "Trinium", BlockType.Thruster));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(4, 0, -4), new Vector3(1.5f, 1.5f, 1.5f), "Trinium", BlockType.Thruster));
                 break;
                 
             case AIPersonality.Aggressive:
-                // Combat-focused pirate ship
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 0), new Vector3(3, 2, 2), "Ogonite", BlockType.Hull));
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-3, 0, 0), new Vector3(2, 2, 2), "Ogonite", BlockType.Engine));
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(3, 0, 0), new Vector3(2, 2, 2), "Ogonite", BlockType.Engine));
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 2, 0), new Vector3(2, 1.5f, 1.5f), "Trinium", BlockType.Thruster));
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, -2, 0), new Vector3(2, 1.5f, 1.5f), "Trinium", BlockType.Thruster));
+                // Combat-focused pirate ship - sleek and dangerous
+                // Central combat hull (3 blocks)
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 0), new Vector3(4, 2.5f, 2.5f), "Ogonite", BlockType.Hull));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(4, 0, 0), new Vector3(3, 2.5f, 2.5f), "Ogonite", BlockType.Hull));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-4, 0, 0), new Vector3(3, 2.5f, 2.5f), "Ogonite", BlockType.Hull));
+                
+                // Heavy armor (6 blocks)
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(7, 0, 0), new Vector3(2.5f, 2, 2), "Ogonite", BlockType.Armor));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 3, 0), new Vector3(3, 2, 2.5f), "Ogonite", BlockType.Armor));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, -3, 0), new Vector3(3, 2, 2.5f), "Ogonite", BlockType.Armor));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(4, 3, 0), new Vector3(2, 1.5f, 2), "Ogonite", BlockType.Armor));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(4, -3, 0), new Vector3(2, 1.5f, 2), "Ogonite", BlockType.Armor));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-4, 0, 0), new Vector3(2, 2, 3), "Ogonite", BlockType.Armor));
+                
+                // Twin engines for speed (2 blocks)
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-7, 1.5f, 0), new Vector3(2.5f, 2, 2.5f), "Trinium", BlockType.Engine));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-7, -1.5f, 0), new Vector3(2.5f, 2, 2.5f), "Trinium", BlockType.Engine));
+                
+                // Maneuvering thrusters (4 blocks)
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 5, 1), new Vector3(1.5f, 1.5f, 1.5f), "Trinium", BlockType.Thruster));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, -5, 1), new Vector3(1.5f, 1.5f, 1.5f), "Trinium", BlockType.Thruster));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 5, -1), new Vector3(1.5f, 1.5f, 1.5f), "Trinium", BlockType.Thruster));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, -5, -1), new Vector3(1.5f, 1.5f, 1.5f), "Trinium", BlockType.Thruster));
+                
+                // Shield and generator for combat endurance (2 blocks)
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 3), new Vector3(2, 2, 2), "Naonite", BlockType.ShieldGenerator));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, -3), new Vector3(2, 2, 2), "Xanion", BlockType.Generator));
+                
+                // Gyro for combat maneuvers (2 blocks)
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(4, 0, 3), new Vector3(1.5f, 1.5f, 1.5f), "Avorion", BlockType.GyroArray));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(4, 0, -3), new Vector3(1.5f, 1.5f, 1.5f), "Avorion", BlockType.GyroArray));
                 break;
                 
             default:
-                // Generic ship
+                // Generic ship with reasonable size
                 voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 0), new Vector3(3, 3, 3), "Titanium", BlockType.Hull));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(3, 0, 0), new Vector3(3, 3, 3), "Titanium", BlockType.Hull));
                 voxelComponent.AddBlock(new VoxelBlock(new Vector3(-3, 0, 0), new Vector3(2, 2, 2), "Iron", BlockType.Engine));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-3, 0, 2), new Vector3(2, 2, 2), "Iron", BlockType.Engine));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 3, 0), new Vector3(2, 2, 2), "Naonite", BlockType.ShieldGenerator));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, -3, 0), new Vector3(2, 2, 2), "Xanion", BlockType.Generator));
                 break;
         }
         
@@ -316,26 +428,103 @@ public class GameWorldPopulator
         
         var station = _gameEngine.EntityManager.CreateEntity(name);
         
-        // Create larger, more impressive voxel structure for station
+        // Create MUCH larger, more impressive voxel structure for station
         var voxelComponent = new VoxelStructureComponent();
         
-        // Core modules
-        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 0), new Vector3(10, 10, 10), "Titanium", BlockType.Hull));
+        // MASSIVE central core (stations should dwarf ships)
+        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 0), new Vector3(15, 15, 15), "Titanium", BlockType.Hull));
         
-        // Docking bays
-        voxelComponent.AddBlock(new VoxelBlock(new Vector3(12, 0, 0), new Vector3(5, 8, 8), "Titanium", BlockType.PodDocking));
-        voxelComponent.AddBlock(new VoxelBlock(new Vector3(-12, 0, 0), new Vector3(5, 8, 8), "Titanium", BlockType.PodDocking));
+        // Inner support structure (4 blocks)
+        voxelComponent.AddBlock(new VoxelBlock(new Vector3(8, 8, 8), new Vector3(6, 6, 6), "Titanium", BlockType.Hull));
+        voxelComponent.AddBlock(new VoxelBlock(new Vector3(-8, 8, 8), new Vector3(6, 6, 6), "Titanium", BlockType.Hull));
+        voxelComponent.AddBlock(new VoxelBlock(new Vector3(8, -8, -8), new Vector3(6, 6, 6), "Titanium", BlockType.Hull));
+        voxelComponent.AddBlock(new VoxelBlock(new Vector3(-8, -8, -8), new Vector3(6, 6, 6), "Titanium", BlockType.Hull));
         
-        // Trading modules
-        if (stationType == StationType.TradingPost)
+        // Four large docking bays (one on each cardinal direction)
+        voxelComponent.AddBlock(new VoxelBlock(new Vector3(20, 0, 0), new Vector3(8, 12, 12), "Naonite", BlockType.PodDocking));
+        voxelComponent.AddBlock(new VoxelBlock(new Vector3(-20, 0, 0), new Vector3(8, 12, 12), "Naonite", BlockType.PodDocking));
+        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 20, 0), new Vector3(12, 8, 12), "Naonite", BlockType.PodDocking));
+        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, -20, 0), new Vector3(12, 8, 12), "Naonite", BlockType.PodDocking));
+        
+        // Type-specific modules with distinct colors
+        switch (stationType)
         {
-            voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 12, 0), new Vector3(8, 6, 8), "Naonite", BlockType.Cargo));
-            voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, -12, 0), new Vector3(8, 6, 8), "Naonite", BlockType.Cargo));
+            case StationType.TradingPost:
+                // Large green cargo storage modules (6 blocks)
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 20), new Vector3(10, 10, 8), "Naonite", BlockType.Cargo));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, -20), new Vector3(10, 10, 8), "Naonite", BlockType.Cargo));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(12, 12, 0), new Vector3(8, 8, 8), "Naonite", BlockType.Cargo));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-12, 12, 0), new Vector3(8, 8, 8), "Naonite", BlockType.Cargo));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(12, -12, 0), new Vector3(8, 8, 8), "Naonite", BlockType.Cargo));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-12, -12, 0), new Vector3(8, 8, 8), "Naonite", BlockType.Cargo));
+                
+                // Market displays (4 blocks) - bright colors to attract traders
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(15, 0, 15), new Vector3(5, 5, 5), "Xanion", BlockType.Generator));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-15, 0, 15), new Vector3(5, 5, 5), "Xanion", BlockType.Generator));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(15, 0, -15), new Vector3(5, 5, 5), "Xanion", BlockType.Generator));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-15, 0, -15), new Vector3(5, 5, 5), "Xanion", BlockType.Generator));
+                break;
+                
+            case StationType.Military:
+                // Heavy red armor plating (8 blocks)
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 18), new Vector3(12, 12, 6), "Ogonite", BlockType.Armor));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, -18), new Vector3(12, 12, 6), "Ogonite", BlockType.Armor));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(18, 0, 0), new Vector3(6, 12, 12), "Ogonite", BlockType.Armor));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-18, 0, 0), new Vector3(6, 12, 12), "Ogonite", BlockType.Armor));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(12, 12, 12), new Vector3(6, 6, 6), "Ogonite", BlockType.Armor));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-12, 12, 12), new Vector3(6, 6, 6), "Ogonite", BlockType.Armor));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(12, -12, -12), new Vector3(6, 6, 6), "Ogonite", BlockType.Armor));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-12, -12, -12), new Vector3(6, 6, 6), "Ogonite", BlockType.Armor));
+                
+                // Weapon platforms (4 blocks)
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 15, 15), new Vector3(5, 5, 5), "Trinium", BlockType.TurretMount));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 15, -15), new Vector3(5, 5, 5), "Trinium", BlockType.TurretMount));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, -15, 15), new Vector3(5, 5, 5), "Trinium", BlockType.TurretMount));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, -15, -15), new Vector3(5, 5, 5), "Trinium", BlockType.TurretMount));
+                break;
+                
+            case StationType.Research:
+                // Purple research modules (6 blocks)
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 20), new Vector3(8, 8, 10), "Avorion", BlockType.Generator));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, -20), new Vector3(8, 8, 10), "Avorion", BlockType.Generator));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 18, 0), new Vector3(8, 10, 8), "Avorion", BlockType.Generator));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, -18, 0), new Vector3(8, 10, 8), "Avorion", BlockType.Generator));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(15, 0, 0), new Vector3(8, 8, 8), "Avorion", BlockType.Generator));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-15, 0, 0), new Vector3(8, 8, 8), "Avorion", BlockType.Generator));
+                
+                // Sensor arrays (4 blocks)
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(10, 10, 10), new Vector3(4, 4, 4), "Trinium", BlockType.GyroArray));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-10, 10, 10), new Vector3(4, 4, 4), "Trinium", BlockType.GyroArray));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(10, -10, -10), new Vector3(4, 4, 4), "Trinium", BlockType.GyroArray));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-10, -10, -10), new Vector3(4, 4, 4), "Trinium", BlockType.GyroArray));
+                break;
+                
+            default:
+                // Generic station gets mixed modules
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 18), new Vector3(10, 10, 8), "Naonite", BlockType.Cargo));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, -18), new Vector3(10, 10, 8), "Naonite", BlockType.Cargo));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 15, 0), new Vector3(8, 8, 8), "Xanion", BlockType.Generator));
+                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, -15, 0), new Vector3(8, 8, 8), "Xanion", BlockType.Generator));
+                break;
         }
         
-        // Shields
-        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 12), new Vector3(6, 6, 6), "Xanion", BlockType.ShieldGenerator));
-        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, -12), new Vector3(6, 6, 6), "Xanion", BlockType.ShieldGenerator));
+        // Massive shield generators for all stations (4 blocks) - Gold/Yellow glow
+        voxelComponent.AddBlock(new VoxelBlock(new Vector3(25, 0, 0), new Vector3(6, 6, 6), "Xanion", BlockType.ShieldGenerator));
+        voxelComponent.AddBlock(new VoxelBlock(new Vector3(-25, 0, 0), new Vector3(6, 6, 6), "Xanion", BlockType.ShieldGenerator));
+        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 25), new Vector3(6, 6, 6), "Xanion", BlockType.ShieldGenerator));
+        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, -25), new Vector3(6, 6, 6), "Xanion", BlockType.ShieldGenerator));
+        
+        // Power generators (4 blocks) - More gold for visibility
+        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 15, 0), new Vector3(5, 5, 5), "Xanion", BlockType.Generator));
+        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, -15, 0), new Vector3(5, 5, 5), "Xanion", BlockType.Generator));
+        voxelComponent.AddBlock(new VoxelBlock(new Vector3(15, 0, 0), new Vector3(5, 5, 5), "Xanion", BlockType.Generator));
+        voxelComponent.AddBlock(new VoxelBlock(new Vector3(-15, 0, 0), new Vector3(5, 5, 5), "Xanion", BlockType.Generator));
+        
+        // Communication antennas (4 blocks) - Blue thrusters for visual interest
+        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 22, 0), new Vector3(3, 6, 3), "Trinium", BlockType.Thruster));
+        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, -22, 0), new Vector3(3, 6, 3), "Trinium", BlockType.Thruster));
+        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 22), new Vector3(3, 6, 3), "Trinium", BlockType.Thruster));
+        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, -22), new Vector3(3, 6, 3), "Trinium", BlockType.Thruster));
         
         _gameEngine.EntityManager.AddComponent(station.Id, voxelComponent);
         

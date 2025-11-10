@@ -193,13 +193,113 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
+// Simple noise function for procedural details
+float hash(vec3 p)
+{
+    p = fract(p * vec3(443.897, 441.423, 437.195));
+    p += dot(p, p.yzx + 19.19);
+    return fract((p.x + p.y) * p.z);
+}
+
+// Add procedural panel lines and details to surfaces
+vec3 addProceduralDetail(vec3 worldPos, vec3 baseColor, float blockType)
+{
+    // Hull blocks (0) - panel lines
+    if (blockType < 0.5) {
+        float gridSize = 2.0;
+        vec3 gridPos = fract(worldPos / gridSize);
+        float panelLines = 0.0;
+        
+        // Create grid lines
+        if (gridPos.x < 0.05 || gridPos.x > 0.95 || 
+            gridPos.y < 0.05 || gridPos.y > 0.95 || 
+            gridPos.z < 0.05 || gridPos.z > 0.95) {
+            panelLines = -0.15; // Darker panel lines
+        }
+        
+        // Add subtle noise for panel variation
+        float noise = hash(floor(worldPos / gridSize)) * 0.05;
+        return baseColor * (1.0 + panelLines + noise);
+    }
+    // Armor blocks (1) - heavier plating with rivets
+    else if (blockType < 1.5) {
+        float gridSize = 3.0;
+        vec3 gridPos = fract(worldPos / gridSize);
+        float armorDetail = 0.0;
+        
+        // Heavier grid lines
+        if (gridPos.x < 0.08 || gridPos.x > 0.92 || 
+            gridPos.y < 0.08 || gridPos.y > 0.92 || 
+            gridPos.z < 0.08 || gridPos.z > 0.92) {
+            armorDetail = -0.25; // Very dark separation lines
+        }
+        
+        // Add rivet pattern at corners
+        vec3 cornerDist = abs(gridPos - 0.5);
+        if (cornerDist.x > 0.4 && cornerDist.y > 0.4) {
+            armorDetail += 0.1; // Raised rivets
+        }
+        
+        return baseColor * (1.0 + armorDetail) * 0.9; // Slightly darker overall
+    }
+    // Engines/Thrusters (2-4) - glowing heat dissipation vents
+    else if (blockType < 4.5) {
+        float ventSize = 1.5;
+        vec3 ventPos = fract(worldPos / ventSize);
+        float ventPattern = 0.0;
+        
+        // Horizontal vent lines
+        if (mod(ventPos.y * 5.0, 1.0) < 0.3) {
+            ventPattern = 0.3; // Brighter vents
+        }
+        
+        // Add glow effect
+        float glow = sin(ventPos.x * 10.0) * 0.1 + 0.1;
+        return baseColor * (1.0 + ventPattern) + vec3(glow * 0.5, glow * 0.3, 0.0);
+    }
+    // Generators (5) - energy core pattern
+    else if (blockType < 5.5) {
+        vec3 corePos = fract(worldPos * 2.0);
+        float coreDist = length(corePos - 0.5);
+        
+        // Concentric energy rings
+        float energyRing = sin(coreDist * 20.0) * 0.2;
+        
+        // Add energy glow
+        vec3 energyGlow = vec3(0.3, 0.4, 0.5) * (1.0 - coreDist);
+        return baseColor * (1.0 + energyRing) + energyGlow * 0.4;
+    }
+    // Shield Generators (6) - hexagonal shield pattern
+    else if (blockType < 6.5) {
+        vec3 hexPos = worldPos * 3.0;
+        float hexPattern = abs(sin(hexPos.x) + sin(hexPos.x * 0.5 + hexPos.y * 0.866) + 
+                               sin(hexPos.x * 0.5 - hexPos.y * 0.866));
+        hexPattern = hexPattern / 3.0;
+        
+        // Pulsing shield effect
+        float pulse = sin(hexPos.x + hexPos.y + hexPos.z) * 0.1;
+        
+        vec3 shieldGlow = vec3(0.2, 0.3, 0.6) * (hexPattern + pulse);
+        return baseColor * (1.0 + hexPattern * 0.2) + shieldGlow * 0.3;
+    }
+    
+    // Default - subtle noise
+    float noise = hash(worldPos * 0.5) * 0.05;
+    return baseColor * (1.0 + noise);
+}
+
 void main()
 {
     vec3 N = normalize(Normal);
     vec3 V = normalize(viewPos - FragPos);
 
     // Use vertex color as the base color
+    // VertexColor.a contains block type information
     vec3 blockColor = VertexColor.rgb;
+    float blockType = VertexColor.a;
+    
+    // Apply procedural details based on block type
+    blockColor = addProceduralDetail(FragPos, blockColor, blockType);
 
     // Fresnel for metals vs dielectrics
     vec3 F0 = vec3(0.04);
@@ -236,8 +336,14 @@ void main()
     // Add ambient lighting
     vec3 ambient = ambientLight * blockColor;
     
-    // Add emissive
+    // Enhanced emissive based on block type
     vec3 emissive = emissiveColor * emissiveStrength;
+    
+    // Extra emissive for functional blocks (engines, generators, shields)
+    if (blockType >= 2.0 && blockType < 7.0) {
+        float functionalGlow = (blockType >= 5.0) ? 0.3 : 0.2;
+        emissive += blockColor * functionalGlow;
+    }
 
     vec3 color = ambient + Lo + emissive;
 
@@ -351,12 +457,14 @@ void main()
             vertexData[offset + 4] = optimizedMesh.Normals[i].Y;
             vertexData[offset + 5] = optimizedMesh.Normals[i].Z;
             
-            // Color (convert from uint RGB to RGBA floats)
+            // Color (convert from uint RGB to RGB floats)
             uint color = optimizedMesh.Colors[i];
             vertexData[offset + 6] = ((color >> 16) & 0xFF) / 255.0f; // R
             vertexData[offset + 7] = ((color >> 8) & 0xFF) / 255.0f;  // G
             vertexData[offset + 8] = (color & 0xFF) / 255.0f;         // B
-            vertexData[offset + 9] = 1.0f;                             // A
+            
+            // Alpha channel stores block type information
+            vertexData[offset + 9] = optimizedMesh.BlockTypes[i];     // Block type (0=Hull, 1=Armor, 2=Engine, etc.)
         }
         
         fixed (float* v = &vertexData[0])
