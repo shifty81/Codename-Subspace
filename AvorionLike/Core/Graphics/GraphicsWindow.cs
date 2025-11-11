@@ -149,6 +149,9 @@ public class GraphicsWindow : IDisposable
         // Initialize Player Control System
         _playerControlSystem = new PlayerControlSystem(_gameEngine.EntityManager);
 
+        // Set clear color to pure black for space (fixes light blue screen on startup)
+        _gl.ClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        
         // Enable depth testing
         _gl.Enable(EnableCap.DepthTest);
         
@@ -322,9 +325,8 @@ public class GraphicsWindow : IDisposable
         if (_gl == null || _voxelRenderer == null || _starfieldRenderer == null || _camera == null || 
             _window == null || _imguiController == null || _gameHUD == null || _gameMenuSystem == null) return;
 
-        // Clear the screen
+        // Clear the screen (clear color is set once in OnLoad)
         _gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
-        _gl.ClearColor(0.0f, 0.0f, 0.0f, 1.0f); // Pure black for space
 
         // Calculate aspect ratio from window size
         float aspectRatio = (float)_window.Size.X / _window.Size.Y;
