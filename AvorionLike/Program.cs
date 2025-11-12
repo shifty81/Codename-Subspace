@@ -195,61 +195,66 @@ class Program
         ));
         
         // Main engines (rear) - Ogonite (red/orange with glow)
+        // Position engines to touch the core: core edge at -1.5, engine half-size 1, so -2.5
         voxelComponent.AddBlock(new VoxelBlock(
-            new Vector3(-5, 0, 0),
+            new Vector3(-2.5f, 0, 0),
             new Vector3(2, 2, 2),
             "Ogonite",
             BlockType.Engine
         ));
         
         voxelComponent.AddBlock(new VoxelBlock(
-            new Vector3(-5, 2, 0),
+            new Vector3(-2.5f, 1.5f, 0),
             new Vector3(2, 2, 2),
             "Ogonite",
             BlockType.Engine
         ));
         
         // Maneuvering thrusters - Trinium (blue with glow)
+        // Position thrusters to touch the core: core edge at ±1.5, thruster half-size 0.75, so ±2.25
         voxelComponent.AddBlock(new VoxelBlock(
-            new Vector3(0, 4, 0),
+            new Vector3(0, 2.25f, 0),
             new Vector3(1.5f, 1.5f, 1.5f),
             "Trinium",
             BlockType.Thruster
         ));
         
         voxelComponent.AddBlock(new VoxelBlock(
-            new Vector3(0, -4, 0),
+            new Vector3(0, -2.25f, 0),
             new Vector3(1.5f, 1.5f, 1.5f),
             "Trinium",
             BlockType.Thruster
         ));
         
         // Generator - Xanion (gold/yellow with glow)
+        // Position generator to touch the core: core edge at 1.5, generator half-size 1, so 2.5
         voxelComponent.AddBlock(new VoxelBlock(
-            new Vector3(3, 0, 0),
+            new Vector3(2.5f, 0, 0),
             new Vector3(2, 2, 2),
             "Xanion",
             BlockType.Generator
         ));
         
         // Shield generator - Naonite (green with glow)
+        // Position shield to touch the core: core edge at 1.5, shield half-size 1, so 2.5
         voxelComponent.AddBlock(new VoxelBlock(
-            new Vector3(0, 0, 3),
+            new Vector3(0, 0, 2.5f),
             new Vector3(2, 2, 2),
             "Naonite",
             BlockType.ShieldGenerator
         ));
         
         // Gyro arrays for rotation - Avorion (purple with strong glow)
+        // Position gyros to touch shield/core: shield at z=2.5, gyro half-size 0.75
         voxelComponent.AddBlock(new VoxelBlock(
-            new Vector3(0, 2, 2),
+            new Vector3(0, 1.5f, 1.5f),
             new Vector3(1.5f, 1.5f, 1.5f),
             "Avorion",
             BlockType.GyroArray
         ));
         
         voxelComponent.AddBlock(new VoxelBlock(
-            new Vector3(0, -2, -2),
+            new Vector3(0, -1.5f, -1.5f),
             new Vector3(1.5f, 1.5f, 1.5f),
             "Avorion",
             BlockType.GyroArray
@@ -481,22 +486,27 @@ class Program
         structure.AddBlock(new VoxelBlock(new Vector3(0, 0, 0), new Vector3(3, 3, 3), "Avorion", BlockType.Hull));
         
         // Engines (back) - Ogonite (red/orange with glow)
-        structure.AddBlock(new VoxelBlock(new Vector3(-4, 0, 0), new Vector3(2, 2, 2), "Ogonite", BlockType.Engine));
-        structure.AddBlock(new VoxelBlock(new Vector3(-4, 2, 0), new Vector3(2, 2, 2), "Ogonite", BlockType.Engine));
+        // Position engines to touch core: core edge at -1.5, engine half-size 1, so -2.5
+        structure.AddBlock(new VoxelBlock(new Vector3(-2.5f, 0, 0), new Vector3(2, 2, 2), "Ogonite", BlockType.Engine));
+        structure.AddBlock(new VoxelBlock(new Vector3(-2.5f, 1.5f, 0), new Vector3(2, 2, 2), "Ogonite", BlockType.Engine));
         
         // Thrusters (sides for maneuvering) - Trinium (blue with glow)
-        structure.AddBlock(new VoxelBlock(new Vector3(0, 4, 0), new Vector3(1.5f, 1.5f, 1.5f), "Trinium", BlockType.Thruster));
-        structure.AddBlock(new VoxelBlock(new Vector3(0, -4, 0), new Vector3(1.5f, 1.5f, 1.5f), "Trinium", BlockType.Thruster));
+        // Position thrusters to touch core: core edge at ±1.5, thruster half-size 0.75, so ±2.25
+        structure.AddBlock(new VoxelBlock(new Vector3(0, 2.25f, 0), new Vector3(1.5f, 1.5f, 1.5f), "Trinium", BlockType.Thruster));
+        structure.AddBlock(new VoxelBlock(new Vector3(0, -2.25f, 0), new Vector3(1.5f, 1.5f, 1.5f), "Trinium", BlockType.Thruster));
         
         // Gyro arrays for rotation - Xanion (gold with glow)
-        structure.AddBlock(new VoxelBlock(new Vector3(0, 0, 3), new Vector3(2, 2, 2), "Xanion", BlockType.GyroArray));
-        structure.AddBlock(new VoxelBlock(new Vector3(0, 0, -3), new Vector3(2, 2, 2), "Xanion", BlockType.GyroArray));
+        // Position gyros to touch core: core edge at ±1.5, gyro half-size 1, so ±2.5
+        structure.AddBlock(new VoxelBlock(new Vector3(0, 0, 2.5f), new Vector3(2, 2, 2), "Xanion", BlockType.GyroArray));
+        structure.AddBlock(new VoxelBlock(new Vector3(0, 0, -2.5f), new Vector3(2, 2, 2), "Xanion", BlockType.GyroArray));
         
         // Generator - Naonite (green with glow)
-        structure.AddBlock(new VoxelBlock(new Vector3(4, 0, 0), new Vector3(2, 2, 2), "Naonite", BlockType.Generator));
+        // Position generator to touch core: core edge at 1.5, generator half-size 1, so 2.5
+        structure.AddBlock(new VoxelBlock(new Vector3(2.5f, 0, 0), new Vector3(2, 2, 2), "Naonite", BlockType.Generator));
         
         // Shield generator - Titanium (silver-blue, metallic)
-        structure.AddBlock(new VoxelBlock(new Vector3(2, 2, 0), new Vector3(2, 2, 2), "Titanium", BlockType.ShieldGenerator));
+        // Position shield to touch core and gyro: between core top edge and top gyro
+        structure.AddBlock(new VoxelBlock(new Vector3(1.5f, 1.5f, 0), new Vector3(2, 2, 2), "Titanium", BlockType.ShieldGenerator));
 
         Console.WriteLine($"  Total blocks: {structure.Blocks.Count}");
         Console.WriteLine($"  Total mass: {structure.TotalMass:F2} kg");
@@ -823,27 +833,27 @@ class Program
                             "Avorion",
                             BlockType.Hull
                         ));
-                        // Engines - Red Ogonite
+                        // Engines - Red Ogonite (touching core at -1.5, engine at -2.5)
                         voxelComponent.AddBlock(new VoxelBlock(
-                            new Vector3(-4, 0, 0),
+                            new Vector3(-2.5f, 0, 0),
                             new Vector3(2, 2, 2),
                             "Ogonite",
                             BlockType.Engine
                         ));
-                        // Wings - Gold Xanion
-                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 3, 0), new Vector3(2, 1, 2), "Xanion", BlockType.Armor));
-                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, -3, 0), new Vector3(2, 1, 2), "Xanion", BlockType.Armor));
+                        // Wings - Gold Xanion (touching core at ±1, wing at ±1.5)
+                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 1.5f, 0), new Vector3(2, 1, 2), "Xanion", BlockType.Armor));
+                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, -1.5f, 0), new Vector3(2, 1, 2), "Xanion", BlockType.Armor));
                         break;
                     
-                    case 1: // Cross-shaped ship with rainbow colors
+                    case 1: // Cross-shaped ship with rainbow colors (touching blocks)
                         voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 0), new Vector3(3, 3, 3), "Avorion", BlockType.Hull)); // Purple center
-                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(4, 0, 0), new Vector3(2, 2, 2), "Xanion", BlockType.Generator)); // Gold right
-                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(-4, 0, 0), new Vector3(2, 2, 2), "Ogonite", BlockType.Engine)); // Red left
-                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 4, 0), new Vector3(2, 2, 2), "Naonite", BlockType.ShieldGenerator)); // Green top
-                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, -4, 0), new Vector3(2, 2, 2), "Trinium", BlockType.Thruster)); // Blue bottom
+                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(2.5f, 0, 0), new Vector3(2, 2, 2), "Xanion", BlockType.Generator)); // Gold right
+                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(-2.5f, 0, 0), new Vector3(2, 2, 2), "Ogonite", BlockType.Engine)); // Red left
+                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 2.5f, 0), new Vector3(2, 2, 2), "Naonite", BlockType.ShieldGenerator)); // Green top
+                        voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, -2.5f, 0), new Vector3(2, 2, 2), "Trinium", BlockType.Thruster)); // Blue bottom
                         break;
                     
-                    case 2: // Compact cargo ship with gradient colors
+                    case 2: // Compact cargo ship with gradient colors (touching blocks)
                         for (int x = 0; x < 3; x++)
                         {
                             for (int y = 0; y < 2; y++)
@@ -856,8 +866,9 @@ class Program
                                     1 => "Trinium",
                                     _ => "Xanion"
                                 };
+                                // Blocks touch: size 2.5, so positions should be at x*2.5, y*2.5
                                 voxelComponent.AddBlock(new VoxelBlock(
-                                    new Vector3(x * 3, y * 3, 0),
+                                    new Vector3(x * 2.5f, y * 2.5f, 0),
                                     new Vector3(2.5f, 2.5f, 2.5f),
                                     material,
                                     blockType
