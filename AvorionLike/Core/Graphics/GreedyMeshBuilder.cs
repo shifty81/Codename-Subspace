@@ -101,11 +101,40 @@ public class GreedyMeshBuilder
         
         for (int i = 0; i < directions.Length; i++)
         {
+            // Calculate the expected neighbor position based on this block's size
             Vector3 neighborPos = pos + directions[i] * size;
             var neighborKey = RoundPosition(neighborPos);
             
-            // Only generate face if no neighbor in this direction
-            if (!blockLookup.ContainsKey(neighborKey))
+            // Check if there's a block at the expected position
+            bool hasNeighbor = blockLookup.ContainsKey(neighborKey);
+            
+            // If no exact match, check nearby positions for blocks of different sizes
+            // This handles cases where angular/stretched blocks are adjacent to standard blocks
+            if (!hasNeighbor)
+            {
+                // Check positions within a small tolerance (±1 unit in the direction axis)
+                Vector3 dir = directions[i];
+                float checkDistance = Math.Abs(dir.X) > 0 ? size.X : (Math.Abs(dir.Y) > 0 ? size.Y : size.Z);
+                
+                // Check a few positions near the expected neighbor location
+                for (float offset = -1.0f; offset <= 1.0f; offset += 0.5f)
+                {
+                    if (offset == 0) continue; // Already checked
+                    
+                    Vector3 altPos = pos + dir * (checkDistance + offset);
+                    var altKey = RoundPosition(altPos);
+                    
+                    if (blockLookup.ContainsKey(altKey))
+                    {
+                        // Found a neighbor nearby, consider this face occluded
+                        hasNeighbor = true;
+                        break;
+                    }
+                }
+            }
+            
+            // Only generate face if no neighbor found in this direction
+            if (!hasNeighbor)
             {
                 AddFace(mesh, pos, size, i, color, blockType);
             }

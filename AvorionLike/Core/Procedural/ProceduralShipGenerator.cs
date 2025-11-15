@@ -308,8 +308,8 @@ public class ProceduralShipGenerator
             ship.Structure.AddBlock(new VoxelBlock(new Vector3(dimensions.X / 2 - blockSize, dimensions.Y / 2 - blockSize, z), new Vector3(blockSize, blockSize, blockSize), config.Material, BlockType.Hull));
         }
         
-        // Horizontal edge beams - CONSISTENT 4-unit spacing (2-unit blocks touching)
-        for (float x = -dimensions.X / 2; x < dimensions.X / 2; x += 4f)
+        // Horizontal edge beams - CONSISTENT 2-unit spacing (2-unit blocks touching)
+        for (float x = -dimensions.X / 2; x < dimensions.X / 2; x += 2f)
         {
             var beamSize = GetStretchedBlockSize("x");
             ship.Structure.AddBlock(new VoxelBlock(new Vector3(x, -dimensions.Y / 2, bodyStart), beamSize, config.Material, BlockType.Hull));
@@ -318,8 +318,8 @@ public class ProceduralShipGenerator
             ship.Structure.AddBlock(new VoxelBlock(new Vector3(x, dimensions.Y / 2 - blockSize, bodyEnd), beamSize, config.Material, BlockType.Hull));
         }
         
-        // Vertical edge beams - CONSISTENT 4-unit spacing
-        for (float y = -dimensions.Y / 2; y < dimensions.Y / 2; y += 4f)
+        // Vertical edge beams - CONSISTENT 2-unit spacing
+        for (float y = -dimensions.Y / 2; y < dimensions.Y / 2; y += 2f)
         {
             var beamSize = GetStretchedBlockSize("y");
             ship.Structure.AddBlock(new VoxelBlock(new Vector3(-dimensions.X / 2, y, bodyStart), beamSize, config.Material, BlockType.Hull));
@@ -375,7 +375,7 @@ public class ProceduralShipGenerator
         for (float z = bodyStart; z <= bodyEnd; z += strutSpacing)
         {
             // Horizontal struts connecting sides
-            for (float x = -dimensions.X / 2; x <= dimensions.X / 2; x += 4f)
+            for (float x = -dimensions.X / 2; x <= dimensions.X / 2; x += 2f)
             {
                 var strutSize = GetStretchedBlockSize("z");
                 ship.Structure.AddBlock(new VoxelBlock(new Vector3(x, 0, z), strutSize, config.Material, BlockType.Hull));
@@ -383,7 +383,7 @@ public class ProceduralShipGenerator
         }
         
         // Add decorative angular panels on sides
-        for (float z = bodyStart; z < bodyEnd; z += 6)
+        for (float z = bodyStart; z < bodyEnd; z += 4)
         {
             float panelY = dimensions.Y / 3;
             var panelSize = GetAngularBlockSize();  // Use angular blocks for panels
@@ -497,12 +497,12 @@ public class ProceduralShipGenerator
             {
                 var strutSize = GetStretchedBlockSize("x");
                 // Left connecting strut - ensure they touch
-                for (float x = -dimensions.X / 2; x > -nacelleOffset + blockSize; x -= 4f)
+                for (float x = -dimensions.X / 2; x > -nacelleOffset + blockSize; x -= 2f)
                 {
                     ship.Structure.AddBlock(new VoxelBlock(new Vector3(x, 0, z), strutSize, config.Material, BlockType.Hull));
                 }
                 // Right connecting strut
-                for (float x = dimensions.X / 2; x < nacelleOffset - blockSize; x += 4f)
+                for (float x = dimensions.X / 2; x < nacelleOffset - blockSize; x += 2f)
                 {
                     ship.Structure.AddBlock(new VoxelBlock(new Vector3(x, 0, z), strutSize, config.Material, BlockType.Hull));
                 }
@@ -510,7 +510,7 @@ public class ProceduralShipGenerator
         }
         
         // Add angular armor plates on top - triangular profile using angular blocks
-        for (float z = -dimensions.Z / 4; z < dimensions.Z / 3; z += 6)
+        for (float z = -dimensions.Z / 4; z < dimensions.Z / 3; z += 4)
         {
             float normalizedZ = (z + dimensions.Z / 4) / (dimensions.Z / 3 + dimensions.Z / 4);
             float plateWidth = dimensions.X * (1.0f - normalizedZ * 0.5f) / 2;
@@ -531,8 +531,8 @@ public class ProceduralShipGenerator
         float radius = Math.Min(dimensions.X, dimensions.Y) / 2;
         float blockSize = 2f;
         
-        // Main cylindrical hull section - SPARSE SHELL only (not filled)
-        for (float z = -dimensions.Z / 2; z < dimensions.Z / 2; z += 4)  // Sparse Z spacing
+        // Main cylindrical hull section - Dense shell for cohesive appearance
+        for (float z = -dimensions.Z / 2; z < dimensions.Z / 2; z += 2)  // Dense Z spacing for solid look
         {
             // Create circular shell using angle sampling
             for (float angle = 0; angle < 360; angle += 20)  // 18 blocks per ring (360/20)
@@ -559,8 +559,8 @@ public class ProceduralShipGenerator
             float zPos = -dimensions.Z / 2 + i * containerSpacing;
             float containerRadius = radius * 1.2f;
             
-            // Create bulging cargo sections - sparse
-            for (float z = zPos - 4; z <= zPos + 4; z += 4)  // Only 3 rings
+            // Create bulging cargo sections - denser for cohesion
+            for (float z = zPos - 4; z <= zPos + 4; z += 2)  // Denser rings
             {
                 for (float angle = 0; angle < 360; angle += 30)  // 12 blocks per ring
                 {
@@ -619,7 +619,7 @@ public class ProceduralShipGenerator
                 float x = (radius + 2) * MathF.Cos(rad);
                 float y = (radius + 2) * MathF.Sin(rad);
                 
-                for (float z = -dimensions.Z / 2 + 4; z < dimensions.Z / 2 - 4; z += 4)
+                for (float z = -dimensions.Z / 2 + 4; z < dimensions.Z / 2 - 4; z += 2)
                 {
                     ship.Structure.AddBlock(new VoxelBlock(
                         new Vector3(x, y, z),
@@ -648,7 +648,7 @@ public class ProceduralShipGenerator
         }
         
         // Streamlined body - very flat, wide profile with extreme taper
-        for (float z = -dimensions.Z / 3; z < dimensions.Z / 3; z += 4)  // Sparse for sleek look
+        for (float z = -dimensions.Z / 3; z < dimensions.Z / 3; z += 2)  // Denser for cohesive look
         {
             float normalizedZ = Math.Abs(z) / (dimensions.Z / 3);
             float widthFactor = 1.0f - normalizedZ * 0.8f;  // Extreme taper
