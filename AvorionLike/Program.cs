@@ -77,6 +77,7 @@ class Program
             Console.WriteLine("23. Test Ship Connectivity - Verify No Floating Blocks [NEW! 🔧]");
             Console.WriteLine("24. Test Ship Shape Variety - Verify Different Hull Shapes [NEW! 🎨]");
             Console.WriteLine("25. Ship Showcase - Generate 20 Ships for Selection [NEW! 🚀⭐]");
+            Console.WriteLine("26. AI Ship Generation - AI-Driven Voxel Construction [NEW! 🤖✨]");
             Console.WriteLine();
             Console.WriteLine("--- INFO ---");
             Console.WriteLine("15. About / Version Info");
@@ -162,6 +163,9 @@ class Program
                     break;
                 case "25":
                     RunShipShowcase();
+                    break;
+                case "26":
+                    RunAIShipGenerationDemo();
                     break;
                 case "0":
                     _running = false;
@@ -2425,6 +2429,27 @@ class Program
         
         var test = new MovementAndShapeTests();
         test.RunAllTests();
+        
+        Console.WriteLine("\nPress any key to return to main menu...");
+        Console.ReadKey();
+    }
+    
+    static void RunAIShipGenerationDemo()
+    {
+        Console.WriteLine("\n=== AI-Driven Voxel Construction System ===");
+        Console.WriteLine("Demonstrating comprehensive AI ship generation with smart design rules");
+        Console.WriteLine();
+        
+        try
+        {
+            var example = new AIShipGenerationExample();
+            example.Run();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"\n✗ Error running AI ship generation demo: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+        }
         
         Console.WriteLine("\nPress any key to return to main menu...");
         Console.ReadKey();
