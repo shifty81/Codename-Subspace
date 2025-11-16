@@ -192,6 +192,7 @@ public class GraphicsWindow : IDisposable
         Console.WriteLine("  UI Controls:");
         Console.WriteLine("    M - Toggle Galaxy Map");
         Console.WriteLine("    ~ (Tilde) - Toggle In-Game Testing Console");
+        Console.WriteLine("    Console Button - Click bottom-left button to open/close console ✨ NEW!");
         Console.WriteLine("    ALT - Show mouse cursor (hold, doesn't affect free-look)");
         Console.WriteLine("    ESC - Pause Menu (press again to close)");
         Console.WriteLine("    F1 - Toggle Debug HUD (enabled by default)");
@@ -376,6 +377,9 @@ public class GraphicsWindow : IDisposable
             RenderTestingConsole();
         }
         
+        // Render Console Toggle Button (always visible for easy access)
+        RenderConsoleToggleButton();
+        
         // Render Galaxy Map if open
         if (_galaxyMapUI != null && _galaxyMapUI.IsOpen)
         {
@@ -386,33 +390,104 @@ public class GraphicsWindow : IDisposable
         _imguiController.Render();
     }
     
+    private void RenderConsoleToggleButton()
+    {
+        if (_testingConsole == null || _window == null) return;
+        
+        // Position button in bottom-left corner, above where console would appear
+        float buttonWidth = 150f;
+        float buttonHeight = 30f;
+        Vector2 buttonPos = new Vector2(10, _window.Size.Y - 320);
+        
+        ImGuiNET.ImGui.SetNextWindowPos(buttonPos);
+        ImGuiNET.ImGui.SetNextWindowSize(new Vector2(buttonWidth, buttonHeight));
+        ImGuiNET.ImGui.PushStyleColor(ImGuiNET.ImGuiCol.WindowBg, new Vector4(0.0f, 0.15f, 0.2f, 0.85f));
+        ImGuiNET.ImGui.PushStyleColor(ImGuiNET.ImGuiCol.Border, new Vector4(0.0f, 0.9f, 1.0f, 0.9f));
+        ImGuiNET.ImGui.PushStyleVar(ImGuiNET.ImGuiStyleVar.WindowPadding, new Vector2(8, 6));
+        ImGuiNET.ImGui.PushStyleVar(ImGuiNET.ImGuiStyleVar.WindowBorderSize, 2f);
+        
+        if (ImGuiNET.ImGui.Begin("##ConsoleToggle", ImGuiNET.ImGuiWindowFlags.NoTitleBar | 
+                                ImGuiNET.ImGuiWindowFlags.NoResize | ImGuiNET.ImGuiWindowFlags.NoMove | 
+                                ImGuiNET.ImGuiWindowFlags.NoScrollbar))
+        {
+            string buttonText = _testingConsole.IsVisible ? "▼ CONSOLE" : "▲ CONSOLE";
+            Vector4 buttonColor = _testingConsole.IsVisible ? 
+                new Vector4(0.0f, 0.9f, 1.0f, 1.0f) : new Vector4(0.0f, 0.7f, 0.9f, 0.8f);
+            
+            ImGuiNET.ImGui.PushStyleColor(ImGuiNET.ImGuiCol.Button, new Vector4(0.0f, 0.3f, 0.4f, 0.7f));
+            ImGuiNET.ImGui.PushStyleColor(ImGuiNET.ImGuiCol.ButtonHovered, new Vector4(0.0f, 0.5f, 0.6f, 0.9f));
+            ImGuiNET.ImGui.PushStyleColor(ImGuiNET.ImGuiCol.ButtonActive, new Vector4(0.0f, 0.7f, 0.8f, 1.0f));
+            ImGuiNET.ImGui.PushStyleColor(ImGuiNET.ImGuiCol.Text, buttonColor);
+            
+            if (ImGuiNET.ImGui.Button(buttonText, new Vector2(buttonWidth - 16, buttonHeight - 12)))
+            {
+                _testingConsole.Toggle();
+                if (_testingConsole.IsVisible)
+                {
+                    _consoleInput = "";
+                }
+            }
+            
+            ImGuiNET.ImGui.PopStyleColor(4);
+        }
+        ImGuiNET.ImGui.End();
+        ImGuiNET.ImGui.PopStyleVar(2);
+        ImGuiNET.ImGui.PopStyleColor(2);
+    }
+    
     private void RenderTestingConsole()
     {
         if (_testingConsole == null || _window == null) return;
         
-        // Create console window using ImGui
+        // Create console window using ImGui with better styling
         ImGuiNET.ImGui.SetNextWindowPos(new Vector2(10, _window.Size.Y - 310));
         ImGuiNET.ImGui.SetNextWindowSize(new Vector2(_window.Size.X - 20, 300));
+        ImGuiNET.ImGui.PushStyleColor(ImGuiNET.ImGuiCol.WindowBg, new Vector4(0.0f, 0.05f, 0.08f, 0.95f));
+        ImGuiNET.ImGui.PushStyleColor(ImGuiNET.ImGuiCol.Border, new Vector4(0.0f, 0.9f, 1.0f, 0.9f));
+        ImGuiNET.ImGui.PushStyleColor(ImGuiNET.ImGuiCol.TitleBg, new Vector4(0.0f, 0.2f, 0.25f, 0.9f));
+        ImGuiNET.ImGui.PushStyleColor(ImGuiNET.ImGuiCol.TitleBgActive, new Vector4(0.0f, 0.3f, 0.35f, 1.0f));
+        ImGuiNET.ImGui.PushStyleVar(ImGuiNET.ImGuiStyleVar.WindowBorderSize, 3f);
         
-        if (ImGuiNET.ImGui.Begin("In-Game Testing Console", ImGuiNET.ImGuiWindowFlags.NoCollapse | ImGuiNET.ImGuiWindowFlags.NoMove | ImGuiNET.ImGuiWindowFlags.NoResize))
+        if (ImGuiNET.ImGui.Begin("⬡ IN-GAME TESTING CONSOLE", ImGuiNET.ImGuiWindowFlags.NoCollapse | 
+                                ImGuiNET.ImGuiWindowFlags.NoMove | ImGuiNET.ImGuiWindowFlags.NoResize))
         {
-            // Output history
-            ImGuiNET.ImGui.BeginChild("ConsoleOutput", new Vector2(0, -30), true);
+            // Help text
+            ImGuiNET.ImGui.PushStyleColor(ImGuiNET.ImGuiCol.Text, new Vector4(0.4f, 0.9f, 1.0f, 0.8f));
+            ImGuiNET.ImGui.Text("Type 'help' for available commands. Press ~ or click button to toggle.");
+            ImGuiNET.ImGui.PopStyleColor();
+            ImGuiNET.ImGui.Separator();
+            ImGuiNET.ImGui.Spacing();
+            
+            // Output history with color coding
+            ImGuiNET.ImGui.BeginChild("ConsoleOutput", new Vector2(0, -35), true);
             foreach (var line in _testingConsole.OutputHistory.TakeLast(20))
             {
+                Vector4 textColor = line.StartsWith("✓") ? new Vector4(0.0f, 1.0f, 0.6f, 1.0f) :
+                                   line.StartsWith("✗") || line.StartsWith("Error") ? new Vector4(1.0f, 0.3f, 0.3f, 1.0f) :
+                                   line.StartsWith(">") ? new Vector4(0.0f, 0.9f, 1.0f, 1.0f) :
+                                   new Vector4(0.9f, 0.9f, 0.9f, 1.0f);
+                ImGuiNET.ImGui.PushStyleColor(ImGuiNET.ImGuiCol.Text, textColor);
                 ImGuiNET.ImGui.TextUnformatted(line);
+                ImGuiNET.ImGui.PopStyleColor();
             }
             // Auto-scroll to bottom
             if (ImGuiNET.ImGui.GetScrollY() >= ImGuiNET.ImGui.GetScrollMaxY())
                 ImGuiNET.ImGui.SetScrollHereY(1.0f);
             ImGuiNET.ImGui.EndChild();
             
-            // Input field
+            ImGuiNET.ImGui.Spacing();
+            
+            // Input field with styling
+            ImGuiNET.ImGui.PushStyleColor(ImGuiNET.ImGuiCol.Text, new Vector4(0.0f, 1.0f, 1.0f, 1.0f));
             ImGuiNET.ImGui.Text($"> {_consoleInput}");
             ImGuiNET.ImGui.SameLine();
+            ImGuiNET.ImGui.PushStyleColor(ImGuiNET.ImGuiCol.Text, new Vector4(0.0f, 0.9f, 1.0f, 0.5f));
             ImGuiNET.ImGui.Text("_");
+            ImGuiNET.ImGui.PopStyleColor(2);
         }
         ImGuiNET.ImGui.End();
+        ImGuiNET.ImGui.PopStyleVar();
+        ImGuiNET.ImGui.PopStyleColor(4);
     }
 
     private void OnKeyDown(IKeyboard keyboard, Key key, int keyCode)

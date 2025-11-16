@@ -404,6 +404,14 @@ class Program
         Console.WriteLine("Opening 3D window with Player UI...");
         Console.WriteLine("You can now control your ship and explore!\n");
         
+        Console.WriteLine("💡 TESTING FEATURES:");
+        Console.WriteLine("  • Press ~ or click Console button to open testing console");
+        Console.WriteLine("  • Type 'help' in console for all commands");
+        Console.WriteLine("  • Quick demos: demo_quick, demo_combat, demo_mining, demo_world");
+        Console.WriteLine("  • Spawn entities: spawn_ship, spawn_enemy, spawn_asteroid");
+        Console.WriteLine("  • Resources: credits [amount], add_resource [type] [amount]");
+        Console.WriteLine("  • Testing: tp [x y z], velocity [x y z], heal, damage [amount]\n");
+        
         try
         {
             using var graphicsWindow = new GraphicsWindow(_gameEngine);

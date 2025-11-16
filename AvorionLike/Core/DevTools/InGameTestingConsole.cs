@@ -418,6 +418,148 @@ public class InGameTestingConsole : DebugConsole
             if (entities.Count > 20)
                 WriteLine($"  ... and {entities.Count - 20} more");
         });
+        
+        // === DEMO COMMANDS - Quick Feature Tests ===
+        
+        RegisterCommand("demo_combat", "Demo combat features - spawn enemies and initiate combat", args =>
+        {
+            Vector3 playerPos = GetPlayerPosition();
+            WriteLine("=== COMBAT DEMO ===");
+            WriteLine("Spawning enemy fighters around you...");
+            
+            // Spawn 3 enemy ships in different positions
+            for (int i = 0; i < 3; i++)
+            {
+                float angle = (i / 3f) * MathF.PI * 2;
+                Vector3 offset = new Vector3(
+                    MathF.Cos(angle) * 60,
+                    (i - 1) * 15,
+                    MathF.Sin(angle) * 60
+                );
+                var enemy = CreateEnemyShip(playerPos + offset, "aggressive");
+                var aiComp = _gameEngine.EntityManager.GetComponent<AIComponent>(enemy.Id);
+                if (aiComp != null && _playerShipId != Guid.Empty)
+                {
+                    aiComp.CurrentState = AIState.Combat;
+                    aiComp.CurrentTarget = _playerShipId;
+                }
+            }
+            
+            WriteLine("✓ Combat demo ready! 3 aggressive enemies are attacking!");
+            WriteLine("  Use ship controls to engage or evade");
+        });
+        
+        RegisterCommand("demo_mining", "Demo mining features - spawn asteroids around player", args =>
+        {
+            Vector3 playerPos = GetPlayerPosition();
+            WriteLine("=== MINING DEMO ===");
+            WriteLine("Spawning resource-rich asteroids...");
+            
+            // Spawn asteroids with different resources
+            var resources = new[] { ResourceType.Iron, ResourceType.Titanium, ResourceType.Naonite, ResourceType.Trinium };
+            for (int i = 0; i < 8; i++)
+            {
+                float angle = (i / 8f) * MathF.PI * 2;
+                Vector3 offset = new Vector3(
+                    MathF.Cos(angle) * 40,
+                    (Random.Shared.NextSingle() - 0.5f) * 20,
+                    MathF.Sin(angle) * 40
+                );
+                CreateAsteroid(playerPos + offset, resources[i % resources.Length]);
+            }
+            
+            WriteLine("✓ Mining demo ready! 8 asteroids spawned nearby");
+            WriteLine("  Approach and mine them for resources");
+        });
+        
+        RegisterCommand("demo_economy", "Demo economy features - add credits and resources", args =>
+        {
+            WriteLine("=== ECONOMY DEMO ===");
+            
+            if (!TryGetPlayerShip(out var playerShip)) return;
+            
+            if (_gameEngine.EntityManager.HasComponent<InventoryComponent>(playerShip.Id))
+            {
+                var inv = _gameEngine.EntityManager.GetComponent<InventoryComponent>(playerShip.Id);
+                if (inv != null)
+                {
+                    inv.Inventory.AddResource(ResourceType.Credits, 100000);
+                    inv.Inventory.AddResource(ResourceType.Iron, 1000);
+                    inv.Inventory.AddResource(ResourceType.Titanium, 500);
+                    inv.Inventory.AddResource(ResourceType.Naonite, 200);
+                    inv.Inventory.AddResource(ResourceType.Trinium, 100);
+                    
+                    WriteLine("✓ Economy demo ready!");
+                    WriteLine($"  Credits: {inv.Inventory.GetResourceAmount(ResourceType.Credits):N0}");
+                    WriteLine($"  Iron: {inv.Inventory.GetResourceAmount(ResourceType.Iron)}");
+                    WriteLine($"  Titanium: {inv.Inventory.GetResourceAmount(ResourceType.Titanium)}");
+                    WriteLine($"  Naonite: {inv.Inventory.GetResourceAmount(ResourceType.Naonite)}");
+                    WriteLine($"  Trinium: {inv.Inventory.GetResourceAmount(ResourceType.Trinium)}");
+                }
+            }
+        });
+        
+        RegisterCommand("demo_world", "Demo world population - fill area with entities", args =>
+        {
+            Vector3 playerPos = GetPlayerPosition();
+            WriteLine("=== WORLD POPULATION DEMO ===");
+            WriteLine("Populating sector with mixed entities...");
+            
+            int asteroidCount = 0, shipCount = 0, enemyCount = 0;
+            
+            for (int i = 0; i < 20; i++)
+            {
+                float angle = (i / 20f) * MathF.PI * 2;
+                float radius = 80 + Random.Shared.Next(60);
+                Vector3 offset = new Vector3(
+                    MathF.Cos(angle) * radius,
+                    (Random.Shared.NextSingle() - 0.5f) * 40,
+                    MathF.Sin(angle) * radius
+                );
+                
+                int entityType = Random.Shared.Next(3);
+                switch (entityType)
+                {
+                    case 0:
+                        CreateAsteroid(playerPos + offset, RandomResourceType());
+                        asteroidCount++;
+                        break;
+                    case 1:
+                        CreateTestShip($"NPC Ship {i}", "Titanium", playerPos + offset);
+                        shipCount++;
+                        break;
+                    case 2:
+                        CreateEnemyShip(playerPos + offset, "defensive");
+                        enemyCount++;
+                        break;
+                }
+            }
+            
+            WriteLine($"✓ World populated!");
+            WriteLine($"  Asteroids: {asteroidCount}");
+            WriteLine($"  Neutral Ships: {shipCount}");
+            WriteLine($"  Enemy Ships: {enemyCount}");
+        });
+        
+        RegisterCommand("demo_quick", "Quick test setup - spawn a few entities for quick testing", args =>
+        {
+            Vector3 playerPos = GetPlayerPosition();
+            WriteLine("=== QUICK TEST SETUP ===");
+            
+            // Spawn 2 asteroids
+            CreateAsteroid(playerPos + new Vector3(30, 0, 0), ResourceType.Iron);
+            CreateAsteroid(playerPos + new Vector3(-30, 0, 0), ResourceType.Titanium);
+            
+            // Spawn 1 friendly ship
+            CreateTestShip("Friendly Ship", "Naonite", playerPos + new Vector3(0, 0, 40));
+            
+            // Spawn 1 enemy
+            var enemy = CreateEnemyShip(playerPos + new Vector3(0, 0, -50), "defensive");
+            
+            WriteLine("✓ Quick setup complete!");
+            WriteLine("  2 asteroids, 1 friendly, 1 enemy");
+            WriteLine("  Ready for testing!");
+        });
     }
 
     // === Helper Methods ===
