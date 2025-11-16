@@ -38,7 +38,12 @@ public class DebugConsole
         isVisible = !isVisible;
         if (isVisible)
         {
-            WriteLine("Debug Console (Type 'help' for commands)");
+            WriteLine("=== In-Game Testing Console ===");
+            WriteLine("Type 'help' for all commands");
+            WriteLine("Quick Commands: demo_quick, demo_combat, demo_mining, demo_world, demo_economy");
+            WriteLine("Spawning: spawn_ship, spawn_enemy, spawn_asteroid, spawn_station");
+            WriteLine("Testing: heal, damage, tp, velocity, credits, add_resource");
+            WriteLine("Info: stats, pos, list_entities");
         }
     }
 
