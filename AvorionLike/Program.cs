@@ -395,10 +395,10 @@ class Program
         
         Console.WriteLine("\n  💡 Tip: Journey toward the galactic center (0,0,0) to unlock better materials and features!");
         
-        // Populate the game world with a living, breathing universe
+        // Populate the game world with zone-appropriate content
         Console.WriteLine("\n=== Populating Game World ===");
         var worldPopulator = new GameWorldPopulator(_gameEngine, seed: 12345);
-        worldPopulator.PopulateStarterArea(physicsComponent.Position, radius: 800f);
+        worldPopulator.PopulateZoneArea(physicsComponent.Position, locationComponent.CurrentSector, radius: 800f);
         
         Console.WriteLine("\n=== Launching Full Game Experience ===");
         Console.WriteLine("Opening 3D window with Player UI...");
