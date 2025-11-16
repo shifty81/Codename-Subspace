@@ -7,6 +7,8 @@ using AvorionLike.Core.Combat;
 using AvorionLike.Core.Navigation;
 using AvorionLike.Core.AI;
 using AvorionLike.Core.RPG;
+using AvorionLike.Core.Progression;
+using AvorionLike.Core.Procedural;
 
 namespace AvorionLike.Core;
 
@@ -48,6 +50,131 @@ public class GameWorldPopulator
         CreateStation(playerPosition + new Vector3(radius * 0.5f, 0, 0), StationType.TradingPost, "Haven Station");
         
         Console.WriteLine("Starter area population complete!");
+    }
+    
+    /// <summary>
+    /// Creates a populated area with zone-appropriate content based on galaxy progression
+    /// </summary>
+    public void PopulateZoneArea(Vector3 playerPosition, SectorCoordinate sector, float radius = 1000f)
+    {
+        int distanceFromCenter = GalaxyProgressionSystem.GetDistanceFromCenter(sector);
+        var zoneName = GalaxyProgressionSystem.GetZoneName(distanceFromCenter);
+        var availableTier = GalaxyProgressionSystem.GetAvailableMaterialTier(distanceFromCenter);
+        var difficulty = GalaxyProgressionSystem.GetDifficultyMultiplier(distanceFromCenter);
+        var spawnRate = GalaxyProgressionSystem.GetEnemySpawnRate(distanceFromCenter);
+        
+        Console.WriteLine($"Populating {zoneName} at sector [{sector.X}, {sector.Y}, {sector.Z}]");
+        Console.WriteLine($"  Distance from center: {distanceFromCenter} sectors");
+        Console.WriteLine($"  Available material: {availableTier}");
+        Console.WriteLine($"  Difficulty: {difficulty:F1}x");
+        Console.WriteLine($"  Enemy spawn rate: {spawnRate:F1}x");
+        
+        // Create zone-appropriate asteroids with correct material types
+        CreateZoneAsteroidField(playerPosition, radius, 15, availableTier);
+        
+        // Scale ship counts by zone
+        int traderCount = Math.Max(1, (int)(3 * (1.0f / difficulty))); // Fewer traders in dangerous zones
+        int minerCount = Math.Max(2, (int)(4 * (1.0f / difficulty)));  // Fewer miners in dangerous zones
+        int pirateCount = (int)(2 * spawnRate * difficulty);            // More pirates in dangerous zones
+        
+        CreateTraderShips(playerPosition, radius, traderCount);
+        CreateMinerShips(playerPosition, radius, minerCount);
+        CreatePirateShips(playerPosition, radius * 0.8f, pirateCount);
+        
+        // Create zone-appropriate station
+        var stationType = DetermineStationType(availableTier, distanceFromCenter);
+        var stationName = GenerateStationName(stationType, zoneName);
+        CreateStation(playerPosition + new Vector3(radius * 0.5f, 0, 0), stationType, stationName);
+        
+        Console.WriteLine("Zone population complete!");
+    }
+    
+    /// <summary>
+    /// Determine appropriate station type for the zone
+    /// </summary>
+    private StationType DetermineStationType(MaterialTier tier, int distance)
+    {
+        // Core zones get better stations
+        if (distance < 50) return StationType.Research;
+        if (distance < 150) return StationType.Military;
+        if (distance < 250) return StationType.Mining;
+        return StationType.TradingPost;
+    }
+    
+    /// <summary>
+    /// Generate a contextual station name
+    /// </summary>
+    private string GenerateStationName(StationType type, string zoneName)
+    {
+        var prefix = type switch
+        {
+            StationType.TradingPost => "Trading Hub",
+            StationType.Military => "Defense Station",
+            StationType.Research => "Research Outpost",
+            StationType.Mining => "Mining Station",
+            _ => "Station"
+        };
+        
+        var zonePrefix = zoneName.Contains("Core") ? "Core" :
+                        zoneName.Contains("Frontier") ? "Frontier" :
+                        zoneName.Contains("Rim") ? "Rim" : "";
+        
+        return $"{zonePrefix} {prefix} {_random.Next(100, 999)}";
+    }
+    
+    /// <summary>
+    /// Creates asteroids with zone-appropriate materials
+    /// </summary>
+    private void CreateZoneAsteroidField(Vector3 center, float radius, int count, MaterialTier maxTier)
+    {
+        Console.WriteLine($"  Creating {count} asteroids (up to {maxTier} materials)...");
+        
+        // Determine which resource types are available in this zone
+        var availableResources = new List<ResourceType>();
+        
+        // Always have Iron
+        availableResources.Add(ResourceType.Iron);
+        
+        if (maxTier >= MaterialTier.Titanium) availableResources.Add(ResourceType.Titanium);
+        if (maxTier >= MaterialTier.Naonite) availableResources.Add(ResourceType.Naonite);
+        if (maxTier >= MaterialTier.Trinium) availableResources.Add(ResourceType.Trinium);
+        if (maxTier >= MaterialTier.Xanion) availableResources.Add(ResourceType.Xanion);
+        if (maxTier >= MaterialTier.Ogonite) availableResources.Add(ResourceType.Ogonite);
+        if (maxTier >= MaterialTier.Avorion) availableResources.Add(ResourceType.Avorion);
+        
+        for (int i = 0; i < count; i++)
+        {
+            // Random position within radius
+            var offset = new Vector3(
+                (float)(_random.NextDouble() * 2 - 1) * radius,
+                (float)(_random.NextDouble() * 2 - 1) * radius * 0.3f,
+                (float)(_random.NextDouble() * 2 - 1) * radius
+            );
+            
+            var position = center + offset;
+            var size = (float)(_random.NextDouble() * 10 + 5);
+            
+            // Weight resources towards the highest tier in the zone
+            ResourceType resourceType;
+            var tierRoll = _random.NextDouble();
+            if (tierRoll > 0.7 && availableResources.Count > 0)
+            {
+                // 30% chance of highest tier
+                resourceType = availableResources[availableResources.Count - 1];
+            }
+            else if (tierRoll > 0.4 && availableResources.Count > 1)
+            {
+                // 30% chance of second highest tier
+                resourceType = availableResources[Math.Max(0, availableResources.Count - 2)];
+            }
+            else
+            {
+                // 40% chance of any lower tier
+                resourceType = availableResources[_random.Next(availableResources.Count)];
+            }
+            
+            CreateAsteroid(position, size, resourceType, $"Asteroid-{i + 1}");
+        }
     }
     
     /// <summary>

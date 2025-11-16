@@ -8,6 +8,8 @@ using AvorionLike.Core.Graphics;
 using AvorionLike.Core.Combat;
 using AvorionLike.Core.Navigation;
 using AvorionLike.Core.Procedural;
+using AvorionLike.Core.Progression;
+using AvorionLike.Core.Fleet;
 using AvorionLike.Examples;
 using System.Numerics;
 
@@ -314,13 +316,34 @@ class Program
         };
         _gameEngine.EntityManager.AddComponent(playerShip.Id, hyperdriveComponent);
         
-        // Add sector location
+        // Add sector location - Start at galaxy rim (400 sectors from center)
         var locationComponent = new SectorLocationComponent
         {
             EntityId = playerShip.Id,
-            CurrentSector = new SectorCoordinate(0, 0, 0)
+            CurrentSector = new SectorCoordinate(400, 0, 0)  // Galaxy rim starting position
         };
         _gameEngine.EntityManager.AddComponent(playerShip.Id, locationComponent);
+        
+        // Add galaxy progression tracking
+        var playerProgressionComp = new PlayerProgressionComponent
+        {
+            EntityId = playerShip.Id,
+            ClosestDistanceToCenter = 400,
+            CurrentZone = "Galaxy Rim (Iron Zone)",
+            FurthestZoneReached = "Galaxy Rim (Iron Zone)",
+            AvailableMaterialTier = MaterialTier.Iron,
+            HighestMaterialTierAcquired = MaterialTier.Iron,
+            CurrentZoneDifficulty = 1.0f,
+            SectorsExplored = 1
+        };
+        _gameEngine.EntityManager.AddComponent(playerShip.Id, playerProgressionComp);
+        
+        // Register Galaxy Progression System and Fleet Automation System
+        var galaxyProgressionSystem = new GalaxyProgressionSystem(_gameEngine.EntityManager);
+        var fleetAutomationSystem = new FleetAutomationSystem(_gameEngine.EntityManager);
+        
+        _gameEngine.EntityManager.RegisterSystem(galaxyProgressionSystem);
+        _gameEngine.EntityManager.RegisterSystem(fleetAutomationSystem);
         
         Console.WriteLine($"\n✓ Player ship created!");
         Console.WriteLine($"  Name: {playerShip.Name}");
@@ -341,10 +364,41 @@ class Program
         Console.WriteLine("  Gyros: Avorion (Purple with Strong Glow)");
         Console.WriteLine("\n  Each block type has distinct colors to verify rendering!");
         
-        // Populate the game world with a living, breathing universe
+        // Display galaxy progression information
+        int distance = GalaxyProgressionSystem.GetDistanceFromCenter(locationComponent.CurrentSector);
+        var zoneName = GalaxyProgressionSystem.GetZoneName(distance);
+        var availableTier = GalaxyProgressionSystem.GetAvailableMaterialTier(distance);
+        var difficulty = GalaxyProgressionSystem.GetDifficultyMultiplier(distance);
+        
+        Console.WriteLine("\n=== GALAXY PROGRESSION SYSTEM ===");
+        Console.WriteLine($"  📍 Starting Location: Sector [{locationComponent.CurrentSector.X}, {locationComponent.CurrentSector.Y}, {locationComponent.CurrentSector.Z}]");
+        Console.WriteLine($"  🌌 Current Zone: {zoneName}");
+        Console.WriteLine($"  📏 Distance from Center: {distance} sectors");
+        Console.WriteLine($"  ⚔️  Zone Difficulty: {difficulty:F1}x");
+        Console.WriteLine($"  🔨 Available Materials: {availableTier}");
+        Console.WriteLine($"  📊 Highest Tier Acquired: {playerProgressionComp.HighestMaterialTierAcquired}");
+        
+        // Display material tier unlocks
+        var features = MaterialTierInfo.GetUnlockedFeatures(availableTier);
+        Console.WriteLine($"\n  ✨ Unlocked Features in {availableTier} Zone:");
+        foreach (var feature in features.Take(5))
+        {
+            Console.WriteLine($"     • {feature}");
+        }
+        
+        // Show progression goals
+        Console.WriteLine("\n  🎯 Progression Goals:");
+        Console.WriteLine($"     • Reach Titanium Zone (< 350 sectors from center)");
+        Console.WriteLine($"     • Unlock Shields in Naonite Zone (< 250 sectors)");
+        Console.WriteLine($"     • Hire Captains in Ogonite Zone (< 50 sectors)");
+        Console.WriteLine($"     • Reach Galactic Core (< 25 sectors) for Avorion!");
+        
+        Console.WriteLine("\n  💡 Tip: Journey toward the galactic center (0,0,0) to unlock better materials and features!");
+        
+        // Populate the game world with zone-appropriate content
         Console.WriteLine("\n=== Populating Game World ===");
         var worldPopulator = new GameWorldPopulator(_gameEngine, seed: 12345);
-        worldPopulator.PopulateStarterArea(physicsComponent.Position, radius: 800f);
+        worldPopulator.PopulateZoneArea(physicsComponent.Position, locationComponent.CurrentSector, radius: 800f);
         
         Console.WriteLine("\n=== Launching Full Game Experience ===");
         Console.WriteLine("Opening 3D window with Player UI...");

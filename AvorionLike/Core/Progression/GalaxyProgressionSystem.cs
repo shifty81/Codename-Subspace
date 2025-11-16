@@ -224,13 +224,3 @@ public class PlayerProgressionComponent : IComponent
         return (int)HighestMaterialTierAcquired >= (int)tier;
     }
 }
-
-/// <summary>
-/// Sector location component
-/// </summary>
-public class SectorLocationComponent : IComponent
-{
-    public Guid EntityId { get; set; }
-    public required SectorCoordinate CurrentSector { get; set; }
-    public SectorCoordinate? PreviousSector { get; set; }
-}
