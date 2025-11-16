@@ -602,21 +602,88 @@ public class GraphicsWindow : IDisposable
         {
             _consoleInput += " ";
         }
-        else if (keyCode >= 32 && keyCode < 127)
+        else if (key == Key.Escape)
         {
-            // Add printable character
-            char c = (char)keyCode;
-            // Handle Shift for uppercase
-            if (_consoleShiftPressed)
+            // Clear input on escape
+            _consoleInput = "";
+        }
+        else
+        {
+            // Convert Key enum to character
+            char? c = KeyToChar(key, _consoleShiftPressed);
+            if (c.HasValue)
             {
-                c = char.ToUpper(c);
+                _consoleInput += c.Value;
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Convert Silk.NET Key enum to character, respecting shift state
+    /// </summary>
+    private char? KeyToChar(Key key, bool shiftPressed)
+    {
+        // Letters A-Z
+        if (key >= Key.A && key <= Key.Z)
+        {
+            char baseChar = (char)('a' + (key - Key.A));
+            return shiftPressed ? char.ToUpper(baseChar) : baseChar;
+        }
+        
+        // Numbers 0-9 (with shift for special characters)
+        if (key >= Key.Number0 && key <= Key.Number9)
+        {
+            if (shiftPressed)
+            {
+                // Shift + number keys produce special characters
+                return key switch
+                {
+                    Key.Number1 => '!',
+                    Key.Number2 => '@',
+                    Key.Number3 => '#',
+                    Key.Number4 => '$',
+                    Key.Number5 => '%',
+                    Key.Number6 => '^',
+                    Key.Number7 => '&',
+                    Key.Number8 => '*',
+                    Key.Number9 => '(',
+                    Key.Number0 => ')',
+                    _ => null
+                };
             }
             else
             {
-                c = char.ToLower(c);
+                return (char)('0' + (key - Key.Number0));
             }
-            _consoleInput += c;
         }
+        
+        // Keypad numbers
+        if (key >= Key.Keypad0 && key <= Key.Keypad9)
+        {
+            return (char)('0' + (key - Key.Keypad0));
+        }
+        
+        // Special characters and symbols
+        return key switch
+        {
+            Key.Minus => shiftPressed ? '_' : '-',
+            Key.Equal => shiftPressed ? '+' : '=',
+            Key.LeftBracket => shiftPressed ? '{' : '[',
+            Key.RightBracket => shiftPressed ? '}' : ']',
+            Key.Semicolon => shiftPressed ? ':' : ';',
+            Key.Apostrophe => shiftPressed ? '"' : '\'',
+            Key.Comma => shiftPressed ? '<' : ',',
+            Key.Period => shiftPressed ? '>' : '.',
+            Key.Slash => shiftPressed ? '?' : '/',
+            Key.BackSlash => shiftPressed ? '|' : '\\',
+            Key.GraveAccent => shiftPressed ? '~' : '`',
+            Key.KeypadDecimal => '.',
+            Key.KeypadDivide => '/',
+            Key.KeypadMultiply => '*',
+            Key.KeypadSubtract => '-',
+            Key.KeypadAdd => '+',
+            _ => null
+        };
     }
 
     private void OnKeyUp(IKeyboard keyboard, Key key, int keyCode)
