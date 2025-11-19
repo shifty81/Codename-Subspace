@@ -185,8 +185,16 @@ class Program
 
     static void StartNewGame()
     {
-        Console.WriteLine("\n=== NEW GAME - Full Gameplay Experience ===");
-        Console.WriteLine("Initializing player ship and game world...\n");
+        Console.WriteLine("\n=== NEW GAME - Full Visual Testing Experience ===");
+        Console.WriteLine("Creating comprehensive test environment with all implementations...\n");
+        Console.WriteLine("This includes:");
+        Console.WriteLine("  • Procedural ship generation (all sizes and roles)");
+        Console.WriteLine("  • AI-driven voxel construction");
+        Console.WriteLine("  • Visual enhancements (ships, stations, asteroids)");
+        Console.WriteLine("  • Movement and shape tests");
+        Console.WriteLine("  • Ship connectivity tests");
+        Console.WriteLine("  • Multiple faction styles");
+        Console.WriteLine("  • Enhanced graphics and UI\n");
         
         // Create player ship
         var playerShip = _gameEngine!.EntityManager.CreateEntity("Player Ship");
@@ -403,6 +411,10 @@ class Program
         Console.WriteLine("\n=== Populating Game World ===");
         var worldPopulator = new GameWorldPopulator(_gameEngine, seed: 12345);
         worldPopulator.PopulateZoneArea(physicsComponent.Position, locationComponent.CurrentSector, radius: 800f);
+        
+        // Add comprehensive test showcase - All implementations in one place!
+        Console.WriteLine("\n=== Creating Test Showcase - All Implementations ===");
+        CreateComprehensiveTestShowcase(playerShip.Id, physicsComponent.Position);
         
         Console.WriteLine("\n=== Launching Full Game Experience ===");
         Console.WriteLine("Opening 3D window with Player UI...");
@@ -2541,6 +2553,161 @@ class Program
         
         Console.WriteLine("\nPress any key to return to main menu...");
         Console.ReadKey();
+    }
+
+    /// <summary>
+    /// Creates a comprehensive test showcase with all implementations visible for testing
+    /// </summary>
+    static void CreateComprehensiveTestShowcase(Guid playerShipId, Vector3 playerPosition)
+    {
+        Console.WriteLine("Generating test showcase with multiple ship types...");
+        
+        var shipGenerator = new ProceduralShipGenerator(Environment.TickCount);
+        int shipCount = 0;
+        
+        // Configuration for different ship types to test
+        var testConfigurations = new[]
+        {
+            // Fighter examples (different factions and styles)
+            new { Name = "Military Fighter", Size = ShipSize.Fighter, Role = ShipRole.Combat, Material = "Avorion", Style = "Military", Position = new Vector3(150, 0, 0) },
+            new { Name = "Scout Fighter", Size = ShipSize.Fighter, Role = ShipRole.Exploration, Material = "Trinium", Style = "Explorers", Position = new Vector3(150, 50, 0) },
+            
+            // Corvette examples
+            new { Name = "Combat Corvette", Size = ShipSize.Corvette, Role = ShipRole.Combat, Material = "Titanium", Style = "Military", Position = new Vector3(200, 0, 0) },
+            new { Name = "Mining Corvette", Size = ShipSize.Corvette, Role = ShipRole.Mining, Material = "Iron", Style = "Miners", Position = new Vector3(200, 50, 0) },
+            
+            // Frigate examples
+            new { Name = "Military Frigate", Size = ShipSize.Frigate, Role = ShipRole.Combat, Material = "Ogonite", Style = "Military", Position = new Vector3(300, 0, 0) },
+            new { Name = "Trading Frigate", Size = ShipSize.Frigate, Role = ShipRole.Trading, Material = "Xanion", Style = "Traders", Position = new Vector3(300, 50, 0) },
+            new { Name = "Explorer Frigate", Size = ShipSize.Frigate, Role = ShipRole.Exploration, Material = "Naonite", Style = "Explorers", Position = new Vector3(300, -50, 0) },
+            
+            // Destroyer examples
+            new { Name = "Heavy Destroyer", Size = ShipSize.Destroyer, Role = ShipRole.Combat, Material = "Avorion", Style = "Military", Position = new Vector3(450, 0, 0) },
+            new { Name = "Salvage Destroyer", Size = ShipSize.Destroyer, Role = ShipRole.Salvage, Material = "Ogonite", Style = "Pirates", Position = new Vector3(450, 50, 0) },
+            
+            // Cruiser examples
+            new { Name = "Battle Cruiser", Size = ShipSize.Cruiser, Role = ShipRole.Combat, Material = "Avorion", Style = "Military", Position = new Vector3(600, 0, 0) },
+            new { Name = "Trade Cruiser", Size = ShipSize.Cruiser, Role = ShipRole.Trading, Material = "Xanion", Style = "Traders", Position = new Vector3(600, 50, 0) },
+            
+            // Battleship examples
+            new { Name = "Dreadnought", Size = ShipSize.Battleship, Role = ShipRole.Combat, Material = "Avorion", Style = "Military", Position = new Vector3(800, 0, 0) },
+            
+            // Carrier example
+            new { Name = "Fleet Carrier", Size = ShipSize.Carrier, Role = ShipRole.Multipurpose, Material = "Avorion", Style = "Military", Position = new Vector3(1000, 0, 0) },
+            
+            // Different hull shapes at various positions (for visual comparison)
+            new { Name = "Angular Fighter", Size = ShipSize.Fighter, Role = ShipRole.Combat, Material = "Titanium", Style = "Military", Position = new Vector3(-150, 0, 100) },
+            new { Name = "Sleek Fighter", Size = ShipSize.Fighter, Role = ShipRole.Combat, Material = "Trinium", Style = "Military", Position = new Vector3(-150, 0, 150) },
+            new { Name = "Blocky Trader", Size = ShipSize.Corvette, Role = ShipRole.Trading, Material = "Iron", Style = "Traders", Position = new Vector3(-150, 0, 200) },
+            new { Name = "Cylindrical Hauler", Size = ShipSize.Frigate, Role = ShipRole.Trading, Material = "Titanium", Style = "Traders", Position = new Vector3(-150, 0, 250) },
+        };
+        
+        // Generate all test ships
+        foreach (var config in testConfigurations)
+        {
+            try
+            {
+                var shipConfig = new ShipGenerationConfig
+                {
+                    Size = config.Size,
+                    Role = config.Role,
+                    Material = config.Material,
+                    Style = FactionShipStyle.GetDefaultStyle(config.Style),
+                    Seed = config.Name.GetHashCode()
+                };
+                
+                var generatedShip = shipGenerator.GenerateShip(shipConfig);
+                var ship = _gameEngine!.EntityManager.CreateEntity(config.Name);
+                
+                // Add voxel structure
+                _gameEngine.EntityManager.AddComponent(ship.Id, generatedShip.Structure);
+                
+                // Add physics at specified position
+                var physicsComponent = new PhysicsComponent
+                {
+                    Position = playerPosition + config.Position,
+                    Velocity = Vector3.Zero,
+                    Mass = generatedShip.Structure.TotalMass,
+                    MomentOfInertia = generatedShip.Structure.MomentOfInertia,
+                    MaxThrust = generatedShip.Structure.TotalThrust,
+                    MaxTorque = generatedShip.Structure.TotalTorque
+                };
+                _gameEngine.EntityManager.AddComponent(ship.Id, physicsComponent);
+                
+                // Add combat component
+                var combatComponent = new CombatComponent
+                {
+                    EntityId = ship.Id,
+                    MaxShields = generatedShip.Structure.ShieldCapacity,
+                    CurrentShields = generatedShip.Structure.ShieldCapacity,
+                    MaxEnergy = generatedShip.Structure.PowerGeneration,
+                    CurrentEnergy = generatedShip.Structure.PowerGeneration
+                };
+                _gameEngine.EntityManager.AddComponent(ship.Id, combatComponent);
+                
+                shipCount++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"  ⚠ Failed to generate {config.Name}: {ex.Message}");
+            }
+        }
+        
+        // Add some enhanced stations (using visual enhancements)
+        Console.WriteLine("Adding test stations...");
+        try
+        {
+            var stationGenerator = new ProceduralStationGenerator(seed: 789);
+            var stationTypes = new[] { "Trading", "Military", "Industrial" };
+            int stationNum = 0;
+            
+            foreach (var stationType in stationTypes)
+            {
+                var config = new StationGenerationConfig
+                {
+                    Size = StationSize.Medium,
+                    StationType = stationType,
+                    Material = "Titanium",
+                    Architecture = StationArchitecture.Modular,
+                    Seed = stationType.GetHashCode()
+                };
+                
+                var generatedStation = stationGenerator.GenerateStation(config);
+                var stationEntity = _gameEngine!.EntityManager.CreateEntity($"{stationType} Station");
+                
+                _gameEngine.EntityManager.AddComponent(stationEntity.Id, generatedStation.Structure);
+                
+                var stationPhysics = new PhysicsComponent
+                {
+                    Position = playerPosition + new Vector3(0, 200 + (stationNum * 150), 400),
+                    Velocity = Vector3.Zero,
+                    Mass = generatedStation.Structure.TotalMass,
+                    IsStatic = true
+                };
+                _gameEngine.EntityManager.AddComponent(stationEntity.Id, stationPhysics);
+                stationNum++;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"  ⚠ Failed to generate stations: {ex.Message}");
+        }
+        
+        // Add connectivity test ships (to verify no floating blocks)
+        Console.WriteLine("Adding connectivity test examples...");
+        try
+        {
+            TestShipConnectivity.Run();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"  ⚠ Connectivity tests skipped: {ex.Message}");
+        }
+        
+        Console.WriteLine($"✓ Test showcase created: {shipCount} ships generated");
+        Console.WriteLine($"  Ships are positioned at various distances from player ship");
+        Console.WriteLine($"  Use camera controls to fly around and inspect each design");
+        Console.WriteLine($"  All implementations are now visible for testing!");
     }
 }
 
