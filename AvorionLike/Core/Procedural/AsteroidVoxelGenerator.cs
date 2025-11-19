@@ -262,6 +262,7 @@ public class AsteroidVoxelGenerator
     
     /// <summary>
     /// Add visible resource veins to asteroids (glowing materials)
+    /// ENHANCED: Better color coding and visual distinction
     /// </summary>
     private void AddResourceVeins(List<VoxelBlock> blocks, AsteroidData asteroidData)
     {
@@ -271,19 +272,23 @@ public class AsteroidVoxelGenerator
         float veinDensity = GetResourceVeinDensity(asteroidData.ResourceType);
         int veinCount = (int)(blocks.Count * veinDensity);
         
+        // Get color for this resource type
+        uint resourceColor = GetResourceColor(asteroidData.ResourceType);
+        
         for (int i = 0; i < veinCount; i++)
         {
-            if (_random.NextDouble() > 0.3) continue; // 30% chance per vein
+            if (_random.NextDouble() > 0.4) continue; // 40% chance per vein (increased from 30%)
             
             var block = blocks[_random.Next(blocks.Count)];
             
-            // Make resource blocks slightly glowing
+            // Make resource blocks glowing with distinct color
             block.MaterialType = GetGlowingMaterial(asteroidData.ResourceType);
+            block.ColorRGB = resourceColor;  // Apply resource-specific color
             
-            // Add small crystal protrusions
-            if (_random.NextDouble() < 0.5)
+            // Add small crystal protrusions for visual interest
+            if (_random.NextDouble() < 0.6)  // Increased from 0.5 for more crystals
             {
-                var crystalSize = new Vector3(0.8f, 1.5f + (float)_random.NextDouble(), 0.8f);
+                var crystalSize = new Vector3(0.6f, 1.2f + (float)_random.NextDouble() * 0.8f, 0.6f);  // Smaller, more refined
                 var crystalOffset = new Vector3(
                     (float)(_random.NextDouble() - 0.5) * 2,
                     block.Size.Y / 2 + crystalSize.Y / 2,
@@ -296,6 +301,7 @@ public class AsteroidVoxelGenerator
                     GetGlowingMaterial(asteroidData.ResourceType),
                     BlockType.Hull
                 );
+                crystal.ColorRGB = resourceColor;  // Match vein color
                 blocks.Add(crystal);
             }
         }
@@ -401,6 +407,25 @@ public class AsteroidVoxelGenerator
             "Naonite" => "Naonite",
             "Crystal" => "Crystal",
             _ => resourceType
+        };
+    }
+    
+    /// <summary>
+    /// Get distinct color for each resource type for better visual distinction
+    /// </summary>
+    private uint GetResourceColor(string resourceType)
+    {
+        return resourceType switch
+        {
+            "Avorion" => 0xFF0000,      // Red
+            "Ogonite" => 0xFF8C00,      // Dark Orange
+            "Xanion" => 0x00FF00,       // Green
+            "Trinium" => 0x1E90FF,      // Dodger Blue
+            "Naonite" => 0x9370DB,      // Medium Purple
+            "Titanium" => 0xC0C0C0,     // Silver
+            "Iron" => 0x808080,         // Gray
+            "Crystal" => 0x00FFFF,      // Cyan
+            _ => 0xFFFFFF               // White (default)
         };
     }
 }
