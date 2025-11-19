@@ -111,6 +111,9 @@ public class ProceduralShipGenerator
         // Step 7: Apply faction color scheme
         ApplyColorScheme(result, config);
         
+        // Step 7.5: Add surface detailing (greebles, antennas, vents)
+        AddSurfaceDetailing(result, config);
+        
         // Step 8: Calculate final statistics
         CalculateShipStats(result);
         
@@ -1365,6 +1368,201 @@ public class ProceduralShipGenerator
                 block.ColorRGB = style.AccentColor;
             }
             // Functional blocks keep their material colors
+        }
+    }
+    
+    /// <summary>
+    /// Add surface detailing to ships (greebles, antennas, panels, vents)
+    /// Enhances visual distinctiveness and adds character to ships
+    /// </summary>
+    private void AddSurfaceDetailing(GeneratedShip ship, ShipGenerationConfig config)
+    {
+        var style = config.Style;
+        var dimensions = GetShipDimensions(config.Size);
+        
+        // Calculate how many detail elements to add based on ship size
+        int detailCount = (int)(ship.Structure.Blocks.Count * 0.15f); // 15% of blocks as details
+        detailCount = Math.Max(5, Math.Min(detailCount, 50)); // Between 5 and 50 details
+        
+        // Add antennas on top of ship
+        AddAntennas(ship, dimensions, config, detailCount / 5);
+        
+        // Add surface panels and vents
+        AddSurfacePanels(ship, dimensions, config, detailCount / 3);
+        
+        // Add sensor arrays or lights
+        AddSensorArrays(ship, dimensions, config, detailCount / 4);
+        
+        // Add glowing engine effects
+        AddEngineGlow(ship, config);
+        
+        // Add hull pattern variations (stripes, decals)
+        AddHullPatterns(ship, dimensions, config);
+    }
+    
+    /// <summary>
+    /// Add antenna arrays to the ship
+    /// </summary>
+    private void AddAntennas(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config, int count)
+    {
+        // Find top hull blocks to attach antennas
+        var topBlocks = ship.Structure.Blocks
+            .Where(b => b.BlockType == BlockType.Hull)
+            .OrderByDescending(b => b.Position.Y)
+            .Take(count * 2)
+            .ToList();
+        
+        for (int i = 0; i < Math.Min(count, topBlocks.Count); i++)
+        {
+            var baseBlock = topBlocks[i * 2];
+            
+            // Add thin antenna extending upward
+            float antennaHeight = 3 + (float)_random.NextDouble() * 3; // 3-6 units tall
+            var antennaSize = new Vector3(0.5f, antennaHeight, 0.5f);
+            
+            var antenna = new VoxelBlock(
+                baseBlock.Position + new Vector3(0, baseBlock.Size.Y / 2 + antennaHeight / 2, 0),
+                antennaSize,
+                config.Material,
+                BlockType.Hull
+            );
+            antenna.ColorRGB = config.Style.AccentColor; // Use accent color for visibility
+            ship.Structure.AddBlock(antenna);
+        }
+    }
+    
+    /// <summary>
+    /// Add surface panels and vents for visual interest
+    /// </summary>
+    private void AddSurfacePanels(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config, int count)
+    {
+        var hullBlocks = ship.Structure.Blocks
+            .Where(b => b.BlockType == BlockType.Hull)
+            .ToList();
+        
+        if (hullBlocks.Count == 0) return;
+        
+        for (int i = 0; i < count; i++)
+        {
+            var baseBlock = hullBlocks[_random.Next(hullBlocks.Count)];
+            
+            // Determine panel orientation based on block position
+            float offsetDistance = 0.2f;
+            Vector3 offset;
+            Vector3 panelSize;
+            
+            // Panels stick out slightly from hull
+            if (Math.Abs(baseBlock.Position.X) > Math.Abs(baseBlock.Position.Y))
+            {
+                // Side panel
+                offset = new Vector3(Math.Sign(baseBlock.Position.X) * (baseBlock.Size.X / 2 + offsetDistance), 0, 0);
+                panelSize = new Vector3(0.4f, 1.5f, 1.5f);
+            }
+            else
+            {
+                // Top/bottom panel
+                offset = new Vector3(0, Math.Sign(baseBlock.Position.Y) * (baseBlock.Size.Y / 2 + offsetDistance), 0);
+                panelSize = new Vector3(1.5f, 0.4f, 1.5f);
+            }
+            
+            var panel = new VoxelBlock(
+                baseBlock.Position + offset,
+                panelSize,
+                config.Material,
+                BlockType.Hull
+            );
+            
+            // Alternate between primary and secondary colors for variety
+            panel.ColorRGB = i % 2 == 0 ? config.Style.PrimaryColor : config.Style.SecondaryColor;
+            ship.Structure.AddBlock(panel);
+        }
+    }
+    
+    /// <summary>
+    /// Add sensor arrays and lights to the ship
+    /// </summary>
+    private void AddSensorArrays(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config, int count)
+    {
+        // Add sensors near the front of the ship
+        var frontBlocks = ship.Structure.Blocks
+            .Where(b => b.BlockType == BlockType.Hull && b.Position.Z > dimensions.Z / 4)
+            .OrderByDescending(b => b.Position.Z)
+            .Take(count * 2)
+            .ToList();
+        
+        for (int i = 0; i < Math.Min(count, frontBlocks.Count); i++)
+        {
+            var baseBlock = frontBlocks[i];
+            
+            // Small sensor dish or light
+            var sensorSize = new Vector3(1f, 1f, 1f);
+            var offset = new Vector3(
+                (float)_random.NextDouble() * 2 - 1,
+                (float)_random.NextDouble() * 2 - 1,
+                0.5f
+            );
+            
+            var sensor = new VoxelBlock(
+                baseBlock.Position + offset,
+                sensorSize,
+                config.Material,
+                BlockType.TurretMount
+            );
+            sensor.ColorRGB = config.Style.AccentColor;
+            ship.Structure.AddBlock(sensor);
+        }
+    }
+    
+    /// <summary>
+    /// Add glowing effects to engines for visual distinction
+    /// </summary>
+    private void AddEngineGlow(GeneratedShip ship, ShipGenerationConfig config)
+    {
+        var engines = ship.Structure.Blocks
+            .Where(b => b.BlockType == BlockType.Engine || b.BlockType == BlockType.Thruster)
+            .ToList();
+        
+        foreach (var engine in engines)
+        {
+            // Add small glowing block behind engine
+            var glowSize = new Vector3(0.8f, 0.8f, 0.8f);
+            var glowOffset = new Vector3(0, 0, -engine.Size.Z / 2 - 0.5f);
+            
+            var glow = new VoxelBlock(
+                engine.Position + glowOffset,
+                glowSize,
+                "Energy", // Use energy material for glow effect
+                BlockType.Hull
+            );
+            glow.ColorRGB = 0x00FFFF; // Cyan glow
+            ship.Structure.AddBlock(glow);
+        }
+    }
+    
+    /// <summary>
+    /// Add hull patterns (stripes, decals) for visual variety
+    /// </summary>
+    private void AddHullPatterns(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config)
+    {
+        // Add racing stripes or faction markings
+        if (config.Style.Philosophy == DesignPhilosophy.SpeedFocused ||
+            config.Style.Philosophy == DesignPhilosophy.CombatFocused)
+        {
+            // Add stripes along the length
+            var sideBlocks = ship.Structure.Blocks
+                .Where(b => b.BlockType == BlockType.Hull || b.BlockType == BlockType.Armor)
+                .Where(b => Math.Abs(b.Position.Y) < dimensions.Y / 4) // Middle height
+                .OrderBy(b => b.Position.Z)
+                .ToList();
+            
+            // Color every 3rd block with accent color for stripe effect
+            for (int i = 0; i < sideBlocks.Count; i += 3)
+            {
+                if (_random.NextDouble() < 0.3) // 30% chance per stripe segment
+                {
+                    sideBlocks[i].ColorRGB = config.Style.AccentColor;
+                }
+            }
         }
     }
     

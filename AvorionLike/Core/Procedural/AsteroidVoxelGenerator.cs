@@ -240,4 +240,167 @@ public class AsteroidVoxelGenerator
         
         return blocks;
     }
+    
+    /// <summary>
+    /// Generate enhanced asteroid with craters, resource veins, and varied shapes
+    /// </summary>
+    public List<VoxelBlock> GenerateEnhancedAsteroid(AsteroidData asteroidData, int voxelResolution = 8)
+    {
+        var blocks = GenerateAsteroid(asteroidData, voxelResolution);
+        
+        // Add visible resource veins (glowing crystals)
+        AddResourceVeins(blocks, asteroidData);
+        
+        // Add craters for visual interest
+        AddCraters(blocks, asteroidData.Position, asteroidData.Size);
+        
+        // Add surface crystals or outcroppings
+        AddSurfaceDetails(blocks, asteroidData);
+        
+        return blocks;
+    }
+    
+    /// <summary>
+    /// Add visible resource veins to asteroids (glowing materials)
+    /// </summary>
+    private void AddResourceVeins(List<VoxelBlock> blocks, AsteroidData asteroidData)
+    {
+        if (blocks.Count == 0) return;
+        
+        // Calculate vein density based on resource type
+        float veinDensity = GetResourceVeinDensity(asteroidData.ResourceType);
+        int veinCount = (int)(blocks.Count * veinDensity);
+        
+        for (int i = 0; i < veinCount; i++)
+        {
+            if (_random.NextDouble() > 0.3) continue; // 30% chance per vein
+            
+            var block = blocks[_random.Next(blocks.Count)];
+            
+            // Make resource blocks slightly glowing
+            block.MaterialType = GetGlowingMaterial(asteroidData.ResourceType);
+            
+            // Add small crystal protrusions
+            if (_random.NextDouble() < 0.5)
+            {
+                var crystalSize = new Vector3(0.8f, 1.5f + (float)_random.NextDouble(), 0.8f);
+                var crystalOffset = new Vector3(
+                    (float)(_random.NextDouble() - 0.5) * 2,
+                    block.Size.Y / 2 + crystalSize.Y / 2,
+                    (float)(_random.NextDouble() - 0.5) * 2
+                );
+                
+                var crystal = new VoxelBlock(
+                    block.Position + crystalOffset,
+                    crystalSize,
+                    GetGlowingMaterial(asteroidData.ResourceType),
+                    BlockType.Hull
+                );
+                blocks.Add(crystal);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Add craters to asteroid surface
+    /// </summary>
+    private void AddCraters(List<VoxelBlock> blocks, Vector3 asteroidCenter, float asteroidSize)
+    {
+        if (blocks.Count == 0) return;
+        
+        int craterCount = 2 + _random.Next(4); // 2-5 craters
+        
+        for (int i = 0; i < craterCount; i++)
+        {
+            // Pick a random surface point
+            var surfaceBlocks = blocks
+                .OrderByDescending(b => (b.Position - asteroidCenter).Length())
+                .Take(blocks.Count / 3)
+                .ToList();
+            
+            if (surfaceBlocks.Count == 0) continue;
+            
+            var craterCenter = surfaceBlocks[_random.Next(surfaceBlocks.Count)].Position;
+            float craterRadius = asteroidSize * 0.1f + (float)_random.NextDouble() * asteroidSize * 0.15f;
+            
+            // Remove blocks within crater radius
+            blocks.RemoveAll(b => 
+                (b.Position - craterCenter).Length() < craterRadius &&
+                (b.Position - asteroidCenter).Length() > asteroidSize * 0.3f // Don't create holes through asteroid
+            );
+        }
+    }
+    
+    /// <summary>
+    /// Add surface details like rock outcroppings
+    /// </summary>
+    private void AddSurfaceDetails(List<VoxelBlock> blocks, AsteroidData asteroidData)
+    {
+        if (blocks.Count == 0) return;
+        
+        var surfaceBlocks = blocks
+            .OrderByDescending(b => (b.Position - asteroidData.Position).Length())
+            .Take(blocks.Count / 4)
+            .ToList();
+        
+        int detailCount = 5 + _random.Next(10); // 5-14 details
+        
+        for (int i = 0; i < detailCount; i++)
+        {
+            if (surfaceBlocks.Count == 0) continue;
+            
+            var baseBlock = surfaceBlocks[_random.Next(surfaceBlocks.Count)];
+            Vector3 direction = Vector3.Normalize(baseBlock.Position - asteroidData.Position);
+            
+            // Add small rock protrusion
+            int protrusions = 1 + _random.Next(3); // 1-3 stacked blocks
+            for (int j = 0; j < protrusions; j++)
+            {
+                var detailSize = new Vector3(
+                    0.5f + (float)_random.NextDouble() * 0.5f,
+                    0.5f + (float)_random.NextDouble() * 0.5f,
+                    0.5f + (float)_random.NextDouble() * 0.5f
+                );
+                
+                var detail = new VoxelBlock(
+                    baseBlock.Position + direction * (j + 1) * 0.6f,
+                    detailSize,
+                    baseBlock.MaterialType,
+                    BlockType.Hull
+                );
+                blocks.Add(detail);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Get resource vein density based on resource type
+    /// </summary>
+    private float GetResourceVeinDensity(string resourceType)
+    {
+        return resourceType switch
+        {
+            "Avorion" => 0.25f,
+            "Ogonite" => 0.20f,
+            "Xanion" => 0.18f,
+            "Trinium" => 0.15f,
+            "Naonite" => 0.12f,
+            "Titanium" => 0.10f,
+            _ => 0.08f
+        };
+    }
+    
+    /// <summary>
+    /// Get glowing material name for resource type
+    /// </summary>
+    private string GetGlowingMaterial(string resourceType)
+    {
+        return resourceType switch
+        {
+            "Avorion" => "Avorion",
+            "Naonite" => "Naonite",
+            "Crystal" => "Crystal",
+            _ => resourceType
+        };
+    }
 }
