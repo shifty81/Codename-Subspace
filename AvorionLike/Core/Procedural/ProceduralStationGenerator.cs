@@ -99,6 +99,9 @@ public class ProceduralStationGenerator
         // Step 6: Add internal superstructure for realism
         AddInternalSuperstructure(result, config);
         
+        // Step 7: Add visual enhancements (antennas, lights, patterns)
+        AddStationVisualEnhancements(result, config);
+        
         _logger.Info("StationGenerator", $"Generated station with {result.BlockCount} blocks, {result.DockingPoints.Count} docking bays");
         
         return result;
@@ -696,6 +699,250 @@ public class ProceduralStationGenerator
                         BlockType.Hull
                     ));
                 }
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Add visual enhancements to stations (antennas, lights, communication arrays, patterns)
+    /// </summary>
+    private void AddStationVisualEnhancements(GeneratedStation station, StationGenerationConfig config)
+    {
+        // Add antenna arrays
+        AddStationAntennas(station, config);
+        
+        // Add communication dishes
+        AddCommunicationDishes(station, config);
+        
+        // Add docking bay lights and markers
+        AddDockingLights(station, config);
+        
+        // Add industrial detailing (pipes, vents)
+        AddIndustrialDetails(station, config);
+        
+        // Add color-coded sections for different station types
+        AddStationColorScheme(station, config);
+    }
+    
+    /// <summary>
+    /// Add antenna arrays to station
+    /// </summary>
+    private void AddStationAntennas(GeneratedStation station, StationGenerationConfig config)
+    {
+        int antennaCount = 8 + _random.Next(12); // 8-19 antennas
+        
+        var edgeBlocks = station.Structure.Blocks
+            .OrderByDescending(b => Math.Abs(b.Position.X) + Math.Abs(b.Position.Y) + Math.Abs(b.Position.Z))
+            .Take(antennaCount * 3)
+            .ToList();
+        
+        for (int i = 0; i < Math.Min(antennaCount, edgeBlocks.Count); i++)
+        {
+            var baseBlock = edgeBlocks[i * 3];
+            
+            // Determine antenna direction (outward from center)
+            Vector3 direction = Vector3.Normalize(baseBlock.Position);
+            
+            // Add tall thin antenna
+            float antennaHeight = 10 + (float)_random.NextDouble() * 15; // 10-25 units
+            var antennaSize = new Vector3(0.5f, 0.5f, antennaHeight);
+            
+            // Orient antenna based on position
+            if (Math.Abs(direction.Z) > 0.7f)
+            {
+                antennaSize = new Vector3(0.5f, 0.5f, antennaHeight);
+            }
+            else if (Math.Abs(direction.Y) > 0.7f)
+            {
+                antennaSize = new Vector3(0.5f, antennaHeight, 0.5f);
+            }
+            else
+            {
+                antennaSize = new Vector3(antennaHeight, 0.5f, 0.5f);
+            }
+            
+            var antenna = new VoxelBlock(
+                baseBlock.Position + direction * (antennaHeight / 2 + 2),
+                antennaSize,
+                config.Material,
+                BlockType.TurretMount
+            );
+            station.Structure.AddBlock(antenna);
+        }
+    }
+    
+    /// <summary>
+    /// Add communication dishes to station
+    /// </summary>
+    private void AddCommunicationDishes(GeneratedStation station, StationGenerationConfig config)
+    {
+        int dishCount = 4 + _random.Next(6); // 4-9 dishes
+        
+        var outerBlocks = station.Structure.Blocks
+            .OrderByDescending(b => (b.Position).Length())
+            .Take(dishCount * 5)
+            .ToList();
+        
+        for (int i = 0; i < Math.Min(dishCount, outerBlocks.Count); i++)
+        {
+            var baseBlock = outerBlocks[i * 5];
+            Vector3 direction = Vector3.Normalize(baseBlock.Position);
+            
+            // Add dish structure (3 blocks forming dish shape)
+            float dishSize = 3 + (float)_random.NextDouble() * 2; // 3-5 units
+            
+            // Base of dish
+            var dishBase = new VoxelBlock(
+                baseBlock.Position + direction * 2,
+                new Vector3(1, 1, 2),
+                config.Material,
+                BlockType.Hull
+            );
+            station.Structure.AddBlock(dishBase);
+            
+            // Dish plate
+            var dishPlate = new VoxelBlock(
+                baseBlock.Position + direction * (2 + dishSize / 2),
+                new Vector3(dishSize, dishSize, 0.5f),
+                config.Material,
+                BlockType.Hull
+            );
+            station.Structure.AddBlock(dishPlate);
+        }
+    }
+    
+    /// <summary>
+    /// Add lights and markers around docking bays
+    /// </summary>
+    private void AddDockingLights(GeneratedStation station, StationGenerationConfig config)
+    {
+        foreach (var dockingPoint in station.DockingPoints)
+        {
+            // Add lights around docking bay (4 corner lights)
+            for (int i = 0; i < 4; i++)
+            {
+                float angle = i * MathF.PI / 2;
+                Vector3 offset = new Vector3(
+                    MathF.Cos(angle) * 8,
+                    MathF.Sin(angle) * 8,
+                    0
+                );
+                
+                var light = new VoxelBlock(
+                    dockingPoint + offset,
+                    new Vector3(1, 1, 1),
+                    "Energy", // Use energy material for glow
+                    BlockType.Hull
+                );
+                station.Structure.AddBlock(light);
+            }
+            
+            // Add green approach light
+            var approachLight = new VoxelBlock(
+                dockingPoint + new Vector3(0, 0, 15),
+                new Vector3(1.5f, 1.5f, 1.5f),
+                "Energy",
+                BlockType.Hull
+            );
+            station.Structure.AddBlock(approachLight);
+        }
+    }
+    
+    /// <summary>
+    /// Add industrial details like pipes and vents
+    /// </summary>
+    private void AddIndustrialDetails(GeneratedStation station, StationGenerationConfig config)
+    {
+        if (config.StationType != "Trading" && config.StationType != "Industrial") return;
+        
+        int detailCount = 20 + _random.Next(30); // 20-49 details
+        
+        var surfaceBlocks = station.Structure.Blocks
+            .Where(b => b.BlockType == BlockType.Hull)
+            .OrderBy(x => _random.Next())
+            .Take(detailCount * 2)
+            .ToList();
+        
+        for (int i = 0; i < Math.Min(detailCount, surfaceBlocks.Count); i++)
+        {
+            var baseBlock = surfaceBlocks[i * 2];
+            
+            // Add pipe or vent
+            if (_random.NextDouble() < 0.5)
+            {
+                // Pipe - elongated along a random axis
+                var pipeSize = new Vector3(1, 1, 5 + (float)_random.NextDouble() * 5);
+                var pipe = new VoxelBlock(
+                    baseBlock.Position + new Vector3(0, 0, pipeSize.Z / 2),
+                    pipeSize,
+                    config.Material,
+                    BlockType.Hull
+                );
+                station.Structure.AddBlock(pipe);
+            }
+            else
+            {
+                // Vent - flat panel
+                var ventSize = new Vector3(2, 2, 0.5f);
+                var vent = new VoxelBlock(
+                    baseBlock.Position + new Vector3(0, 0, 1),
+                    ventSize,
+                    config.Material,
+                    BlockType.Hull
+                );
+                station.Structure.AddBlock(vent);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Add color scheme to station based on type
+    /// </summary>
+    private void AddStationColorScheme(GeneratedStation station, StationGenerationConfig config)
+    {
+        uint primaryColor, secondaryColor, accentColor;
+        
+        // Choose colors based on station type
+        switch (config.StationType.ToLower())
+        {
+            case "trading":
+                primaryColor = 0xDAA520; // Goldenrod
+                secondaryColor = 0xF0E68C; // Khaki
+                accentColor = 0xFFD700; // Gold
+                break;
+            case "military":
+                primaryColor = 0x2F4F4F; // Dark Slate Gray
+                secondaryColor = 0x708090; // Slate Gray
+                accentColor = 0xFF0000; // Red
+                break;
+            case "industrial":
+                primaryColor = 0xB8860B; // Dark Goldenrod
+                secondaryColor = 0x696969; // Dim Gray
+                accentColor = 0xFFA500; // Orange
+                break;
+            case "research":
+                primaryColor = 0x4169E1; // Royal Blue
+                secondaryColor = 0xADD8E6; // Light Blue
+                accentColor = 0x00CED1; // Dark Turquoise
+                break;
+            default:
+                primaryColor = 0x808080; // Gray
+                secondaryColor = 0x696969; // Dim Gray
+                accentColor = 0xC0C0C0; // Silver
+                break;
+        }
+        
+        // Apply colors to blocks
+        foreach (var block in station.Structure.Blocks)
+        {
+            if (block.BlockType == BlockType.Hull)
+            {
+                // Randomly use primary or secondary
+                block.ColorRGB = _random.NextDouble() < 0.7 ? primaryColor : secondaryColor;
+            }
+            else if (block.BlockType == BlockType.TurretMount)
+            {
+                block.ColorRGB = accentColor;
             }
         }
     }

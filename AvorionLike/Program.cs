@@ -80,6 +80,7 @@ class Program
             Console.WriteLine("24. Test Ship Shape Variety - Verify Different Hull Shapes [NEW! 🎨]");
             Console.WriteLine("25. Ship Showcase - Generate 20 Ships for Selection [NEW! 🚀⭐]");
             Console.WriteLine("26. AI Ship Generation - AI-Driven Voxel Construction [NEW! 🤖✨]");
+            Console.WriteLine("27. Visual Enhancements Test - Test Ship/Station/Asteroid Details [NEW! ✨]");
             Console.WriteLine();
             Console.WriteLine("--- INFO ---");
             Console.WriteLine("15. About / Version Info");
@@ -168,6 +169,9 @@ class Program
                     break;
                 case "26":
                     RunAIShipGenerationDemo();
+                    break;
+                case "27":
+                    RunVisualEnhancementsTest();
                     break;
                 case "0":
                     _running = false;
@@ -2510,6 +2514,28 @@ class Program
         catch (Exception ex)
         {
             Console.WriteLine($"\n✗ Error running AI ship generation demo: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+        }
+        
+        Console.WriteLine("\nPress any key to return to main menu...");
+        Console.ReadKey();
+    }
+    
+    static void RunVisualEnhancementsTest()
+    {
+        Console.WriteLine("\n=== Visual Enhancements Test ===");
+        Console.WriteLine("Testing enhanced ship, station, and asteroid generation with visual details");
+        Console.WriteLine();
+        
+        try
+        {
+            var entityManager = new EntityManager();
+            var test = new VisualEnhancementsTest(entityManager);
+            test.RunDemo();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"\n✗ Error running visual enhancements test: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
         }
         
