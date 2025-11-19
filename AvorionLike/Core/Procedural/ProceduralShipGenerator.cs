@@ -169,31 +169,33 @@ public class ProceduralShipGenerator
     /// <summary>
     /// Get an angular/wedge block size for more interesting shapes
     /// Creates non-square blocks for angular, sleek designs
+    /// UPDATED: Smaller, more refined blocks for sleeker appearance
     /// </summary>
     private Vector3 GetAngularBlockSize()
     {
-        // Create varied angular blocks: wedges, panels, beams
+        // Create sleeker angular blocks with minimal size variation
+        // Using consistent 2-unit base for better connectivity
         int shapeType = _random.Next(4);
         
         return shapeType switch
         {
-            0 => new Vector3(3, 1, 2),      // Flat panel (horizontal)
-            1 => new Vector3(2, 3, 1),      // Tall panel (vertical)
-            2 => new Vector3(4, 1.5f, 2),   // Wide wedge
-            _ => new Vector3(2, 2, 3)       // Elongated block
+            0 => new Vector3(2, 1, 2),      // Flat panel (horizontal) - sleeker
+            1 => new Vector3(2, 2, 1),      // Tall panel (vertical) - sleeker
+            2 => new Vector3(3, 1, 2),      // Wide wedge - reduced from 4
+            _ => new Vector3(2, 2, 2)       // Standard block for consistency
         };
     }
     
     /// <summary>
     /// Get a stretched block size for long structural elements
     /// Creates elongated blocks for beams, panels, and architectural details
-    /// CONSISTENT sizing for better connectivity
+    /// UPDATED: Sleeker proportions for refined appearance
     /// </summary>
     private Vector3 GetStretchedBlockSize(string axis)
     {
-        // Use consistent base size for better connectivity
+        // Use sleeker proportions - thinner beams, better visual flow
         float baseSize = 2f;
-        float stretchAmount = 4f;  // 2x stretch for clear visual distinction
+        float stretchAmount = 3f;  // Reduced from 4 for sleeker look
         
         return axis.ToLower() switch
         {
@@ -638,105 +640,96 @@ public class ProceduralShipGenerator
     /// <summary>
     /// Generate sleek hull (exploration/science ships - needle/teardrop design)
     /// Creates streamlined, elongated design with minimal cross-section
-    /// Targets 40-70 blocks for Frigate size
+    /// UPDATED: Even sleeker with refined proportions
     /// </summary>
     private void GenerateSleekHull(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config)
     {
-        // Create ultra-streamlined needle/teardrop design
+        // Create ultra-streamlined needle/teardrop design - emphasize sleekness
         
-        // Main spine - central structural beam
-        for (float z = -dimensions.Z / 2; z < dimensions.Z / 2; z += 2)
+        // Main spine - central structural beam (thinner for sleeker look)
+        for (float z = -dimensions.Z / 2; z < dimensions.Z / 2; z += 2.5f)  // Slightly sparser
         {
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(0, 0, z), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
+            ship.Structure.AddBlock(new VoxelBlock(new Vector3(0, 0, z), new Vector3(1.5f, 1.5f, 2.5f), config.Material, BlockType.Hull));
         }
         
         // Streamlined body - very flat, wide profile with extreme taper
-        for (float z = -dimensions.Z / 3; z < dimensions.Z / 3; z += 2)  // Denser for cohesive look
+        for (float z = -dimensions.Z / 3; z < dimensions.Z / 3; z += 3)  // Sparse for sleekness
         {
             float normalizedZ = Math.Abs(z) / (dimensions.Z / 3);
-            float widthFactor = 1.0f - normalizedZ * 0.8f;  // Extreme taper
-            float currentWidth = Math.Max(2, dimensions.X * widthFactor);
-            float currentHeight = Math.Max(2, dimensions.Y * widthFactor * 0.4f);  // Very flat
+            float widthFactor = 1.0f - normalizedZ * 0.85f;  // More aggressive taper
+            float currentWidth = Math.Max(2, dimensions.X * widthFactor * 0.8f);  // Thinner profile
+            float currentHeight = Math.Max(2, dimensions.Y * widthFactor * 0.35f);  // Even flatter
             
-            // Top and bottom surfaces - minimal height
+            // Minimal hull surface - just key structural points
             ship.Structure.AddBlock(new VoxelBlock(
                 new Vector3(-currentWidth / 2, currentHeight / 2, z),
-                new Vector3(2, 2, 2), config.Material, BlockType.Hull));
+                new Vector3(2, 1, 2), config.Material, BlockType.Hull));  // Flat top
             
             ship.Structure.AddBlock(new VoxelBlock(
                 new Vector3(currentWidth / 2 - 2, currentHeight / 2, z),
-                new Vector3(2, 2, 2), config.Material, BlockType.Hull));
+                new Vector3(2, 1, 2), config.Material, BlockType.Hull));  // Flat top
             
             ship.Structure.AddBlock(new VoxelBlock(
                 new Vector3(-currentWidth / 2, -currentHeight / 2, z),
-                new Vector3(2, 2, 2), config.Material, BlockType.Hull));
+                new Vector3(2, 1, 2), config.Material, BlockType.Hull));  // Flat bottom
             
             ship.Structure.AddBlock(new VoxelBlock(
                 new Vector3(currentWidth / 2 - 2, -currentHeight / 2, z),
-                new Vector3(2, 2, 2), config.Material, BlockType.Hull));
+                new Vector3(2, 1, 2), config.Material, BlockType.Hull));  // Flat bottom
             
-            // Occasional cross ribs for strength
-            if ((int)z % 8 == 0)
+            // Occasional connecting rib for strength
+            if ((int)z % 12 == 0)  // Less frequent for sleeker look
             {
-                ship.Structure.AddBlock(new VoxelBlock(new Vector3(-currentWidth / 4, 0, z), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
-                ship.Structure.AddBlock(new VoxelBlock(new Vector3(currentWidth / 4, 0, z), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
+                ship.Structure.AddBlock(new VoxelBlock(new Vector3(-currentWidth / 4, 0, z), new Vector3(1.5f, 1.5f, 1.5f), config.Material, BlockType.Hull));
+                ship.Structure.AddBlock(new VoxelBlock(new Vector3(currentWidth / 4, 0, z), new Vector3(1.5f, 1.5f, 1.5f), config.Material, BlockType.Hull));
             }
         }
         
-        // Sharp pointed nose
-        for (float z = dimensions.Z / 3; z < dimensions.Z / 2; z += 3)
+        // Sharp pointed nose - ultra sleek
+        for (float z = dimensions.Z / 3; z < dimensions.Z / 2; z += 4)
         {
             float progress = (z - dimensions.Z / 3) / (dimensions.Z / 2 - dimensions.Z / 3);
-            if (progress < 0.7f)  // Only first part of nose
+            if (progress < 0.6f)  // Shorter, sharper nose
             {
-                ship.Structure.AddBlock(new VoxelBlock(new Vector3(0, 0, z), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
+                ship.Structure.AddBlock(new VoxelBlock(new Vector3(0, 0, z), new Vector3(1.5f, 1.5f, 2), config.Material, BlockType.Hull));
             }
         }
         
-        // Sleek vertical stabilizer fin at rear top with connectivity
-        float finHeight = dimensions.Y * 1.2f;
-        float finLength = dimensions.Z * 0.25f;
+        // Sleek vertical stabilizer fin at rear top - thinner and taller
+        float finHeight = dimensions.Y * 1.4f;  // Taller fin
+        float finLength = dimensions.Z * 0.3f;  // Longer fin
         float finStart = -dimensions.Z / 2;
         
-        for (float z = finStart; z < finStart + finLength; z += 3)  // Changed from 4 to 3 for better connectivity
+        for (float z = finStart; z < finStart + finLength; z += 4)  // Sparser for sleek look
         {
             float finProgress = (z - finStart) / finLength;
-            float currentFinHeight = finHeight * (1.0f - finProgress * 0.3f);
+            float currentFinHeight = finHeight * (1.0f - finProgress * 0.2f);  // Gentler taper
             
-            // Tall vertical fin - connect to body first, then extend upward
-            // First ensure connection to main body
-            ship.Structure.AddBlock(new VoxelBlock(
-                new Vector3(0, dimensions.Y / 4, z),
-                new Vector3(2, 2, 2), config.Material, BlockType.Hull));
-            
-            // Then extend upward with closer spacing
-            for (float y = dimensions.Y / 4 + 2; y < dimensions.Y / 4 + currentFinHeight; y += 3)  // Changed from 3 spacing, added connection
+            // Tall, thin vertical fin
+            for (float y = dimensions.Y / 4; y < dimensions.Y / 4 + currentFinHeight; y += 4)  // Sparser
             {
                 ship.Structure.AddBlock(new VoxelBlock(
                     new Vector3(0, y, z),
-                    new Vector3(2, 2, 2), config.Material, BlockType.Hull));
+                    new Vector3(1, 2, 1.5f), config.Material, BlockType.Hull));  // Thin fin
             }
         }
         
-        // Small streamlined engine pods on sides with better connectivity
-        float podLength = dimensions.Z * 0.3f;
+        // Small sleek engine pods on sides - minimal design
+        float podLength = dimensions.Z * 0.25f;
         float podStart = -dimensions.Z / 2;
-        float podOffset = dimensions.X * 0.35f;
+        float podOffset = dimensions.X * 0.32f;  // Closer to body
         
-        for (float z = podStart; z < podStart + podLength; z += 3)  // Changed from 5 to 3 for better connectivity
+        for (float z = podStart; z < podStart + podLength; z += 4)  // Sparse for minimalism
         {
-            // Minimal pod structure - just 3 blocks each
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(-podOffset, 0, z), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(-podOffset, -1, z), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
+            // Minimal pod structure - sleek nacelles
+            ship.Structure.AddBlock(new VoxelBlock(new Vector3(-podOffset, -1, z), new Vector3(1.5f, 1.5f, 2), config.Material, BlockType.Hull));
+            ship.Structure.AddBlock(new VoxelBlock(new Vector3(podOffset, -1, z), new Vector3(1.5f, 1.5f, 2), config.Material, BlockType.Hull));
             
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(podOffset, 0, z), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(podOffset, -1, z), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
-            
-            // Add connecting strut to main spine every 6 units for structural integrity
-            if ((int)z % 6 == 0)
+            // Add minimal connecting strut every 8 units
+            if ((int)z % 8 == 0)
             {
-                ship.Structure.AddBlock(new VoxelBlock(new Vector3(-podOffset / 2, 0, z), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
-                ship.Structure.AddBlock(new VoxelBlock(new Vector3(podOffset / 2, 0, z), new Vector3(2, 2, 2), config.Material, BlockType.Hull));
+                ship.Structure.AddBlock(new VoxelBlock(new Vector3(-podOffset / 2, 0, z), new Vector3(1.5f, 1, 1.5f), config.Material, BlockType.Hull));
+                ship.Structure.AddBlock(new VoxelBlock(new Vector3(podOffset / 2, 0, z), new Vector3(1.5f, 1, 1.5f), config.Material, BlockType.Hull));
             }
         }
     }

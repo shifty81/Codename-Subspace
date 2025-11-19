@@ -184,19 +184,21 @@ public class ProceduralStationGenerator
     
     /// <summary>
     /// Generate ring-shaped rotating habitat station
+    /// FIXED: Consistent block sizes to prevent overlaps
     /// </summary>
     private void GenerateRingStation(GeneratedStation station, Vector3 dimensions, StationGenerationConfig config)
     {
         float ringRadius = dimensions.X / 2;
         float ringThickness = 8f;
         float ringWidth = 12f;
+        float blockSize = 2.5f;  // Fixed size, no random variation
+        float spacing = 3f;  // Spacing > blockSize to prevent overlap
         
         // Main ring
         int segments = 64;
         for (int i = 0; i < segments; i++)
         {
             float angle1 = (float)(i * 2 * Math.PI / segments);
-            float angle2 = (float)((i + 1) * 2 * Math.PI / segments);
             
             Vector3 pos1 = new Vector3(
                 MathF.Cos(angle1) * ringRadius,
@@ -205,12 +207,11 @@ public class ProceduralStationGenerator
             );
             
             // Ring cross-section blocks
-            for (float y = -ringWidth / 2; y <= ringWidth / 2; y += 3)
+            for (float y = -ringWidth / 2; y <= ringWidth / 2; y += spacing)
             {
-                for (float z = -ringThickness / 2; z <= ringThickness / 2; z += 3)
+                for (float z = -ringThickness / 2; z <= ringThickness / 2; z += spacing)
                 {
                     Vector3 blockPos = pos1 + new Vector3(0, y, z);
-                    float blockSize = 2.5f + (float)_random.NextDouble() * 0.5f;
                     station.Structure.AddBlock(new VoxelBlock(
                         blockPos,
                         new Vector3(blockSize, blockSize, blockSize),
@@ -233,20 +234,23 @@ public class ProceduralStationGenerator
                 MathF.Sin(angle) * ringRadius,
                 0
             );
-            GenerateCorridor(station, Vector3.Zero, ringPoint, 4f, config.Material);
+            GenerateCorridor(station, Vector3.Zero, ringPoint, 2.5f, config.Material);
         }
     }
     
     /// <summary>
     /// Generate tall tower/spire station
+    /// FIXED: Consistent block sizes to prevent overlaps
     /// </summary>
     private void GenerateTowerStation(GeneratedStation station, Vector3 dimensions, StationGenerationConfig config)
     {
         float height = dimensions.Y;
         float baseRadius = dimensions.X / 4;
+        float blockSize = 2.5f;  // Fixed size, no random variation
+        float spacing = 3.5f;  // Spacing > blockSize to prevent overlap
         
         // Build tower from bottom to top with tapering
-        for (float y = -height / 2; y < height / 2; y += 3)
+        for (float y = -height / 2; y < height / 2; y += spacing)
         {
             float progress = (y + height / 2) / height;
             float currentRadius = baseRadius * (1.2f - progress * 0.4f);  // Slight taper
@@ -262,7 +266,6 @@ public class ProceduralStationGenerator
                     MathF.Sin(angle) * currentRadius
                 );
                 
-                float blockSize = 2f + (float)_random.NextDouble();
                 station.Structure.AddBlock(new VoxelBlock(
                     pos,
                     new Vector3(blockSize, blockSize, blockSize),
@@ -282,7 +285,7 @@ public class ProceduralStationGenerator
                         y,
                         MathF.Sin(angle) * currentRadius
                     );
-                    GenerateCorridor(station, new Vector3(0, y, 0), strutEnd, 2f, config.Material);
+                    GenerateCorridor(station, new Vector3(0, y, 0), strutEnd, 2.5f, config.Material);
                 }
             }
         }
@@ -482,6 +485,7 @@ public class ProceduralStationGenerator
     
     /// <summary>
     /// Add internal superstructure for structural realism
+    /// FIXED: Use consistent sizing to prevent overlaps
     /// </summary>
     private void AddInternalSuperstructure(GeneratedStation station, StationGenerationConfig config)
     {
@@ -497,29 +501,37 @@ public class ProceduralStationGenerator
             _ => 3000
         };
         
+        float blockSize = 2.5f;  // Fixed size, no random variation
+        
         while (station.BlockCount < targetBlocks && existingBlocks.Count > 0)
         {
             // Pick random existing block
             var refBlock = existingBlocks[_random.Next(existingBlocks.Count)];
             
-            // Add nearby structural elements
+            // Add nearby structural elements with sufficient spacing
             for (int i = 0; i < 3; i++)
             {
                 Vector3 offset = new Vector3(
-                    (_random.NextSingle() - 0.5f) * 10,
-                    (_random.NextSingle() - 0.5f) * 10,
-                    (_random.NextSingle() - 0.5f) * 10
+                    (_random.NextSingle() - 0.5f) * 12,  // Increased from 10 for better spacing
+                    (_random.NextSingle() - 0.5f) * 12,
+                    (_random.NextSingle() - 0.5f) * 12
                 );
                 
                 Vector3 newPos = refBlock.Position + offset;
-                float blockSize = 1.5f + (float)_random.NextDouble();
                 
-                station.Structure.AddBlock(new VoxelBlock(
-                    newPos,
-                    new Vector3(blockSize, blockSize, blockSize),
-                    config.Material,
-                    BlockType.Hull
-                ));
+                // Check if too close to existing blocks
+                bool tooClose = station.Structure.Blocks.Any(b => 
+                    Vector3.Distance(b.Position, newPos) < 3f);  // Minimum 3-unit separation
+                
+                if (!tooClose)
+                {
+                    station.Structure.AddBlock(new VoxelBlock(
+                        newPos,
+                        new Vector3(blockSize, blockSize, blockSize),
+                        config.Material,
+                        BlockType.Hull
+                    ));
+                }
                 
                 if (station.BlockCount >= targetBlocks) break;
             }
@@ -530,16 +542,19 @@ public class ProceduralStationGenerator
     
     private void GenerateSphereSection(GeneratedStation station, Vector3 center, float radius, string material)
     {
-        for (float x = -radius; x <= radius; x += 3)
+        // FIXED: Use consistent block size and proper spacing to prevent overlaps
+        float blockSize = 2.5f;  // Fixed size, no random variation
+        float spacing = 3f;  // Spacing must be > blockSize to prevent overlap
+        
+        for (float x = -radius; x <= radius; x += spacing)
         {
-            for (float y = -radius; y <= radius; y += 3)
+            for (float y = -radius; y <= radius; y += spacing)
             {
-                for (float z = -radius; z <= radius; z += 3)
+                for (float z = -radius; z <= radius; z += spacing)
                 {
                     float distance = MathF.Sqrt(x * x + y * y + z * z);
-                    if (distance <= radius && distance >= radius - 6)
+                    if (distance <= radius && distance >= radius - 8)  // Hollow shell
                     {
-                        float blockSize = 2f + (float)_random.NextDouble();
                         station.Structure.AddBlock(new VoxelBlock(
                             center + new Vector3(x, y, z),
                             new Vector3(blockSize, blockSize, blockSize),
@@ -554,21 +569,24 @@ public class ProceduralStationGenerator
     
     private void GenerateBox(GeneratedStation station, Vector3 center, Vector3 size, string material)
     {
+        // FIXED: Use consistent block size and proper spacing to prevent overlaps
+        float blockSize = 2.5f;  // Fixed size, no random variation
+        float spacing = 3f;  // Spacing must be > blockSize to prevent overlap
+        
         // Generate hollow box
-        for (float x = -size.X / 2; x <= size.X / 2; x += 2.5f)
+        for (float x = -size.X / 2; x <= size.X / 2; x += spacing)
         {
-            for (float y = -size.Y / 2; y <= size.Y / 2; y += 2.5f)
+            for (float y = -size.Y / 2; y <= size.Y / 2; y += spacing)
             {
-                for (float z = -size.Z / 2; z <= size.Z / 2; z += 2.5f)
+                for (float z = -size.Z / 2; z <= size.Z / 2; z += spacing)
                 {
                     // Only create shell
-                    bool isEdge = x <= -size.X / 2 + 3 || x >= size.X / 2 - 3 ||
-                                  y <= -size.Y / 2 + 3 || y >= size.Y / 2 - 3 ||
-                                  z <= -size.Z / 2 + 3 || z >= size.Z / 2 - 3;
+                    bool isEdge = x <= -size.X / 2 + spacing || x >= size.X / 2 - spacing ||
+                                  y <= -size.Y / 2 + spacing || y >= size.Y / 2 - spacing ||
+                                  z <= -size.Z / 2 + spacing || z >= size.Z / 2 - spacing;
                     
                     if (isEdge)
                     {
-                        float blockSize = 2f + (float)_random.NextDouble();
                         station.Structure.AddBlock(new VoxelBlock(
                             center + new Vector3(x, y, z),
                             new Vector3(blockSize, blockSize, blockSize),
@@ -583,14 +601,17 @@ public class ProceduralStationGenerator
     
     private void GenerateCorridor(GeneratedStation station, Vector3 start, Vector3 end, float thickness, string material)
     {
+        // FIXED: Use consistent spacing to prevent overlaps
         Vector3 direction = end - start;
         float length = direction.Length();
         direction = Vector3.Normalize(direction);
         
-        for (float d = 0; d < length; d += 2.5f)
+        float blockSize = Math.Min(thickness, 2.5f);  // Cap at 2.5f
+        float spacing = 3f;  // Spacing > blockSize to prevent overlap
+        
+        for (float d = 0; d < length; d += spacing)
         {
             Vector3 pos = start + direction * d;
-            float blockSize = thickness;
             station.Structure.AddBlock(new VoxelBlock(
                 pos,
                 new Vector3(blockSize, blockSize, blockSize),
@@ -602,7 +623,11 @@ public class ProceduralStationGenerator
     
     private void GenerateCylinder(GeneratedStation station, Vector3 center, float radius, float height, string material)
     {
-        for (float y = -height / 2; y <= height / 2; y += 3)
+        // FIXED: Use consistent block size and proper spacing to prevent overlaps
+        float blockSize = 2.5f;  // Fixed size, no random variation
+        float spacing = 3.5f;  // Spacing > blockSize to prevent overlap
+        
+        for (float y = -height / 2; y <= height / 2; y += spacing)
         {
             int segments = 16;
             for (int i = 0; i < segments; i++)
@@ -614,7 +639,6 @@ public class ProceduralStationGenerator
                     MathF.Sin(angle) * radius
                 );
                 
-                float blockSize = 2f + (float)_random.NextDouble();
                 station.Structure.AddBlock(new VoxelBlock(
                     pos,
                     new Vector3(blockSize, blockSize, blockSize),
@@ -627,14 +651,17 @@ public class ProceduralStationGenerator
     
     private void GeneratePlatform(GeneratedStation station, Vector3 center, float radius, string material)
     {
-        for (float x = -radius; x <= radius; x += 3)
+        // FIXED: Use consistent block size and proper spacing to prevent overlaps
+        float blockSize = 2.5f;  // Fixed size, no random variation
+        float spacing = 3f;  // Spacing > blockSize to prevent overlap
+        
+        for (float x = -radius; x <= radius; x += spacing)
         {
-            for (float z = -radius; z <= radius; z += 3)
+            for (float z = -radius; z <= radius; z += spacing)
             {
                 float distance = MathF.Sqrt(x * x + z * z);
                 if (distance <= radius)
                 {
-                    float blockSize = 2f + (float)_random.NextDouble();
                     station.Structure.AddBlock(new VoxelBlock(
                         center + new Vector3(x, 0, z),
                         new Vector3(blockSize, 1.5f, blockSize),
