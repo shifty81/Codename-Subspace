@@ -396,13 +396,13 @@ All other TODOs mentioned in session summaries have been resolved.
 
 ## ⚠️ Documentation Discrepancies
 
-The following documentation conflicts were found:
+The following documentation conflicts were found and have been corrected:
 
-1. **PLAYABILITY_FAQ.md** (Updated Nov 5) says game is NOT playable
-2. **ROADMAP_STATUS.md** (Updated Nov 9) says game IS playable
-3. **Reality:** Game IS playable as of v0.9.0
+1. **PLAYABILITY_FAQ.md** (Previously last updated Nov 5) said game was NOT playable
+2. **ROADMAP_STATUS.md** (Last updated Nov 9) says game IS playable
+3. **Reality:** Game IS playable as of v0.9.0 (November 9, 2025)
 
-**Action Required:** Update PLAYABILITY_FAQ.md and PLAYABILITY_STATUS.md to reflect current state.
+**Action Taken:** Updated PLAYABILITY_FAQ.md in this PR to reflect current playable state.
 
 ---
 
