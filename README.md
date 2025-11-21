@@ -617,22 +617,26 @@ For detailed credits and acknowledgments, see [CREDITS.md](CREDITS.md).
 ## Documentation
 
 ### 📋 Quick Reference
+- **[Quick Status](QUICK_STATUS.md)** - ⚡⚡ **SUPER QUICK** - Status in 1 minute
+- **[What's Left to Implement](WHATS_LEFT_TO_IMPLEMENT.md)** - 📝 **COMPLETE GUIDE** - Detailed breakdown of remaining work (580+ lines)
 - **[Playability FAQ](PLAYABILITY_FAQ.md)** - ⚡ **QUICK ANSWERS** - Is it playable? What can I do? FAQ format
-- **[Playability Status](PLAYABILITY_STATUS.md)** - 📌 **IS IT PLAYABLE?** - Honest assessment of current state and what's needed
+- **[Roadmap Status](ROADMAP_STATUS.md)** - 📊 **CURRENT STATUS** - Feature completeness and verification results
 - **[Project Summary](PROJECT_SUMMARY.md)** - 📌 **START HERE** - Quick overview of current state and next steps
 - **[Next Steps & Recommendations](NEXT_STEPS.md)** - 📌 **COMPREHENSIVE GUIDE** - Detailed analysis and prioritized recommendations (980+ lines)
 - **[Architecture Diagram](ARCHITECTURE_DIAGRAM.md)** - Visual system architecture and component relationships
 
 ### 📚 Detailed Documentation
 - **[Quick Start Guide](QUICKSTART.md)** - Get up and running in minutes
+- **[How to Build and Run](HOW_TO_BUILD_AND_RUN.md)** - Complete build instructions
 - **[Architecture Review](ARCHITECTURE.md)** - Comprehensive backend architecture analysis (540+ lines)
 - **[Implementation Roadmap](IMPLEMENTATION_ROADMAP.md)** - Detailed development plan and timelines
 - **[Executive Summary](EXECUTIVE_SUMMARY.md)** - Backend review summary
 - **[Dependencies](DEPENDENCIES.md)** - Complete list of project dependencies
 - **[Contributing](CONTRIBUTING.md)** - How to contribute to the project
 - **[Credits](CREDITS.md)** - Acknowledgments and licenses
-- **[Persistence Guide](PERSISTENCE_GUIDE.md)** - 💾 **NEW!** - Complete guide to save/load system
-- **[AI System Guide](AI_SYSTEM_GUIDE.md)** - 🤖 **NEW!** - Complete guide to AI behavior system
+- **[Persistence Guide](PERSISTENCE_GUIDE.md)** - 💾 Complete guide to save/load system
+- **[AI System Guide](AI_SYSTEM_GUIDE.md)** - 🤖 Complete guide to AI behavior system
+- **[Modding Guide](MODDING_GUIDE.md)** - 🎮 Complete Lua modding documentation
 
 ## Troubleshooting
 
