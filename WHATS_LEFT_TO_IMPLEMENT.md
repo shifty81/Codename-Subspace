@@ -1,0 +1,475 @@
+# What's Left to Implement - Codename:Subspace
+
+**Last Updated:** November 21, 2025  
+**Project Status:** ✅ PLAYABLE - Core gameplay functional, content and polish needed
+
+---
+
+## Executive Summary
+
+Based on comprehensive analysis of project documentation (ROADMAP_STATUS.md, NEXT_STEPS.md, README.md), **Codename:Subspace is now PLAYABLE** as of v0.9.0 (November 2025). The core gameplay loop is functional with player-controlled ships, 3D graphics, and interactive UI.
+
+**What's Working:**
+- ✅ Full game loop with player controls
+- ✅ All 19+ backend systems operational
+- ✅ 3D graphics rendering with ImGui UI
+- ✅ Complete HUD with ship stats and radar
+- ✅ All core gameplay mechanics (mining, combat, trading, building)
+- ✅ 32/32 automated system tests passing
+- ✅ 0 security vulnerabilities (CodeQL verified)
+
+**What's Left:**
+- ❌ 5 major features not started (0-10% complete)
+- ⚠️ 3 features partially implemented (85-95% complete)
+- 📝 Documentation updates needed
+- 🎨 Content expansion and polish
+
+---
+
+## ❌ Features Not Started (0-10% Complete)
+
+### 1. Quest/Mission System - **0% Complete**
+**Priority:** High  
+**Estimated Time:** 2-3 weeks  
+**Impact:** Adds structured gameplay and progression
+
+**What's Missing:**
+- Quest definition system (JSON-based)
+- Objective tracking engine
+- Quest chain management
+- Mission UI/HUD integration
+- Reward distribution system
+- Quest log and history
+- Dynamic quest generation
+
+**Why It Matters:**
+- Provides structured goals for players
+- Guides progression through game content
+- Essential for single-player experience
+- Foundation for story content
+
+**Implementation Path:**
+1. Create quest data model (`Quest`, `Objective`, `Reward`)
+2. Implement quest manager and state tracking
+3. Build quest UI panel
+4. Add objective tracking to HUD
+5. Create sample quest content
+6. Integrate with existing systems (combat, trading, etc.)
+
+---
+
+### 2. Tutorial System - **0% Complete**
+**Priority:** High  
+**Estimated Time:** 1-2 weeks  
+**Impact:** Critical for new player onboarding
+
+**What's Missing:**
+- Interactive tutorial sequence
+- Contextual help overlays
+- Control reminders/hints
+- Tips system
+- First-time user experience (FTUX)
+- Progressive feature unlocking
+
+**Why It Matters:**
+- Game has complex systems requiring explanation
+- New players need guidance
+- Reduces learning curve
+- Improves player retention
+
+**Implementation Path:**
+1. Design tutorial flow (basic controls → building → combat → trading)
+2. Create tutorial UI overlay system
+3. Implement step-by-step instructions
+4. Add contextual tooltips
+5. Build interactive practice scenarios
+6. Add skip/restart functionality
+
+---
+
+### 3. Sound/Music System - **0% Complete**
+**Priority:** Medium  
+**Estimated Time:** 2-3 weeks  
+**Impact:** Significantly enhances immersion and polish
+
+**What's Missing:**
+- Audio engine integration (OpenAL, FMOD, or similar)
+- Sound effect system
+- Music playback and management
+- 3D positional audio
+- Audio settings (volume, mixing)
+- Sound effect library
+- Background music tracks
+- Ambient space sounds
+
+**Why It Matters:**
+- Critical for immersion and polish
+- Feedback for player actions
+- Enhances atmosphere
+- Professional feel
+
+**Recommended Libraries:**
+- OpenAL Soft (cross-platform)
+- NAudio (.NET audio library)
+- FMOD (professional, licensed)
+
+**Implementation Path:**
+1. Choose and integrate audio library
+2. Create audio manager system
+3. Implement sound effect playback
+4. Add music system with playlists
+5. Integrate 3D positional audio
+6. Add audio settings UI
+7. Source/create audio assets
+8. Connect audio to game events
+
+---
+
+### 4. Steam Integration - **0% Complete**
+**Priority:** Low (release preparation)  
+**Estimated Time:** 2-3 weeks  
+**Impact:** Required for Steam release, adds community features
+
+**What's Missing:**
+- Steamworks SDK integration
+- Steam authentication
+- Achievement system
+- Steam Workshop support
+- Cloud saves
+- Steam overlay integration
+- Leaderboards
+- Rich presence
+- Trading cards (optional)
+
+**Why It Matters:**
+- Required for Steam release
+- Provides community features
+- Enables mod distribution (Workshop)
+- Professional distribution platform
+
+**Implementation Path:**
+1. Register Steam App ID
+2. Integrate Steamworks.NET
+3. Implement Steam authentication
+4. Define and add achievements
+5. Create Workshop support for mods
+6. Implement cloud saves
+7. Add leaderboards (optional)
+8. Test with Steam partners
+
+**Note:** Can wait until closer to release
+
+---
+
+### 5. Multiplayer Client UI - **10% Complete**
+**Priority:** Medium  
+**Estimated Time:** 2-3 weeks  
+**Impact:** Enables multiplayer gameplay
+
+**What's Working:**
+- ✅ Server infrastructure complete
+- ✅ Basic client connection code exists
+- ✅ Network protocol functional
+
+**What's Missing:**
+- Server browser UI
+- Server list and filtering
+- Connection dialog
+- Lobby system
+- Player list display
+- Chat system
+- Connection status indicators
+- Disconnect/reconnect handling
+
+**Why It Matters:**
+- Server is ready but unusable without client UI
+- Multiplayer is a core feature
+- Community gameplay potential
+
+**Implementation Path:**
+1. Create server browser UI
+2. Implement server discovery/listing
+3. Build connection dialog
+4. Add lobby system
+5. Create player list UI
+6. Implement chat system
+7. Add connection status feedback
+8. Test with multiple clients
+
+---
+
+## ⚠️ Partially Implemented Features (85-95% Complete)
+
+### 1. Multiplayer Client - **85% Complete**
+**What's Working:**
+- ✅ Server works perfectly
+- ✅ Client connection code exists
+- ✅ Network protocol functional
+- ✅ Message serialization works
+
+**What's Missing:**
+- Full client GUI integration (see #5 above)
+- Some edge case handling
+- Reconnection logic
+- Network quality indicators
+
+**Remaining Work:** 1-2 weeks
+
+---
+
+### 2. Advanced Rendering - **90% Complete**
+**What's Working:**
+- ✅ Real-time 3D OpenGL rendering
+- ✅ PBR materials with emission
+- ✅ Phong lighting model
+- ✅ Voxel mesh optimization (greedy meshing)
+- ✅ Starfield background
+
+**What's Missing:**
+- Shadows (shadow mapping)
+- Post-processing effects (bloom, HDR, etc.)
+- Advanced lighting (global illumination)
+- Texture atlas system (partially implemented)
+- Particle system (partially implemented)
+
+**Why It Matters:**
+- Visual polish
+- Professional appearance
+- Competitive with modern games
+
+**Remaining Work:** 2-3 weeks for shadows + post-processing
+
+---
+
+### 3. Documentation - **Outdated in Places**
+**Issue:** Some documentation files are outdated or contradictory
+
+**Files Needing Updates:**
+- `PLAYABILITY_FAQ.md` - Says game is NOT playable (outdated)
+- `PLAYABILITY_STATUS.md` - Needs verification against current state
+- Various session summaries need archiving
+
+**Remaining Work:** 2-3 days to audit and update all documentation
+
+---
+
+## 📋 Content Expansion (Ongoing)
+
+The following are not missing features but areas that could use more content:
+
+### Ship Blueprints
+- Current: Basic starter ships
+- Needed: 10-20 pre-designed ship templates
+- Time: 1-2 weeks
+
+### Weapon Variety
+- Current: 6 weapon types implemented
+- Needed: More variants, upgrade tiers
+- Time: 1 week
+
+### Station Types
+- Current: Basic station generation
+- Needed: Specialized station types (factories, refineries, shipyards)
+- Time: 1-2 weeks
+
+### Trade Goods
+- Current: 12 trade goods
+- Needed: More complex production chains
+- Time: 1 week
+
+### Galaxy Content
+- Current: Basic sector generation
+- Needed: Special sectors (nebulas, black holes, anomalies)
+- Time: 2-3 weeks
+
+---
+
+## 🎨 Polish and Quality of Life (Ongoing)
+
+### UI/UX Improvements
+- Better visual feedback for actions
+- More intuitive controls
+- Improved tooltips and hints
+- Better error messages
+- Loading screens
+- Time: 2-3 weeks
+
+### Performance Optimization
+- Profile and optimize bottlenecks
+- Memory usage optimization
+- Load time improvements
+- Frame rate optimization
+- Time: 1-2 weeks
+
+### Bug Fixes and Edge Cases
+- Ongoing as issues are discovered
+- Improved error handling
+- Better validation
+- Time: Continuous
+
+---
+
+## 🚀 Recommended Implementation Order
+
+Based on impact and dependencies:
+
+### Phase 1: Essential for Release (6-8 weeks)
+1. **Tutorial System** (1-2 weeks) - Critical for new players
+2. **Quest/Mission System** (2-3 weeks) - Structured gameplay
+3. **Sound/Music** (2-3 weeks) - Polish and immersion
+4. **Documentation Updates** (2-3 days) - Fix outdated info
+
+### Phase 2: Community Features (4-6 weeks)
+5. **Multiplayer Client UI** (2-3 weeks) - Enable multiplayer
+6. **Content Expansion** (2-3 weeks) - More ships, weapons, etc.
+
+### Phase 3: Advanced Features (4-6 weeks)
+7. **Advanced Rendering** (2-3 weeks) - Shadows, post-processing
+8. **UI/UX Polish** (2-3 weeks) - Improve user experience
+
+### Phase 4: Release Preparation (2-3 weeks)
+9. **Performance Optimization** (1-2 weeks)
+10. **Steam Integration** (2-3 weeks) - Only if releasing on Steam
+
+**Total Estimated Time:** 16-23 weeks (4-6 months) to feature-complete release
+
+---
+
+## 📊 Current Completion Status
+
+| Category | Completion | Status |
+|----------|------------|--------|
+| **Core Systems** | 100% | ✅ Complete |
+| **Backend Infrastructure** | 100% | ✅ Complete |
+| **3D Graphics & Rendering** | 90% | ⚠️ Polish needed |
+| **UI/HUD** | 95% | ⚠️ Tutorial needed |
+| **Gameplay Mechanics** | 100% | ✅ Complete |
+| **AI System** | 100% | ✅ Complete |
+| **Multiplayer Server** | 100% | ✅ Complete |
+| **Multiplayer Client** | 85% | ⚠️ UI needed |
+| **Quest System** | 0% | ❌ Not started |
+| **Tutorial System** | 0% | ❌ Not started |
+| **Audio System** | 0% | ❌ Not started |
+| **Steam Integration** | 0% | ❌ Not started |
+| **Content (ships, weapons)** | 60% | ⚠️ Expansion needed |
+| **Polish & QoL** | 40% | ⚠️ Ongoing |
+| **Documentation** | 95% | ⚠️ Updates needed |
+| | | |
+| **OVERALL** | **~80%** | **⚠️ Playable, needs content** |
+
+---
+
+## 🎯 What Can You Work On?
+
+### For New Contributors:
+- **Tutorial System** - Great starting project, well-defined scope
+- **Content Creation** - Design ships, weapons, stations
+- **Documentation** - Update outdated files
+- **Bug Fixes** - Check for edge cases and issues
+
+### For Experienced Developers:
+- **Quest System** - Complex feature, good challenge
+- **Sound/Music** - Audio integration experience needed
+- **Advanced Rendering** - Graphics programming skills
+- **Multiplayer Client UI** - Networking + UI skills
+
+### For Designers/Artists:
+- **Ship Blueprints** - Design interesting ships
+- **UI/UX Improvements** - Better interface design
+- **Tutorial Flow** - Design learning experience
+- **Visual Effects** - Particle effects, explosions
+
+---
+
+## 📝 Known TODOs in Code
+
+Based on code analysis, only one TODO remains:
+
+**File:** `AvorionLike/Core/Fleet/FleetMissionSystem.cs`  
+**TODO:** Store subsystems and blueprints in a dedicated storage system  
+**Priority:** Low  
+**Time:** 1-2 days
+
+All other TODOs mentioned in session summaries have been resolved.
+
+---
+
+## ⚠️ Documentation Discrepancies
+
+The following documentation conflicts were found:
+
+1. **PLAYABILITY_FAQ.md** (Updated Nov 5) says game is NOT playable
+2. **ROADMAP_STATUS.md** (Updated Nov 9) says game IS playable
+3. **Reality:** Game IS playable as of v0.9.0
+
+**Action Required:** Update PLAYABILITY_FAQ.md and PLAYABILITY_STATUS.md to reflect current state.
+
+---
+
+## 🎮 What Players Can Do NOW
+
+Despite missing features, the game is fully playable:
+
+✅ **Working Features:**
+- Control ships in 3D space (6DOF movement)
+- Build custom ships with voxel blocks
+- Mine asteroids for resources
+- Trade at stations
+- Combat with weapons and shields
+- Explore procedural galaxy
+- Manage fleet and crew
+- Progress through levels
+- Save/load games
+- Use debug console and testing tools
+
+❌ **Not Available Yet:**
+- No guided missions/quests
+- No tutorial for new players
+- No audio/music
+- No multiplayer client (server-only)
+- Limited ship/weapon variety
+
+---
+
+## 🔍 Summary
+
+**Question:** What is left to implement?
+
+**Answer:** The game is **80% complete and playable**. What's left:
+- 5 major features not started (quests, tutorial, audio, Steam, multiplayer UI)
+- 3 features need final polish (client integration, advanced rendering, docs)
+- Content expansion (more ships, weapons, stations)
+- Polish and optimization
+
+**Good News:**
+- All hard technical work is done
+- Core gameplay loop is functional
+- Game is playable right now
+- Strong foundation for remaining features
+
+**Realistic Timeline:**
+- Minimum viable release: 6-8 weeks
+- Feature-complete release: 4-6 months
+- Polished Steam release: 6-9 months
+
+---
+
+## 📚 References
+
+- [ROADMAP_STATUS.md](ROADMAP_STATUS.md) - Current status as of Nov 9, 2025
+- [NEXT_STEPS.md](NEXT_STEPS.md) - Detailed recommendations and timelines
+- [README.md](README.md) - Project overview and features
+- [PLAYABILITY_FAQ.md](PLAYABILITY_FAQ.md) - FAQ (needs updating)
+- [ARCHITECTURE.md](ARCHITECTURE.md) - Technical architecture
+
+---
+
+**For Contributors:** See [CONTRIBUTING.md](CONTRIBUTING.md) for how to help implement these features.
+
+**For Questions:** Open an issue on GitHub with the `question` label.
+
+---
+
+**Document Status:** ✅ Current and Accurate  
+**Next Review:** After implementing next major feature  
+**Maintained By:** Development Team
