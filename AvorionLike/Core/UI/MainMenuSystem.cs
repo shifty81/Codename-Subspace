@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
 using ImGuiNET;
 using System.Numerics;
 using AvorionLike.Core.Configuration;
