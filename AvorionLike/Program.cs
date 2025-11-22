@@ -10,6 +10,8 @@ using AvorionLike.Core.Navigation;
 using AvorionLike.Core.Procedural;
 using AvorionLike.Core.Progression;
 using AvorionLike.Core.Fleet;
+using AvorionLike.Core.UI;
+using AvorionLike.Core.Configuration;
 using AvorionLike.Examples;
 using System.Numerics;
 
@@ -81,6 +83,7 @@ class Program
             Console.WriteLine("25. Ship Showcase - Generate 20 Ships for Selection [NEW! 🚀⭐]");
             Console.WriteLine("26. AI Ship Generation - AI-Driven Voxel Construction [NEW! 🤖✨]");
             Console.WriteLine("27. Visual Enhancements Test - Test Ship/Station/Asteroid Details [NEW! ✨]");
+            Console.WriteLine("28. GRAPHICAL MAIN MENU - Comprehensive Game Setup [NEW! 🎮✨]");
             Console.WriteLine();
             Console.WriteLine("--- INFO ---");
             Console.WriteLine("15. About / Version Info");
@@ -172,6 +175,9 @@ class Program
                     break;
                 case "27":
                     RunVisualEnhancementsTest();
+                    break;
+                case "28":
+                    LaunchGraphicalMainMenu();
                     break;
                 case "0":
                     _running = false;
@@ -2708,6 +2714,235 @@ class Program
         Console.WriteLine($"  Ships are positioned at various distances from player ship");
         Console.WriteLine($"  Use camera controls to fly around and inspect each design");
         Console.WriteLine($"  All implementations are now visible for testing!");
+    }
+    
+    static void LaunchGraphicalMainMenu()
+    {
+        Console.WriteLine("\n=== GRAPHICAL MAIN MENU - Comprehensive Game Setup ===");
+        Console.WriteLine("Launching graphical main menu with ImGui interface...");
+        Console.WriteLine("This provides full control over:");
+        Console.WriteLine("  • New Game with extensive customization");
+        Console.WriteLine("  • Load/Save game management");
+        Console.WriteLine("  • Multiplayer hosting and joining");
+        Console.WriteLine("  • All game settings and options\n");
+        
+        try
+        {
+            // Create a minimal graphics window just to host the menu system
+            using var graphicsWindow = new GraphicsWindow(_gameEngine!);
+            
+            // Create and configure the main menu system
+            var mainMenu = new MainMenuSystem(_gameEngine!);
+            
+            // Set up callbacks for menu actions
+            mainMenu.SetCallbacks(
+                onNewGameStart: (settings) => {
+                    Console.WriteLine("\n=== Starting New Game with Custom Settings ===");
+                    Console.WriteLine(settings.GetSummary());
+                    StartNewGameWithSettings(settings);
+                },
+                onLoadGame: (saveName) => {
+                    Console.WriteLine($"\n=== Loading Game: {saveName} ===");
+                    if (_gameEngine!.LoadGame(saveName))
+                    {
+                        Console.WriteLine("Game loaded successfully!");
+                        // Would need to launch game with loaded state
+                    }
+                    else
+                    {
+                        Console.WriteLine("Failed to load game.");
+                    }
+                },
+                onHostMultiplayer: (serverName, port, maxPlayers) => {
+                    Console.WriteLine($"\n=== Hosting Multiplayer Server ===");
+                    Console.WriteLine($"Server Name: {serverName}");
+                    Console.WriteLine($"Port: {port}");
+                    Console.WriteLine($"Max Players: {maxPlayers}");
+                    _gameEngine!.StartServer();
+                },
+                onJoinMultiplayer: (address, port, playerName) => {
+                    Console.WriteLine($"\n=== Joining Multiplayer Server ===");
+                    Console.WriteLine($"Server: {address}:{port}");
+                    Console.WriteLine($"Player Name: {playerName}");
+                    // Would need to implement client connection
+                }
+            );
+            
+            mainMenu.Show();
+            
+            // Run the graphics window with the main menu
+            graphicsWindow.Run();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error launching graphical main menu: {ex.Message}");
+            Console.WriteLine("Graphics rendering may not be available on this system.");
+            Console.WriteLine("\nFalling back to console menu...");
+        }
+    }
+    
+    static void StartNewGameWithSettings(NewGameSettings settings)
+    {
+        Console.WriteLine("\n=== NEW GAME - With Custom Settings ===");
+        Console.WriteLine("Creating game world based on your configuration...\n");
+        
+        // Apply the settings to game engine configuration
+        var config = ConfigurationManager.Instance.Config;
+        config.Development.GalaxySeed = settings.GalaxySeed;
+        config.Gameplay.PlayerName = settings.PlayerName;
+        config.Gameplay.Difficulty = settings.PlayerDifficulty;
+        
+        // Reinitialize game engine with new seed if needed
+        if (settings.GalaxySeed != 12345)
+        {
+            _gameEngine?.Stop();
+            _gameEngine = new GameEngine(settings.GalaxySeed);
+            _gameEngine.Start();
+        }
+        
+        // Create player ship based on settings
+        var playerShip = _gameEngine!.EntityManager.CreateEntity(settings.PlayerName);
+        
+        // Create ship based on starting ship class
+        var voxelComponent = CreateStartingShip(settings.StartingShipClass);
+        _gameEngine.EntityManager.AddComponent(playerShip.Id, voxelComponent);
+        
+        // Calculate starting position based on region
+        Vector3 startSector = settings.StartingRegionType switch
+        {
+            "Rim" => new Vector3(400, 0, 0),    // Galaxy rim (Iron tier)
+            "Mid" => new Vector3(200, 0, 0),    // Mid-galaxy (Titanium tier)
+            "Core" => new Vector3(50, 0, 0),    // Near core (Avorion tier)
+            _ => new Vector3(400, 0, 0)
+        };
+        
+        // Add physics
+        var physicsComponent = new PhysicsComponent
+        {
+            Position = Vector3.Zero,
+            Velocity = Vector3.Zero,
+            Mass = voxelComponent.TotalMass,
+            MomentOfInertia = voxelComponent.MomentOfInertia,
+            MaxThrust = voxelComponent.TotalThrust * settings.ResourceGatheringMultiplier,
+            MaxTorque = voxelComponent.TotalTorque
+        };
+        _gameEngine.EntityManager.AddComponent(playerShip.Id, physicsComponent);
+        
+        // Add inventory with starting resources
+        var inventoryComponent = new InventoryComponent(1000);
+        inventoryComponent.Inventory.AddResource(ResourceType.Credits, settings.StartingCredits);
+        foreach (var resource in settings.StartingResources)
+        {
+            if (Enum.TryParse<ResourceType>(resource.Key, out var resType))
+            {
+                inventoryComponent.Inventory.AddResource(resType, resource.Value);
+            }
+        }
+        _gameEngine.EntityManager.AddComponent(playerShip.Id, inventoryComponent);
+        
+        // Add other components
+        var progressionComponent = new ProgressionComponent { EntityId = playerShip.Id, Level = 1 };
+        _gameEngine.EntityManager.AddComponent(playerShip.Id, progressionComponent);
+        
+        var combatComponent = new CombatComponent
+        {
+            EntityId = playerShip.Id,
+            MaxShields = voxelComponent.ShieldCapacity,
+            CurrentShields = voxelComponent.ShieldCapacity,
+            MaxEnergy = voxelComponent.PowerGeneration,
+            CurrentEnergy = voxelComponent.PowerGeneration
+        };
+        _gameEngine.EntityManager.AddComponent(playerShip.Id, combatComponent);
+        
+        var hyperdriveComponent = new HyperdriveComponent { EntityId = playerShip.Id, JumpRange = 5f };
+        _gameEngine.EntityManager.AddComponent(playerShip.Id, hyperdriveComponent);
+        
+        var locationComponent = new SectorLocationComponent
+        {
+            EntityId = playerShip.Id,
+            CurrentSector = new SectorCoordinate((int)startSector.X, (int)startSector.Y, (int)startSector.Z)
+        };
+        _gameEngine.EntityManager.AddComponent(playerShip.Id, locationComponent);
+        
+        // Register systems
+        _gameEngine.EntityManager.RegisterSystem(new GalaxyProgressionSystem(_gameEngine.EntityManager));
+        _gameEngine.EntityManager.RegisterSystem(new FleetAutomationSystem(_gameEngine.EntityManager));
+        
+        Console.WriteLine($"✓ Game world created!");
+        Console.WriteLine($"  Player: {settings.PlayerName}");
+        Console.WriteLine($"  Starting Region: {settings.StartingRegionType}");
+        Console.WriteLine($"  Starting Credits: {settings.StartingCredits:N0}");
+        Console.WriteLine($"  Starting Ship: {settings.StartingShipClass}");
+        Console.WriteLine($"  Galaxy Seed: {settings.GalaxySeed}");
+        
+        // Populate world based on settings
+        Console.WriteLine("\n=== Populating Game World ===");
+        var worldPopulator = new GameWorldPopulator(_gameEngine, seed: settings.GalaxySeed);
+        worldPopulator.PopulateZoneArea(physicsComponent.Position, locationComponent.CurrentSector, radius: 800f);
+        
+        // Launch the game
+        Console.WriteLine("\n=== Launching Game ===");
+        try
+        {
+            using var graphicsWindow = new GraphicsWindow(_gameEngine);
+            graphicsWindow.SetPlayerShip(playerShip.Id);
+            graphicsWindow.Run();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error running game: {ex.Message}");
+        }
+        
+        Console.WriteLine("\nReturned to main menu.");
+    }
+    
+    static VoxelStructureComponent CreateStartingShip(string shipClass)
+    {
+        var voxel = new VoxelStructureComponent();
+        
+        switch (shipClass.ToLower())
+        {
+            case "starter":
+                // Small starter pod
+                voxel.AddBlock(new VoxelBlock(new Vector3(0, 0, 0), new Vector3(2, 2, 2), "Titanium", BlockType.Hull));
+                voxel.AddBlock(new VoxelBlock(new Vector3(-2.5f, 0, 0), new Vector3(1.5f, 1.5f, 1.5f), "Iron", BlockType.Engine));
+                voxel.AddBlock(new VoxelBlock(new Vector3(2.5f, 0, 0), new Vector3(1.5f, 1.5f, 1.5f), "Iron", BlockType.Generator));
+                break;
+                
+            case "fighter":
+                // Combat-focused fighter
+                voxel.AddBlock(new VoxelBlock(new Vector3(0, 0, 0), new Vector3(3, 3, 3), "Titanium", BlockType.Hull));
+                voxel.AddBlock(new VoxelBlock(new Vector3(-2.5f, 0, 0), new Vector3(2, 2, 2), "Ogonite", BlockType.Engine));
+                voxel.AddBlock(new VoxelBlock(new Vector3(2.5f, 0, 0), new Vector3(2, 2, 2), "Naonite", BlockType.ShieldGenerator));
+                voxel.AddBlock(new VoxelBlock(new Vector3(0, 2.5f, 0), new Vector3(2, 2, 2), "Xanion", BlockType.Generator));
+                voxel.AddBlock(new VoxelBlock(new Vector3(0, -2.5f, 0), new Vector3(2, 2, 2), "Trinium", BlockType.Thruster));
+                break;
+                
+            case "miner":
+                // Mining-focused ship
+                voxel.AddBlock(new VoxelBlock(new Vector3(0, 0, 0), new Vector3(4, 4, 4), "Iron", BlockType.Hull));
+                voxel.AddBlock(new VoxelBlock(new Vector3(-3f, 0, 0), new Vector3(2, 2, 2), "Iron", BlockType.Engine));
+                voxel.AddBlock(new VoxelBlock(new Vector3(3f, 0, 0), new Vector3(3, 3, 3), "Iron", BlockType.Cargo));
+                voxel.AddBlock(new VoxelBlock(new Vector3(0, 3f, 0), new Vector3(2, 2, 2), "Iron", BlockType.Generator));
+                break;
+                
+            case "trader":
+                // Trading-focused ship with cargo capacity
+                voxel.AddBlock(new VoxelBlock(new Vector3(0, 0, 0), new Vector3(5, 3, 3), "Titanium", BlockType.Hull));
+                voxel.AddBlock(new VoxelBlock(new Vector3(-3.5f, 0, 0), new Vector3(2, 2, 2), "Titanium", BlockType.Engine));
+                voxel.AddBlock(new VoxelBlock(new Vector3(3.5f, 0, 0), new Vector3(3, 3, 3), "Iron", BlockType.Cargo));
+                voxel.AddBlock(new VoxelBlock(new Vector3(3.5f, 0, 3.5f), new Vector3(3, 3, 3), "Iron", BlockType.Cargo));
+                voxel.AddBlock(new VoxelBlock(new Vector3(0, 3f, 0), new Vector3(2, 2, 2), "Titanium", BlockType.Generator));
+                break;
+                
+            default:
+                // Default to starter
+                voxel.AddBlock(new VoxelBlock(new Vector3(0, 0, 0), new Vector3(2, 2, 2), "Titanium", BlockType.Hull));
+                voxel.AddBlock(new VoxelBlock(new Vector3(-2.5f, 0, 0), new Vector3(1.5f, 1.5f, 1.5f), "Iron", BlockType.Engine));
+                break;
+        }
+        
+        return voxel;
     }
 }
 
