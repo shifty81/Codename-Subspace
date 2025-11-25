@@ -313,9 +313,9 @@ void main()
     vec3 blockColor = VertexColor.rgb;
     float blockType = VertexColor.a;
     
-    // Boost color saturation for more vibrant appearance
-    float colorIntensity = max(max(blockColor.r, blockColor.g), blockColor.b);
-    vec3 saturatedColor = mix(vec3(colorIntensity), blockColor, 1.3); // Increase saturation
+    // Boost color saturation for more vibrant appearance using HSV-like approach
+    vec3 greyscale = vec3(dot(blockColor, vec3(0.299, 0.587, 0.114)));
+    vec3 saturatedColor = greyscale + (blockColor - greyscale) * 1.3; // Increase saturation by 30%
     saturatedColor = clamp(saturatedColor, 0.0, 1.0);
     
     // Apply procedural details
@@ -385,12 +385,14 @@ void main()
     // Combine all lighting components
     vec3 color = ambient + Lo + envSpecular + rimColor + emissive;
 
-    // Enhanced HDR tone mapping (ACES-like for more cinematic look)
-    float a = 2.51;
-    float b = 0.03;
-    float c = 2.43;
-    float d = 0.59;
-    float e = 0.14;
+    // ACES Filmic Tone Mapping (approximation by Krzysztof Narkowicz)
+    // These coefficients produce a cinematic, film-like response curve
+    // that handles high dynamic range while preserving color and contrast
+    float a = 2.51;  // Shoulder strength
+    float b = 0.03;  // Linear strength  
+    float c = 2.43;  // Linear angle
+    float d = 0.59;  // Toe strength
+    float e = 0.14;  // Toe numerator
     color = clamp((color * (a * color + b)) / (color * (c * color + d) + e), 0.0, 1.0);
     
     // Gamma correction

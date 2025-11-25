@@ -14,6 +14,7 @@ public class StarfieldRenderer : IDisposable
     private uint _vbo;
     private readonly List<Star> _stars = new();
     private const int StarCount = 8000; // More stars for denser field
+    private const int ProminentStarCount = 50; // Extra bright "prominent" stars
     private bool _disposed = false;
 
     public StarfieldRenderer(GL gl, int seed = 42)
@@ -94,8 +95,8 @@ public class StarfieldRenderer : IDisposable
             });
         }
         
-        // Add some extra bright "prominent" stars
-        for (int i = 0; i < 50; i++)
+        // Add extra bright "prominent" stars for visual interest
+        for (int i = 0; i < ProminentStarCount; i++)
         {
             float theta = (float)(random.NextDouble() * Math.PI * 2);
             float phi = (float)(random.NextDouble() * Math.PI);
