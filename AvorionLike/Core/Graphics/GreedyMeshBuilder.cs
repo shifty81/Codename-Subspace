@@ -166,14 +166,14 @@ public class GreedyMeshBuilder
                 pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z),
                 pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z)
             },
-            2 => new[] // Top (+Y) - CCW when viewed from above (+Y looking down)
+            2 => new[] // Top (+Y) - CCW winding from outside (looking down from +Y)
             {
                 pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z),
                 pos + new Vector3(halfSize.X, halfSize.Y, -halfSize.Z),
                 pos + new Vector3(halfSize.X, halfSize.Y, halfSize.Z),
                 pos + new Vector3(-halfSize.X, halfSize.Y, halfSize.Z)
             },
-            3 => new[] // Bottom (-Y) - CCW when viewed from below (-Y looking up)
+            3 => new[] // Bottom (-Y) - CCW winding from outside (looking up from -Y)
             {
                 pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
                 pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),
@@ -519,7 +519,7 @@ public class GreedyMeshBuilder
                     float z1 = minZ + v;
                     float z2 = minZ + v + height;
                     
-                    if (direction > 0) // Top face (+Y) - CCW when viewed from above
+                    if (direction > 0) // Top face (+Y) - CCW winding from outside (looking down from +Y)
                     {
                         vertices[0] = new Vector3(x1, y, z1);
                         vertices[1] = new Vector3(x2, y, z1);
@@ -527,7 +527,7 @@ public class GreedyMeshBuilder
                         vertices[3] = new Vector3(x1, y, z2);
                         normal = new Vector3(0, 1, 0);
                     }
-                    else // Bottom face (-Y) - CCW when viewed from below
+                    else // Bottom face (-Y) - CCW winding from outside (looking up from -Y)
                     {
                         vertices[0] = new Vector3(x1, y, z1);
                         vertices[1] = new Vector3(x1, y, z2);
