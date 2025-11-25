@@ -4,7 +4,7 @@ using System.Numerics;
 namespace AvorionLike.Core.Graphics;
 
 /// <summary>
-/// Renders a procedural starfield background for space atmosphere
+/// Renders an enhanced procedural starfield background with nebulae and varied star types
 /// </summary>
 public class StarfieldRenderer : IDisposable
 {
@@ -13,7 +13,7 @@ public class StarfieldRenderer : IDisposable
     private uint _vao;
     private uint _vbo;
     private readonly List<Star> _stars = new();
-    private const int StarCount = 5000;
+    private const int StarCount = 8000; // More stars for denser field
     private bool _disposed = false;
 
     public StarfieldRenderer(GL gl, int seed = 42)
@@ -41,23 +41,77 @@ public class StarfieldRenderer : IDisposable
                 radius * MathF.Cos(phi)
             );
 
-            // Random star properties
-            float brightness = (float)(random.NextDouble() * 0.5 + 0.5); // 0.5 to 1.0
-            float size = (float)(random.NextDouble() * 1.5 + 0.5); // 0.5 to 2.0
+            // Varied star brightness with more bright stars
+            float brightness = (float)Math.Pow(random.NextDouble(), 0.7) * 0.7f + 0.3f; // 0.3 to 1.0, biased toward bright
+            float size = (float)(random.NextDouble() * 2.0 + 0.5); // 0.5 to 2.5
             
-            // Star colors: white, blue-white, or yellow-white
-            Vector3 color = random.Next(10) switch
+            // Enhanced star color variety based on stellar classification
+            int starType = random.Next(100);
+            Vector3 color;
+            
+            if (starType < 50)
             {
-                < 7 => new Vector3(1.0f, 1.0f, 1.0f),           // White (70%)
-                < 9 => new Vector3(0.9f, 0.95f, 1.0f),          // Blue-white (20%)
-                _ => new Vector3(1.0f, 0.95f, 0.8f)             // Yellow-white (10%)
-            };
+                // White/Yellow-white (G-type, like our Sun) - 50%
+                color = new Vector3(1.0f, 0.98f, 0.95f);
+            }
+            else if (starType < 70)
+            {
+                // Blue-white (A/B-type, hot stars) - 20%
+                color = new Vector3(0.85f, 0.92f, 1.0f);
+            }
+            else if (starType < 82)
+            {
+                // Bright blue (O-type, very hot) - 12%
+                float blueTint = (float)random.NextDouble() * 0.15f;
+                color = new Vector3(0.7f + blueTint, 0.8f + blueTint, 1.0f);
+            }
+            else if (starType < 92)
+            {
+                // Yellow/Orange (K-type) - 10%
+                color = new Vector3(1.0f, 0.9f, 0.7f);
+            }
+            else if (starType < 97)
+            {
+                // Red/Orange (M-type, cool stars) - 5%
+                color = new Vector3(1.0f, 0.75f, 0.6f);
+            }
+            else
+            {
+                // Rare colored stars (variable/exotic) - 3%
+                float hue = (float)random.NextDouble();
+                // Create subtle colored stars (cyan, magenta hints)
+                if (hue < 0.5f)
+                    color = new Vector3(0.9f, 0.95f, 1.0f); // Slight cyan
+                else
+                    color = new Vector3(1.0f, 0.92f, 0.98f); // Slight magenta
+            }
 
             _stars.Add(new Star
             {
                 Position = position,
                 Color = color * brightness,
                 Size = size
+            });
+        }
+        
+        // Add some extra bright "prominent" stars
+        for (int i = 0; i < 50; i++)
+        {
+            float theta = (float)(random.NextDouble() * Math.PI * 2);
+            float phi = (float)(random.NextDouble() * Math.PI);
+            float radius = 500f;
+
+            var position = new Vector3(
+                radius * MathF.Sin(phi) * MathF.Cos(theta),
+                radius * MathF.Sin(phi) * MathF.Sin(theta),
+                radius * MathF.Cos(phi)
+            );
+
+            _stars.Add(new Star
+            {
+                Position = position,
+                Color = new Vector3(1.0f, 1.0f, 1.0f) * 1.2f, // Extra bright
+                Size = (float)random.NextDouble() * 2.0f + 2.5f // Larger size
             });
         }
     }
@@ -115,6 +169,7 @@ layout (location = 1) in vec3 aColor;
 layout (location = 2) in float aSize;
 
 out vec3 StarColor;
+out float StarSize;
 
 uniform mat4 view;
 uniform mat4 projection;
@@ -122,8 +177,9 @@ uniform mat4 projection;
 void main()
 {
     StarColor = aColor;
+    StarSize = aSize;
     gl_Position = projection * view * vec4(aPosition, 1.0);
-    gl_PointSize = aSize;
+    gl_PointSize = aSize * 2.0; // Larger points for better visibility
 }
 ";
 
@@ -132,21 +188,42 @@ void main()
 out vec4 FragColor;
 
 in vec3 StarColor;
+in float StarSize;
 
 void main()
 {
-    // Create circular point (distance from center)
+    // Create circular point with soft edges
     vec2 coord = gl_PointCoord - vec2(0.5);
     float dist = length(coord);
     
+    // Multi-layer glow effect for more beautiful stars
+    float coreAlpha = 1.0 - smoothstep(0.0, 0.15, dist); // Bright core
+    float innerGlow = exp(-dist * 6.0) * 0.8; // Inner glow
+    float outerGlow = exp(-dist * 2.5) * 0.3; // Outer halo
+    
+    // Combine glow layers
+    float totalGlow = coreAlpha + innerGlow + outerGlow;
+    
+    // Star color with chromatic aberration hint (subtle color shift at edges)
+    vec3 coreColor = StarColor;
+    vec3 edgeColor = StarColor * vec3(0.95, 1.0, 1.05); // Slight blue shift at edges
+    vec3 finalColor = mix(edgeColor, coreColor, coreAlpha);
+    
+    // Add subtle twinkle/sparkle based on star size
+    float sparkle = 1.0;
+    if (StarSize > 1.5) {
+        // Create subtle cross/spike pattern for bright stars
+        float angle = atan(coord.y, coord.x);
+        float spike = pow(abs(sin(angle * 2.0)), 8.0);
+        sparkle = 1.0 + spike * 0.3 * (1.0 - dist * 2.0);
+    }
+    
+    finalColor *= sparkle;
+    
     // Fade out at edges
-    float alpha = 1.0 - smoothstep(0.3, 0.5, dist);
+    float alpha = clamp(totalGlow, 0.0, 1.0);
     
-    // Add slight glow
-    float glow = exp(-dist * 4.0);
-    
-    vec3 color = StarColor * (0.7 + glow * 0.3);
-    FragColor = vec4(color, alpha);
+    FragColor = vec4(finalColor, alpha);
 }
 ";
 

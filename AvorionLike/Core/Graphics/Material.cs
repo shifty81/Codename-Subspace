@@ -7,14 +7,14 @@ namespace AvorionLike.Core.Graphics;
 /// Material properties for rendering
 /// Supports both color-based and texture-based materials
 /// 
-/// Default Material Colors (visible in-game):
-/// - Iron: Medium Grey (0.65, 0.65, 0.65) - Metallic
-/// - Titanium: Silver-Blue (0.75, 0.80, 0.85) - High Metallic
-/// - Naonite: Bright Green (0.2, 0.8, 0.3) with Green Glow - Semi-Metallic
-/// - Trinium: Bright Blue (0.3, 0.6, 0.9) with Blue Glow - Semi-Metallic
-/// - Xanion: Gold/Yellow (0.9, 0.75, 0.2) with Yellow Glow - Very Metallic
-/// - Ogonite: Red/Orange (0.9, 0.35, 0.2) with Red Glow - Metallic
-/// - Avorion: Purple (0.75, 0.25, 0.9) with Purple Glow - Highly Metallic
+/// Enhanced Material Colors with Vibrant Appearance and Shiny Finish:
+/// - Iron: Polished Steel Grey (0.72, 0.72, 0.75) - High Metallic, Mirror-like
+/// - Titanium: Brilliant Silver-Blue (0.82, 0.87, 0.95) - Very High Metallic, Highly Reflective
+/// - Naonite: Vivid Emerald Green (0.15, 0.92, 0.35) with Bright Green Glow - Metallic Sheen
+/// - Trinium: Brilliant Sapphire Blue (0.25, 0.65, 1.0) with Cyan Glow - Metallic with Glow
+/// - Xanion: Brilliant Gold (1.0, 0.82, 0.15) with Golden Glow - Mirror Gold Finish
+/// - Ogonite: Fiery Orange-Red (1.0, 0.4, 0.15) with Fire Glow - Metallic with Intense Glow
+/// - Avorion: Royal Purple (0.85, 0.2, 1.0) with Purple Aura - Mirror Finish with Intense Glow
 /// </summary>
 public class Material
 {
@@ -49,6 +49,7 @@ public class Material
     
     /// <summary>
     /// Create material from voxel material type
+    /// Enhanced for vibrant colors and shiny, mirror-like finishes
     /// </summary>
     public static Material FromMaterialType(string materialType)
     {
@@ -57,68 +58,68 @@ public class Material
             "iron" => new Material
             {
                 Name = "Iron",
-                BaseColor = new Vector3(0.65f, 0.65f, 0.65f),
-                Metallic = 0.8f,
-                Roughness = 0.4f
+                BaseColor = new Vector3(0.72f, 0.72f, 0.75f), // Polished steel grey
+                Metallic = 0.95f,  // Highly metallic for shiny look
+                Roughness = 0.15f  // Low roughness for mirror-like finish
             },
             "titanium" => new Material
             {
                 Name = "Titanium",
-                BaseColor = new Vector3(0.75f, 0.8f, 0.85f),
-                Metallic = 0.9f,
-                Roughness = 0.3f
+                BaseColor = new Vector3(0.82f, 0.87f, 0.95f), // Brilliant silver-blue
+                Metallic = 0.98f,  // Near-mirror metallic
+                Roughness = 0.08f  // Very low roughness for highly reflective surface
             },
             "naonite" => new Material
             {
                 Name = "Naonite",
-                BaseColor = new Vector3(0.2f, 0.8f, 0.3f),
-                Metallic = 0.5f,
-                Roughness = 0.4f,
-                EmissiveColor = new Vector3(0.1f, 0.4f, 0.15f),
-                EmissiveStrength = 0.3f
+                BaseColor = new Vector3(0.15f, 0.92f, 0.35f), // Vivid emerald green
+                Metallic = 0.75f,
+                Roughness = 0.2f,
+                EmissiveColor = new Vector3(0.1f, 0.6f, 0.2f), // Brighter green glow
+                EmissiveStrength = 0.5f
             },
             "trinium" => new Material
             {
                 Name = "Trinium",
-                BaseColor = new Vector3(0.3f, 0.6f, 0.9f),
-                Metallic = 0.6f,
-                Roughness = 0.35f,
-                EmissiveColor = new Vector3(0.15f, 0.3f, 0.5f),
-                EmissiveStrength = 0.2f
+                BaseColor = new Vector3(0.25f, 0.65f, 1.0f), // Brilliant sapphire blue
+                Metallic = 0.85f,
+                Roughness = 0.15f,
+                EmissiveColor = new Vector3(0.2f, 0.5f, 0.8f), // Cyan glow
+                EmissiveStrength = 0.45f
             },
             "xanion" => new Material
             {
                 Name = "Xanion",
-                BaseColor = new Vector3(0.9f, 0.75f, 0.2f),
-                Metallic = 0.95f,
-                Roughness = 0.25f,
-                EmissiveColor = new Vector3(0.5f, 0.4f, 0.1f),
-                EmissiveStrength = 0.4f
+                BaseColor = new Vector3(1.0f, 0.82f, 0.15f), // Brilliant gold
+                Metallic = 0.99f,  // Mirror gold finish
+                Roughness = 0.05f, // Near-perfect mirror
+                EmissiveColor = new Vector3(0.6f, 0.5f, 0.1f), // Golden glow
+                EmissiveStrength = 0.55f
             },
             "ogonite" => new Material
             {
                 Name = "Ogonite",
-                BaseColor = new Vector3(0.9f, 0.35f, 0.2f),
-                Metallic = 0.7f,
-                Roughness = 0.3f,
-                EmissiveColor = new Vector3(0.5f, 0.2f, 0.1f),
-                EmissiveStrength = 0.35f
+                BaseColor = new Vector3(1.0f, 0.4f, 0.15f), // Fiery orange-red
+                Metallic = 0.88f,
+                Roughness = 0.12f,
+                EmissiveColor = new Vector3(0.7f, 0.25f, 0.1f), // Fire glow
+                EmissiveStrength = 0.6f
             },
             "avorion" => new Material
             {
                 Name = "Avorion",
-                BaseColor = new Vector3(0.75f, 0.25f, 0.9f),
-                Metallic = 0.85f,
-                Roughness = 0.2f,
-                EmissiveColor = new Vector3(0.4f, 0.15f, 0.5f),
-                EmissiveStrength = 0.6f
+                BaseColor = new Vector3(0.85f, 0.2f, 1.0f), // Royal purple
+                Metallic = 0.97f,  // Mirror finish
+                Roughness = 0.05f, // Near-perfect mirror
+                EmissiveColor = new Vector3(0.5f, 0.15f, 0.7f), // Purple aura
+                EmissiveStrength = 0.8f // Intense glow for the rare material
             },
             _ => new Material
             {
                 Name = "Default",
-                BaseColor = new Vector3(0.5f, 0.5f, 0.5f),
-                Metallic = 0.5f,
-                Roughness = 0.5f
+                BaseColor = new Vector3(0.6f, 0.6f, 0.6f),
+                Metallic = 0.7f,
+                Roughness = 0.3f
             }
         };
     }

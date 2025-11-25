@@ -34,6 +34,7 @@ public enum BlockType
 
 /// <summary>
 /// Material properties for different tiers
+/// Enhanced with vibrant colors and optimized for shiny rendering
 /// </summary>
 public class MaterialProperties
 {
@@ -55,7 +56,7 @@ public class MaterialProperties
             EnergyEfficiency = 0.8f,
             ShieldMultiplier = 0.5f,
             TechLevel = 1,
-            Color = 0x808080 // Gray
+            Color = 0xB8B8C0 // Polished steel grey (brighter)
         },
         ["Titanium"] = new MaterialProperties
         {
@@ -65,7 +66,7 @@ public class MaterialProperties
             EnergyEfficiency = 1.0f,
             ShieldMultiplier = 0.8f,
             TechLevel = 2,
-            Color = 0x4169E1 // Royal Blue
+            Color = 0xD0DEF2 // Brilliant silver-blue
         },
         ["Naonite"] = new MaterialProperties
         {
@@ -75,7 +76,7 @@ public class MaterialProperties
             EnergyEfficiency = 1.2f,
             ShieldMultiplier = 1.2f,
             TechLevel = 3,
-            Color = 0x32CD32 // Lime Green
+            Color = 0x26EB59 // Vivid emerald green
         },
         ["Trinium"] = new MaterialProperties
         {
@@ -85,7 +86,7 @@ public class MaterialProperties
             EnergyEfficiency = 1.5f,
             ShieldMultiplier = 1.5f,
             TechLevel = 4,
-            Color = 0x00CED1 // Dark Turquoise
+            Color = 0x40A6FF // Brilliant sapphire blue
         },
         ["Xanion"] = new MaterialProperties
         {
@@ -95,7 +96,7 @@ public class MaterialProperties
             EnergyEfficiency = 1.8f,
             ShieldMultiplier = 2.0f,
             TechLevel = 5,
-            Color = 0xFFD700 // Gold
+            Color = 0xFFD126 // Brilliant gold
         },
         ["Ogonite"] = new MaterialProperties
         {
@@ -105,7 +106,7 @@ public class MaterialProperties
             EnergyEfficiency = 2.2f,
             ShieldMultiplier = 2.5f,
             TechLevel = 6,
-            Color = 0xFF4500 // Orange Red
+            Color = 0xFF6626 // Fiery orange-red
         },
         ["Avorion"] = new MaterialProperties
         {
@@ -115,7 +116,7 @@ public class MaterialProperties
             EnergyEfficiency = 3.0f,
             ShieldMultiplier = 3.5f,
             TechLevel = 7,
-            Color = 0x9370DB // Medium Purple
+            Color = 0xD933FF // Royal purple (vibrant)
         }
     };
     

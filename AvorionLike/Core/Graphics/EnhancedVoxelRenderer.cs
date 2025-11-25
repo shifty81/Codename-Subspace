@@ -48,28 +48,28 @@ public class EnhancedVoxelRenderer : IDisposable
 
     private void InitializeLights()
     {
-        // Main sun light - Brighter for better visibility
+        // Main sun light - Bright warm white for primary illumination
         _lights.Add(new LightSource
         {
-            Position = new Vector3(200, 300, 200),
-            Color = new Vector3(1.0f, 0.98f, 0.95f), // Slightly warm white
-            Intensity = 1.5f // Increased from 1.0
+            Position = new Vector3(250, 350, 250),
+            Color = new Vector3(1.0f, 0.97f, 0.92f), // Warm white
+            Intensity = 2.0f // Brighter main light for better visibility
         });
 
-        // Ambient fill light - Cooler blue tone
+        // Ambient fill light - Cool blue for space atmosphere and shadow fill
         _lights.Add(new LightSource
         {
-            Position = new Vector3(-100, -50, 100),
-            Color = new Vector3(0.5f, 0.6f, 0.9f),  // More blue
-            Intensity = 0.4f // Increased from 0.3
+            Position = new Vector3(-150, -80, 120),
+            Color = new Vector3(0.4f, 0.55f, 0.9f),  // Cool blue
+            Intensity = 0.6f // Increased for better shadow fill
         });
 
-        // Rim light - Accent lighting
+        // Rim/Back light - Creates dramatic edge highlights
         _lights.Add(new LightSource
         {
-            Position = new Vector3(0, 50, -200),
-            Color = new Vector3(0.7f, 0.8f, 1.0f),  // Bright blue
-            Intensity = 0.5f  // Increased from 0.4
+            Position = new Vector3(0, 80, -250),
+            Color = new Vector3(0.75f, 0.85f, 1.0f),  // Bright blue-white
+            Intensity = 0.8f  // Strong rim light for shiny edge effect
         });
     }
 
@@ -150,9 +150,9 @@ uniform vec3 viewPos;
 
 // Constants
 const float PI = 3.14159265359;
-const vec3 ambientLight = vec3(0.25, 0.25, 0.28); // Increased ambient light for better material visibility
+const vec3 ambientLight = vec3(0.18, 0.20, 0.25); // Cool-toned ambient for space
 
-// Simplified PBR functions
+// Enhanced PBR GGX Distribution
 float DistributionGGX(vec3 N, vec3 H, float roughness)
 {
     float a = roughness * roughness;
@@ -171,26 +171,26 @@ float GeometrySchlickGGX(float NdotV, float roughness)
 {
     float r = (roughness + 1.0);
     float k = (r * r) / 8.0;
-
-    float nom = NdotV;
-    float denom = NdotV * (1.0 - k) + k;
-
-    return nom / denom;
+    return NdotV / (NdotV * (1.0 - k) + k);
 }
 
 float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness)
 {
     float NdotV = max(dot(N, V), 0.0);
     float NdotL = max(dot(N, L), 0.0);
-    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
-    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
-
-    return ggx1 * ggx2;
+    return GeometrySchlickGGX(NdotV, roughness) * GeometrySchlickGGX(NdotL, roughness);
 }
 
+// Enhanced Fresnel with roughness consideration for more realistic reflections
 vec3 fresnelSchlick(float cosTheta, vec3 F0)
 {
-    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
+    return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
+}
+
+// Fresnel with roughness for IBL approximation
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness)
+{
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
 // Simple noise function for procedural details
@@ -201,157 +201,203 @@ float hash(vec3 p)
     return fract((p.x + p.y) * p.z);
 }
 
+// Simulate environment reflection color based on view direction
+vec3 getEnvironmentReflection(vec3 R, float roughness)
+{
+    // Simulate space environment with stars and nebula hints
+    float height = R.y * 0.5 + 0.5;
+    
+    // Base space color gradient (dark blue to black)
+    vec3 spaceColor = mix(vec3(0.01, 0.02, 0.05), vec3(0.0, 0.0, 0.02), height);
+    
+    // Add subtle nebula coloring
+    float nebula = sin(R.x * 3.0 + R.z * 2.0) * 0.5 + 0.5;
+    nebula *= sin(R.y * 2.0 + R.x) * 0.5 + 0.5;
+    vec3 nebulaColor = mix(vec3(0.1, 0.05, 0.15), vec3(0.05, 0.1, 0.2), nebula) * 0.3;
+    
+    // Star-like highlights based on reflection direction
+    float stars = pow(max(0.0, hash(floor(R * 50.0)) - 0.97), 2.0) * 30.0;
+    vec3 starColor = vec3(1.0, 0.98, 0.95) * stars;
+    
+    // Blend with roughness (rougher surfaces see blurrier reflections)
+    float clarity = 1.0 - roughness * 0.8;
+    return (spaceColor + nebulaColor + starColor * clarity) * clarity;
+}
+
 // Add procedural panel lines and details to surfaces
 vec3 addProceduralDetail(vec3 worldPos, vec3 baseColor, float blockType)
 {
-    // Hull blocks (0) - panel lines
+    // Hull blocks (0) - sleek panel lines with metallic sheen
     if (blockType < 0.5) {
         float gridSize = 2.0;
         vec3 gridPos = fract(worldPos / gridSize);
         float panelLines = 0.0;
         
-        // Create grid lines
-        if (gridPos.x < 0.05 || gridPos.x > 0.95 || 
-            gridPos.y < 0.05 || gridPos.y > 0.95 || 
-            gridPos.z < 0.05 || gridPos.z > 0.95) {
-            panelLines = -0.15; // Darker panel lines
+        // Create subtle grid lines (less pronounced for cleaner look)
+        float lineWidth = 0.03;
+        if (gridPos.x < lineWidth || gridPos.x > (1.0 - lineWidth) || 
+            gridPos.y < lineWidth || gridPos.y > (1.0 - lineWidth) || 
+            gridPos.z < lineWidth || gridPos.z > (1.0 - lineWidth)) {
+            panelLines = -0.1; // Subtle panel separation
         }
         
-        // Add subtle noise for panel variation
-        float noise = hash(floor(worldPos / gridSize)) * 0.05;
+        // Add very subtle noise for panel variation
+        float noise = hash(floor(worldPos / gridSize)) * 0.03;
         return baseColor * (1.0 + panelLines + noise);
     }
-    // Armor blocks (1) - heavier plating with rivets
+    // Armor blocks (1) - heavier plating with beveled edges
     else if (blockType < 1.5) {
-        float gridSize = 3.0;
+        float gridSize = 2.5;
         vec3 gridPos = fract(worldPos / gridSize);
         float armorDetail = 0.0;
         
-        // Heavier grid lines
-        if (gridPos.x < 0.08 || gridPos.x > 0.92 || 
-            gridPos.y < 0.08 || gridPos.y > 0.92 || 
-            gridPos.z < 0.08 || gridPos.z > 0.92) {
-            armorDetail = -0.25; // Very dark separation lines
+        // Beveled edge effect
+        float bevelWidth = 0.06;
+        float edgeDist = min(min(gridPos.x, 1.0 - gridPos.x), min(gridPos.y, 1.0 - gridPos.y));
+        edgeDist = min(edgeDist, min(gridPos.z, 1.0 - gridPos.z));
+        
+        if (edgeDist < bevelWidth) {
+            armorDetail = -0.15 * (1.0 - edgeDist / bevelWidth); // Smooth dark edge
         }
         
-        // Add rivet pattern at corners
-        vec3 cornerDist = abs(gridPos - 0.5);
-        if (cornerDist.x > 0.4 && cornerDist.y > 0.4) {
-            armorDetail += 0.1; // Raised rivets
-        }
-        
-        return baseColor * (1.0 + armorDetail) * 0.9; // Slightly darker overall
+        return baseColor * (1.0 + armorDetail);
     }
-    // Engines/Thrusters (2-4) - glowing heat dissipation vents
+    // Engines/Thrusters (2-4) - glowing heat patterns
     else if (blockType < 4.5) {
-        float ventSize = 1.5;
+        float ventSize = 1.2;
         vec3 ventPos = fract(worldPos / ventSize);
-        float ventPattern = 0.0;
         
-        // Horizontal vent lines
-        if (mod(ventPos.y * 5.0, 1.0) < 0.3) {
-            ventPattern = 0.3; // Brighter vents
-        }
+        // Glowing vent lines
+        float ventGlow = sin(ventPos.y * 8.0) * 0.5 + 0.5;
+        ventGlow = pow(ventGlow, 3.0) * 0.4;
         
-        // Add glow effect
-        float glow = sin(ventPos.x * 10.0) * 0.1 + 0.1;
-        return baseColor * (1.0 + ventPattern) + vec3(glow * 0.5, glow * 0.3, 0.0);
+        // Hot glow gradient
+        vec3 hotColor = mix(vec3(1.0, 0.3, 0.1), vec3(1.0, 0.8, 0.2), ventGlow);
+        return baseColor + hotColor * ventGlow * 0.5;
     }
-    // Generators (5) - energy core pattern
+    // Generators (5) - pulsing energy core
     else if (blockType < 5.5) {
-        vec3 corePos = fract(worldPos * 2.0);
+        vec3 corePos = fract(worldPos * 1.5);
         float coreDist = length(corePos - 0.5);
         
-        // Concentric energy rings
-        float energyRing = sin(coreDist * 20.0) * 0.2;
+        // Energy pulse rings
+        float energyRing = sin(coreDist * 25.0) * 0.5 + 0.5;
+        energyRing = pow(energyRing, 2.0) * 0.3;
         
-        // Add energy glow
-        vec3 energyGlow = vec3(0.3, 0.4, 0.5) * (1.0 - coreDist);
-        return baseColor * (1.0 + energyRing) + energyGlow * 0.4;
+        // Blue energy glow
+        vec3 energyGlow = vec3(0.3, 0.5, 1.0) * (1.0 - coreDist * 1.5) * 0.5;
+        return baseColor * (1.0 + energyRing * 0.2) + energyGlow;
     }
-    // Shield Generators (6) - hexagonal shield pattern
+    // Shield Generators (6) - hexagonal energy pattern
     else if (blockType < 6.5) {
-        vec3 hexPos = worldPos * 3.0;
+        vec3 hexPos = worldPos * 2.5;
         float hexPattern = abs(sin(hexPos.x) + sin(hexPos.x * 0.5 + hexPos.y * 0.866) + 
                                sin(hexPos.x * 0.5 - hexPos.y * 0.866));
-        hexPattern = hexPattern / 3.0;
+        hexPattern = pow(hexPattern / 3.0, 0.5);
         
-        // Pulsing shield effect
-        float pulse = sin(hexPos.x + hexPos.y + hexPos.z) * 0.1;
-        
-        vec3 shieldGlow = vec3(0.2, 0.3, 0.6) * (hexPattern + pulse);
-        return baseColor * (1.0 + hexPattern * 0.2) + shieldGlow * 0.3;
+        // Cyan shield glow
+        vec3 shieldGlow = vec3(0.2, 0.6, 0.9) * hexPattern * 0.4;
+        return baseColor + shieldGlow;
     }
     
-    // Default - subtle noise
-    float noise = hash(worldPos * 0.5) * 0.05;
-    return baseColor * (1.0 + noise);
+    return baseColor;
 }
 
 void main()
 {
     vec3 N = normalize(Normal);
     vec3 V = normalize(viewPos - FragPos);
+    float NdotV = max(dot(N, V), 0.0);
 
     // Use vertex color as the base color
-    // VertexColor.a contains block type information
     vec3 blockColor = VertexColor.rgb;
     float blockType = VertexColor.a;
     
-    // Apply procedural details based on block type
-    blockColor = addProceduralDetail(FragPos, blockColor, blockType);
+    // Boost color saturation for more vibrant appearance
+    float colorIntensity = max(max(blockColor.r, blockColor.g), blockColor.b);
+    vec3 saturatedColor = mix(vec3(colorIntensity), blockColor, 1.3); // Increase saturation
+    saturatedColor = clamp(saturatedColor, 0.0, 1.0);
+    
+    // Apply procedural details
+    blockColor = addProceduralDetail(FragPos, saturatedColor, blockType);
 
-    // Fresnel for metals vs dielectrics
+    // Enhanced F0 for metals (higher base reflectivity for shinier look)
     vec3 F0 = vec3(0.04);
     F0 = mix(F0, blockColor, metallic);
+    
+    // Use lower roughness for more mirror-like reflections
+    float effectiveRoughness = roughness * 0.7; // Make everything a bit shinier
 
     vec3 Lo = vec3(0.0);
 
-    // Calculate reflectance for each light
+    // Calculate lighting from each light source
     for(int i = 0; i < 3; i++)
     {
         vec3 L = normalize(lightPos[i] - FragPos);
         vec3 H = normalize(V + L);
         float distance = length(lightPos[i] - FragPos);
-        float attenuation = 1.0 / (distance * distance * 0.0001 + 1.0);
+        float attenuation = 1.0 / (distance * distance * 0.00008 + 1.0); // Slower falloff
         vec3 radiance = lightColor[i] * lightIntensity[i] * attenuation;
 
-        // Cook-Torrance BRDF
-        float NDF = DistributionGGX(N, H, roughness);
-        float G = GeometrySmith(N, V, L, roughness);
+        // Cook-Torrance BRDF with enhanced specular
+        float NDF = DistributionGGX(N, H, effectiveRoughness);
+        float G = GeometrySmith(N, V, L, effectiveRoughness);
         vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0);
 
         vec3 numerator = NDF * G * F;
-        float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);
+        float denominator = 4.0 * NdotV * max(dot(N, L), 0.0);
         vec3 specular = numerator / max(denominator, 0.001);
+        
+        // Boost specular for highly metallic materials (mirror effect)
+        specular *= (1.0 + metallic * 0.5);
 
         vec3 kS = F;
-        vec3 kD = vec3(1.0) - kS;
-        kD *= 1.0 - metallic;
+        vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
 
         float NdotL = max(dot(N, L), 0.0);
         Lo += (kD * blockColor / PI + specular) * radiance * NdotL;
     }
 
-    // Add ambient lighting
-    vec3 ambient = ambientLight * blockColor;
+    // Environment reflection for metallic surfaces (simulated IBL)
+    vec3 R = reflect(-V, N);
+    vec3 envReflection = getEnvironmentReflection(R, effectiveRoughness);
+    vec3 kSEnv = fresnelSchlickRoughness(NdotV, F0, effectiveRoughness);
+    vec3 envSpecular = envReflection * kSEnv * metallic * 0.8; // Scaled environment contribution
+
+    // Enhanced rim lighting for dramatic edge glow
+    float rimFactor = 1.0 - NdotV;
+    rimFactor = pow(rimFactor, 3.0);
+    vec3 rimColor = mix(vec3(0.5, 0.6, 0.8), blockColor, 0.3) * rimFactor * 0.4;
+
+    // Ambient with slight variation based on normal (ambient occlusion hint)
+    float aoHint = 0.9 + 0.1 * (N.y * 0.5 + 0.5);
+    vec3 ambient = ambientLight * blockColor * aoHint;
     
-    // Enhanced emissive based on block type
-    vec3 emissive = emissiveColor * emissiveStrength;
+    // Enhanced emissive with bloom-like effect
+    vec3 emissive = emissiveColor * emissiveStrength * 1.5; // Boosted emissive
     
-    // Extra emissive for functional blocks (engines, generators, shields)
+    // Extra glow for functional blocks
     if (blockType >= 2.0 && blockType < 7.0) {
-        float functionalGlow = (blockType >= 5.0) ? 0.3 : 0.2;
+        float functionalGlow = (blockType >= 5.0) ? 0.4 : 0.25;
         emissive += blockColor * functionalGlow;
     }
 
-    vec3 color = ambient + Lo + emissive;
+    // Combine all lighting components
+    vec3 color = ambient + Lo + envSpecular + rimColor + emissive;
 
-    // HDR tone mapping (Reinhard)
-    color = color / (color + vec3(1.0));
+    // Enhanced HDR tone mapping (ACES-like for more cinematic look)
+    float a = 2.51;
+    float b = 0.03;
+    float c = 2.43;
+    float d = 0.59;
+    float e = 0.14;
+    color = clamp((color * (a * color + b)) / (color * (c * color + d) + e), 0.0, 1.0);
     
     // Gamma correction
     color = pow(color, vec3(1.0/2.2));
+    
+    // Subtle color grading for more vibrant output
+    color = mix(color, color * vec3(1.02, 1.0, 1.05), 0.3); // Slight warm-cool split
 
     FragColor = vec4(color, 1.0);
 }
