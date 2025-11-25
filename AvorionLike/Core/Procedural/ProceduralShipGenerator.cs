@@ -32,9 +32,6 @@ public enum ShipRole
 }
 
 /// <summary>
-/// Configuration for ship generation
-/// </summary>
-/// <summary>
 /// Configuration for ship generation following Avorion-style design principles
 /// </summary>
 public class ShipGenerationConfig
@@ -1178,7 +1175,7 @@ public class ProceduralShipGenerator
                 new Vector3(xOffset, dimensions.Y * 0.1f, zOffset),
                 new Vector3(blockSize, blockSize, blockSize),
                 config.Material,
-                BlockType.Hull // Computer blocks are a type of hull
+                BlockType.Computer // Use proper Computer block type for upgrade slots
             );
             computerBlock.ColorRGB = config.Style.AccentColor; // Distinguish visually
             ship.Structure.AddBlock(computerBlock);

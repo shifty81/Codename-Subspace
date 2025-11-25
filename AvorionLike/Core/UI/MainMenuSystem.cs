@@ -145,12 +145,14 @@ public class MainMenuSystem
         
         var config = ConfigurationManager.Instance.Config;
         
-        // Parse selected resolution
+        // Parse selected resolution with error handling
         var resParts = _resolutions[_selectedResolution].Split('x');
-        if (resParts.Length == 2)
+        if (resParts.Length == 2 && 
+            int.TryParse(resParts[0], out int width) && 
+            int.TryParse(resParts[1], out int height))
         {
-            config.Graphics.ResolutionWidth = int.Parse(resParts[0]);
-            config.Graphics.ResolutionHeight = int.Parse(resParts[1]);
+            config.Graphics.ResolutionWidth = width;
+            config.Graphics.ResolutionHeight = height;
         }
         
         // Apply graphics settings
