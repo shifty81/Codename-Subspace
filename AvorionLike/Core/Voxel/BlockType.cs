@@ -2,6 +2,7 @@ namespace AvorionLike.Core.Voxel;
 
 /// <summary>
 /// Types of voxel blocks that can be placed
+/// Following Avorion-style block categories
 /// </summary>
 public enum BlockType
 {
@@ -10,11 +11,11 @@ public enum BlockType
     Armor,
     
     // Functional
-    Engine,           // Linear thrust
+    Engine,           // Linear thrust (placed facing backward)
     Thruster,         // Omnidirectional movement (strafing, braking)
-    GyroArray,        // Rotation (pitch, yaw, roll)
+    GyroArray,        // Rotation (pitch, yaw, roll) - better when external
     Generator,        // Power generation
-    ShieldGenerator,  // Shield generation
+    ShieldGenerator,  // Shield generation (integrity field)
     
     // Weapons
     TurretMount,      // Mount point for turrets
@@ -22,8 +23,13 @@ public enum BlockType
     // Systems
     HyperdriveCore,   // For jumping between sectors
     Cargo,            // Storage
-    CrewQuarters,     // For crew
-    PodDocking        // Docking port for player pod
+    CrewQuarters,     // For crew (placed near generator)
+    PodDocking,       // Docking port for player pod
+    
+    // Avorion-style upgrade/computer systems
+    Computer,         // Increases upgrade slots based on volume
+    Battery,          // Energy storage
+    IntegrityField    // Structural integrity field generator
 }
 
 /// <summary>

@@ -32,7 +32,7 @@ public enum ShipRole
 }
 
 /// <summary>
-/// Configuration for ship generation
+/// Configuration for ship generation following Avorion-style design principles
 /// </summary>
 public class ShipGenerationConfig
 {
@@ -46,6 +46,45 @@ public class ShipGenerationConfig
     public bool RequireHyperdrive { get; set; } = true;
     public bool RequireCargo { get; set; } = true;
     public int MinimumWeaponMounts { get; set; } = 2;
+    
+    // Avorion-style block configuration
+    public float BlockComplexity { get; set; } = 0.5f; // 0-1, affects number of blocks
+    public float VolumeScaling { get; set; } = 1.0f; // Overall size multiplier
+    public bool UseAngledBlocks { get; set; } = true; // Use wedge/angled blocks
+    public bool UseBoxAesthetic { get; set; } = true; // Avorion box-like look
+    
+    // Core component requirements
+    public bool RequireIntegrityField { get; set; } = true;
+    public bool RequirePowerCore { get; set; } = true;
+    public int TargetUpgradeSlots { get; set; } = 5;
+    
+    // Modularity
+    public bool UseModularSections { get; set; } = true;
+    public int ModularSectionCount { get; set; } = 3;
+    
+    /// <summary>
+    /// Apply style settings to this config
+    /// </summary>
+    public void ApplyStyle()
+    {
+        if (Style == null) return;
+        
+        BlockComplexity = Style.BlockComplexity;
+        VolumeScaling = Style.VolumeScaling;
+        UseAngledBlocks = Style.UseAngledBlocks;
+        UseBoxAesthetic = Style.UseBoxAesthetic;
+        RequireIntegrityField = Style.RequireIntegrityField;
+        RequirePowerCore = Style.RequirePowerCore;
+        TargetUpgradeSlots = Style.TargetUpgradeSlots;
+        UseModularSections = Style.UseModularSections;
+        ModularSectionCount = Style.ModularSectionCount;
+        
+        // Use material from style if not explicitly set
+        if (Material == "Iron" && !string.IsNullOrEmpty(Style.PreferredMaterial))
+        {
+            Material = Style.PreferredMaterial;
+        }
+    }
 }
 
 /// <summary>
@@ -64,10 +103,13 @@ public class GeneratedShip
     public float TotalShieldCapacity { get; set; }
     public int WeaponMountCount { get; set; }
     public int CargoBlockCount { get; set; }
+    public int UpgradeSlots { get; set; }
+    public int ComputerBlockCount { get; set; }
 }
 
 /// <summary>
 /// Procedurally generates functional ships based on faction styles and requirements
+/// Following Avorion-style block-based design principles
 /// </summary>
 public class ProceduralShipGenerator
 {
@@ -81,52 +123,64 @@ public class ProceduralShipGenerator
     
     /// <summary>
     /// Generate a complete ship based on configuration
+    /// Uses Avorion-style block-based design with modular sections
     /// </summary>
     public GeneratedShip GenerateShip(ShipGenerationConfig config)
     {
+        // Initialize random with seed for reproducible generation
         _random = new Random(config.Seed == 0 ? Environment.TickCount : config.Seed);
+        
+        // Apply style settings to config
+        config.ApplyStyle();
         
         var result = new GeneratedShip { Config = config };
         
-        _logger.Info("ShipGenerator", $"Generating {config.Size} {config.Role} ship for {config.Style.FactionName}");
+        _logger.Info("ShipGenerator", $"Generating {config.Size} {config.Role} ship for {config.Style.FactionName} (Seed: {config.Seed})");
         
-        // Step 1: Determine ship dimensions based on size
+        // Step 1: Determine ship dimensions based on size and volume scaling
         var dimensions = GetShipDimensions(config.Size);
+        dimensions *= config.VolumeScaling; // Apply Avorion-style volume scaling
         
-        // Step 2: Generate core hull structure
+        // Step 2: Generate core hull structure using Avorion-style modular approach
         GenerateHullStructure(result, dimensions, config);
         
-        // Step 3: Place functional components (generators, engines, etc.)
+        // Step 3: Place core components (generators, power core, integrity field)
+        PlaceCoreComponents(result, dimensions, config);
+        
+        // Step 4: Place functional components (engines, thrusters, etc.)
         PlaceFunctionalComponents(result, config);
         
-        // Step 4: Add weapons based on role
+        // Step 5: Add weapons based on role
         PlaceWeaponMounts(result, config);
         
-        // Step 5: Add utility blocks (cargo, hyperdrive, etc.)
+        // Step 6: Add utility blocks (cargo, hyperdrive, computer blocks for upgrade slots)
         PlaceUtilityBlocks(result, config);
         
-        // Step 6: Add armor plating based on faction style
+        // Step 7: Add armor plating based on faction style
         AddArmorPlating(result, config);
         
-        // Step 7: Apply faction color scheme
+        // Step 8: Apply faction color scheme
         ApplyColorScheme(result, config);
         
-        // Step 7.5: Add surface detailing (greebles, antennas, vents)
-        AddSurfaceDetailing(result, config);
+        // Step 9: Add surface detailing (greebles, antennas, vents) based on complexity
+        if (config.BlockComplexity > 0.3f)
+        {
+            AddSurfaceDetailing(result, config);
+        }
         
-        // Step 8: Calculate final statistics
+        // Step 10: Calculate final statistics including upgrade slots
         CalculateShipStats(result);
         
-        // Step 9: Validate ship is functional
+        // Step 11: Validate ship is functional
         ValidateShip(result, config);
         
-        // Step 10: Validate structural integrity
+        // Step 12: Validate structural integrity
         ValidateStructuralIntegrity(result, config);
         
-        // Step 11: Validate functional requirements
+        // Step 13: Validate functional requirements
         ValidateFunctionalRequirements(result, config);
         
-        // Step 12: Validate aesthetic guidelines
+        // Step 14: Validate aesthetic guidelines
         ValidateAesthetics(result, config);
         
         _logger.Info("ShipGenerator", $"Generated ship with {result.Structure.Blocks.Count} blocks, " +
@@ -287,242 +341,380 @@ public class ProceduralShipGenerator
     }
     
     /// <summary>
-    /// Generate a simple blocky hull (industrial, utilitarian design)
-    /// Creates a hollow structure with exposed components and industrial aesthetic
-    /// FIXED: Consistent block sizing and spacing for smooth appearance
+    /// Generate an Avorion-style blocky hull (industrial, utilitarian design)
+    /// Creates modular sections with box-like aesthetic common to Avorion ships
     /// </summary>
     private void GenerateBlockyHull(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config)
     {
-        // Create industrial ship with hollow main body and distinct sections
-        // Use consistent 2-unit spacing to match 2x2x2 blocks
+        float blockSize = 2f;
+        var style = config.Style;
         
-        // Main cargo/body section - hollow box frame (only edges and corners)
-        float bodyStart = -dimensions.Z / 4;
-        float bodyEnd = dimensions.Z / 4;
-        float blockSize = 2f;  // Standard block size
+        // Apply volume scaling
+        dimensions *= config.VolumeScaling;
         
-        // Build frame structure - only corners and edges
-        for (float z = bodyStart; z <= bodyEnd; z += (bodyEnd - bodyStart) / 2)  // Just front and back
+        // Determine block density based on complexity
+        float blockSpacing = blockSize * (1.0f + (1.0f - config.BlockComplexity) * 0.5f);
+        
+        // AVORION STYLE: Generate modular sections
+        if (config.UseModularSections && config.ModularSectionCount >= 2)
         {
-            // Bottom corners
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(-dimensions.X / 2, -dimensions.Y / 2, z), new Vector3(blockSize, blockSize, blockSize), config.Material, BlockType.Hull));
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(dimensions.X / 2 - blockSize, -dimensions.Y / 2, z), new Vector3(blockSize, blockSize, blockSize), config.Material, BlockType.Hull));
+            GenerateModularBlockyHull(ship, dimensions, config, blockSize, blockSpacing);
+        }
+        else
+        {
+            GenerateSolidBlockyHull(ship, dimensions, config, blockSize, blockSpacing);
+        }
+    }
+    
+    /// <summary>
+    /// Generate modular blocky hull with distinct sections (front, mid, rear)
+    /// Following Avorion's modular ship design
+    /// </summary>
+    private void GenerateModularBlockyHull(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config, float blockSize, float blockSpacing)
+    {
+        int sectionCount = config.ModularSectionCount;
+        float sectionLength = dimensions.Z / sectionCount;
+        
+        for (int section = 0; section < sectionCount; section++)
+        {
+            float sectionStart = -dimensions.Z / 2 + section * sectionLength;
+            float sectionEnd = sectionStart + sectionLength;
+            float sectionCenter = (sectionStart + sectionEnd) / 2;
             
-            // Top corners
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(-dimensions.X / 2, dimensions.Y / 2 - blockSize, z), new Vector3(blockSize, blockSize, blockSize), config.Material, BlockType.Hull));
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(dimensions.X / 2 - blockSize, dimensions.Y / 2 - blockSize, z), new Vector3(blockSize, blockSize, blockSize), config.Material, BlockType.Hull));
-        }
-        
-        // Horizontal edge beams - CONSISTENT 2-unit spacing (2-unit blocks touching)
-        for (float x = -dimensions.X / 2; x < dimensions.X / 2; x += 2f)
-        {
-            var beamSize = GetStretchedBlockSize("x");
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(x, -dimensions.Y / 2, bodyStart), beamSize, config.Material, BlockType.Hull));
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(x, dimensions.Y / 2 - blockSize, bodyStart), beamSize, config.Material, BlockType.Hull));
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(x, -dimensions.Y / 2, bodyEnd), beamSize, config.Material, BlockType.Hull));
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(x, dimensions.Y / 2 - blockSize, bodyEnd), beamSize, config.Material, BlockType.Hull));
-        }
-        
-        // Vertical edge beams - CONSISTENT 2-unit spacing
-        for (float y = -dimensions.Y / 2; y < dimensions.Y / 2; y += 2f)
-        {
-            var beamSize = GetStretchedBlockSize("y");
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(-dimensions.X / 2, y, bodyStart), beamSize, config.Material, BlockType.Hull));
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(dimensions.X / 2 - blockSize, y, bodyStart), beamSize, config.Material, BlockType.Hull));
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(-dimensions.X / 2, y, bodyEnd), beamSize, config.Material, BlockType.Hull));
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(dimensions.X / 2 - blockSize, y, bodyEnd), beamSize, config.Material, BlockType.Hull));
-        }
-        
-        // Bridge/Cockpit section on top front - CONSISTENT spacing
-        float cockpitZ = bodyEnd;
-        for (float x = -dimensions.X / 4; x <= dimensions.X / 4; x += blockSize)
-        {
-            for (float z = cockpitZ; z < cockpitZ + 6; z += blockSize)
-            {
-                ship.Structure.AddBlock(new VoxelBlock(new Vector3(x, dimensions.Y / 2 + blockSize, z), new Vector3(blockSize, blockSize, blockSize), config.Material, BlockType.Hull));
-            }
-        }
-        
-        // Front nose - pointed section with triangular taper
-        for (float z = bodyEnd; z < dimensions.Z / 2; z += blockSize)
-        {
-            float progress = (z - bodyEnd) / (dimensions.Z / 2 - bodyEnd);
-            float taper = 1.0f - progress * 0.8f;
-            float currentWidth = dimensions.X * taper;
-            float currentHeight = dimensions.Y * taper;
+            // Calculate section dimensions with taper
+            float sectionProgress = (float)section / (sectionCount - 1);
+            float widthFactor = 1.0f - sectionProgress * 0.3f; // Tapers toward front
+            float heightFactor = 1.0f - sectionProgress * 0.2f;
             
-            // Create triangular/tapered nose blocks
-            if (currentWidth > blockSize)
+            float sectionWidth = dimensions.X * widthFactor;
+            float sectionHeight = dimensions.Y * heightFactor;
+            
+            // Generate solid box for each section
+            GenerateBoxSection(ship, 
+                new Vector3(0, 0, sectionCenter), 
+                new Vector3(sectionWidth, sectionHeight, sectionLength * 0.9f),
+                config, blockSize, blockSpacing);
+            
+            // Add connecting blocks between sections
+            if (section < sectionCount - 1)
             {
-                ship.Structure.AddBlock(new VoxelBlock(new Vector3(0, 0, z), new Vector3(blockSize, blockSize, blockSize), config.Material, BlockType.Hull));
+                float nextWidthFactor = 1.0f - (section + 1f) / (sectionCount - 1) * 0.3f;
+                float connectWidth = Math.Min(sectionWidth, dimensions.X * nextWidthFactor);
+                float connectHeight = Math.Min(sectionHeight, dimensions.Y * (1.0f - (section + 1f) / (sectionCount - 1) * 0.2f));
                 
-                // Add angular side plates for triangular appearance using non-square blocks
-                if (progress < 0.7f)
+                // Connector blocks
+                for (float x = -connectWidth / 2 + blockSize; x < connectWidth / 2 - blockSize; x += blockSize * 2)
                 {
-                    var angularSize = GetAngularBlockSize();  // Use angular blocks for sleeker look
-                    ship.Structure.AddBlock(new VoxelBlock(new Vector3(-currentWidth / 3, 0, z), angularSize, config.Material, BlockType.Hull));
-                    ship.Structure.AddBlock(new VoxelBlock(new Vector3(currentWidth / 3 - angularSize.X, 0, z), angularSize, config.Material, BlockType.Hull));
+                    for (float y = -connectHeight / 2 + blockSize; y < connectHeight / 2 - blockSize; y += blockSize * 2)
+                    {
+                        ship.Structure.AddBlock(new VoxelBlock(
+                            new Vector3(x, y, sectionEnd - blockSize / 2),
+                            new Vector3(blockSize, blockSize, blockSize),
+                            config.Material, BlockType.Hull));
+                    }
                 }
             }
         }
         
-        // Rear engine section - wider base with better connectivity
-        for (float z = -dimensions.Z / 2; z < bodyStart; z += blockSize)
-        {
-            // Corners and center for industrial look
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(-dimensions.X / 2, -dimensions.Y / 2, z), new Vector3(blockSize, blockSize, blockSize), config.Material, BlockType.Hull));
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(dimensions.X / 2 - blockSize, -dimensions.Y / 2, z), new Vector3(blockSize, blockSize, blockSize), config.Material, BlockType.Hull));
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(0, -dimensions.Y / 2, z), new Vector3(blockSize, blockSize, blockSize), config.Material, BlockType.Hull));
-        }
+        // Add bridge/cockpit on top of front section
+        float bridgeZ = dimensions.Z / 2 - sectionLength * 0.5f;
+        float bridgeWidth = dimensions.X * 0.4f;
+        float bridgeHeight = dimensions.Y * 0.3f;
         
-        // Industrial side struts - exposed structural elements
-        float strutSpacing = (bodyEnd - bodyStart) / 4;
-        for (float z = bodyStart; z <= bodyEnd; z += strutSpacing)
+        for (float x = -bridgeWidth / 2; x < bridgeWidth / 2; x += blockSize)
         {
-            // Horizontal struts connecting sides
-            for (float x = -dimensions.X / 2; x <= dimensions.X / 2; x += 2f)
+            for (float z = bridgeZ - blockSize * 2; z < bridgeZ + blockSize * 2; z += blockSize)
             {
-                var strutSize = GetStretchedBlockSize("z");
-                ship.Structure.AddBlock(new VoxelBlock(new Vector3(x, 0, z), strutSize, config.Material, BlockType.Hull));
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(x, dimensions.Y / 2 * 0.7f + bridgeHeight / 2, z),
+                    new Vector3(blockSize, bridgeHeight, blockSize),
+                    config.Material, BlockType.Hull));
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Generate a solid box section (part of modular hull)
+    /// </summary>
+    private void GenerateBoxSection(GeneratedShip ship, Vector3 center, Vector3 size, 
+        ShipGenerationConfig config, float blockSize, float blockSpacing)
+    {
+        // Create solid box with Avorion-style aesthetics
+        // Fill the box with blocks (not hollow)
+        
+        float halfX = size.X / 2;
+        float halfY = size.Y / 2;
+        float halfZ = size.Z / 2;
+        
+        // Generate filled box with block spacing based on complexity
+        for (float x = -halfX + blockSize / 2; x < halfX; x += blockSpacing)
+        {
+            for (float y = -halfY + blockSize / 2; y < halfY; y += blockSpacing)
+            {
+                for (float z = -halfZ + blockSize / 2; z < halfZ; z += blockSpacing)
+                {
+                    // Skip interior blocks to save resources (create shell with some interior)
+                    bool isEdge = Math.Abs(x) > halfX - blockSize * 1.5f ||
+                                  Math.Abs(y) > halfY - blockSize * 1.5f ||
+                                  Math.Abs(z) > halfZ - blockSize * 1.5f;
+                    
+                    // Include some interior structure based on complexity
+                    bool isInterior = !isEdge && _random.NextDouble() < config.BlockComplexity * 0.3f;
+                    
+                    if (isEdge || isInterior)
+                    {
+                        ship.Structure.AddBlock(new VoxelBlock(
+                            center + new Vector3(x, y, z),
+                            new Vector3(blockSize, blockSize, blockSize),
+                            config.Material, BlockType.Hull));
+                    }
+                }
             }
         }
         
-        // Add decorative angular panels on sides
-        for (float z = bodyStart; z < bodyEnd; z += 4)
+        // Add angled blocks at edges if enabled
+        if (config.UseAngledBlocks)
         {
-            float panelY = dimensions.Y / 3;
-            var panelSize = GetAngularBlockSize();  // Use angular blocks for panels
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(-dimensions.X / 2 - panelSize.X, panelY, z), panelSize, config.Material, BlockType.Hull));
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(dimensions.X / 2 + panelSize.X, panelY, z), panelSize, config.Material, BlockType.Hull));
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(-dimensions.X / 2 - 1, panelY, z), panelSize, config.Material, BlockType.Hull));
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(dimensions.X / 2 + 1, panelY, z), panelSize, config.Material, BlockType.Hull));
+            AddAngledEdgeBlocks(ship, center, size, config, blockSize);
+        }
+    }
+    
+    /// <summary>
+    /// Add angled/sloped blocks at edges for more interesting Avorion aesthetics
+    /// </summary>
+    private void AddAngledEdgeBlocks(GeneratedShip ship, Vector3 center, Vector3 size,
+        ShipGenerationConfig config, float blockSize)
+    {
+        float halfX = size.X / 2;
+        float halfY = size.Y / 2;
+        float halfZ = size.Z / 2;
+        
+        // Add slope blocks at front edges
+        for (float x = -halfX + blockSize; x < halfX - blockSize; x += blockSize * 2)
+        {
+            // Top front edge slopes
+            ship.Structure.AddBlock(new VoxelBlock(
+                center + new Vector3(x, halfY, halfZ),
+                new Vector3(blockSize, blockSize * 0.5f, blockSize),
+                config.Material, BlockType.Hull));
+            
+            // Bottom front edge slopes
+            ship.Structure.AddBlock(new VoxelBlock(
+                center + new Vector3(x, -halfY, halfZ),
+                new Vector3(blockSize, blockSize * 0.5f, blockSize),
+                config.Material, BlockType.Hull));
+        }
+        
+        // Add side bevels
+        for (float z = -halfZ + blockSize; z < halfZ - blockSize; z += blockSize * 2)
+        {
+            ship.Structure.AddBlock(new VoxelBlock(
+                center + new Vector3(halfX, 0, z),
+                new Vector3(blockSize * 0.5f, blockSize, blockSize),
+                config.Material, BlockType.Hull));
+            ship.Structure.AddBlock(new VoxelBlock(
+                center + new Vector3(-halfX, 0, z),
+                new Vector3(blockSize * 0.5f, blockSize, blockSize),
+                config.Material, BlockType.Hull));
+        }
+    }
+    
+    /// <summary>
+    /// Generate solid blocky hull without modular sections
+    /// </summary>
+    private void GenerateSolidBlockyHull(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config, 
+        float blockSize, float blockSpacing)
+    {
+        // Create a single solid box hull with front taper
+        float halfX = dimensions.X / 2;
+        float halfY = dimensions.Y / 2;
+        float halfZ = dimensions.Z / 2;
+        
+        for (float z = -halfZ; z < halfZ; z += blockSpacing)
+        {
+            // Calculate taper factor (narrower toward front)
+            float zProgress = (z + halfZ) / dimensions.Z;
+            float taperFactor = 1.0f - zProgress * 0.4f;
+            
+            float currentWidth = dimensions.X * taperFactor;
+            float currentHeight = dimensions.Y * taperFactor;
+            
+            for (float x = -currentWidth / 2; x < currentWidth / 2; x += blockSpacing)
+            {
+                for (float y = -currentHeight / 2; y < currentHeight / 2; y += blockSpacing)
+                {
+                    // Create shell with some interior
+                    bool isEdge = Math.Abs(x) > currentWidth / 2 - blockSize * 1.5f ||
+                                  Math.Abs(y) > currentHeight / 2 - blockSize * 1.5f ||
+                                  Math.Abs(z) > halfZ - blockSize * 2f ||
+                                  z < -halfZ + blockSize * 2f;
+                    
+                    if (isEdge || _random.NextDouble() < config.BlockComplexity * 0.2f)
+                    {
+                        ship.Structure.AddBlock(new VoxelBlock(
+                            new Vector3(x, y, z),
+                            new Vector3(blockSize, blockSize, blockSize),
+                            config.Material, BlockType.Hull));
+                    }
+                }
+            }
+        }
+        
+        // Add bridge on top
+        float bridgeZ = halfZ * 0.5f;
+        for (float x = -dimensions.X * 0.2f; x < dimensions.X * 0.2f; x += blockSize)
+        {
+            for (float z = bridgeZ - blockSize * 2; z < bridgeZ + blockSize * 2; z += blockSize)
+            {
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(x, halfY + blockSize, z),
+                    new Vector3(blockSize, blockSize, blockSize),
+                    config.Material, BlockType.Hull));
+            }
         }
     }
     
     /// <summary>
     /// Generate angular/wedge-shaped hull (military style fighter/interceptor)
     /// Creates aggressive wedge with pronounced wings and engine nacelles
-    /// FIXED: Consistent spacing and more angular/non-square blocks
+    /// IMPROVED: Denser block placement with proper connectivity
     /// </summary>
     private void GenerateAngularHull(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config)
     {
         // Create aggressive military wedge hull - sharp and angular
+        // IMPROVED: Denser block placement for more solid appearance
         float blockSize = 2f;  // Standard block size
         
-        // Main wedge body - hollow shell with aggressive taper
+        // Main wedge body - SOLID core with tapered shell
         for (float z = -dimensions.Z / 2; z < dimensions.Z / 2; z += blockSize)
         {
             float normalizedZ = (z + dimensions.Z / 2) / dimensions.Z;
-            float taperFactor = 1.0f - normalizedZ * 0.75f;  // Very aggressive taper
-            float currentWidth = Math.Max(blockSize, dimensions.X * taperFactor);
-            float currentHeight = Math.Max(blockSize, dimensions.Y * taperFactor * 0.6f);  // Flatter profile
+            float taperFactor = 1.0f - normalizedZ * 0.7f;  // Aggressive taper
+            float currentWidth = Math.Max(blockSize * 2, dimensions.X * taperFactor);
+            float currentHeight = Math.Max(blockSize * 2, dimensions.Y * taperFactor * 0.6f);  // Flatter profile
             
-            // Only create shell - top, bottom, left, right edges using angular blocks
-            var angularBlock = GetAngularBlockSize();  // Use non-square blocks for angular look
-            
-            // Top edge
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(-currentWidth / 2, currentHeight / 2, z), angularBlock, config.Material, BlockType.Hull));
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(currentWidth / 2 - angularBlock.X, currentHeight / 2, z), angularBlock, config.Material, BlockType.Hull));
-            
-            // Bottom edge
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(-currentWidth / 2, -currentHeight / 2, z), angularBlock, config.Material, BlockType.Hull));
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(currentWidth / 2 - angularBlock.X, -currentHeight / 2, z), angularBlock, config.Material, BlockType.Hull));
-            
-            // Center spine for structural integrity
-            if ((int)z % 4 == 0)
+            // Create solid cross-section for denser hull
+            // Top surface
+            for (float x = -currentWidth / 2; x < currentWidth / 2; x += blockSize)
             {
-                ship.Structure.AddBlock(new VoxelBlock(new Vector3(0, 0, z), GetStretchedBlockSize("z"), config.Material, BlockType.Hull));
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(x, currentHeight / 2, z), 
+                    new Vector3(blockSize, blockSize, blockSize), 
+                    config.Material, BlockType.Hull));
             }
+            
+            // Bottom surface
+            for (float x = -currentWidth / 2; x < currentWidth / 2; x += blockSize)
+            {
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(x, -currentHeight / 2, z), 
+                    new Vector3(blockSize, blockSize, blockSize), 
+                    config.Material, BlockType.Hull));
+            }
+            
+            // Side edges (left and right)
+            ship.Structure.AddBlock(new VoxelBlock(
+                new Vector3(-currentWidth / 2, 0, z), 
+                new Vector3(blockSize, blockSize, blockSize), 
+                config.Material, BlockType.Hull));
+            ship.Structure.AddBlock(new VoxelBlock(
+                new Vector3(currentWidth / 2 - blockSize, 0, z), 
+                new Vector3(blockSize, blockSize, blockSize), 
+                config.Material, BlockType.Hull));
+            
+            // Center spine for structural integrity - always present
+            ship.Structure.AddBlock(new VoxelBlock(
+                new Vector3(0, 0, z), 
+                new Vector3(blockSize, blockSize, blockSize), 
+                config.Material, BlockType.Hull));
         }
         
-        // Add aggressive angular wings - swept back design with triangular profiles
+        // Add aggressive angular wings - swept back design with denser fill
         float wingLength = dimensions.Z * 0.4f;
         float wingStart = -dimensions.Z / 4;
-        float wingSpan = dimensions.X * 0.5f;
+        float wingSpan = dimensions.X * 0.4f;  // Slightly smaller wings
         
         for (float z = wingStart; z < wingStart + wingLength; z += blockSize)
         {
             float wingProgress = (z - wingStart) / wingLength;
-            float currentWingSpan = wingSpan * (1.0f - wingProgress * 0.4f);  // Taper toward back
-            float wingAngle = -wingProgress * 3;  // Angled down
+            float currentWingSpan = wingSpan * (1.0f - wingProgress * 0.3f);
+            float wingAngle = -wingProgress * 2;  // Slight downward angle
             
-            var wingBlockSize = GetAngularBlockSize();  // Angular blocks for wings
-            
-            // Left wing - outer edge
-            ship.Structure.AddBlock(new VoxelBlock(
-                new Vector3(-dimensions.X / 2 - currentWingSpan, wingAngle, z),
-                wingBlockSize, config.Material, BlockType.Hull));
-            
-            // Left wing - inner edge (connection to body)
-            ship.Structure.AddBlock(new VoxelBlock(
-                new Vector3(-dimensions.X / 2, wingAngle, z),
-                wingBlockSize, config.Material, BlockType.Hull));
-            
-            // Add flat triangular mid-wing connector
-            float midX = -dimensions.X / 2 - currentWingSpan / 2;
-            var triangleSize = new Vector3(3f, 1f, 2f);  // Very flat triangular profile
-            ship.Structure.AddBlock(new VoxelBlock(
-                new Vector3(midX, wingAngle, z),
-                triangleSize, config.Material, BlockType.Hull));
-            
-            // Right wing - symmetric
-            ship.Structure.AddBlock(new VoxelBlock(
-                new Vector3(dimensions.X / 2 + currentWingSpan - wingBlockSize.X, wingAngle, z),
-                wingBlockSize, config.Material, BlockType.Hull));
-            
-            ship.Structure.AddBlock(new VoxelBlock(
-                new Vector3(dimensions.X / 2 - wingBlockSize.X, wingAngle, z),
-                wingBlockSize, config.Material, BlockType.Hull));
-            
-            // Right wing triangular connector
-            midX = dimensions.X / 2 + currentWingSpan / 2;
-            ship.Structure.AddBlock(new VoxelBlock(
-                new Vector3(midX - triangleSize.X / 2, wingAngle, z),
-                triangleSize, config.Material, BlockType.Hull));
-        }
-        
-        // Add engine nacelles at rear sides - cylindrical pods
-        float nacelleLength = dimensions.Z * 0.35f;
-        float nacelleStart = -dimensions.Z / 2;
-        float nacelleOffset = dimensions.X * 0.4f;
-        
-        for (float z = nacelleStart; z < nacelleStart + nacelleLength; z += blockSize)
-        {
-            // Small cylindrical nacelles - cross pattern with consistent spacing
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(-nacelleOffset, 0, z), new Vector3(blockSize, blockSize, blockSize), config.Material, BlockType.Hull));
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(-nacelleOffset, blockSize, z), new Vector3(blockSize, blockSize, blockSize), config.Material, BlockType.Hull));
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(-nacelleOffset, -blockSize, z), new Vector3(blockSize, blockSize, blockSize), config.Material, BlockType.Hull));
-            
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(nacelleOffset, 0, z), new Vector3(blockSize, blockSize, blockSize), config.Material, BlockType.Hull));
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(nacelleOffset, blockSize, z), new Vector3(blockSize, blockSize, blockSize), config.Material, BlockType.Hull));
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(nacelleOffset, -blockSize, z), new Vector3(blockSize, blockSize, blockSize), config.Material, BlockType.Hull));
-            
-            // Add connecting struts to main body
-            if ((int)z % 6 == 0)
+            // Fill wing from body edge outward (denser fill)
+            for (float x = 0; x < currentWingSpan; x += blockSize)
             {
-                var strutSize = GetStretchedBlockSize("x");
-                // Left connecting strut - ensure they touch
-                for (float x = -dimensions.X / 2; x > -nacelleOffset + blockSize; x -= 2f)
-                {
-                    ship.Structure.AddBlock(new VoxelBlock(new Vector3(x, 0, z), strutSize, config.Material, BlockType.Hull));
-                }
-                // Right connecting strut
-                for (float x = dimensions.X / 2; x < nacelleOffset - blockSize; x += 2f)
-                {
-                    ship.Structure.AddBlock(new VoxelBlock(new Vector3(x, 0, z), strutSize, config.Material, BlockType.Hull));
-                }
+                // Left wing
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(-dimensions.X / 2 - x - blockSize, wingAngle, z),
+                    new Vector3(blockSize, blockSize * 0.5f, blockSize), 
+                    config.Material, BlockType.Hull));
+                
+                // Right wing (symmetric)
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(dimensions.X / 2 + x, wingAngle, z),
+                    new Vector3(blockSize, blockSize * 0.5f, blockSize), 
+                    config.Material, BlockType.Hull));
             }
         }
         
-        // Add angular armor plates on top - triangular profile using angular blocks
-        for (float z = -dimensions.Z / 4; z < dimensions.Z / 3; z += 4)
+        // Add engine nacelles at rear sides - denser pods
+        float nacelleLength = dimensions.Z * 0.35f;
+        float nacelleStart = -dimensions.Z / 2;
+        float nacelleOffset = dimensions.X * 0.35f;  // Slightly closer
+        
+        for (float z = nacelleStart; z < nacelleStart + nacelleLength; z += blockSize)
+        {
+            // Solid nacelle cross-section (2x2 pattern)
+            ship.Structure.AddBlock(new VoxelBlock(new Vector3(-nacelleOffset, 0, z), new Vector3(blockSize, blockSize, blockSize), config.Material, BlockType.Hull));
+            ship.Structure.AddBlock(new VoxelBlock(new Vector3(-nacelleOffset + blockSize, 0, z), new Vector3(blockSize, blockSize, blockSize), config.Material, BlockType.Hull));
+            ship.Structure.AddBlock(new VoxelBlock(new Vector3(-nacelleOffset, blockSize, z), new Vector3(blockSize, blockSize, blockSize), config.Material, BlockType.Hull));
+            ship.Structure.AddBlock(new VoxelBlock(new Vector3(-nacelleOffset + blockSize, blockSize, z), new Vector3(blockSize, blockSize, blockSize), config.Material, BlockType.Hull));
+            
+            ship.Structure.AddBlock(new VoxelBlock(new Vector3(nacelleOffset - blockSize, 0, z), new Vector3(blockSize, blockSize, blockSize), config.Material, BlockType.Hull));
+            ship.Structure.AddBlock(new VoxelBlock(new Vector3(nacelleOffset, 0, z), new Vector3(blockSize, blockSize, blockSize), config.Material, BlockType.Hull));
+            ship.Structure.AddBlock(new VoxelBlock(new Vector3(nacelleOffset - blockSize, blockSize, z), new Vector3(blockSize, blockSize, blockSize), config.Material, BlockType.Hull));
+            ship.Structure.AddBlock(new VoxelBlock(new Vector3(nacelleOffset, blockSize, z), new Vector3(blockSize, blockSize, blockSize), config.Material, BlockType.Hull));
+            
+            // Continuous connecting struts to main body
+            for (float x = -dimensions.X / 2 + blockSize; x > -nacelleOffset; x -= blockSize)
+            {
+                ship.Structure.AddBlock(new VoxelBlock(new Vector3(x, blockSize * 0.5f, z), new Vector3(blockSize, blockSize * 0.5f, blockSize), config.Material, BlockType.Hull));
+            }
+            for (float x = dimensions.X / 2 - blockSize; x < nacelleOffset - blockSize; x += blockSize)
+            {
+                ship.Structure.AddBlock(new VoxelBlock(new Vector3(x, blockSize * 0.5f, z), new Vector3(blockSize, blockSize * 0.5f, blockSize), config.Material, BlockType.Hull));
+            }
+        }
+        
+        // Add angular armor plates on top - continuous coverage
+        for (float z = -dimensions.Z / 4; z < dimensions.Z / 3; z += blockSize)
         {
             float normalizedZ = (z + dimensions.Z / 4) / (dimensions.Z / 3 + dimensions.Z / 4);
-            float plateWidth = dimensions.X * (1.0f - normalizedZ * 0.5f) / 2;
-            var plateSize = GetAngularBlockSize();  // Flat angled plates
+            float plateWidth = dimensions.X * (1.0f - normalizedZ * 0.5f);
             
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(-plateWidth / 2, dimensions.Y / 3, z), plateSize, config.Material, BlockType.Armor));
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(plateWidth / 2 - plateSize.X, dimensions.Y / 3, z), plateSize, config.Material, BlockType.Armor));
+            // Cover the top with armor plates
+            for (float x = -plateWidth / 2; x < plateWidth / 2; x += blockSize)
+            {
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(x, dimensions.Y / 3, z), 
+                    new Vector3(blockSize, blockSize * 0.5f, blockSize), 
+                    config.Material, BlockType.Armor));
+            }
+        }
+        
+        // Add front nose cone - pointed section
+        for (float z = dimensions.Z / 2 - blockSize * 3; z < dimensions.Z / 2; z += blockSize)
+        {
+            float progress = (z - (dimensions.Z / 2 - blockSize * 3)) / (blockSize * 3);
+            float noseWidth = Math.Max(blockSize, (1.0f - progress) * dimensions.X * 0.3f);
+            
+            for (float x = -noseWidth / 2; x < noseWidth / 2; x += blockSize)
+            {
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(x, 0, z), 
+                    new Vector3(blockSize, blockSize, blockSize), 
+                    config.Material, BlockType.Hull));
+            }
         }
     }
     
@@ -640,96 +832,131 @@ public class ProceduralShipGenerator
     /// <summary>
     /// Generate sleek hull (exploration/science ships - needle/teardrop design)
     /// Creates streamlined, elongated design with minimal cross-section
-    /// UPDATED: Even sleeker with refined proportions
+    /// IMPROVED: Denser body structure for more cohesive appearance
     /// </summary>
     private void GenerateSleekHull(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config)
     {
-        // Create ultra-streamlined needle/teardrop design - emphasize sleekness
+        float blockSize = 2f;
         
-        // Main spine - central structural beam (thinner for sleeker look)
-        for (float z = -dimensions.Z / 2; z < dimensions.Z / 2; z += 2.5f)  // Slightly sparser
+        // Main spine - central structural beam (continuous)
+        for (float z = -dimensions.Z / 2; z < dimensions.Z / 2; z += blockSize)
         {
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(0, 0, z), new Vector3(1.5f, 1.5f, 2.5f), config.Material, BlockType.Hull));
+            ship.Structure.AddBlock(new VoxelBlock(
+                new Vector3(0, 0, z), 
+                new Vector3(blockSize, blockSize, blockSize), 
+                config.Material, BlockType.Hull));
         }
         
-        // Streamlined body - very flat, wide profile with extreme taper
-        for (float z = -dimensions.Z / 3; z < dimensions.Z / 3; z += 3)  // Sparse for sleekness
+        // Streamlined body - flat, wide profile with smooth taper
+        for (float z = -dimensions.Z / 3; z < dimensions.Z / 3; z += blockSize)
         {
             float normalizedZ = Math.Abs(z) / (dimensions.Z / 3);
-            float widthFactor = 1.0f - normalizedZ * 0.85f;  // More aggressive taper
-            float currentWidth = Math.Max(2, dimensions.X * widthFactor * 0.8f);  // Thinner profile
-            float currentHeight = Math.Max(2, dimensions.Y * widthFactor * 0.35f);  // Even flatter
+            float widthFactor = 1.0f - normalizedZ * 0.7f;
+            float currentWidth = Math.Max(blockSize * 2, dimensions.X * widthFactor * 0.7f);
+            float currentHeight = Math.Max(blockSize, dimensions.Y * widthFactor * 0.35f);
             
-            // Minimal hull surface - just key structural points
-            ship.Structure.AddBlock(new VoxelBlock(
-                new Vector3(-currentWidth / 2, currentHeight / 2, z),
-                new Vector3(2, 1, 2), config.Material, BlockType.Hull));  // Flat top
-            
-            ship.Structure.AddBlock(new VoxelBlock(
-                new Vector3(currentWidth / 2 - 2, currentHeight / 2, z),
-                new Vector3(2, 1, 2), config.Material, BlockType.Hull));  // Flat top
-            
-            ship.Structure.AddBlock(new VoxelBlock(
-                new Vector3(-currentWidth / 2, -currentHeight / 2, z),
-                new Vector3(2, 1, 2), config.Material, BlockType.Hull));  // Flat bottom
-            
-            ship.Structure.AddBlock(new VoxelBlock(
-                new Vector3(currentWidth / 2 - 2, -currentHeight / 2, z),
-                new Vector3(2, 1, 2), config.Material, BlockType.Hull));  // Flat bottom
-            
-            // Occasional connecting rib for strength
-            if ((int)z % 12 == 0)  // Less frequent for sleeker look
+            // Create continuous hull surface (filled, not just edges)
+            for (float x = -currentWidth / 2; x < currentWidth / 2; x += blockSize)
             {
-                ship.Structure.AddBlock(new VoxelBlock(new Vector3(-currentWidth / 4, 0, z), new Vector3(1.5f, 1.5f, 1.5f), config.Material, BlockType.Hull));
-                ship.Structure.AddBlock(new VoxelBlock(new Vector3(currentWidth / 4, 0, z), new Vector3(1.5f, 1.5f, 1.5f), config.Material, BlockType.Hull));
+                // Top surface
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(x, currentHeight / 2, z),
+                    new Vector3(blockSize, blockSize * 0.5f, blockSize), 
+                    config.Material, BlockType.Hull));
+                
+                // Bottom surface
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(x, -currentHeight / 2, z),
+                    new Vector3(blockSize, blockSize * 0.5f, blockSize), 
+                    config.Material, BlockType.Hull));
             }
+            
+            // Side edges
+            ship.Structure.AddBlock(new VoxelBlock(
+                new Vector3(-currentWidth / 2, 0, z),
+                new Vector3(blockSize * 0.5f, blockSize, blockSize), 
+                config.Material, BlockType.Hull));
+            ship.Structure.AddBlock(new VoxelBlock(
+                new Vector3(currentWidth / 2 - blockSize * 0.5f, 0, z),
+                new Vector3(blockSize * 0.5f, blockSize, blockSize), 
+                config.Material, BlockType.Hull));
         }
         
-        // Sharp pointed nose - ultra sleek
-        for (float z = dimensions.Z / 3; z < dimensions.Z / 2; z += 4)
+        // Sharp pointed nose - continuous taper
+        for (float z = dimensions.Z / 3; z < dimensions.Z / 2; z += blockSize)
         {
             float progress = (z - dimensions.Z / 3) / (dimensions.Z / 2 - dimensions.Z / 3);
-            if (progress < 0.6f)  // Shorter, sharper nose
-            {
-                ship.Structure.AddBlock(new VoxelBlock(new Vector3(0, 0, z), new Vector3(1.5f, 1.5f, 2), config.Material, BlockType.Hull));
-            }
-        }
-        
-        // Sleek vertical stabilizer fin at rear top - thinner and taller
-        float finHeight = dimensions.Y * 1.4f;  // Taller fin
-        float finLength = dimensions.Z * 0.3f;  // Longer fin
-        float finStart = -dimensions.Z / 2;
-        
-        for (float z = finStart; z < finStart + finLength; z += 4)  // Sparser for sleek look
-        {
-            float finProgress = (z - finStart) / finLength;
-            float currentFinHeight = finHeight * (1.0f - finProgress * 0.2f);  // Gentler taper
+            float noseWidth = Math.Max(blockSize, (1.0f - progress * 0.8f) * dimensions.X * 0.3f);
             
-            // Tall, thin vertical fin
-            for (float y = dimensions.Y / 4; y < dimensions.Y / 4 + currentFinHeight; y += 4)  // Sparser
+            for (float x = -noseWidth / 2; x < noseWidth / 2; x += blockSize)
             {
                 ship.Structure.AddBlock(new VoxelBlock(
-                    new Vector3(0, y, z),
-                    new Vector3(1, 2, 1.5f), config.Material, BlockType.Hull));  // Thin fin
+                    new Vector3(x, 0, z), 
+                    new Vector3(blockSize, blockSize, blockSize), 
+                    config.Material, BlockType.Hull));
             }
         }
         
-        // Small sleek engine pods on sides - minimal design
-        float podLength = dimensions.Z * 0.25f;
-        float podStart = -dimensions.Z / 2;
-        float podOffset = dimensions.X * 0.32f;  // Closer to body
+        // Sleek vertical stabilizer fin at rear top - continuous
+        float finHeight = dimensions.Y * 1.0f;
+        float finLength = dimensions.Z * 0.25f;
+        float finStart = -dimensions.Z / 2;
         
-        for (float z = podStart; z < podStart + podLength; z += 4)  // Sparse for minimalism
+        for (float z = finStart; z < finStart + finLength; z += blockSize)
         {
-            // Minimal pod structure - sleek nacelles
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(-podOffset, -1, z), new Vector3(1.5f, 1.5f, 2), config.Material, BlockType.Hull));
-            ship.Structure.AddBlock(new VoxelBlock(new Vector3(podOffset, -1, z), new Vector3(1.5f, 1.5f, 2), config.Material, BlockType.Hull));
+            float finProgress = (z - finStart) / finLength;
+            float currentFinHeight = finHeight * (1.0f - finProgress * 0.3f);
             
-            // Add minimal connecting strut every 8 units
-            if ((int)z % 8 == 0)
+            // Continuous vertical fin
+            for (float y = 0; y < currentFinHeight; y += blockSize)
             {
-                ship.Structure.AddBlock(new VoxelBlock(new Vector3(-podOffset / 2, 0, z), new Vector3(1.5f, 1, 1.5f), config.Material, BlockType.Hull));
-                ship.Structure.AddBlock(new VoxelBlock(new Vector3(podOffset / 2, 0, z), new Vector3(1.5f, 1, 1.5f), config.Material, BlockType.Hull));
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(0, dimensions.Y / 4 + y, z),
+                    new Vector3(blockSize * 0.5f, blockSize, blockSize * 0.5f), 
+                    config.Material, BlockType.Hull));
+            }
+        }
+        
+        // Engine pods on sides - denser for better visibility
+        float podLength = dimensions.Z * 0.3f;
+        float podStart = -dimensions.Z / 2;
+        float podOffset = dimensions.X * 0.25f;
+        
+        for (float z = podStart; z < podStart + podLength; z += blockSize)
+        {
+            // Pod structure - 2 blocks tall
+            ship.Structure.AddBlock(new VoxelBlock(
+                new Vector3(-podOffset, 0, z), 
+                new Vector3(blockSize, blockSize, blockSize), 
+                config.Material, BlockType.Hull));
+            ship.Structure.AddBlock(new VoxelBlock(
+                new Vector3(-podOffset, -blockSize, z), 
+                new Vector3(blockSize, blockSize, blockSize), 
+                config.Material, BlockType.Hull));
+            
+            ship.Structure.AddBlock(new VoxelBlock(
+                new Vector3(podOffset - blockSize, 0, z), 
+                new Vector3(blockSize, blockSize, blockSize), 
+                config.Material, BlockType.Hull));
+            ship.Structure.AddBlock(new VoxelBlock(
+                new Vector3(podOffset - blockSize, -blockSize, z), 
+                new Vector3(blockSize, blockSize, blockSize), 
+                config.Material, BlockType.Hull));
+            
+            // Connecting struts (continuous)
+            for (float x = -podOffset + blockSize; x < 0; x += blockSize)
+            {
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(x, -blockSize * 0.5f, z), 
+                    new Vector3(blockSize, blockSize * 0.5f, blockSize), 
+                    config.Material, BlockType.Hull));
+            }
+            for (float x = blockSize; x < podOffset - blockSize; x += blockSize)
+            {
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(x, -blockSize * 0.5f, z), 
+                    new Vector3(blockSize, blockSize * 0.5f, blockSize), 
+                    config.Material, BlockType.Hull));
             }
         }
     }
@@ -878,6 +1105,189 @@ public class ProceduralShipGenerator
         
         // Find an adjacent position that ensures blocks will be connected
         return FindAdjacentPosition(ship, nearest, preferredDirection, componentSize);
+    }
+    
+    /// <summary>
+    /// Place Avorion-style core components: power core, integrity field, computer blocks
+    /// These are essential for ship functionality and upgrade slots
+    /// </summary>
+    private void PlaceCoreComponents(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config)
+    {
+        float blockSize = 2f;
+        var style = config.Style;
+        
+        // Calculate ship center for core component placement
+        Vector3 shipCenter = Vector3.Zero;
+        
+        // 1. Place Power Core (main generator) at ship center
+        // In Avorion, the generator is the heart of the ship
+        if (config.RequirePowerCore)
+        {
+            float powerCoreSize = Math.Max(3f, dimensions.X * 0.15f);
+            var powerCore = new VoxelBlock(
+                shipCenter,
+                new Vector3(powerCoreSize, powerCoreSize, powerCoreSize),
+                config.Material,
+                BlockType.Generator
+            );
+            ship.Structure.AddBlock(powerCore);
+            
+            // Add visible ventilation blocks around generator (Avorion aesthetic)
+            if (config.BlockComplexity > 0.4f)
+            {
+                // Ventilation panels on sides
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(powerCoreSize / 2 + blockSize / 2, 0, 0),
+                    new Vector3(blockSize * 0.5f, powerCoreSize * 0.8f, powerCoreSize * 0.8f),
+                    config.Material, BlockType.Hull));
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(-powerCoreSize / 2 - blockSize / 2, 0, 0),
+                    new Vector3(blockSize * 0.5f, powerCoreSize * 0.8f, powerCoreSize * 0.8f),
+                    config.Material, BlockType.Hull));
+            }
+        }
+        
+        // 2. Place Integrity Field Generator (if required)
+        // Positioned near power core for protection
+        if (config.RequireIntegrityField)
+        {
+            float fieldSize = Math.Max(2f, dimensions.X * 0.1f);
+            var integrityField = new VoxelBlock(
+                new Vector3(0, dimensions.Y * 0.2f, dimensions.Z * 0.1f),
+                new Vector3(fieldSize, fieldSize, fieldSize),
+                config.Material,
+                BlockType.ShieldGenerator
+            );
+            ship.Structure.AddBlock(integrityField);
+        }
+        
+        // 3. Place Computer Blocks for upgrade slots
+        // More computer blocks = more upgrade slots (Avorion mechanic)
+        int computerBlockCount = GetRequiredComputerBlocks(config);
+        float computerSpacing = dimensions.X * 0.3f;
+        
+        for (int i = 0; i < computerBlockCount; i++)
+        {
+            float xOffset = (i % 2 == 0 ? -1 : 1) * computerSpacing * ((i / 2) + 1) * 0.3f;
+            float zOffset = dimensions.Z * 0.15f * (i / 2);
+            
+            var computerBlock = new VoxelBlock(
+                new Vector3(xOffset, dimensions.Y * 0.1f, zOffset),
+                new Vector3(blockSize, blockSize, blockSize),
+                config.Material,
+                BlockType.Computer // Use proper Computer block type for upgrade slots
+            );
+            computerBlock.ColorRGB = config.Style.AccentColor; // Distinguish visually
+            ship.Structure.AddBlock(computerBlock);
+        }
+        
+        ship.ComputerBlockCount = computerBlockCount;
+        ship.UpgradeSlots = config.TargetUpgradeSlots + (computerBlockCount / 2);
+        
+        // 4. Place Crew Quarters near generator (Avorion placement rule)
+        if (config.Size >= ShipSize.Corvette)
+        {
+            int crewQuarterCount = GetRequiredCrewQuarters(config.Size);
+            float quarterSize = blockSize * 1.5f;
+            
+            for (int i = 0; i < crewQuarterCount; i++)
+            {
+                float angle = (360f / crewQuarterCount) * i * MathF.PI / 180f;
+                float radius = dimensions.X * 0.25f;
+                
+                var quarters = new VoxelBlock(
+                    new Vector3(
+                        radius * MathF.Cos(angle),
+                        dimensions.Y * 0.15f,
+                        radius * MathF.Sin(angle) + dimensions.Z * 0.1f
+                    ),
+                    new Vector3(quarterSize, quarterSize, quarterSize),
+                    config.Material,
+                    BlockType.CrewQuarters
+                );
+                ship.Structure.AddBlock(quarters);
+            }
+        }
+        
+        // 5. Place Battery blocks for energy storage
+        int batteryCount = GetRequiredBatteries(config.Size, config.Role);
+        for (int i = 0; i < batteryCount; i++)
+        {
+            float xOffset = (i % 2 == 0 ? -1 : 1) * dimensions.X * 0.2f;
+            float zOffset = -dimensions.Z * 0.15f - (i / 2) * blockSize * 1.5f;
+            
+            var battery = new VoxelBlock(
+                new Vector3(xOffset, -dimensions.Y * 0.1f, zOffset),
+                new Vector3(blockSize * 1.5f, blockSize, blockSize * 1.5f),
+                config.Material,
+                BlockType.Generator // Batteries are power storage
+            );
+            ship.Structure.AddBlock(battery);
+        }
+    }
+    
+    /// <summary>
+    /// Get required computer blocks based on target upgrade slots and ship size
+    /// </summary>
+    private int GetRequiredComputerBlocks(ShipGenerationConfig config)
+    {
+        int baseCount = config.Size switch
+        {
+            ShipSize.Fighter => 1,
+            ShipSize.Corvette => 2,
+            ShipSize.Frigate => 3,
+            ShipSize.Destroyer => 4,
+            ShipSize.Cruiser => 6,
+            ShipSize.Battleship => 8,
+            ShipSize.Carrier => 10,
+            _ => 2
+        };
+        
+        // Add more for high upgrade slot requirements
+        if (config.TargetUpgradeSlots > 5) baseCount += (config.TargetUpgradeSlots - 5) / 2;
+        
+        return baseCount;
+    }
+    
+    /// <summary>
+    /// Get required crew quarters based on ship size
+    /// </summary>
+    private int GetRequiredCrewQuarters(ShipSize size)
+    {
+        return size switch
+        {
+            ShipSize.Fighter => 0,
+            ShipSize.Corvette => 1,
+            ShipSize.Frigate => 2,
+            ShipSize.Destroyer => 3,
+            ShipSize.Cruiser => 4,
+            ShipSize.Battleship => 6,
+            ShipSize.Carrier => 8,
+            _ => 1
+        };
+    }
+    
+    /// <summary>
+    /// Get required batteries based on ship size and role
+    /// </summary>
+    private int GetRequiredBatteries(ShipSize size, ShipRole role)
+    {
+        int baseCount = size switch
+        {
+            ShipSize.Fighter => 1,
+            ShipSize.Corvette => 1,
+            ShipSize.Frigate => 2,
+            ShipSize.Destroyer => 3,
+            ShipSize.Cruiser => 4,
+            ShipSize.Battleship => 5,
+            ShipSize.Carrier => 6,
+            _ => 2
+        };
+        
+        // Combat ships need more power
+        if (role == ShipRole.Combat) baseCount += 2;
+        
+        return baseCount;
     }
     
     /// <summary>
