@@ -19,20 +19,34 @@ public class VoxelBlock
     public uint ColorRGB { get; set; } // RGB color as uint (e.g., 0xRRGGBB)
     public bool IsDestroyed { get; set; } = false;
     
+    // Geometric shape properties for rendering
+    public BlockShape Shape { get; set; } = BlockShape.Cube;
+    public BlockOrientation Orientation { get; set; } = BlockOrientation.PosY;
+    
     // Functional properties for engines, thrusters, etc.
     public float ThrustPower { get; set; } = 0f; // For engines/thrusters
     public float PowerGeneration { get; set; } = 0f; // For generators
     public float ShieldCapacity { get; set; } = 0f; // For shield generators
 
-    public VoxelBlock(Vector3 position, Vector3 size, string materialType = "Iron", BlockType blockType = BlockType.Hull)
+    public VoxelBlock(Vector3 position, Vector3 size, string materialType = "Iron", BlockType blockType = BlockType.Hull, BlockShape shape = BlockShape.Cube, BlockOrientation orientation = BlockOrientation.PosY)
     {
         Position = position;
         Size = size;
         MaterialType = materialType;
         BlockType = blockType;
+        Shape = shape;
+        Orientation = orientation;
         
         var material = MaterialProperties.GetMaterial(materialType);
         float volume = size.X * size.Y * size.Z;
+        
+        // Wedges and corners have reduced volume
+        if (shape == BlockShape.Wedge || shape == BlockShape.HalfBlock)
+            volume *= 0.5f;
+        else if (shape == BlockShape.Corner || shape == BlockShape.Tetrahedron)
+            volume *= 0.25f;
+        else if (shape == BlockShape.InnerCorner)
+            volume *= 0.75f;
         
         // Calculate properties based on material and block type
         Mass = volume * material.MassMultiplier;
@@ -114,6 +128,8 @@ public class VoxelBlock
             },
             ["MaterialType"] = MaterialType,
             ["BlockType"] = BlockType.ToString(),
+            ["Shape"] = Shape.ToString(),
+            ["Orientation"] = Orientation.ToString(),
             ["Durability"] = Durability,
             ["MaxDurability"] = MaxDurability,
             ["ColorRGB"] = ColorRGB,
@@ -172,8 +188,24 @@ public class VoxelBlock
         var blockTypeStr = data["BlockType"].ToString() ?? "Hull";
         var blockType = Enum.Parse<BlockType>(blockTypeStr);
         
+        // Handle shape and orientation (default to Cube/PosY for backward compatibility)
+        var shape = BlockShape.Cube;
+        var orientation = BlockOrientation.PosY;
+        
+        if (data.ContainsKey("Shape"))
+        {
+            var shapeStr = data["Shape"].ToString() ?? "Cube";
+            shape = Enum.Parse<BlockShape>(shapeStr);
+        }
+        
+        if (data.ContainsKey("Orientation"))
+        {
+            var orientStr = data["Orientation"].ToString() ?? "PosY";
+            orientation = Enum.Parse<BlockOrientation>(orientStr);
+        }
+        
         // Create block with basic properties
-        var block = new VoxelBlock(position, size, materialType, blockType);
+        var block = new VoxelBlock(position, size, materialType, blockType, shape, orientation);
         
         // Restore damage state
         if (data.ContainsKey("Durability"))

@@ -77,6 +77,7 @@ public class GreedyMeshBuilder
     
     /// <summary>
     /// Generate faces for a single block with neighbor culling
+    /// Handles different block shapes (cube, wedge, corner, etc.)
     /// </summary>
     private static void GenerateBlockFaces(
         VoxelBlock block,
@@ -88,6 +89,14 @@ public class GreedyMeshBuilder
         uint color = block.ColorRGB;
         float blockType = (float)block.BlockType; // Convert BlockType enum to float
         
+        // For shaped blocks, generate special geometry
+        if (block.Shape != BlockShape.Cube)
+        {
+            GenerateShapedBlockFaces(block, blockLookup, mesh);
+            return;
+        }
+        
+        // Standard cube face generation with neighbor culling
         // Check each direction for neighbors
         Vector3[] directions = new[]
         {
@@ -138,6 +147,519 @@ public class GreedyMeshBuilder
             {
                 AddFace(mesh, pos, size, i, color, blockType);
             }
+        }
+    }
+    
+    /// <summary>
+    /// Generate faces for shaped blocks (wedges, corners, etc.)
+    /// </summary>
+    private static void GenerateShapedBlockFaces(
+        VoxelBlock block,
+        Dictionary<Vector3, VoxelBlock> blockLookup,
+        OptimizedMesh mesh)
+    {
+        Vector3 pos = block.Position;
+        Vector3 size = block.Size;
+        uint color = block.ColorRGB;
+        float blockType = (float)block.BlockType;
+        
+        switch (block.Shape)
+        {
+            case BlockShape.Wedge:
+                AddWedgeFaces(mesh, pos, size, block.Orientation, color, blockType);
+                break;
+            case BlockShape.Corner:
+                AddCornerFaces(mesh, pos, size, block.Orientation, color, blockType);
+                break;
+            case BlockShape.InnerCorner:
+                AddInnerCornerFaces(mesh, pos, size, block.Orientation, color, blockType);
+                break;
+            case BlockShape.Tetrahedron:
+                AddTetrahedronFaces(mesh, pos, size, block.Orientation, color, blockType);
+                break;
+            case BlockShape.HalfBlock:
+                AddHalfBlockFaces(mesh, pos, size, block.Orientation, color, blockType);
+                break;
+            default:
+                // Fallback to cube
+                for (int i = 0; i < 6; i++)
+                {
+                    AddFace(mesh, pos, size, i, color, blockType);
+                }
+                break;
+        }
+    }
+    
+    /// <summary>
+    /// Add wedge block faces - a diagonal slope from one edge to opposite edge
+    /// The orientation determines which direction the slope faces
+    /// </summary>
+    private static void AddWedgeFaces(OptimizedMesh mesh, Vector3 pos, Vector3 size, BlockOrientation orientation, uint color, float blockType)
+    {
+        Vector3 halfSize = size / 2.0f;
+        int vertexStart;
+        
+        // Wedge vertices depend on orientation
+        // For a wedge facing +Z (slope goes up toward +Z):
+        // - The back (-Z) has the full height
+        // - The front (+Z) is at the bottom
+        
+        Vector3[] vertices;
+        Vector3 normal;
+        
+        switch (orientation)
+        {
+            case BlockOrientation.PosZ: // Slope rises toward +Z
+                // Add bottom face (full quad)
+                AddFace(mesh, pos, size, 3, color, blockType); // Bottom
+                
+                // Add back face (-Z) - full height
+                AddFace(mesh, pos, size, 5, color, blockType); // Back
+                
+                // Add left triangle face
+                vertexStart = mesh.Vertices.Count;
+                vertices = new[]
+                {
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z)
+                };
+                normal = new Vector3(-1, 0, 0);
+                AddTriangle(mesh, vertices, normal, color, blockType);
+                
+                // Add right triangle face
+                vertexStart = mesh.Vertices.Count;
+                vertices = new[]
+                {
+                    pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
+                    pos + new Vector3(halfSize.X, halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z)
+                };
+                normal = new Vector3(1, 0, 0);
+                AddTriangle(mesh, vertices, normal, color, blockType);
+                
+                // Add sloped top face (from top-back to bottom-front)
+                vertexStart = mesh.Vertices.Count;
+                vertices = new[]
+                {
+                    pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(halfSize.X, halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z)
+                };
+                normal = Vector3.Normalize(new Vector3(0, size.Z, size.Y));
+                AddQuad(mesh, vertices, normal, color, blockType);
+                break;
+                
+            case BlockOrientation.NegZ: // Slope rises toward -Z
+                // Add bottom face
+                AddFace(mesh, pos, size, 3, color, blockType);
+                
+                // Add front face (+Z) - full height
+                AddFace(mesh, pos, size, 4, color, blockType);
+                
+                // Add left triangle
+                vertexStart = mesh.Vertices.Count;
+                vertices = new[]
+                {
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),
+                    pos + new Vector3(-halfSize.X, halfSize.Y, halfSize.Z),
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z)
+                };
+                normal = new Vector3(-1, 0, 0);
+                AddTriangle(mesh, vertices, normal, color, blockType);
+                
+                // Add right triangle
+                vertexStart = mesh.Vertices.Count;
+                vertices = new[]
+                {
+                    pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(halfSize.X, halfSize.Y, halfSize.Z),
+                    pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z)
+                };
+                normal = new Vector3(1, 0, 0);
+                AddTriangle(mesh, vertices, normal, color, blockType);
+                
+                // Add sloped top
+                vertexStart = mesh.Vertices.Count;
+                vertices = new[]
+                {
+                    pos + new Vector3(-halfSize.X, halfSize.Y, halfSize.Z),
+                    pos + new Vector3(halfSize.X, halfSize.Y, halfSize.Z),
+                    pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z)
+                };
+                normal = Vector3.Normalize(new Vector3(0, size.Z, -size.Y));
+                AddQuad(mesh, vertices, normal, color, blockType);
+                break;
+                
+            case BlockOrientation.PosX: // Slope rises toward +X
+                AddFace(mesh, pos, size, 3, color, blockType); // Bottom
+                AddFace(mesh, pos, size, 1, color, blockType); // Left (-X) full height
+                
+                // Front triangle
+                vertices = new[]
+                {
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),
+                    pos + new Vector3(-halfSize.X, halfSize.Y, halfSize.Z),
+                    pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z)
+                };
+                normal = new Vector3(0, 0, 1);
+                AddTriangle(mesh, vertices, normal, color, blockType);
+                
+                // Back triangle
+                vertices = new[]
+                {
+                    pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z)
+                };
+                normal = new Vector3(0, 0, -1);
+                AddTriangle(mesh, vertices, normal, color, blockType);
+                
+                // Sloped face
+                vertices = new[]
+                {
+                    pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(-halfSize.X, halfSize.Y, halfSize.Z),
+                    pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
+                    pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z)
+                };
+                normal = Vector3.Normalize(new Vector3(size.Y, size.X, 0));
+                AddQuad(mesh, vertices, normal, color, blockType);
+                break;
+                
+            case BlockOrientation.NegX: // Slope rises toward -X
+                AddFace(mesh, pos, size, 3, color, blockType); // Bottom
+                AddFace(mesh, pos, size, 0, color, blockType); // Right (+X) full height
+                
+                // Front triangle
+                vertices = new[]
+                {
+                    pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
+                    pos + new Vector3(halfSize.X, halfSize.Y, halfSize.Z),
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z)
+                };
+                normal = new Vector3(0, 0, 1);
+                AddTriangle(mesh, vertices, normal, color, blockType);
+                
+                // Back triangle
+                vertices = new[]
+                {
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(halfSize.X, halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z)
+                };
+                normal = new Vector3(0, 0, -1);
+                AddTriangle(mesh, vertices, normal, color, blockType);
+                
+                // Sloped face
+                vertices = new[]
+                {
+                    pos + new Vector3(halfSize.X, halfSize.Y, halfSize.Z),
+                    pos + new Vector3(halfSize.X, halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z)
+                };
+                normal = Vector3.Normalize(new Vector3(-size.Y, size.X, 0));
+                AddQuad(mesh, vertices, normal, color, blockType);
+                break;
+                
+            case BlockOrientation.PosY: // Slope rises toward +Y (default - slope on top)
+                AddFace(mesh, pos, size, 3, color, blockType); // Bottom
+                AddFace(mesh, pos, size, 5, color, blockType); // Back - full height at low end
+                
+                // Left side triangle
+                vertices = new[]
+                {
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),
+                    pos + new Vector3(-halfSize.X, halfSize.Y, halfSize.Z)
+                };
+                normal = new Vector3(-1, 0, 0);
+                AddTriangle(mesh, vertices, normal, color, blockType);
+                
+                // Right side triangle
+                vertices = new[]
+                {
+                    pos + new Vector3(halfSize.X, halfSize.Y, halfSize.Z),
+                    pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
+                    pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z)
+                };
+                normal = new Vector3(1, 0, 0);
+                AddTriangle(mesh, vertices, normal, color, blockType);
+                
+                // Sloped top face
+                vertices = new[]
+                {
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(halfSize.X, halfSize.Y, halfSize.Z),
+                    pos + new Vector3(-halfSize.X, halfSize.Y, halfSize.Z)
+                };
+                normal = Vector3.Normalize(new Vector3(0, size.Z, size.Y));
+                AddQuad(mesh, vertices, normal, color, blockType);
+                break;
+                
+            default: // NegY - Slope rises toward -Y (upside down wedge)
+                AddFace(mesh, pos, size, 2, color, blockType); // Top
+                AddFace(mesh, pos, size, 5, color, blockType); // Back
+                
+                // Left triangle
+                vertices = new[]
+                {
+                    pos + new Vector3(-halfSize.X, halfSize.Y, halfSize.Z),
+                    pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z)
+                };
+                normal = new Vector3(-1, 0, 0);
+                AddTriangle(mesh, vertices, normal, color, blockType);
+                
+                // Right triangle
+                vertices = new[]
+                {
+                    pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
+                    pos + new Vector3(halfSize.X, halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(halfSize.X, halfSize.Y, halfSize.Z)
+                };
+                normal = new Vector3(1, 0, 0);
+                AddTriangle(mesh, vertices, normal, color, blockType);
+                
+                // Sloped bottom
+                vertices = new[]
+                {
+                    pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(halfSize.X, halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z)
+                };
+                normal = Vector3.Normalize(new Vector3(0, -size.Z, size.Y));
+                AddQuad(mesh, vertices, normal, color, blockType);
+                break;
+        }
+    }
+    
+    /// <summary>
+    /// Add a triangle to the mesh
+    /// </summary>
+    private static void AddTriangle(OptimizedMesh mesh, Vector3[] vertices, Vector3 normal, uint color, float blockType)
+    {
+        int vertexStart = mesh.Vertices.Count;
+        
+        foreach (var vertex in vertices)
+        {
+            mesh.Vertices.Add(vertex);
+            mesh.Normals.Add(normal);
+            mesh.Colors.Add(color);
+            mesh.BlockTypes.Add(blockType);
+        }
+        
+        mesh.Indices.Add(vertexStart + 0);
+        mesh.Indices.Add(vertexStart + 1);
+        mesh.Indices.Add(vertexStart + 2);
+    }
+    
+    /// <summary>
+    /// Add a quad to the mesh
+    /// </summary>
+    private static void AddQuad(OptimizedMesh mesh, Vector3[] vertices, Vector3 normal, uint color, float blockType)
+    {
+        int vertexStart = mesh.Vertices.Count;
+        
+        foreach (var vertex in vertices)
+        {
+            mesh.Vertices.Add(vertex);
+            mesh.Normals.Add(normal);
+            mesh.Colors.Add(color);
+            mesh.BlockTypes.Add(blockType);
+        }
+        
+        // Two triangles for the quad
+        mesh.Indices.Add(vertexStart + 0);
+        mesh.Indices.Add(vertexStart + 1);
+        mesh.Indices.Add(vertexStart + 2);
+        
+        mesh.Indices.Add(vertexStart + 0);
+        mesh.Indices.Add(vertexStart + 2);
+        mesh.Indices.Add(vertexStart + 3);
+    }
+    
+    /// <summary>
+    /// Add corner block faces - triangular corner piece
+    /// </summary>
+    private static void AddCornerFaces(OptimizedMesh mesh, Vector3 pos, Vector3 size, BlockOrientation orientation, uint color, float blockType)
+    {
+        Vector3 halfSize = size / 2.0f;
+        Vector3[] vertices;
+        Vector3 normal;
+        
+        // Corner piece is like a wedge but cut diagonally on two axes
+        // Result is a tetrahedron with one corner at full height
+        
+        switch (orientation)
+        {
+            case BlockOrientation.PosZ: // Corner at +X, +Y, -Z
+            default:
+                // Bottom face (triangle)
+                vertices = new[]
+                {
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z)
+                };
+                normal = new Vector3(0, -1, 0);
+                AddTriangle(mesh, vertices, normal, color, blockType);
+                
+                // Back face (triangle)
+                vertices = new[]
+                {
+                    pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z)
+                };
+                normal = new Vector3(0, 0, -1);
+                AddTriangle(mesh, vertices, normal, color, blockType);
+                
+                // Left face (triangle)
+                vertices = new[]
+                {
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z)
+                };
+                normal = new Vector3(-1, 0, 0);
+                AddTriangle(mesh, vertices, normal, color, blockType);
+                
+                // Sloped hypotenuse face (triangle)
+                vertices = new[]
+                {
+                    pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z)
+                };
+                normal = Vector3.Normalize(new Vector3(1, 1, 1));
+                AddTriangle(mesh, vertices, normal, color, blockType);
+                break;
+        }
+    }
+    
+    /// <summary>
+    /// Add inner corner block faces
+    /// </summary>
+    private static void AddInnerCornerFaces(OptimizedMesh mesh, Vector3 pos, Vector3 size, BlockOrientation orientation, uint color, float blockType)
+    {
+        // Inner corner is a full cube with one corner cut out
+        // For simplicity, generate all 6 faces and add the angled inner face
+        for (int i = 0; i < 6; i++)
+        {
+            AddFace(mesh, pos, size, i, color, blockType);
+        }
+        
+        // Add the inner diagonal face (where the corner is cut)
+        Vector3 halfSize = size / 2.0f;
+        Vector3[] vertices = new[]
+        {
+            pos + new Vector3(halfSize.X, halfSize.Y, halfSize.Z),
+            pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
+            pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z)
+        };
+        Vector3 normal = Vector3.Normalize(new Vector3(-1, 0, -1));
+        AddTriangle(mesh, vertices, normal, color, blockType);
+    }
+    
+    /// <summary>
+    /// Add tetrahedron block faces (pyramid shape)
+    /// </summary>
+    private static void AddTetrahedronFaces(OptimizedMesh mesh, Vector3 pos, Vector3 size, BlockOrientation orientation, uint color, float blockType)
+    {
+        Vector3 halfSize = size / 2.0f;
+        Vector3 apex = pos + new Vector3(0, halfSize.Y, 0); // Top center point
+        Vector3[] vertices;
+        Vector3 normal;
+        
+        // Base (bottom) - square
+        Vector3[] baseVerts = new[]
+        {
+            pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
+            pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),
+            pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
+            pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z)
+        };
+        normal = new Vector3(0, -1, 0);
+        AddQuad(mesh, baseVerts, normal, color, blockType);
+        
+        // Front face (triangle)
+        vertices = new[]
+        {
+            pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),
+            pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
+            apex
+        };
+        normal = Vector3.Normalize(new Vector3(0, size.Z, size.Y));
+        AddTriangle(mesh, vertices, normal, color, blockType);
+        
+        // Back face (triangle)
+        vertices = new[]
+        {
+            pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),
+            pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
+            apex
+        };
+        normal = Vector3.Normalize(new Vector3(0, size.Z, -size.Y));
+        AddTriangle(mesh, vertices, normal, color, blockType);
+        
+        // Left face (triangle)
+        vertices = new[]
+        {
+            pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
+            pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),
+            apex
+        };
+        normal = Vector3.Normalize(new Vector3(-size.X, size.Y, 0));
+        AddTriangle(mesh, vertices, normal, color, blockType);
+        
+        // Right face (triangle)
+        vertices = new[]
+        {
+            pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
+            pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),
+            apex
+        };
+        normal = Vector3.Normalize(new Vector3(size.X, size.Y, 0));
+        AddTriangle(mesh, vertices, normal, color, blockType);
+    }
+    
+    /// <summary>
+    /// Add half block faces
+    /// </summary>
+    private static void AddHalfBlockFaces(OptimizedMesh mesh, Vector3 pos, Vector3 size, BlockOrientation orientation, uint color, float blockType)
+    {
+        Vector3 halfSize = size / 2.0f;
+        
+        // Half block is sliced in half based on orientation
+        // Generate the appropriate half
+        switch (orientation)
+        {
+            case BlockOrientation.PosY: // Bottom half
+            default:
+                // Adjust size to half height
+                Vector3 halfBlockSize = new Vector3(size.X, size.Y / 2, size.Z);
+                Vector3 halfBlockPos = pos - new Vector3(0, size.Y / 4, 0);
+                
+                // Generate all 6 faces for the half-height block
+                for (int i = 0; i < 6; i++)
+                {
+                    AddFace(mesh, halfBlockPos, halfBlockSize, i, color, blockType);
+                }
+                break;
+            case BlockOrientation.NegY: // Top half
+                halfBlockSize = new Vector3(size.X, size.Y / 2, size.Z);
+                halfBlockPos = pos + new Vector3(0, size.Y / 4, 0);
+                for (int i = 0; i < 6; i++)
+                {
+                    AddFace(mesh, halfBlockPos, halfBlockSize, i, color, blockType);
+                }
+                break;
         }
     }
     
