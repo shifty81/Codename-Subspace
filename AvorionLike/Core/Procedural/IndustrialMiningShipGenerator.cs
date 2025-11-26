@@ -205,6 +205,12 @@ public class IndustrialMiningShipGenerator
         float halfY = size.Y / 2;
         float halfZ = size.Z / 2;
         
+        // Pre-calculate edge thresholds to avoid repeated arithmetic in loops
+        float edgeThresholdX = halfX - blockSize * 1.5f;
+        float edgeThresholdY = halfY - blockSize * 1.5f;
+        float edgeThresholdZ = halfZ - blockSize * 1.5f;
+        double interiorChance = config.IndustrialComplexity * 0.2;
+        
         // Generate shell with some interior structure
         for (float x = -halfX; x < halfX; x += blockSize)
         {
@@ -213,12 +219,12 @@ public class IndustrialMiningShipGenerator
                 for (float z = -halfZ; z < halfZ; z += blockSize)
                 {
                     // Create shell (blocks on edges)
-                    bool isEdge = Math.Abs(x) > halfX - blockSize * 1.5f ||
-                                  Math.Abs(y) > halfY - blockSize * 1.5f ||
-                                  Math.Abs(z) > halfZ - blockSize * 1.5f;
+                    bool isEdge = Math.Abs(x) > edgeThresholdX ||
+                                  Math.Abs(y) > edgeThresholdY ||
+                                  Math.Abs(z) > edgeThresholdZ;
                     
                     // Add some interior structure based on complexity
-                    bool isInterior = !isEdge && _random.NextDouble() < config.IndustrialComplexity * 0.2f;
+                    bool isInterior = !isEdge && _random.NextDouble() < interiorChance;
                     
                     if (isEdge || isInterior)
                     {
@@ -599,13 +605,13 @@ public class IndustrialMiningShipGenerator
             _ => 3
         };
         
-        float engineSpacing = dimensions.X * 0.7f / (engineCount - 1);
+        // Handle single engine case to avoid division by zero
+        float engineSpacing = engineCount > 1 ? dimensions.X * 0.7f / (engineCount - 1) : 0;
         float startX = -dimensions.X * 0.35f;
         
         for (int i = 0; i < engineCount; i++)
         {
-            float xPos = startX + i * engineSpacing;
-            if (engineCount == 1) xPos = 0;
+            float xPos = engineCount == 1 ? 0 : startX + i * engineSpacing;
             
             float yPos = -dimensions.Y * 0.1f; // Slightly below center
             
