@@ -558,7 +558,8 @@ public class GreedyMeshBuilder
         }
         
         // Add the inner diagonal face (where the corner is cut)
-        // CCW winding when viewed from the (-1, 0, -1) direction (looking into the cut corner)
+        // The diagonal face has normal pointing toward negative X and negative Z (into the cut corner)
+        // CCW winding order when viewed along the normal direction
         Vector3 halfSize = size / 2.0f;
         Vector3[] vertices = new[]
         {
