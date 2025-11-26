@@ -481,6 +481,7 @@ public class ProceduralShipGenerator
     
     /// <summary>
     /// Add angled/sloped blocks at edges for more interesting Avorion aesthetics
+    /// Now uses proper wedge shapes for visual angles
     /// </summary>
     private void AddAngledEdgeBlocks(GeneratedShip ship, Vector3 center, Vector3 size,
         ShipGenerationConfig config, float blockSize)
@@ -489,34 +490,57 @@ public class ProceduralShipGenerator
         float halfY = size.Y / 2;
         float halfZ = size.Z / 2;
         
-        // Add slope blocks at front edges
+        // Add wedge blocks at front edges - actual sloped geometry
         for (float x = -halfX + blockSize; x < halfX - blockSize; x += blockSize * 2)
         {
-            // Top front edge slopes
+            // Top front edge wedges - slope facing forward (+Z)
             ship.Structure.AddBlock(new VoxelBlock(
                 center + new Vector3(x, halfY, halfZ),
-                new Vector3(blockSize, blockSize * 0.5f, blockSize),
-                config.Material, BlockType.Hull));
+                new Vector3(blockSize, blockSize, blockSize),
+                config.Material, BlockType.Hull, BlockShape.Wedge, BlockOrientation.PosZ));
             
-            // Bottom front edge slopes
+            // Bottom front edge wedges - slope facing forward but inverted
             ship.Structure.AddBlock(new VoxelBlock(
                 center + new Vector3(x, -halfY, halfZ),
-                new Vector3(blockSize, blockSize * 0.5f, blockSize),
-                config.Material, BlockType.Hull));
+                new Vector3(blockSize, blockSize, blockSize),
+                config.Material, BlockType.Hull, BlockShape.Wedge, BlockOrientation.NegY));
         }
         
-        // Add side bevels
+        // Add wedge blocks at rear edges
+        for (float x = -halfX + blockSize; x < halfX - blockSize; x += blockSize * 2)
+        {
+            // Top rear edge wedges - slope facing backward
+            ship.Structure.AddBlock(new VoxelBlock(
+                center + new Vector3(x, halfY, -halfZ),
+                new Vector3(blockSize, blockSize, blockSize),
+                config.Material, BlockType.Hull, BlockShape.Wedge, BlockOrientation.NegZ));
+        }
+        
+        // Add side wedges for beveled edges
         for (float z = -halfZ + blockSize; z < halfZ - blockSize; z += blockSize * 2)
         {
+            // Right side wedges
             ship.Structure.AddBlock(new VoxelBlock(
                 center + new Vector3(halfX, 0, z),
-                new Vector3(blockSize * 0.5f, blockSize, blockSize),
-                config.Material, BlockType.Hull));
+                new Vector3(blockSize, blockSize, blockSize),
+                config.Material, BlockType.Hull, BlockShape.Wedge, BlockOrientation.PosX));
+            
+            // Left side wedges
             ship.Structure.AddBlock(new VoxelBlock(
                 center + new Vector3(-halfX, 0, z),
-                new Vector3(blockSize * 0.5f, blockSize, blockSize),
-                config.Material, BlockType.Hull));
+                new Vector3(blockSize, blockSize, blockSize),
+                config.Material, BlockType.Hull, BlockShape.Wedge, BlockOrientation.NegX));
         }
+        
+        // Add corner wedges at the front corners
+        ship.Structure.AddBlock(new VoxelBlock(
+            center + new Vector3(halfX, halfY, halfZ),
+            new Vector3(blockSize, blockSize, blockSize),
+            config.Material, BlockType.Hull, BlockShape.Corner, BlockOrientation.PosZ));
+        ship.Structure.AddBlock(new VoxelBlock(
+            center + new Vector3(-halfX, halfY, halfZ),
+            new Vector3(blockSize, blockSize, blockSize),
+            config.Material, BlockType.Hull, BlockShape.Corner, BlockOrientation.PosZ));
     }
     
     /// <summary>
@@ -571,6 +595,12 @@ public class ProceduralShipGenerator
                     new Vector3(blockSize, blockSize, blockSize),
                     config.Material, BlockType.Hull));
             }
+        }
+        
+        // Add angled blocks at edges if enabled (for solid hull)
+        if (config.UseAngledBlocks)
+        {
+            AddAngledEdgeBlocks(ship, Vector3.Zero, dimensions, config, blockSize);
         }
     }
     
@@ -629,7 +659,7 @@ public class ProceduralShipGenerator
                 config.Material, BlockType.Hull));
         }
         
-        // Add aggressive angular wings - swept back design with denser fill
+        // Add aggressive angular wings - swept back design with wedge shapes
         float wingLength = dimensions.Z * 0.4f;
         float wingStart = -dimensions.Z / 4;
         float wingSpan = dimensions.X * 0.4f;  // Slightly smaller wings
@@ -640,20 +670,43 @@ public class ProceduralShipGenerator
             float currentWingSpan = wingSpan * (1.0f - wingProgress * 0.3f);
             float wingAngle = -wingProgress * 2;  // Slight downward angle
             
-            // Fill wing from body edge outward (denser fill)
+            // Fill wing from body edge outward - use wedges at the tips
             for (float x = 0; x < currentWingSpan; x += blockSize)
             {
+                bool isWingTip = x >= currentWingSpan - blockSize;
+                
                 // Left wing
-                ship.Structure.AddBlock(new VoxelBlock(
-                    new Vector3(-dimensions.X / 2 - x - blockSize, wingAngle, z),
-                    new Vector3(blockSize, blockSize * 0.5f, blockSize), 
-                    config.Material, BlockType.Hull));
+                if (isWingTip)
+                {
+                    // Wing tip wedge - pointed outward
+                    ship.Structure.AddBlock(new VoxelBlock(
+                        new Vector3(-dimensions.X / 2 - x - blockSize, wingAngle, z),
+                        new Vector3(blockSize, blockSize * 0.5f, blockSize), 
+                        config.Material, BlockType.Hull, BlockShape.Wedge, BlockOrientation.NegX));
+                }
+                else
+                {
+                    ship.Structure.AddBlock(new VoxelBlock(
+                        new Vector3(-dimensions.X / 2 - x - blockSize, wingAngle, z),
+                        new Vector3(blockSize, blockSize * 0.5f, blockSize), 
+                        config.Material, BlockType.Hull));
+                }
                 
                 // Right wing (symmetric)
-                ship.Structure.AddBlock(new VoxelBlock(
-                    new Vector3(dimensions.X / 2 + x, wingAngle, z),
-                    new Vector3(blockSize, blockSize * 0.5f, blockSize), 
-                    config.Material, BlockType.Hull));
+                if (isWingTip)
+                {
+                    ship.Structure.AddBlock(new VoxelBlock(
+                        new Vector3(dimensions.X / 2 + x, wingAngle, z),
+                        new Vector3(blockSize, blockSize * 0.5f, blockSize), 
+                        config.Material, BlockType.Hull, BlockShape.Wedge, BlockOrientation.PosX));
+                }
+                else
+                {
+                    ship.Structure.AddBlock(new VoxelBlock(
+                        new Vector3(dimensions.X / 2 + x, wingAngle, z),
+                        new Vector3(blockSize, blockSize * 0.5f, blockSize), 
+                        config.Material, BlockType.Hull));
+                }
             }
         }
         
@@ -702,18 +755,30 @@ public class ProceduralShipGenerator
             }
         }
         
-        // Add front nose cone - pointed section
+        // Add front nose cone - pointed section with wedge shapes at the tip
         for (float z = dimensions.Z / 2 - blockSize * 3; z < dimensions.Z / 2; z += blockSize)
         {
             float progress = (z - (dimensions.Z / 2 - blockSize * 3)) / (blockSize * 3);
             float noseWidth = Math.Max(blockSize, (1.0f - progress) * dimensions.X * 0.3f);
+            bool isNoseTip = z >= dimensions.Z / 2 - blockSize;
             
             for (float x = -noseWidth / 2; x < noseWidth / 2; x += blockSize)
             {
-                ship.Structure.AddBlock(new VoxelBlock(
-                    new Vector3(x, 0, z), 
-                    new Vector3(blockSize, blockSize, blockSize), 
-                    config.Material, BlockType.Hull));
+                if (isNoseTip)
+                {
+                    // Nose tip uses wedge shape pointing forward
+                    ship.Structure.AddBlock(new VoxelBlock(
+                        new Vector3(x, 0, z), 
+                        new Vector3(blockSize, blockSize, blockSize), 
+                        config.Material, BlockType.Hull, BlockShape.Wedge, BlockOrientation.PosZ));
+                }
+                else
+                {
+                    ship.Structure.AddBlock(new VoxelBlock(
+                        new Vector3(x, 0, z), 
+                        new Vector3(blockSize, blockSize, blockSize), 
+                        config.Material, BlockType.Hull));
+                }
             }
         }
     }
@@ -882,22 +947,34 @@ public class ProceduralShipGenerator
                 config.Material, BlockType.Hull));
         }
         
-        // Sharp pointed nose - continuous taper
+        // Sharp pointed nose - continuous taper with wedge tip
         for (float z = dimensions.Z / 3; z < dimensions.Z / 2; z += blockSize)
         {
             float progress = (z - dimensions.Z / 3) / (dimensions.Z / 2 - dimensions.Z / 3);
             float noseWidth = Math.Max(blockSize, (1.0f - progress * 0.8f) * dimensions.X * 0.3f);
+            bool isNoseTip = z >= dimensions.Z / 2 - blockSize;
             
             for (float x = -noseWidth / 2; x < noseWidth / 2; x += blockSize)
             {
-                ship.Structure.AddBlock(new VoxelBlock(
-                    new Vector3(x, 0, z), 
-                    new Vector3(blockSize, blockSize, blockSize), 
-                    config.Material, BlockType.Hull));
+                if (isNoseTip)
+                {
+                    // Sharp wedge at the very tip
+                    ship.Structure.AddBlock(new VoxelBlock(
+                        new Vector3(x, 0, z), 
+                        new Vector3(blockSize, blockSize, blockSize), 
+                        config.Material, BlockType.Hull, BlockShape.Wedge, BlockOrientation.PosZ));
+                }
+                else
+                {
+                    ship.Structure.AddBlock(new VoxelBlock(
+                        new Vector3(x, 0, z), 
+                        new Vector3(blockSize, blockSize, blockSize), 
+                        config.Material, BlockType.Hull));
+                }
             }
         }
         
-        // Sleek vertical stabilizer fin at rear top - continuous
+        // Sleek vertical stabilizer fin at rear top - with wedge top
         float finHeight = dimensions.Y * 1.0f;
         float finLength = dimensions.Z * 0.25f;
         float finStart = -dimensions.Z / 2;
@@ -910,10 +987,23 @@ public class ProceduralShipGenerator
             // Continuous vertical fin
             for (float y = 0; y < currentFinHeight; y += blockSize)
             {
-                ship.Structure.AddBlock(new VoxelBlock(
-                    new Vector3(0, dimensions.Y / 4 + y, z),
-                    new Vector3(blockSize * 0.5f, blockSize, blockSize * 0.5f), 
-                    config.Material, BlockType.Hull));
+                bool isFinTop = y >= currentFinHeight - blockSize;
+                
+                if (isFinTop)
+                {
+                    // Top of fin uses wedge pointing up
+                    ship.Structure.AddBlock(new VoxelBlock(
+                        new Vector3(0, dimensions.Y / 4 + y, z),
+                        new Vector3(blockSize * 0.5f, blockSize, blockSize * 0.5f), 
+                        config.Material, BlockType.Hull, BlockShape.Wedge, BlockOrientation.PosY));
+                }
+                else
+                {
+                    ship.Structure.AddBlock(new VoxelBlock(
+                        new Vector3(0, dimensions.Y / 4 + y, z),
+                        new Vector3(blockSize * 0.5f, blockSize, blockSize * 0.5f), 
+                        config.Material, BlockType.Hull));
+                }
             }
         }
         

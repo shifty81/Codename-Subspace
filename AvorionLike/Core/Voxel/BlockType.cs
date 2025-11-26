@@ -1,6 +1,52 @@
 namespace AvorionLike.Core.Voxel;
 
 /// <summary>
+/// Geometric shape of a block for rendering
+/// Determines how the block mesh is generated
+/// </summary>
+public enum BlockShape
+{
+    /// <summary>Standard cube/rectangular block</summary>
+    Cube,
+    
+    /// <summary>Wedge shape - diagonal slope from one edge to opposite edge</summary>
+    Wedge,
+    
+    /// <summary>Corner wedge - triangular corner piece</summary>
+    Corner,
+    
+    /// <summary>Inner corner - inverted corner piece</summary>
+    InnerCorner,
+    
+    /// <summary>Tetrahedron - pyramid shape</summary>
+    Tetrahedron,
+    
+    /// <summary>Half block - sliced in half</summary>
+    HalfBlock
+}
+
+/// <summary>
+/// Orientation of a shaped block (which direction it faces)
+/// Uses 24 possible orientations (6 faces × 4 rotations each)
+/// Simplified to 6 main directions for wedges
+/// </summary>
+public enum BlockOrientation
+{
+    /// <summary>Slope faces positive X (+X is the high side)</summary>
+    PosX,
+    /// <summary>Slope faces negative X (-X is the high side)</summary>
+    NegX,
+    /// <summary>Slope faces positive Y (+Y is the high side)</summary>
+    PosY,
+    /// <summary>Slope faces negative Y (-Y is the high side)</summary>
+    NegY,
+    /// <summary>Slope faces positive Z (+Z is the high side)</summary>
+    PosZ,
+    /// <summary>Slope faces negative Z (-Z is the high side)</summary>
+    NegZ
+}
+
+/// <summary>
 /// Types of voxel blocks that can be placed
 /// Following Avorion-style block categories
 /// </summary>
