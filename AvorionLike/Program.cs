@@ -86,6 +86,7 @@ class Program
             Console.WriteLine("28. GRAPHICAL MAIN MENU - Comprehensive Game Setup [NEW! 🎮✨]");
             Console.WriteLine("29. Industrial Mining Ship Demo - Angular/Blocky Mining Ships [NEW! ⛏️🚀]");
             Console.WriteLine("30. NPR/PBR Rendering Mode Demo - Fix Visual Issues on Blocks [NEW! 🎨✨]");
+            Console.WriteLine("31. World Generation Showcase - Visual Demo of All Options [NEW! 🌌🔮]");
             Console.WriteLine();
             Console.WriteLine("--- INFO ---");
             Console.WriteLine("15. About / Version Info");
@@ -186,6 +187,9 @@ class Program
                     break;
                 case "30":
                     RunRenderingModeDemo();
+                    break;
+                case "31":
+                    RunWorldGenerationShowcase();
                     break;
                 case "0":
                     _running = false;
@@ -3049,6 +3053,28 @@ class Program
         {
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine($"\n✗ Rendering mode demo error: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            Console.ResetColor();
+        }
+        
+        Console.WriteLine("\nPress any key to return to main menu...");
+        Console.ReadKey();
+    }
+    
+    static void RunWorldGenerationShowcase()
+    {
+        Console.WriteLine("\n=== WORLD GENERATION OPTIONS - VISUAL SHOWCASE ===");
+        Console.WriteLine("Demonstrating all procedural generation features\n");
+        
+        try
+        {
+            var showcase = new WorldGenerationShowcase(_gameEngine!.EntityManager);
+            showcase.RunShowcase();
+        }
+        catch (Exception ex)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"\n✗ World generation showcase error: {ex.Message}");
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
             Console.ResetColor();
         }
