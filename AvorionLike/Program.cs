@@ -84,6 +84,7 @@ class Program
             Console.WriteLine("26. AI Ship Generation - AI-Driven Voxel Construction [NEW! 🤖✨]");
             Console.WriteLine("27. Visual Enhancements Test - Test Ship/Station/Asteroid Details [NEW! ✨]");
             Console.WriteLine("28. GRAPHICAL MAIN MENU - Comprehensive Game Setup [NEW! 🎮✨]");
+            Console.WriteLine("29. Industrial Mining Ship Demo - Angular/Blocky Mining Ships [NEW! ⛏️🚀]");
             Console.WriteLine();
             Console.WriteLine("--- INFO ---");
             Console.WriteLine("15. About / Version Info");
@@ -178,6 +179,9 @@ class Program
                     break;
                 case "28":
                     LaunchGraphicalMainMenu();
+                    break;
+                case "29":
+                    RunIndustrialMiningShipDemo();
                     break;
                 case "0":
                     _running = false;
@@ -2943,6 +2947,83 @@ class Program
         }
         
         return voxel;
+    }
+    
+    static void RunIndustrialMiningShipDemo()
+    {
+        Console.WriteLine("\n=== INDUSTRIAL MINING SHIP SHOWCASE ===");
+        Console.WriteLine("Generating industrial mining ships with angular, blocky voxel-based designs");
+        Console.WriteLine("Inspired by mining ships from Space Engineers, Empyrion, and Avorion\n");
+        
+        try
+        {
+            var showcase = new IndustrialMiningShipShowcase(_gameEngine!.EntityManager);
+            var ships = showcase.GenerateShowcase(Environment.TickCount);
+            
+            // Interactive menu
+            bool done = false;
+            while (!done)
+            {
+                Console.WriteLine("\n=== MINING SHIP SHOWCASE MENU ===");
+                Console.WriteLine("1. View Ship Details (enter ship number)");
+                Console.WriteLine("2. View Summary (all ships)");
+                Console.WriteLine("3. Launch 3D Viewer (see all ships in scene)");
+                Console.WriteLine("0. Return to Main Menu");
+                Console.Write("\nSelect option: ");
+                
+                var choice = Console.ReadLine();
+                
+                if (choice == "0")
+                {
+                    done = true;
+                }
+                else if (choice == "2")
+                {
+                    showcase.PrintShowcaseSummary();
+                }
+                else if (choice == "3")
+                {
+                    Console.WriteLine("\nLaunching 3D viewer with all mining ships...");
+                    Console.WriteLine("Use camera controls to inspect each ship.");
+                    Console.WriteLine("Mining ships feature:");
+                    Console.WriteLine("  • Angular, blocky industrial hulls");
+                    Console.WriteLine("  • Exposed framework/gantry structures");
+                    Console.WriteLine("  • Forward-mounted mining equipment");
+                    Console.WriteLine("  • Large cargo bays on sides\n");
+                    
+                    try
+                    {
+                        using var graphicsWindow = new GraphicsWindow(_gameEngine!);
+                        // Set first ship as player view point
+                        if (ships.Count > 0)
+                        {
+                            graphicsWindow.SetPlayerShip(ships[0].EntityId);
+                        }
+                        graphicsWindow.Run();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error running 3D viewer: {ex.Message}");
+                        Console.WriteLine("Graphics may not be available on this system.");
+                    }
+                }
+                else if (int.TryParse(choice, out int shipNum) && shipNum >= 1 && shipNum <= ships.Count)
+                {
+                    showcase.PrintShipDetails(shipNum);
+                }
+                else
+                {
+                    Console.WriteLine("Invalid option!");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"\n✗ Mining ship showcase error: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            Console.ResetColor();
+        }
     }
 }
 

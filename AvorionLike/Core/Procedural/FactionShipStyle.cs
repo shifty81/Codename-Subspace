@@ -182,6 +182,7 @@ public class FactionShipStyle
         }
         
         // Miners - industrial, bulky, utility-focused
+        // Enhanced for angular, blocky voxel-based mining ship aesthetics
         if (normalized.Contains("miner") || normalized.Contains("industrial") || 
             normalized.Contains("mining") || normalized.Contains("construct"))
         {
@@ -190,25 +191,25 @@ public class FactionShipStyle
                 FactionName = factionName,
                 PreferredHullShape = ShipHullShape.Blocky,
                 SymmetryLevel = 0.7f,
-                Sleekness = 0.2f,
-                BlockComplexity = 0.3f, // Simple, sturdy design
-                VolumeScaling = 1.2f, // Larger for ore storage
-                UseAngledBlocks = false,
+                Sleekness = 0.15f, // Very industrial, not sleek
+                BlockComplexity = 0.6f, // Higher complexity for exposed frameworks
+                VolumeScaling = 1.3f, // Larger for ore storage and equipment
+                UseAngledBlocks = true, // Angular panels on blocky hull
                 UseBoxAesthetic = true, // Very boxy industrial look
-                PrimaryColor = 0xB8860B, // Dark Goldenrod
-                SecondaryColor = 0x696969, // Dim Gray
-                AccentColor = 0xFFA500, // Orange
-                ArmorToHullRatio = 0.3f,
-                ExternalSystemsPreference = 0.7f,
-                WeaponDensity = 0.3f,
+                PrimaryColor = 0x4A4A50, // Industrial dark gray
+                SecondaryColor = 0x8B7355, // Industrial tan/rust
+                AccentColor = 0xFFA500, // Safety orange
+                ArmorToHullRatio = 0.35f, // More armor for protection
+                ExternalSystemsPreference = 0.8f, // Exposed gantries and equipment
+                WeaponDensity = 0.4f, // Some mining lasers as weapons
                 Philosophy = DesignPhilosophy.UtilityFocused,
                 PreferredMaterial = "Iron", // Cheap and abundant
                 RequireIntegrityField = true,
                 RequirePowerCore = true,
                 EnginePlacementDepth = 0.9f,
-                TargetUpgradeSlots = 5,
+                TargetUpgradeSlots = 6,
                 UseModularSections = true,
-                ModularSectionCount = 3
+                ModularSectionCount = 4 // More sections for equipment modules
             };
         }
         
