@@ -111,36 +111,20 @@ public class GreedyMeshBuilder
         for (int i = 0; i < directions.Length; i++)
         {
             // Calculate the expected neighbor position based on this block's size
-            Vector3 neighborPos = pos + directions[i] * size;
+            // For a block at position P with size S, a neighbor in direction D
+            // should be at position P + D * S (center to center distance)
+            Vector3 dir = directions[i];
+            
+            // Calculate per-axis offset based on direction
+            float offsetX = dir.X != 0 ? size.X : 0;
+            float offsetY = dir.Y != 0 ? size.Y : 0;
+            float offsetZ = dir.Z != 0 ? size.Z : 0;
+            
+            Vector3 neighborPos = pos + new Vector3(dir.X * offsetX, dir.Y * offsetY, dir.Z * offsetZ);
             var neighborKey = RoundPosition(neighborPos);
             
             // Check if there's a block at the expected position
             bool hasNeighbor = blockLookup.ContainsKey(neighborKey);
-            
-            // If no exact match, check nearby positions for blocks of different sizes
-            // This handles cases where angular/stretched blocks are adjacent to standard blocks
-            if (!hasNeighbor)
-            {
-                // Check positions within a small tolerance (±1 unit in the direction axis)
-                Vector3 dir = directions[i];
-                float checkDistance = Math.Abs(dir.X) > 0 ? size.X : (Math.Abs(dir.Y) > 0 ? size.Y : size.Z);
-                
-                // Check a few positions near the expected neighbor location
-                for (float offset = -1.0f; offset <= 1.0f; offset += 0.5f)
-                {
-                    if (offset == 0) continue; // Already checked
-                    
-                    Vector3 altPos = pos + dir * (checkDistance + offset);
-                    var altKey = RoundPosition(altPos);
-                    
-                    if (blockLookup.ContainsKey(altKey))
-                    {
-                        // Found a neighbor nearby, consider this face occluded
-                        hasNeighbor = true;
-                        break;
-                    }
-                }
-            }
             
             // Only generate face if no neighbor found in this direction
             if (!hasNeighbor)
@@ -215,22 +199,27 @@ public class GreedyMeshBuilder
                 // Add back face (-Z) - full height
                 AddFace(mesh, pos, size, 5, color, blockType); // Back
                 
-                // Add left triangle face
+                // Add left triangle face - CCW when viewed from -X toward +X
+                // When viewing from -X: +Z is right, -Z is left, +Y is up
+                // For PosZ wedge: full height at back (-Z), tapers at front (+Z)
+                // CCW: back-bottom -> front-bottom -> back-top
                 vertices = new[]
                 {
-                    pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
-                    pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z),
-                    pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z)
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),  // back-bottom
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),   // front-bottom
+                    pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z)    // back-top
                 };
                 normal = new Vector3(-1, 0, 0);
                 AddTriangle(mesh, vertices, normal, color, blockType);
                 
-                // Add right triangle face
+                // Add right triangle face - CCW when viewed from +X toward -X
+                // When viewing from +X: -Z is right, +Z is left, +Y is up
+                // CCW: back-bottom -> front-bottom -> back-top
                 vertices = new[]
                 {
-                    pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
-                    pos + new Vector3(halfSize.X, halfSize.Y, -halfSize.Z),
-                    pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z)
+                    pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),  // back-bottom
+                    pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),   // front-bottom
+                    pos + new Vector3(halfSize.X, halfSize.Y, -halfSize.Z)    // back-top
                 };
                 normal = new Vector3(1, 0, 0);
                 AddTriangle(mesh, vertices, normal, color, blockType);
@@ -254,22 +243,28 @@ public class GreedyMeshBuilder
                 // Add front face (+Z) - full height
                 AddFace(mesh, pos, size, 4, color, blockType);
                 
-                // Add left triangle
+                // Add left triangle - CCW when viewed from -X toward +X
+                // When viewing from -X: +Z is right, -Z is left, +Y is up
+                // For NegZ wedge: full height at front (+Z), tapers at back (-Z)
+                // CCW: front-bottom -> back-bottom -> front-top
                 vertices = new[]
                 {
-                    pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),
-                    pos + new Vector3(-halfSize.X, halfSize.Y, halfSize.Z),
-                    pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z)
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),   // front-bottom
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),  // back-bottom
+                    pos + new Vector3(-halfSize.X, halfSize.Y, halfSize.Z)     // front-top
                 };
                 normal = new Vector3(-1, 0, 0);
                 AddTriangle(mesh, vertices, normal, color, blockType);
                 
-                // Add right triangle
+                // Add right triangle - CCW when viewed from +X toward -X
+                // When viewing from +X: -Z is right, +Z is left, +Y is up
+                // For NegZ wedge: full height at front (+Z), tapers at back (-Z)
+                // CCW: front-bottom -> back-bottom -> front-top
                 vertices = new[]
                 {
-                    pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),
-                    pos + new Vector3(halfSize.X, halfSize.Y, halfSize.Z),
-                    pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z)
+                    pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),   // front-bottom
+                    pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),  // back-bottom
+                    pos + new Vector3(halfSize.X, halfSize.Y, halfSize.Z)     // front-top
                 };
                 normal = new Vector3(1, 0, 0);
                 AddTriangle(mesh, vertices, normal, color, blockType);
@@ -290,22 +285,24 @@ public class GreedyMeshBuilder
                 AddFace(mesh, pos, size, 3, color, blockType); // Bottom
                 AddFace(mesh, pos, size, 1, color, blockType); // Left (-X) full height
                 
-                // Front triangle
+                // Front triangle - CCW when viewed from +Z toward -Z
+                // Fixed winding order
                 vertices = new[]
                 {
                     pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),
-                    pos + new Vector3(-halfSize.X, halfSize.Y, halfSize.Z),
-                    pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z)
+                    pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
+                    pos + new Vector3(-halfSize.X, halfSize.Y, halfSize.Z)
                 };
                 normal = new Vector3(0, 0, 1);
                 AddTriangle(mesh, vertices, normal, color, blockType);
                 
-                // Back triangle
+                // Back triangle - CCW when viewed from -Z toward +Z
+                // Fixed winding order
                 vertices = new[]
                 {
-                    pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
                     pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z),
-                    pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z)
+                    pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z)
                 };
                 normal = new Vector3(0, 0, -1);
                 AddTriangle(mesh, vertices, normal, color, blockType);
@@ -326,22 +323,26 @@ public class GreedyMeshBuilder
                 AddFace(mesh, pos, size, 3, color, blockType); // Bottom
                 AddFace(mesh, pos, size, 0, color, blockType); // Right (+X) full height
                 
-                // Front triangle
+                // Front triangle - CCW when viewed from +Z toward -Z
+                // For NegX wedge: full height at right (+X), tapers at left (-X)
+                // CCW from +Z: left-bottom -> right-bottom -> right-top
                 vertices = new[]
                 {
-                    pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
-                    pos + new Vector3(halfSize.X, halfSize.Y, halfSize.Z),
-                    pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z)
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),   // left-bottom
+                    pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),    // right-bottom
+                    pos + new Vector3(halfSize.X, halfSize.Y, halfSize.Z)      // right-top
                 };
                 normal = new Vector3(0, 0, 1);
                 AddTriangle(mesh, vertices, normal, color, blockType);
                 
-                // Back triangle
+                // Back triangle - CCW when viewed from -Z toward +Z
+                // For NegX wedge: full height at right (+X), tapers at left (-X)
+                // CCW from -Z: right-bottom -> left-bottom -> right-top
                 vertices = new[]
                 {
-                    pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
-                    pos + new Vector3(halfSize.X, halfSize.Y, -halfSize.Z),
-                    pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z)
+                    pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),   // right-bottom
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),  // left-bottom
+                    pos + new Vector3(halfSize.X, halfSize.Y, -halfSize.Z)     // right-top
                 };
                 normal = new Vector3(0, 0, -1);
                 AddTriangle(mesh, vertices, normal, color, blockType);
@@ -362,22 +363,28 @@ public class GreedyMeshBuilder
                 AddFace(mesh, pos, size, 3, color, blockType); // Bottom
                 AddFace(mesh, pos, size, 5, color, blockType); // Back - full height at low end
                 
-                // Left side triangle
+                // Left side triangle - CCW when viewed from -X toward +X
+                // When viewing from -X: +Z is right, -Z is left, +Y is up
+                // For PosY wedge: full height at front (+Z), tapers at back (-Z)
+                // CCW: front-bottom -> back-bottom -> front-top
                 vertices = new[]
                 {
-                    pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
-                    pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),
-                    pos + new Vector3(-halfSize.X, halfSize.Y, halfSize.Z)
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),   // front-bottom
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),  // back-bottom
+                    pos + new Vector3(-halfSize.X, halfSize.Y, halfSize.Z)     // front-top
                 };
                 normal = new Vector3(-1, 0, 0);
                 AddTriangle(mesh, vertices, normal, color, blockType);
                 
-                // Right side triangle
+                // Right side triangle - CCW when viewed from +X toward -X
+                // When viewing from +X: -Z is right, +Z is left, +Y is up
+                // For PosY wedge: full height at front (+Z), tapers at back (-Z)
+                // CCW: front-bottom -> back-bottom -> front-top
                 vertices = new[]
                 {
-                    pos + new Vector3(halfSize.X, halfSize.Y, halfSize.Z),
-                    pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
-                    pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z)
+                    pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),   // front-bottom
+                    pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),  // back-bottom
+                    pos + new Vector3(halfSize.X, halfSize.Y, halfSize.Z)     // front-top
                 };
                 normal = new Vector3(1, 0, 0);
                 AddTriangle(mesh, vertices, normal, color, blockType);
@@ -398,22 +405,24 @@ public class GreedyMeshBuilder
                 AddFace(mesh, pos, size, 2, color, blockType); // Top
                 AddFace(mesh, pos, size, 5, color, blockType); // Back
                 
-                // Left triangle
+                // Left triangle - CCW when viewed from -X toward +X
+                // Fixed winding order
                 vertices = new[]
                 {
-                    pos + new Vector3(-halfSize.X, halfSize.Y, halfSize.Z),
                     pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z),
-                    pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z)
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),
+                    pos + new Vector3(-halfSize.X, halfSize.Y, halfSize.Z)
                 };
                 normal = new Vector3(-1, 0, 0);
                 AddTriangle(mesh, vertices, normal, color, blockType);
                 
-                // Right triangle
+                // Right triangle - CCW when viewed from +X toward -X
+                // Fixed winding order
                 vertices = new[]
                 {
+                    pos + new Vector3(halfSize.X, halfSize.Y, halfSize.Z),
                     pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
-                    pos + new Vector3(halfSize.X, halfSize.Y, -halfSize.Z),
-                    pos + new Vector3(halfSize.X, halfSize.Y, halfSize.Z)
+                    pos + new Vector3(halfSize.X, halfSize.Y, -halfSize.Z)
                 };
                 normal = new Vector3(1, 0, 0);
                 AddTriangle(mesh, vertices, normal, color, blockType);
@@ -493,37 +502,37 @@ public class GreedyMeshBuilder
         {
             case BlockOrientation.PosZ: // Corner at +X, +Y, -Z
             default:
-                // Bottom face (triangle)
+                // Bottom face (triangle) - CCW when viewed from -Y toward +Y
                 vertices = new[]
                 {
                     pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
-                    pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),
-                    pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z)
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),
+                    pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z)
                 };
                 normal = new Vector3(0, -1, 0);
                 AddTriangle(mesh, vertices, normal, color, blockType);
                 
-                // Back face (triangle)
+                // Back face (triangle) - CCW when viewed from -Z toward +Z
                 vertices = new[]
                 {
-                    pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),
                     pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),
                     pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z)
                 };
                 normal = new Vector3(0, 0, -1);
                 AddTriangle(mesh, vertices, normal, color, blockType);
                 
-                // Left face (triangle)
+                // Left face (triangle) - CCW when viewed from -X toward +X
                 vertices = new[]
                 {
-                    pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),
                     pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
-                    pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z)
+                    pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z),
+                    pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z)
                 };
                 normal = new Vector3(-1, 0, 0);
                 AddTriangle(mesh, vertices, normal, color, blockType);
                 
-                // Sloped hypotenuse face (triangle)
+                // Sloped hypotenuse face (triangle) - CCW when viewed from outside
                 vertices = new[]
                 {
                     pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z),
@@ -549,12 +558,14 @@ public class GreedyMeshBuilder
         }
         
         // Add the inner diagonal face (where the corner is cut)
+        // The diagonal face has normal pointing toward negative X and negative Z (into the cut corner)
+        // CCW winding order when viewed along the normal direction
         Vector3 halfSize = size / 2.0f;
         Vector3[] vertices = new[]
         {
             pos + new Vector3(halfSize.X, halfSize.Y, halfSize.Z),
-            pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
-            pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z)
+            pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
+            pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z)
         };
         Vector3 normal = Vector3.Normalize(new Vector3(-1, 0, -1));
         AddTriangle(mesh, vertices, normal, color, blockType);
@@ -570,52 +581,52 @@ public class GreedyMeshBuilder
         Vector3[] vertices;
         Vector3 normal;
         
-        // Base (bottom) - square
+        // Base (bottom) - square - CCW when viewed from -Y toward +Y
         Vector3[] baseVerts = new[]
         {
             pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
-            pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),
+            pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),
             pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
-            pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z)
+            pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z)
         };
         normal = new Vector3(0, -1, 0);
         AddQuad(mesh, baseVerts, normal, color, blockType);
         
-        // Front face (triangle)
+        // Front face (triangle) - CCW when viewed from +Z toward -Z
         vertices = new[]
         {
-            pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),
             pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
+            pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),
             apex
         };
         normal = Vector3.Normalize(new Vector3(0, size.Z, size.Y));
         AddTriangle(mesh, vertices, normal, color, blockType);
         
-        // Back face (triangle)
+        // Back face (triangle) - CCW when viewed from -Z toward +Z
         vertices = new[]
         {
-            pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),
             pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
+            pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),
             apex
         };
         normal = Vector3.Normalize(new Vector3(0, size.Z, -size.Y));
         AddTriangle(mesh, vertices, normal, color, blockType);
         
-        // Left face (triangle)
+        // Left face (triangle) - CCW when viewed from -X toward +X
         vertices = new[]
         {
-            pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
             pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),
+            pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
             apex
         };
         normal = Vector3.Normalize(new Vector3(-size.X, size.Y, 0));
         AddTriangle(mesh, vertices, normal, color, blockType);
         
-        // Right face (triangle)
+        // Right face (triangle) - CCW when viewed from +X toward -X
         vertices = new[]
         {
-            pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
             pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),
+            pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
             apex
         };
         normal = Vector3.Normalize(new Vector3(size.X, size.Y, 0));
