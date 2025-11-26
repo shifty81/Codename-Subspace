@@ -2537,7 +2537,7 @@ class Program
             Console.WriteLine("═══════════════════════════════════════════════════════════════════════════");
             Console.WriteLine("SHIP SELECTION OPTIONS:");
             Console.WriteLine("═══════════════════════════════════════════════════════════════════════════");
-            Console.WriteLine("  Enter ship number (1-12) to select that ship");
+            Console.WriteLine($"  Enter ship number (1-{ships.Count}) to select that ship");
             Console.WriteLine("  V - View ships in 3D (visually inspect before choosing)");
             Console.WriteLine("  D - View detailed stats for a ship");
             Console.WriteLine("  R - Regenerate new ship options");
@@ -2566,47 +2566,52 @@ class Program
                 {
                     // Create a temporary graphics window for preview
                     var tempEngine = new GameEngine(Environment.TickCount);
-                    tempEngine.Start();
-                    
-                    // Copy ships to the temp engine for viewing
-                    foreach (var ship in ships)
+                    try
                     {
-                        var entity = tempEngine.EntityManager.CreateEntity($"Ship #{ship.Number} - {ship.Description}");
+                        tempEngine.Start();
                         
-                        // Clone the voxel structure
-                        var voxelClone = new VoxelStructureComponent();
-                        foreach (var block in ship.ShipData.Structure.Blocks)
+                        // Copy ships to the temp engine for viewing
+                        foreach (var ship in ships)
                         {
-                            voxelClone.AddBlock(new VoxelBlock(
-                                block.Position, 
-                                block.Size, 
-                                block.MaterialType, 
-                                block.BlockType));
+                            var entity = tempEngine.EntityManager.CreateEntity($"Ship #{ship.Number} - {ship.Description}");
+                            
+                            // Clone the voxel structure
+                            var voxelClone = new VoxelStructureComponent();
+                            foreach (var block in ship.ShipData.Structure.Blocks)
+                            {
+                                voxelClone.AddBlock(new VoxelBlock(
+                                    block.Position, 
+                                    block.Size, 
+                                    block.MaterialType, 
+                                    block.BlockType));
+                            }
+                            tempEngine.EntityManager.AddComponent(entity.Id, voxelClone);
+                            
+                            // Add physics at the ship's position
+                            var physics = new PhysicsComponent
+                            {
+                                Position = ship.Position,
+                                Mass = ship.ShipData.TotalMass
+                            };
+                            tempEngine.EntityManager.AddComponent(entity.Id, physics);
                         }
-                        tempEngine.EntityManager.AddComponent(entity.Id, voxelClone);
                         
-                        // Add physics at the ship's position
-                        var physics = new PhysicsComponent
+                        using var graphicsWindow = new GraphicsWindow(tempEngine);
+                        if (ships.Count > 0)
                         {
-                            Position = ship.Position,
-                            Mass = ship.ShipData.TotalMass
-                        };
-                        tempEngine.EntityManager.AddComponent(entity.Id, physics);
+                            // Get the entity ID of the first ship for camera focus
+                            var firstShipEntity = tempEngine.EntityManager.GetAllEntities().FirstOrDefault();
+                            if (firstShipEntity != null)
+                            {
+                                graphicsWindow.SetPlayerShip(firstShipEntity.Id);
+                            }
+                        }
+                        graphicsWindow.Run();
                     }
-                    
-                    using var graphicsWindow = new GraphicsWindow(tempEngine);
-                    if (ships.Count > 0)
+                    finally
                     {
-                        // Get the entity ID of the first ship for camera focus
-                        var firstShipEntity = tempEngine.EntityManager.GetAllEntities().FirstOrDefault();
-                        if (firstShipEntity != null)
-                        {
-                            graphicsWindow.SetPlayerShip(firstShipEntity.Id);
-                        }
+                        tempEngine.Stop();
                     }
-                    graphicsWindow.Run();
-                    
-                    tempEngine.Stop();
                 }
                 catch (Exception ex)
                 {
@@ -2657,6 +2662,12 @@ class Program
     /// </summary>
     static List<ShipShowcaseExample.GeneratedShipDisplay> GenerateStarterShipOptions(EntityManager entityManager, int baseSeed)
     {
+        // Ship generation constants
+        const int SHIP_GRID_WIDTH = 4;
+        const float SHIP_SPACING = 100f;
+        const int COMBAT_MIN_WEAPONS = 4;
+        const int DEFAULT_MIN_WEAPONS = 2;
+        
         var ships = new List<ShipShowcaseExample.GeneratedShipDisplay>();
         
         // Define starter-appropriate configurations (smaller, varied ships)
@@ -2674,28 +2685,24 @@ class Program
             new { Size = ShipSize.Corvette, Role = ShipRole.Exploration, Hull = ShipHullShape.Sleek, Faction = "Explorers", Material = "Naonite" },
             new { Size = ShipSize.Corvette, Role = ShipRole.Multipurpose, Hull = ShipHullShape.Blocky, Faction = "Default", Material = "Titanium" },
             
-            // Frigates - Larger starter options for experienced feel
+            // Frigates - Larger starter options for experienced feel (require hyperdrive for long-range travel)
             new { Size = ShipSize.Frigate, Role = ShipRole.Combat, Hull = ShipHullShape.Angular, Faction = "Military", Material = "Ogonite" },
             new { Size = ShipSize.Frigate, Role = ShipRole.Trading, Hull = ShipHullShape.Cylindrical, Faction = "Traders", Material = "Xanion" },
             new { Size = ShipSize.Frigate, Role = ShipRole.Mining, Hull = ShipHullShape.Blocky, Faction = "Miners", Material = "Iron" },
             new { Size = ShipSize.Frigate, Role = ShipRole.Multipurpose, Hull = ShipHullShape.Blocky, Faction = "Default", Material = "Avorion" },
         };
         
-        // Arrange ships in a 4x3 grid for 3D viewing
-        int gridWidth = 4;
-        float spacing = 100f;
-        
         for (int i = 0; i < configurations.Length; i++)
         {
             var config = configurations[i];
             
-            // Calculate grid position
-            int row = i / gridWidth;
-            int col = i % gridWidth;
+            // Calculate grid position for 3D viewing
+            int row = i / SHIP_GRID_WIDTH;
+            int col = i % SHIP_GRID_WIDTH;
             Vector3 position = new Vector3(
-                col * spacing - (gridWidth - 1) * spacing / 2f,
+                col * SHIP_SPACING - (SHIP_GRID_WIDTH - 1) * SHIP_SPACING / 2f,
                 0,
-                row * spacing
+                row * SHIP_SPACING
             );
             
             try
@@ -2711,9 +2718,11 @@ class Program
                     Material = config.Material,
                     Style = style,
                     Seed = baseSeed + i,
+                    // Frigates and larger require hyperdrives for long-range interstellar travel
                     RequireHyperdrive = config.Size >= ShipSize.Frigate,
                     RequireCargo = true,
-                    MinimumWeaponMounts = config.Role == ShipRole.Combat ? 4 : 2
+                    // Combat ships need more weapon mounts
+                    MinimumWeaponMounts = config.Role == ShipRole.Combat ? COMBAT_MIN_WEAPONS : DEFAULT_MIN_WEAPONS
                 };
                 
                 var shipData = generator.GenerateShip(shipConfig);
