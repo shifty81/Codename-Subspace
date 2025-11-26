@@ -8,6 +8,9 @@ using AvorionLike.Core.Physics;
 using AvorionLike.Core.Procedural;
 using AvorionLike.Core.Voxel;
 
+// Alias to disambiguate Vector3Int from Physics and Procedural namespaces
+using ProceduralVector3Int = AvorionLike.Core.Procedural.Vector3Int;
+
 namespace AvorionLike.Examples;
 
 /// <summary>
@@ -110,7 +113,7 @@ public class WorldGenerationShowcase
         Console.WriteLine("SHOWCASE OPTIONS:");
         Console.WriteLine("═══════════════════════════════════════════════════════════════════════════");
         Console.WriteLine("  1  - Rendering Modes Comparison (PBR vs NPR vs Hybrid)");
-        Console.WriteLine("  2  - Ship Generation Styles (Military, Industrial, Organic, etc.)");
+        Console.WriteLine("  2  - Ship Generation Styles (Military, Trader, Pirate, Science, etc.)");
         Console.WriteLine("  3  - Station Architectures (Modular, Ring, Tower, Industrial, Sprawling)");
         Console.WriteLine("  4  - Galaxy Sector Generation (Stars, Planets, Asteroid Belts)");
         Console.WriteLine("  5  - Asteroid Variety (Different types and resources)");
@@ -198,16 +201,19 @@ public class WorldGenerationShowcase
             };
             _showcaseItems.Add(item);
 
+            const int displayWidth = 58; // Width of content area within box borders
+            string positionStr = $"({physics.Position.X:F0}, {physics.Position.Y:F0}, {physics.Position.Z:F0})";
+            
             Console.WriteLine($"┌─────────────────────────────────────────────────────────────┐");
-            Console.WriteLine($"│ {name,-58}│");
+            Console.WriteLine($"│ {name,-displayWidth}│");
             Console.WriteLine($"├─────────────────────────────────────────────────────────────┤");
-            Console.WriteLine($"│ {description,-58}│");
+            Console.WriteLine($"│ {description,-displayWidth}│");
             Console.WriteLine($"│ Mode: {_renderingConfig.Mode,-52}│");
             Console.WriteLine($"│ Edge Detection: {(_renderingConfig.EnableEdgeDetection ? "ON" : "OFF"),-42}│");
             Console.WriteLine($"│ Cel-Shading: {(_renderingConfig.EnableCelShading ? "ON" : "OFF"),-45}│");
             Console.WriteLine($"│ Ambient Occlusion: {(_renderingConfig.EnableAmbientOcclusion ? "ON" : "OFF"),-39}│");
             Console.WriteLine($"│ Blocks: {ship.Structure.Blocks.Count,-49}│");
-            Console.WriteLine($"│ Position: ({physics.Position.X:F0}, {physics.Position.Y:F0}, {physics.Position.Z:F0}){new string(' ', 37)}│");
+            Console.WriteLine($"│ Position: {positionStr,-48}│");
             Console.WriteLine($"└─────────────────────────────────────────────────────────────┘");
             Console.WriteLine();
 
@@ -421,10 +427,10 @@ public class WorldGenerationShowcase
 
         var coordinates = new[]
         {
-            (new AvorionLike.Core.Procedural.Vector3Int(0, 0, 0), "Center (Core)"),
-            (new AvorionLike.Core.Procedural.Vector3Int(5, 0, 0), "Inner Ring"),
-            (new AvorionLike.Core.Procedural.Vector3Int(15, 5, 0), "Mid Ring"),
-            (new AvorionLike.Core.Procedural.Vector3Int(30, 10, 5), "Outer Frontier")
+            (new ProceduralVector3Int(0, 0, 0), "Center (Core)"),
+            (new ProceduralVector3Int(5, 0, 0), "Inner Ring"),
+            (new ProceduralVector3Int(15, 5, 0), "Mid Ring"),
+            (new ProceduralVector3Int(30, 10, 5), "Outer Frontier")
         };
 
         foreach (var (coord, name) in coordinates)
