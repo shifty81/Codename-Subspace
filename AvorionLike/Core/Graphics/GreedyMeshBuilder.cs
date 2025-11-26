@@ -197,7 +197,6 @@ public class GreedyMeshBuilder
     private static void AddWedgeFaces(OptimizedMesh mesh, Vector3 pos, Vector3 size, BlockOrientation orientation, uint color, float blockType)
     {
         Vector3 halfSize = size / 2.0f;
-        int vertexStart;
         
         // Wedge vertices depend on orientation
         // For a wedge facing +Z (slope goes up toward +Z):
@@ -217,7 +216,6 @@ public class GreedyMeshBuilder
                 AddFace(mesh, pos, size, 5, color, blockType); // Back
                 
                 // Add left triangle face
-                vertexStart = mesh.Vertices.Count;
                 vertices = new[]
                 {
                     pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
@@ -228,7 +226,6 @@ public class GreedyMeshBuilder
                 AddTriangle(mesh, vertices, normal, color, blockType);
                 
                 // Add right triangle face
-                vertexStart = mesh.Vertices.Count;
                 vertices = new[]
                 {
                     pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
@@ -239,7 +236,6 @@ public class GreedyMeshBuilder
                 AddTriangle(mesh, vertices, normal, color, blockType);
                 
                 // Add sloped top face (from top-back to bottom-front)
-                vertexStart = mesh.Vertices.Count;
                 vertices = new[]
                 {
                     pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z),
@@ -259,7 +255,6 @@ public class GreedyMeshBuilder
                 AddFace(mesh, pos, size, 4, color, blockType);
                 
                 // Add left triangle
-                vertexStart = mesh.Vertices.Count;
                 vertices = new[]
                 {
                     pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),
@@ -270,7 +265,6 @@ public class GreedyMeshBuilder
                 AddTriangle(mesh, vertices, normal, color, blockType);
                 
                 // Add right triangle
-                vertexStart = mesh.Vertices.Count;
                 vertices = new[]
                 {
                     pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),
@@ -281,7 +275,6 @@ public class GreedyMeshBuilder
                 AddTriangle(mesh, vertices, normal, color, blockType);
                 
                 // Add sloped top
-                vertexStart = mesh.Vertices.Count;
                 vertices = new[]
                 {
                     pos + new Vector3(-halfSize.X, halfSize.Y, halfSize.Z),
@@ -638,13 +631,16 @@ public class GreedyMeshBuilder
         
         // Half block is sliced in half based on orientation
         // Generate the appropriate half
+        Vector3 halfBlockSize;
+        Vector3 halfBlockPos;
+        
         switch (orientation)
         {
             case BlockOrientation.PosY: // Bottom half
             default:
                 // Adjust size to half height
-                Vector3 halfBlockSize = new Vector3(size.X, size.Y / 2, size.Z);
-                Vector3 halfBlockPos = pos - new Vector3(0, size.Y / 4, 0);
+                halfBlockSize = new Vector3(size.X, size.Y / 2, size.Z);
+                halfBlockPos = pos - new Vector3(0, size.Y / 4, 0);
                 
                 // Generate all 6 faces for the half-height block
                 for (int i = 0; i < 6; i++)
