@@ -85,6 +85,7 @@ class Program
             Console.WriteLine("27. Visual Enhancements Test - Test Ship/Station/Asteroid Details [NEW! ✨]");
             Console.WriteLine("28. GRAPHICAL MAIN MENU - Comprehensive Game Setup [NEW! 🎮✨]");
             Console.WriteLine("29. Industrial Mining Ship Demo - Angular/Blocky Mining Ships [NEW! ⛏️🚀]");
+            Console.WriteLine("30. NPR/PBR Rendering Mode Demo - Fix Visual Issues on Blocks [NEW! 🎨✨]");
             Console.WriteLine();
             Console.WriteLine("--- INFO ---");
             Console.WriteLine("15. About / Version Info");
@@ -182,6 +183,9 @@ class Program
                     break;
                 case "29":
                     RunIndustrialMiningShipDemo();
+                    break;
+                case "30":
+                    RunRenderingModeDemo();
                     break;
                 case "0":
                     _running = false;
@@ -3024,6 +3028,33 @@ class Program
             Console.WriteLine($"Stack trace: {ex.StackTrace}");
             Console.ResetColor();
         }
+    }
+    
+    static void RunRenderingModeDemo()
+    {
+        Console.WriteLine("\n=== NPR/PBR RENDERING MODE DEMO ===");
+        Console.WriteLine("Testing rendering modes to fix visual issues on blocks");
+        Console.WriteLine();
+        
+        try
+        {
+            // Show rendering mode information first
+            RenderingModeDemo.DisplayRenderingModeInfo();
+            
+            // Run the interactive demo
+            var demo = new RenderingModeDemo(_gameEngine!.EntityManager);
+            demo.RunDemo();
+        }
+        catch (Exception ex)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"\n✗ Rendering mode demo error: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            Console.ResetColor();
+        }
+        
+        Console.WriteLine("\nPress any key to return to main menu...");
+        Console.ReadKey();
     }
 }
 

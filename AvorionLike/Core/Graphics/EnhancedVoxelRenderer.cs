@@ -6,6 +6,8 @@ namespace AvorionLike.Core.Graphics;
 
 /// <summary>
 /// Enhanced voxel renderer with PBR-like lighting, glow effects, and better visuals
+/// Supports NPR (Non-Photorealistic Rendering) and Hybrid rendering modes
+/// Addresses visual issues on blocks through improved edge detection, ambient occlusion, and material handling
 /// </summary>
 public class EnhancedVoxelRenderer : IDisposable
 {
@@ -15,6 +17,10 @@ public class EnhancedVoxelRenderer : IDisposable
     private uint _vbo;
     private MaterialManager? _materialManager;
     private bool _disposed = false;
+    
+    // Rendering configuration for NPR/PBR/Hybrid modes
+    // Retrieved as property to avoid initialization order issues in testing
+    private RenderingConfiguration Config => RenderingConfiguration.Instance;
 
     // Multiple light sources for better lighting
     private readonly List<LightSource> _lights = new();
@@ -112,6 +118,7 @@ layout (location = 2) in vec4 aColor;
 out vec3 FragPos;
 out vec3 Normal;
 out vec4 VertexColor;
+out vec3 LocalPos;
 
 uniform mat4 model;
 uniform mat4 view;
@@ -123,6 +130,7 @@ void main()
     FragPos = worldPos.xyz;
     Normal = mat3(transpose(inverse(model))) * aNormal;
     VertexColor = aColor;
+    LocalPos = aPosition; // Pass local position for edge detection and ambient occlusion
     gl_Position = projection * view * worldPos;
 }
 ";
@@ -134,6 +142,7 @@ out vec4 FragColor;
 in vec3 FragPos;
 in vec3 Normal;
 in vec4 VertexColor;
+in vec3 LocalPos;
 
 // Material properties
 uniform vec3 baseColor;
@@ -148,9 +157,29 @@ uniform vec3 lightColor[3];
 uniform float lightIntensity[3];
 uniform vec3 viewPos;
 
-// Constants
+// NPR/Rendering configuration uniforms
+uniform int renderingMode;           // 0 = PBR, 1 = NPR, 2 = Hybrid
+uniform bool enableEdgeDetection;    // Edge detection for block outlines
+uniform float edgeThickness;         // Edge line thickness
+uniform vec3 edgeColor;              // Edge line color
+uniform bool enableCelShading;       // Cel-shading mode
+uniform int celShadingBands;         // Number of cel-shading bands
+uniform bool enableAmbientOcclusion; // Block edge ambient occlusion
+uniform float aoStrength;            // Ambient occlusion intensity
+uniform bool enableProceduralDetails;// Procedural surface patterns
+uniform float proceduralStrength;    // Procedural detail intensity
+uniform bool enableBlockGlow;        // Glow on functional blocks
+uniform float blockGlowIntensity;    // Glow intensity
+uniform bool enableRimLighting;      // Rim lighting effect
+uniform float rimStrength;           // Rim light intensity
+uniform bool enableEnvReflections;   // Environment reflections
+
+// Constants for rendering calculations
 const float PI = 3.14159265359;
 const vec3 ambientLight = vec3(0.18, 0.20, 0.25); // Cool-toned ambient for space
+const float EDGE_DETECTION_THRESHOLD = 0.08;       // Edge detection sensitivity
+const float AO_CORNER_THRESHOLD = 0.25;            // Ambient occlusion corner distance
+const float AO_EDGE_THRESHOLD = 0.15;              // Ambient occlusion edge distance
 
 // Enhanced PBR GGX Distribution
 float DistributionGGX(vec3 N, vec3 H, float roughness)
@@ -204,6 +233,8 @@ float hash(vec3 p)
 // Simulate environment reflection color based on view direction
 vec3 getEnvironmentReflection(vec3 R, float roughness)
 {
+    if (!enableEnvReflections) return vec3(0.0);
+    
     // Simulate space environment with stars and nebula hints
     float height = R.y * 0.5 + 0.5;
     
@@ -224,9 +255,63 @@ vec3 getEnvironmentReflection(vec3 R, float roughness)
     return (spaceColor + nebulaColor + starColor * clarity) * clarity;
 }
 
+// === NPR TECHNIQUES ===
+
+// Edge detection using local position to find block boundaries
+float detectBlockEdge(vec3 localPos, float thickness)
+{
+    // Detect edges at block boundaries using fract of position
+    vec3 blockPos = fract(localPos);
+    
+    // Distance to nearest edge in each dimension
+    vec3 edgeDist = min(blockPos, 1.0 - blockPos);
+    float minEdgeDist = min(min(edgeDist.x, edgeDist.y), edgeDist.z);
+    
+    // Smooth edge detection using named constant for threshold
+    float edge = 1.0 - smoothstep(0.0, EDGE_DETECTION_THRESHOLD * thickness, minEdgeDist);
+    return edge;
+}
+
+// Advanced ambient occlusion between block edges
+float calculateBlockAO(vec3 localPos, vec3 normal)
+{
+    if (!enableAmbientOcclusion) return 1.0;
+    
+    // Calculate ambient occlusion based on proximity to edges (corners are darker)
+    vec3 blockPos = fract(localPos);
+    vec3 edgeDist = min(blockPos, 1.0 - blockPos);
+    
+    // Corners have lower ambient occlusion (are darker)
+    float cornerDist = length(edgeDist);
+    float ao = smoothstep(0.0, AO_CORNER_THRESHOLD, cornerDist);
+    
+    // Edge darkening
+    float minEdge = min(min(edgeDist.x, edgeDist.y), edgeDist.z);
+    float edgeAO = smoothstep(0.0, AO_EDGE_THRESHOLD, minEdge);
+    
+    // Combine and apply strength
+    float finalAO = mix(1.0, ao * edgeAO, aoStrength);
+    return finalAO;
+}
+
+// Cel-shading: Quantize lighting to discrete bands
+float celShade(float lightValue, int bands)
+{
+    if (!enableCelShading) return lightValue;
+    
+    // Quantize to discrete bands
+    float bandSize = 1.0 / float(bands);
+    float quantized = floor(lightValue / bandSize) * bandSize + bandSize * 0.5;
+    return quantized;
+}
+
 // Add procedural panel lines and details to surfaces
 vec3 addProceduralDetail(vec3 worldPos, vec3 baseColor, float blockType)
 {
+    if (!enableProceduralDetails) return baseColor;
+    
+    float strength = proceduralStrength;
+    
     // Hull blocks (0) - sleek panel lines with metallic sheen
     if (blockType < 0.5) {
         float gridSize = 2.0;
@@ -238,11 +323,11 @@ vec3 addProceduralDetail(vec3 worldPos, vec3 baseColor, float blockType)
         if (gridPos.x < lineWidth || gridPos.x > (1.0 - lineWidth) || 
             gridPos.y < lineWidth || gridPos.y > (1.0 - lineWidth) || 
             gridPos.z < lineWidth || gridPos.z > (1.0 - lineWidth)) {
-            panelLines = -0.1; // Subtle panel separation
+            panelLines = -0.1 * strength; // Subtle panel separation
         }
         
         // Add very subtle noise for panel variation
-        float noise = hash(floor(worldPos / gridSize)) * 0.03;
+        float noise = hash(floor(worldPos / gridSize)) * 0.03 * strength;
         return baseColor * (1.0 + panelLines + noise);
     }
     // Armor blocks (1) - heavier plating with beveled edges
@@ -257,7 +342,7 @@ vec3 addProceduralDetail(vec3 worldPos, vec3 baseColor, float blockType)
         edgeDist = min(edgeDist, min(gridPos.z, 1.0 - gridPos.z));
         
         if (edgeDist < bevelWidth) {
-            armorDetail = -0.15 * (1.0 - edgeDist / bevelWidth); // Smooth dark edge
+            armorDetail = -0.15 * (1.0 - edgeDist / bevelWidth) * strength; // Smooth dark edge
         }
         
         return baseColor * (1.0 + armorDetail);
@@ -269,7 +354,7 @@ vec3 addProceduralDetail(vec3 worldPos, vec3 baseColor, float blockType)
         
         // Glowing vent lines
         float ventGlow = sin(ventPos.y * 8.0) * 0.5 + 0.5;
-        ventGlow = pow(ventGlow, 3.0) * 0.4;
+        ventGlow = pow(ventGlow, 3.0) * 0.4 * strength;
         
         // Hot glow gradient
         vec3 hotColor = mix(vec3(1.0, 0.3, 0.1), vec3(1.0, 0.8, 0.2), ventGlow);
@@ -282,10 +367,10 @@ vec3 addProceduralDetail(vec3 worldPos, vec3 baseColor, float blockType)
         
         // Energy pulse rings
         float energyRing = sin(coreDist * 25.0) * 0.5 + 0.5;
-        energyRing = pow(energyRing, 2.0) * 0.3;
+        energyRing = pow(energyRing, 2.0) * 0.3 * strength;
         
         // Blue energy glow
-        vec3 energyGlow = vec3(0.3, 0.5, 1.0) * (1.0 - coreDist * 1.5) * 0.5;
+        vec3 energyGlow = vec3(0.3, 0.5, 1.0) * (1.0 - coreDist * 1.5) * 0.5 * strength;
         return baseColor * (1.0 + energyRing * 0.2) + energyGlow;
     }
     // Shield Generators (6) - hexagonal energy pattern
@@ -293,7 +378,7 @@ vec3 addProceduralDetail(vec3 worldPos, vec3 baseColor, float blockType)
         vec3 hexPos = worldPos * 2.5;
         float hexPattern = abs(sin(hexPos.x) + sin(hexPos.x * 0.5 + hexPos.y * 0.866) + 
                                sin(hexPos.x * 0.5 - hexPos.y * 0.866));
-        hexPattern = pow(hexPattern / 3.0, 0.5);
+        hexPattern = pow(hexPattern / 3.0, 0.5) * strength;
         
         // Cyan shield glow
         vec3 shieldGlow = vec3(0.2, 0.6, 0.9) * hexPattern * 0.4;
@@ -320,6 +405,9 @@ void main()
     
     // Apply procedural details
     blockColor = addProceduralDetail(FragPos, saturatedColor, blockType);
+    
+    // === Calculate Ambient Occlusion ===
+    float ao = calculateBlockAO(LocalPos, N);
 
     // Enhanced F0 for metals (higher base reflectivity for shinier look)
     vec3 F0 = vec3(0.04);
@@ -355,6 +443,12 @@ void main()
         vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
 
         float NdotL = max(dot(N, L), 0.0);
+        
+        // Apply cel-shading if enabled (NPR mode)
+        if (enableCelShading && renderingMode == 1) {
+            NdotL = celShade(NdotL, celShadingBands);
+        }
+        
         Lo += (kD * blockColor / PI + specular) * radiance * NdotL;
     }
 
@@ -365,25 +459,35 @@ void main()
     vec3 envSpecular = envReflection * kSEnv * metallic * 0.8; // Scaled environment contribution
 
     // Enhanced rim lighting for dramatic edge glow
-    float rimFactor = 1.0 - NdotV;
-    rimFactor = pow(rimFactor, 3.0);
-    vec3 rimColor = mix(vec3(0.5, 0.6, 0.8), blockColor, 0.3) * rimFactor * 0.4;
+    vec3 rimColor = vec3(0.0);
+    if (enableRimLighting) {
+        float rimFactor = 1.0 - NdotV;
+        rimFactor = pow(rimFactor, 3.0);
+        rimColor = mix(vec3(0.5, 0.6, 0.8), blockColor, 0.3) * rimFactor * rimStrength;
+    }
 
-    // Ambient with slight variation based on normal (ambient occlusion hint)
-    float aoHint = 0.9 + 0.1 * (N.y * 0.5 + 0.5);
-    vec3 ambient = ambientLight * blockColor * aoHint;
+    // Ambient with AO applied
+    vec3 ambient = ambientLight * blockColor * ao;
     
     // Enhanced emissive with bloom-like effect
     vec3 emissive = emissiveColor * emissiveStrength * 1.5; // Boosted emissive
     
     // Extra glow for functional blocks
-    if (blockType >= 2.0 && blockType < 7.0) {
+    if (enableBlockGlow && blockType >= 2.0 && blockType < 7.0) {
         float functionalGlow = (blockType >= 5.0) ? 0.4 : 0.25;
-        emissive += blockColor * functionalGlow;
+        emissive += blockColor * functionalGlow * blockGlowIntensity;
     }
 
     // Combine all lighting components
     vec3 color = ambient + Lo + envSpecular + rimColor + emissive;
+    
+    // === NPR Edge Detection (Hybrid and NPR modes) ===
+    if (enableEdgeDetection && (renderingMode == 1 || renderingMode == 2)) {
+        float edge = detectBlockEdge(LocalPos, edgeThickness);
+        
+        // Blend edge color
+        color = mix(color, edgeColor, edge * 0.8);
+    }
 
     // ACES Filmic Tone Mapping (approximation by Krzysztof Narkowicz)
     // These coefficients produce a cinematic, film-like response curve
@@ -426,6 +530,24 @@ void main()
             _shader.SetVector3($"lightColor[{i}]", _lights[i].Color);
             _shader.SetFloat($"lightIntensity[{i}]", _lights[i].Intensity);
         }
+        
+        // === Set NPR/Rendering Configuration Uniforms ===
+        // This addresses visual issues on blocks by providing flexible rendering options
+        _shader.SetInt("renderingMode", (int)Config.Mode);
+        _shader.SetBool("enableEdgeDetection", Config.EnableEdgeDetection);
+        _shader.SetFloat("edgeThickness", Config.EdgeThickness);
+        _shader.SetVector3("edgeColor", Config.EdgeColor);
+        _shader.SetBool("enableCelShading", Config.EnableCelShading);
+        _shader.SetInt("celShadingBands", Config.CelShadingBands);
+        _shader.SetBool("enableAmbientOcclusion", Config.EnableAmbientOcclusion);
+        _shader.SetFloat("aoStrength", Config.AmbientOcclusionStrength);
+        _shader.SetBool("enableProceduralDetails", Config.EnableProceduralDetails);
+        _shader.SetFloat("proceduralStrength", Config.ProceduralDetailStrength);
+        _shader.SetBool("enableBlockGlow", Config.EnableBlockGlow);
+        _shader.SetFloat("blockGlowIntensity", Config.BlockGlowIntensity);
+        _shader.SetBool("enableRimLighting", Config.EnableRimLighting);
+        _shader.SetFloat("rimStrength", Config.RimLightingStrength);
+        _shader.SetBool("enableEnvReflections", Config.EnableEnvironmentReflections);
 
         // Get or create cached mesh for this structure
         CachedMesh? cachedMesh = GetOrCreateMesh(structure);
@@ -452,6 +574,14 @@ void main()
         _gl.DrawElements(PrimitiveType.Triangles, (uint)cachedMesh.IndexCount, DrawElementsType.UnsignedInt, (void*)0);
 
         _gl.BindVertexArray(0);
+    }
+    
+    /// <summary>
+    /// Apply a rendering preset to quickly change visual style
+    /// </summary>
+    public void ApplyPreset(RenderingPreset preset)
+    {
+        Config.ApplyPreset(preset);
     }
     
     /// <summary>
