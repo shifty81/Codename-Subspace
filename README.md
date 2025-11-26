@@ -628,6 +628,7 @@ For detailed credits and acknowledgments, see [CREDITS.md](CREDITS.md).
 ### 📚 Detailed Documentation
 - **[Quick Start Guide](QUICKSTART.md)** - Get up and running in minutes
 - **[How to Build and Run](HOW_TO_BUILD_AND_RUN.md)** - Complete build instructions
+- **[Core Gameplay Mechanics](CORE_GAMEPLAY_MECHANICS.md)** - 🎮 Avorion-inspired design and implementation
 - **[Architecture Review](ARCHITECTURE.md)** - Comprehensive backend architecture analysis (540+ lines)
 - **[Implementation Roadmap](IMPLEMENTATION_ROADMAP.md)** - Detailed development plan and timelines
 - **[Executive Summary](EXECUTIVE_SUMMARY.md)** - Backend review summary
