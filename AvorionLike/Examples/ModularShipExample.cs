@@ -166,7 +166,7 @@ public class ModularShipExample
     {
         Console.WriteLine("\n--- Generating Random Ship ---\n");
         
-        var seed = (int)(DateTime.Now.Ticks & 0xFFFFFF);
+        var seed = Random.Shared.Next();
         var ship = generator.GenerateRandomModularShip(seed);
         
         DisplayShipDetails(ship, seed);
@@ -203,7 +203,7 @@ public class ModularShipExample
                 style = styles[styleIndex - 1];
             }
             
-            var seed = (int)(DateTime.Now.Ticks & 0xFFFFFF);
+            var seed = Random.Shared.Next();
             var ship = generator.GenerateModularShip(archetype, style, seed);
             
             DisplayShipDetails(ship, seed);

@@ -291,6 +291,7 @@ public class ModularShipGenerator
                     var enginePos = rearAttachment.Position + new Vector3(xOffset, 0, -4);
                     PlaceModule(ship, engine, enginePos, Quaternion.Identity);
                     placedModules.Add(engine);
+                    UpdateAvailableAttachments(engine, availableAttachments, enginePos);
                 }
             }
         }
@@ -317,7 +318,7 @@ public class ModularShipGenerator
         for (int i = 0; i < archetype.WeaponMountCount; i++)
         {
             var topAp = FindUnoccupiedAttachment(availableAttachments, ModuleType.WeaponMount);
-            if (topAp.module != null)
+            if (topAp.module != null && topAp.point != null)
             {
                 var weapon = ModuleFactory.CreateWeaponMount(style, material);
                 var weaponPos = topAp.point.Position + topAp.point.Normal * 2f;
@@ -338,7 +339,7 @@ public class ModularShipGenerator
                 if (optionalModule != null)
                 {
                     var ap = FindUnoccupiedAttachment(availableAttachments, optional.Key);
-                    if (ap.module != null)
+                    if (ap.module != null && ap.point != null)
                     {
                         var pos = ap.point.Position + ap.point.Normal * 2f;
                         PlaceModule(ship, optionalModule, pos, Quaternion.Identity);
@@ -472,7 +473,7 @@ public class ModularShipGenerator
         }
     }
     
-    private (ShipModule module, AttachmentPoint point) FindUnoccupiedAttachment(
+    private (ShipModule? module, AttachmentPoint? point) FindUnoccupiedAttachment(
         List<(ShipModule module, AttachmentPoint point)> attachments, ModuleType targetType)
     {
         foreach (var (module, point) in attachments)
@@ -482,7 +483,7 @@ public class ModularShipGenerator
                 return (module, point);
             }
         }
-        return (null!, null!);
+        return (null, null);
     }
     
     private ShipModule? CreateModuleOfType(ModuleType type, ModuleStyle style, string material)

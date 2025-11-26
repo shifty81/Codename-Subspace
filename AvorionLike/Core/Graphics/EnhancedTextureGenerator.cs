@@ -11,6 +11,13 @@ public class EnhancedTextureGenerator
     private readonly int _seed;
     private readonly Random _random;
     
+    // Constants for noise and pattern generation
+    private const float NoiseScale = 1000f;
+    private const int HashMask = 0xFFFF;
+    private const float LightSpacing = 20f;
+    private const float LightSize = 0.5f;
+    private const float LightBlinkThreshold = 0.7f;
+    
     /// <summary>
     /// Texture style presets for different factions/themes
     /// </summary>
@@ -327,14 +334,13 @@ public class EnhancedTextureGenerator
         // Running lights / status indicators
         if (style != TextureStyle.Pirate)
         {
-            float lightSpacing = 20f;
-            float lightX = pos.X % lightSpacing;
-            float lightZ = pos.Z % lightSpacing;
+            float lightX = pos.X % LightSpacing;
+            float lightZ = pos.Z % LightSpacing;
             
-            if (Math.Abs(lightX) < 0.5f && Math.Abs(lightZ) < 0.5f && pos.Y > 0)
+            if (Math.Abs(lightX) < LightSize && Math.Abs(lightZ) < LightSize && pos.Y > 0)
             {
                 // Small running light
-                float blink = MathF.Sin(time * 3f + pos.X + pos.Z) > 0.7f ? 1f : 0.3f;
+                float blink = MathF.Sin(time * 3f + pos.X + pos.Z) > LightBlinkThreshold ? 1f : 0.3f;
                 color = Vector3.Lerp(color, new Vector3(1f, 0.3f, 0.3f) * blink, 0.8f);
             }
         }
@@ -435,9 +441,9 @@ public class EnhancedTextureGenerator
     private float HighFrequencyNoise(Vector3 pos)
     {
         // Fast, cheap noise for fine detail
-        int xi = (int)(pos.X * 1000) & 0xFFFF;
-        int yi = (int)(pos.Y * 1000) & 0xFFFF;
-        int zi = (int)(pos.Z * 1000) & 0xFFFF;
+        int xi = (int)(pos.X * NoiseScale) & HashMask;
+        int yi = (int)(pos.Y * NoiseScale) & HashMask;
+        int zi = (int)(pos.Z * NoiseScale) & HashMask;
         
         int hash = xi ^ (yi << 1) ^ (zi << 2);
         hash = ((hash >> 8) ^ hash) * 0x5bd1e995;
