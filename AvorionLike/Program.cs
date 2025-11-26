@@ -205,96 +205,21 @@ class Program
     {
         Console.WriteLine("\n=== NEW GAME - Full Visual Testing Experience ===");
         Console.WriteLine("Creating comprehensive test environment with all implementations...\n");
-        Console.WriteLine("This includes:");
-        Console.WriteLine("  • Procedural ship generation (all sizes and roles)");
-        Console.WriteLine("  • AI-driven voxel construction");
-        Console.WriteLine("  • Visual enhancements (ships, stations, asteroids)");
-        Console.WriteLine("  • Movement and shape tests");
-        Console.WriteLine("  • Ship connectivity tests");
-        Console.WriteLine("  • Multiple faction styles");
-        Console.WriteLine("  • Enhanced graphics and UI\n");
         
-        // Create player ship
+        // Step 1: Let user choose their ship generation
+        var selectedShip = SelectShipGeneration();
+        if (selectedShip == null)
+        {
+            Console.WriteLine("Ship selection cancelled. Returning to main menu.");
+            return;
+        }
+        
+        Console.WriteLine($"\n✓ Selected Ship: {selectedShip.Description}");
+        Console.WriteLine("Creating your game world...\n");
+        
+        // Create player ship with the selected generation
         var playerShip = _gameEngine!.EntityManager.CreateEntity("Player Ship");
-        
-        // Add voxel structure - create a functional starter ship
-        var voxelComponent = new VoxelStructureComponent();
-        
-        Console.WriteLine("Building your starter ship with colorful materials...");
-        
-        // Core hull (center) - Titanium (silver-blue)
-        voxelComponent.AddBlock(new VoxelBlock(
-            new Vector3(0, 0, 0),
-            new Vector3(3, 3, 3),
-            "Titanium",
-            BlockType.Hull
-        ));
-        
-        // Main engines (rear) - Ogonite (red/orange with glow)
-        // Position engines to touch the core: core edge at -1.5, engine half-size 1, so -2.5
-        voxelComponent.AddBlock(new VoxelBlock(
-            new Vector3(-2.5f, 0, 0),
-            new Vector3(2, 2, 2),
-            "Ogonite",
-            BlockType.Engine
-        ));
-        
-        voxelComponent.AddBlock(new VoxelBlock(
-            new Vector3(-2.5f, 1.5f, 0),
-            new Vector3(2, 2, 2),
-            "Ogonite",
-            BlockType.Engine
-        ));
-        
-        // Maneuvering thrusters - Trinium (blue with glow)
-        // Position thrusters to touch the core: core edge at ±1.5, thruster half-size 0.75, so ±2.25
-        voxelComponent.AddBlock(new VoxelBlock(
-            new Vector3(0, 2.25f, 0),
-            new Vector3(1.5f, 1.5f, 1.5f),
-            "Trinium",
-            BlockType.Thruster
-        ));
-        
-        voxelComponent.AddBlock(new VoxelBlock(
-            new Vector3(0, -2.25f, 0),
-            new Vector3(1.5f, 1.5f, 1.5f),
-            "Trinium",
-            BlockType.Thruster
-        ));
-        
-        // Generator - Xanion (gold/yellow with glow)
-        // Position generator to touch the core: core edge at 1.5, generator half-size 1, so 2.5
-        voxelComponent.AddBlock(new VoxelBlock(
-            new Vector3(2.5f, 0, 0),
-            new Vector3(2, 2, 2),
-            "Xanion",
-            BlockType.Generator
-        ));
-        
-        // Shield generator - Naonite (green with glow)
-        // Position shield to touch the core: core edge at 1.5, shield half-size 1, so 2.5
-        voxelComponent.AddBlock(new VoxelBlock(
-            new Vector3(0, 0, 2.5f),
-            new Vector3(2, 2, 2),
-            "Naonite",
-            BlockType.ShieldGenerator
-        ));
-        
-        // Gyro arrays for rotation - Avorion (purple with strong glow)
-        // Position gyros to touch shield/core: shield at z=2.5, gyro half-size 0.75
-        voxelComponent.AddBlock(new VoxelBlock(
-            new Vector3(0, 1.5f, 1.5f),
-            new Vector3(1.5f, 1.5f, 1.5f),
-            "Avorion",
-            BlockType.GyroArray
-        ));
-        
-        voxelComponent.AddBlock(new VoxelBlock(
-            new Vector3(0, -1.5f, -1.5f),
-            new Vector3(1.5f, 1.5f, 1.5f),
-            "Avorion",
-            BlockType.GyroArray
-        ));
+        var voxelComponent = selectedShip.ShipData.Structure;
         
         _gameEngine.EntityManager.AddComponent(playerShip.Id, voxelComponent);
         
@@ -2571,6 +2496,339 @@ class Program
         
         Console.WriteLine("\nPress any key to return to main menu...");
         Console.ReadKey();
+    }
+    
+    /// <summary>
+    /// Allows user to visually see and select which ship generation they want to use
+    /// Returns the selected ship display info, or null if cancelled
+    /// </summary>
+    static ShipShowcaseExample.GeneratedShipDisplay? SelectShipGeneration()
+    {
+        Console.WriteLine("\n╔══════════════════════════════════════════════════════════════════════════╗");
+        Console.WriteLine("║           SHIP GENERATION SELECTION                                       ║");
+        Console.WriteLine("║   Choose your starting ship design from procedurally generated options    ║");
+        Console.WriteLine("╚══════════════════════════════════════════════════════════════════════════╝");
+        Console.WriteLine();
+        Console.WriteLine("Generating ship options for you to choose from...\n");
+        
+        // Create a temporary entity manager for preview generation
+        var previewEntityManager = new EntityManager();
+        var showcase = new ShipShowcaseExample(previewEntityManager);
+        
+        // Generate 12 starter-appropriate ships (smaller selection for new game)
+        var ships = GenerateStarterShipOptions(previewEntityManager, Environment.TickCount);
+        
+        if (ships.Count == 0)
+        {
+            Console.WriteLine("Error generating ship options. Using default ship.");
+            return null;
+        }
+        
+        // Show ship options summary
+        PrintShipSelectionSummary(ships);
+        
+        // Allow user to interact
+        ShipShowcaseExample.GeneratedShipDisplay? selectedShip = null;
+        bool done = false;
+        
+        while (!done)
+        {
+            Console.WriteLine();
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════════════");
+            Console.WriteLine("SHIP SELECTION OPTIONS:");
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════════════");
+            Console.WriteLine($"  Enter ship number (1-{ships.Count}) to select that ship");
+            Console.WriteLine("  V - View ships in 3D (visually inspect before choosing)");
+            Console.WriteLine("  D - View detailed stats for a ship");
+            Console.WriteLine("  R - Regenerate new ship options");
+            Console.WriteLine("  0 - Cancel and return to main menu");
+            Console.WriteLine();
+            Console.Write("Select option: ");
+            
+            var input = Console.ReadLine()?.Trim().ToUpper();
+            
+            if (string.IsNullOrEmpty(input))
+                continue;
+            
+            if (input == "0")
+            {
+                done = true;
+                selectedShip = null;
+            }
+            else if (input == "V")
+            {
+                // Launch 3D viewer for visual inspection
+                Console.WriteLine("\nLaunching 3D viewer to visually inspect ships...");
+                Console.WriteLine("Use camera controls to fly around and inspect each design.");
+                Console.WriteLine("Close the window when you're ready to make your selection.\n");
+                
+                try
+                {
+                    // Create a temporary graphics window for preview
+                    var tempEngine = new GameEngine(Environment.TickCount);
+                    try
+                    {
+                        tempEngine.Start();
+                        
+                        // Copy ships to the temp engine for viewing
+                        foreach (var ship in ships)
+                        {
+                            var entity = tempEngine.EntityManager.CreateEntity($"Ship #{ship.Number} - {ship.Description}");
+                            
+                            // Clone the voxel structure
+                            var voxelClone = new VoxelStructureComponent();
+                            foreach (var block in ship.ShipData.Structure.Blocks)
+                            {
+                                voxelClone.AddBlock(new VoxelBlock(
+                                    block.Position, 
+                                    block.Size, 
+                                    block.MaterialType, 
+                                    block.BlockType));
+                            }
+                            tempEngine.EntityManager.AddComponent(entity.Id, voxelClone);
+                            
+                            // Add physics at the ship's position
+                            var physics = new PhysicsComponent
+                            {
+                                Position = ship.Position,
+                                Mass = ship.ShipData.TotalMass
+                            };
+                            tempEngine.EntityManager.AddComponent(entity.Id, physics);
+                        }
+                        
+                        using var graphicsWindow = new GraphicsWindow(tempEngine);
+                        if (ships.Count > 0)
+                        {
+                            // Get the entity ID of the first ship for camera focus
+                            var firstShipEntity = tempEngine.EntityManager.GetAllEntities().FirstOrDefault();
+                            if (firstShipEntity != null)
+                            {
+                                graphicsWindow.SetPlayerShip(firstShipEntity.Id);
+                            }
+                        }
+                        graphicsWindow.Run();
+                    }
+                    finally
+                    {
+                        tempEngine.Stop();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error running 3D viewer: {ex.Message}");
+                    Console.WriteLine("Graphics may not be available on this system.");
+                }
+                
+                Console.WriteLine("\nReturned from 3D viewer. Ready to select your ship.");
+                PrintShipSelectionSummary(ships);
+            }
+            else if (input == "D")
+            {
+                Console.Write("Enter ship number to view details (1-12): ");
+                var detailInput = Console.ReadLine();
+                if (int.TryParse(detailInput, out int detailNum) && detailNum >= 1 && detailNum <= ships.Count)
+                {
+                    PrintShipDetails(ships[detailNum - 1]);
+                }
+                else
+                {
+                    Console.WriteLine("Invalid ship number.");
+                }
+            }
+            else if (input == "R")
+            {
+                Console.WriteLine("\nRegenerating new ship options...\n");
+                previewEntityManager = new EntityManager();
+                ships = GenerateStarterShipOptions(previewEntityManager, Environment.TickCount);
+                PrintShipSelectionSummary(ships);
+            }
+            else if (int.TryParse(input, out int shipNum) && shipNum >= 1 && shipNum <= ships.Count)
+            {
+                selectedShip = ships[shipNum - 1];
+                done = true;
+                Console.WriteLine($"\n✓ Selected: Ship #{shipNum} - {selectedShip.Description}");
+            }
+            else
+            {
+                Console.WriteLine("Invalid option. Please try again.");
+            }
+        }
+        
+        return selectedShip;
+    }
+    
+    /// <summary>
+    /// Generate starter-appropriate ship options for new game selection
+    /// </summary>
+    static List<ShipShowcaseExample.GeneratedShipDisplay> GenerateStarterShipOptions(EntityManager entityManager, int baseSeed)
+    {
+        // Ship generation constants
+        const int SHIP_GRID_WIDTH = 4;
+        const float SHIP_SPACING = 100f;
+        const int COMBAT_MIN_WEAPONS = 4;
+        const int DEFAULT_MIN_WEAPONS = 2;
+        
+        var ships = new List<ShipShowcaseExample.GeneratedShipDisplay>();
+        
+        // Define starter-appropriate configurations (smaller, varied ships)
+        var configurations = new[]
+        {
+            // Fighters - Small and agile
+            new { Size = ShipSize.Fighter, Role = ShipRole.Combat, Hull = ShipHullShape.Angular, Faction = "Military", Material = "Titanium" },
+            new { Size = ShipSize.Fighter, Role = ShipRole.Exploration, Hull = ShipHullShape.Sleek, Faction = "Explorers", Material = "Trinium" },
+            new { Size = ShipSize.Fighter, Role = ShipRole.Multipurpose, Hull = ShipHullShape.Blocky, Faction = "Default", Material = "Iron" },
+            
+            // Corvettes - Slightly larger, more versatile
+            new { Size = ShipSize.Corvette, Role = ShipRole.Combat, Hull = ShipHullShape.Angular, Faction = "Military", Material = "Titanium" },
+            new { Size = ShipSize.Corvette, Role = ShipRole.Mining, Hull = ShipHullShape.Blocky, Faction = "Miners", Material = "Iron" },
+            new { Size = ShipSize.Corvette, Role = ShipRole.Trading, Hull = ShipHullShape.Cylindrical, Faction = "Traders", Material = "Titanium" },
+            new { Size = ShipSize.Corvette, Role = ShipRole.Exploration, Hull = ShipHullShape.Sleek, Faction = "Explorers", Material = "Naonite" },
+            new { Size = ShipSize.Corvette, Role = ShipRole.Multipurpose, Hull = ShipHullShape.Blocky, Faction = "Default", Material = "Titanium" },
+            
+            // Frigates - Larger starter options for experienced feel (require hyperdrive for long-range travel)
+            new { Size = ShipSize.Frigate, Role = ShipRole.Combat, Hull = ShipHullShape.Angular, Faction = "Military", Material = "Ogonite" },
+            new { Size = ShipSize.Frigate, Role = ShipRole.Trading, Hull = ShipHullShape.Cylindrical, Faction = "Traders", Material = "Xanion" },
+            new { Size = ShipSize.Frigate, Role = ShipRole.Mining, Hull = ShipHullShape.Blocky, Faction = "Miners", Material = "Iron" },
+            new { Size = ShipSize.Frigate, Role = ShipRole.Multipurpose, Hull = ShipHullShape.Blocky, Faction = "Default", Material = "Avorion" },
+        };
+        
+        for (int i = 0; i < configurations.Length; i++)
+        {
+            var config = configurations[i];
+            
+            // Calculate grid position for 3D viewing
+            int row = i / SHIP_GRID_WIDTH;
+            int col = i % SHIP_GRID_WIDTH;
+            Vector3 position = new Vector3(
+                col * SHIP_SPACING - (SHIP_GRID_WIDTH - 1) * SHIP_SPACING / 2f,
+                0,
+                row * SHIP_SPACING
+            );
+            
+            try
+            {
+                var generator = new ProceduralShipGenerator(baseSeed + i);
+                var style = FactionShipStyle.GetDefaultStyle(config.Faction);
+                style.PreferredHullShape = config.Hull;
+                
+                var shipConfig = new ShipGenerationConfig
+                {
+                    Size = config.Size,
+                    Role = config.Role,
+                    Material = config.Material,
+                    Style = style,
+                    Seed = baseSeed + i,
+                    // Frigates and larger require hyperdrives for long-range interstellar travel
+                    RequireHyperdrive = config.Size >= ShipSize.Frigate,
+                    RequireCargo = true,
+                    // Combat ships need more weapon mounts
+                    MinimumWeaponMounts = config.Role == ShipRole.Combat ? COMBAT_MIN_WEAPONS : DEFAULT_MIN_WEAPONS
+                };
+                
+                var shipData = generator.GenerateShip(shipConfig);
+                
+                // Create entity for potential preview
+                var entity = entityManager.CreateEntity($"Ship #{i + 1}");
+                entityManager.AddComponent(entity.Id, shipData.Structure);
+                
+                var physics = new PhysicsComponent
+                {
+                    Position = position,
+                    Mass = shipData.TotalMass
+                };
+                entityManager.AddComponent(entity.Id, physics);
+                
+                var display = new ShipShowcaseExample.GeneratedShipDisplay
+                {
+                    Number = i + 1,
+                    EntityId = entity.Id,
+                    ShipData = shipData,
+                    Position = position,
+                    Description = $"{config.Size} {config.Hull} {config.Role} ({config.Faction})"
+                };
+                
+                ships.Add(display);
+                Console.WriteLine($"  #{i + 1:D2}: {display.Description} - {shipData.Structure.Blocks.Count} blocks");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"  Warning: Failed to generate ship #{i + 1}: {ex.Message}");
+            }
+        }
+        
+        return ships;
+    }
+    
+    /// <summary>
+    /// Print a summary table of available ships for selection
+    /// </summary>
+    static void PrintShipSelectionSummary(List<ShipShowcaseExample.GeneratedShipDisplay> ships)
+    {
+        Console.WriteLine();
+        Console.WriteLine("╔══════════════════════════════════════════════════════════════════════════╗");
+        Console.WriteLine("║                      AVAILABLE SHIP GENERATIONS                          ║");
+        Console.WriteLine("╠══════════════════════════════════════════════════════════════════════════╣");
+        Console.WriteLine("║  #  │ Size      │ Hull      │ Role         │ Blocks │ Thrust   │ Shields ║");
+        Console.WriteLine("╠═════╪═══════════╪═══════════╪══════════════╪════════╪══════════╪═════════╣");
+        
+        foreach (var ship in ships)
+        {
+            var config = ship.ShipData.Config;
+            var size = config.Size.ToString().PadRight(9);
+            var hull = config.Style.PreferredHullShape.ToString().PadRight(9);
+            var role = config.Role.ToString().PadRight(12);
+            var blocks = ship.ShipData.Structure.Blocks.Count.ToString().PadLeft(6);
+            var thrust = ship.ShipData.TotalThrust.ToString("F0").PadLeft(8);
+            var shields = ship.ShipData.TotalShieldCapacity.ToString("F0").PadLeft(7);
+            
+            Console.WriteLine($"║ {ship.Number,2}  │ {size} │ {hull} │ {role} │ {blocks} │ {thrust} │ {shields} ║");
+        }
+        
+        Console.WriteLine("╚══════════════════════════════════════════════════════════════════════════╝");
+        Console.WriteLine();
+        Console.WriteLine("💡 TIP: Use 'V' to view ships in 3D and visually inspect each design!");
+        Console.WriteLine("        Use 'D' followed by a ship number to see detailed statistics.");
+    }
+    
+    /// <summary>
+    /// Print detailed information about a specific ship
+    /// </summary>
+    static void PrintShipDetails(ShipShowcaseExample.GeneratedShipDisplay ship)
+    {
+        Console.WriteLine();
+        Console.WriteLine($"╔═══════════════════════════════════════════════════════════════╗");
+        Console.WriteLine($"║  SHIP #{ship.Number} - DETAILED INFORMATION                        ║");
+        Console.WriteLine($"╠═══════════════════════════════════════════════════════════════╣");
+        Console.WriteLine($"║  Description: {ship.Description,-45}║");
+        Console.WriteLine($"╠═══════════════════════════════════════════════════════════════╣");
+        Console.WriteLine($"║  CONFIGURATION:                                               ║");
+        Console.WriteLine($"║    Size:       {ship.ShipData.Config.Size,-46}║");
+        Console.WriteLine($"║    Role:       {ship.ShipData.Config.Role,-46}║");
+        Console.WriteLine($"║    Hull Shape: {ship.ShipData.Config.Style.PreferredHullShape,-46}║");
+        Console.WriteLine($"║    Faction:    {ship.ShipData.Config.Style.FactionName,-46}║");
+        Console.WriteLine($"║    Material:   {ship.ShipData.Config.Material,-46}║");
+        Console.WriteLine($"╠═══════════════════════════════════════════════════════════════╣");
+        Console.WriteLine($"║  STATISTICS:                                                  ║");
+        Console.WriteLine($"║    Total Blocks:   {ship.ShipData.Structure.Blocks.Count,-42}║");
+        Console.WriteLine($"║    Mass:           {ship.ShipData.TotalMass,-38:F2} kg ║");
+        Console.WriteLine($"║    Thrust:         {ship.ShipData.TotalThrust,-38:F2} N  ║");
+        Console.WriteLine($"║    Thrust/Mass:    {ship.ShipData.Stats.GetValueOrDefault("ThrustToMass", 0f),-38:F2}    ║");
+        Console.WriteLine($"║    Power Gen:      {ship.ShipData.TotalPowerGeneration,-38:F2} W  ║");
+        Console.WriteLine($"║    Shield Cap:     {ship.ShipData.TotalShieldCapacity,-38:F2}    ║");
+        Console.WriteLine($"║    Weapons:        {ship.ShipData.WeaponMountCount,-42}║");
+        Console.WriteLine($"║    Cargo Bays:     {ship.ShipData.CargoBlockCount,-42}║");
+        Console.WriteLine($"║    Integrity:      {ship.ShipData.Stats.GetValueOrDefault("StructuralIntegrity", 0f),-38:F1}%   ║");
+        Console.WriteLine($"╚═══════════════════════════════════════════════════════════════╝");
+        
+        if (ship.ShipData.Warnings.Count > 0)
+        {
+            Console.WriteLine();
+            Console.WriteLine("⚠ Generation Warnings:");
+            foreach (var warning in ship.ShipData.Warnings.Take(5))
+            {
+                Console.WriteLine($"    {warning}");
+            }
+        }
     }
 
     /// <summary>
