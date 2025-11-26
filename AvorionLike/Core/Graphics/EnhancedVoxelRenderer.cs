@@ -19,7 +19,8 @@ public class EnhancedVoxelRenderer : IDisposable
     private bool _disposed = false;
     
     // Rendering configuration for NPR/PBR/Hybrid modes
-    private RenderingConfiguration _config = RenderingConfiguration.Instance;
+    // Retrieved as property to avoid initialization order issues in testing
+    private RenderingConfiguration Config => RenderingConfiguration.Instance;
 
     // Multiple light sources for better lighting
     private readonly List<LightSource> _lights = new();
@@ -129,7 +130,7 @@ void main()
     FragPos = worldPos.xyz;
     Normal = mat3(transpose(inverse(model))) * aNormal;
     VertexColor = aColor;
-    LocalPos = aPosition; // Pass local position for edge detection and AO
+    LocalPos = aPosition; // Pass local position for edge detection and ambient occlusion
     gl_Position = projection * view * worldPos;
 }
 ";
@@ -164,7 +165,7 @@ uniform vec3 edgeColor;              // Edge line color
 uniform bool enableCelShading;       // Cel-shading mode
 uniform int celShadingBands;         // Number of cel-shading bands
 uniform bool enableAmbientOcclusion; // Block edge ambient occlusion
-uniform float aoStrength;            // AO intensity
+uniform float aoStrength;            // Ambient occlusion intensity
 uniform bool enableProceduralDetails;// Procedural surface patterns
 uniform float proceduralStrength;    // Procedural detail intensity
 uniform bool enableBlockGlow;        // Glow on functional blocks
@@ -173,9 +174,12 @@ uniform bool enableRimLighting;      // Rim lighting effect
 uniform float rimStrength;           // Rim light intensity
 uniform bool enableEnvReflections;   // Environment reflections
 
-// Constants
+// Constants for rendering calculations
 const float PI = 3.14159265359;
 const vec3 ambientLight = vec3(0.18, 0.20, 0.25); // Cool-toned ambient for space
+const float EDGE_DETECTION_THRESHOLD = 0.08;       // Edge detection sensitivity
+const float AO_CORNER_THRESHOLD = 0.25;            // Ambient occlusion corner distance
+const float AO_EDGE_THRESHOLD = 0.15;              // Ambient occlusion edge distance
 
 // Enhanced PBR GGX Distribution
 float DistributionGGX(vec3 N, vec3 H, float roughness)
@@ -263,8 +267,8 @@ float detectBlockEdge(vec3 localPos, float thickness)
     vec3 edgeDist = min(blockPos, 1.0 - blockPos);
     float minEdgeDist = min(min(edgeDist.x, edgeDist.y), edgeDist.z);
     
-    // Smooth edge detection
-    float edge = 1.0 - smoothstep(0.0, 0.08 * thickness, minEdgeDist);
+    // Smooth edge detection using named constant for threshold
+    float edge = 1.0 - smoothstep(0.0, EDGE_DETECTION_THRESHOLD * thickness, minEdgeDist);
     return edge;
 }
 
@@ -273,17 +277,17 @@ float calculateBlockAO(vec3 localPos, vec3 normal)
 {
     if (!enableAmbientOcclusion) return 1.0;
     
-    // Calculate AO based on proximity to edges (corners are darker)
+    // Calculate ambient occlusion based on proximity to edges (corners are darker)
     vec3 blockPos = fract(localPos);
     vec3 edgeDist = min(blockPos, 1.0 - blockPos);
     
-    // Corners have lower AO (are darker)
+    // Corners have lower ambient occlusion (are darker)
     float cornerDist = length(edgeDist);
-    float ao = smoothstep(0.0, 0.25, cornerDist);
+    float ao = smoothstep(0.0, AO_CORNER_THRESHOLD, cornerDist);
     
     // Edge darkening
     float minEdge = min(min(edgeDist.x, edgeDist.y), edgeDist.z);
-    float edgeAO = smoothstep(0.0, 0.15, minEdge);
+    float edgeAO = smoothstep(0.0, AO_EDGE_THRESHOLD, minEdge);
     
     // Combine and apply strength
     float finalAO = mix(1.0, ao * edgeAO, aoStrength);
@@ -529,21 +533,21 @@ void main()
         
         // === Set NPR/Rendering Configuration Uniforms ===
         // This addresses visual issues on blocks by providing flexible rendering options
-        _shader.SetInt("renderingMode", (int)_config.Mode);
-        _shader.SetBool("enableEdgeDetection", _config.EnableEdgeDetection);
-        _shader.SetFloat("edgeThickness", _config.EdgeThickness);
-        _shader.SetVector3("edgeColor", _config.EdgeColor);
-        _shader.SetBool("enableCelShading", _config.EnableCelShading);
-        _shader.SetInt("celShadingBands", _config.CelShadingBands);
-        _shader.SetBool("enableAmbientOcclusion", _config.EnableAmbientOcclusion);
-        _shader.SetFloat("aoStrength", _config.AmbientOcclusionStrength);
-        _shader.SetBool("enableProceduralDetails", _config.EnableProceduralDetails);
-        _shader.SetFloat("proceduralStrength", _config.ProceduralDetailStrength);
-        _shader.SetBool("enableBlockGlow", _config.EnableBlockGlow);
-        _shader.SetFloat("blockGlowIntensity", _config.BlockGlowIntensity);
-        _shader.SetBool("enableRimLighting", _config.EnableRimLighting);
-        _shader.SetFloat("rimStrength", _config.RimLightingStrength);
-        _shader.SetBool("enableEnvReflections", _config.EnableEnvironmentReflections);
+        _shader.SetInt("renderingMode", (int)Config.Mode);
+        _shader.SetBool("enableEdgeDetection", Config.EnableEdgeDetection);
+        _shader.SetFloat("edgeThickness", Config.EdgeThickness);
+        _shader.SetVector3("edgeColor", Config.EdgeColor);
+        _shader.SetBool("enableCelShading", Config.EnableCelShading);
+        _shader.SetInt("celShadingBands", Config.CelShadingBands);
+        _shader.SetBool("enableAmbientOcclusion", Config.EnableAmbientOcclusion);
+        _shader.SetFloat("aoStrength", Config.AmbientOcclusionStrength);
+        _shader.SetBool("enableProceduralDetails", Config.EnableProceduralDetails);
+        _shader.SetFloat("proceduralStrength", Config.ProceduralDetailStrength);
+        _shader.SetBool("enableBlockGlow", Config.EnableBlockGlow);
+        _shader.SetFloat("blockGlowIntensity", Config.BlockGlowIntensity);
+        _shader.SetBool("enableRimLighting", Config.EnableRimLighting);
+        _shader.SetFloat("rimStrength", Config.RimLightingStrength);
+        _shader.SetBool("enableEnvReflections", Config.EnableEnvironmentReflections);
 
         // Get or create cached mesh for this structure
         CachedMesh? cachedMesh = GetOrCreateMesh(structure);
@@ -573,27 +577,11 @@ void main()
     }
     
     /// <summary>
-    /// Set the rendering configuration for this renderer
-    /// </summary>
-    public void SetConfiguration(RenderingConfiguration config)
-    {
-        _config = config;
-    }
-    
-    /// <summary>
-    /// Get the current rendering configuration
-    /// </summary>
-    public RenderingConfiguration GetConfiguration()
-    {
-        return _config;
-    }
-    
-    /// <summary>
     /// Apply a rendering preset to quickly change visual style
     /// </summary>
     public void ApplyPreset(RenderingPreset preset)
     {
-        _config.ApplyPreset(preset);
+        Config.ApplyPreset(preset);
     }
     
     /// <summary>

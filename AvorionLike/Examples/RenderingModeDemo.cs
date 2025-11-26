@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Numerics;
 using AvorionLike.Core.ECS;
 using AvorionLike.Core.Graphics;
@@ -159,7 +160,9 @@ public class RenderingModeDemo
         Console.WriteLine("\n=== Generating Test Ships ===");
         Console.WriteLine("Creating ships with different block types to test rendering...\n");
         
-        var generator = new ProceduralShipGenerator(Environment.TickCount);
+        // Use a more robust seed based on current time ticks to ensure variety
+        int baseSeed = Environment.TickCount;
+        var generator = new ProceduralShipGenerator(baseSeed);
         
         // Configuration for test ships
         var configs = new[]
@@ -173,13 +176,14 @@ public class RenderingModeDemo
         int index = 0;
         foreach (var cfg in configs)
         {
+            // Use incrementing seed multiplier to ensure different ships even if called in quick succession
             var shipConfig = new ShipGenerationConfig
             {
                 Size = cfg.Size,
                 Role = cfg.Role,
                 Material = cfg.Material,
                 Style = FactionShipStyle.GetDefaultStyle("Military"),
-                Seed = Environment.TickCount + index
+                Seed = baseSeed + (index * 1000) + index // Incremented seed for variety
             };
             
             var generatedShip = generator.GenerateShip(shipConfig);
@@ -200,11 +204,15 @@ public class RenderingModeDemo
             Console.WriteLine($"      Blocks: {generatedShip.Structure.Blocks.Count}");
             Console.WriteLine($"      Material: {cfg.Material}");
             
-            // Count block types
-            int hullCount = generatedShip.Structure.Blocks.Count(b => b.BlockType == BlockType.Hull);
-            int engineCount = generatedShip.Structure.Blocks.Count(b => b.BlockType == BlockType.Engine);
-            int shieldCount = generatedShip.Structure.Blocks.Count(b => b.BlockType == BlockType.ShieldGenerator);
-            int generatorCount = generatedShip.Structure.Blocks.Count(b => b.BlockType == BlockType.Generator);
+            // Count block types using single pass with GroupBy for efficiency
+            var blockTypeCounts = generatedShip.Structure.Blocks
+                .GroupBy(b => b.BlockType)
+                .ToDictionary(g => g.Key, g => g.Count());
+            
+            int hullCount = blockTypeCounts.GetValueOrDefault(BlockType.Hull, 0);
+            int engineCount = blockTypeCounts.GetValueOrDefault(BlockType.Engine, 0);
+            int shieldCount = blockTypeCounts.GetValueOrDefault(BlockType.ShieldGenerator, 0);
+            int generatorCount = blockTypeCounts.GetValueOrDefault(BlockType.Generator, 0);
             
             Console.WriteLine($"      Block Types: Hull={hullCount}, Engine={engineCount}, Shield={shieldCount}, Generator={generatorCount}");
             Console.WriteLine();
