@@ -183,17 +183,17 @@ public class GreedyMeshBuilder
             },
             4 => new[] // Front (+Z) - CCW when looking from +Z towards -Z
             {
-                pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
                 pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),
-                pos + new Vector3(-halfSize.X, halfSize.Y, halfSize.Z),
-                pos + new Vector3(halfSize.X, halfSize.Y, halfSize.Z)
+                pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
+                pos + new Vector3(halfSize.X, halfSize.Y, halfSize.Z),
+                pos + new Vector3(-halfSize.X, halfSize.Y, halfSize.Z)
             },
             _ => new[] // Back (-Z) - CCW when looking from -Z towards +Z
             {
-                pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
                 pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),
-                pos + new Vector3(halfSize.X, halfSize.Y, -halfSize.Z),
-                pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z)
+                pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
+                pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z),
+                pos + new Vector3(halfSize.X, halfSize.Y, -halfSize.Z)
             }
         };
         
@@ -549,18 +549,22 @@ public class GreedyMeshBuilder
                     
                     if (direction > 0) // Front face (+Z) - CCW when looking from +Z towards -Z
                     {
-                        vertices[0] = new Vector3(x2, y1, z);
-                        vertices[1] = new Vector3(x1, y1, z);
-                        vertices[2] = new Vector3(x1, y2, z);
-                        vertices[3] = new Vector3(x2, y2, z);
-                        normal = new Vector3(0, 0, 1);
-                    }
-                    else // Back face (-Z) - CCW when looking from -Z towards +Z
-                    {
+                        // Viewer at +Z, looking at face. X goes right, Y goes up.
+                        // CCW from viewer: left-bottom -> right-bottom -> right-top -> left-top
                         vertices[0] = new Vector3(x1, y1, z);
                         vertices[1] = new Vector3(x2, y1, z);
                         vertices[2] = new Vector3(x2, y2, z);
                         vertices[3] = new Vector3(x1, y2, z);
+                        normal = new Vector3(0, 0, 1);
+                    }
+                    else // Back face (-Z) - CCW when looking from -Z towards +Z
+                    {
+                        // Viewer at -Z, looking at face. X goes left, Y goes up.
+                        // CCW from viewer: right-bottom -> left-bottom -> left-top -> right-top
+                        vertices[0] = new Vector3(x2, y1, z);
+                        vertices[1] = new Vector3(x1, y1, z);
+                        vertices[2] = new Vector3(x1, y2, z);
+                        vertices[3] = new Vector3(x2, y2, z);
                         normal = new Vector3(0, 0, -1);
                     }
                     break;
