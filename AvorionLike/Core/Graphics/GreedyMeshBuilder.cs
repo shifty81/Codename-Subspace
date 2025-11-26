@@ -150,49 +150,50 @@ public class GreedyMeshBuilder
         int vertexStart = mesh.Vertices.Count;
         
         // Define face vertices based on direction
+        // All faces use CCW winding order when viewed from outside the cube
         Vector3[] faceVertices = faceIndex switch
         {
-            0 => new[] // Right (+X)
+            0 => new[] // Right (+X) - CCW when looking from +X towards -X
             {
-                pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),
-                pos + new Vector3(halfSize.X, halfSize.Y, -halfSize.Z),
-                pos + new Vector3(halfSize.X, halfSize.Y, halfSize.Z),
-                pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z)
-            },
-            1 => new[] // Left (-X)
-            {
-                pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),
-                pos + new Vector3(-halfSize.X, halfSize.Y, halfSize.Z),
-                pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z),
-                pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z)
-            },
-            2 => new[] // Top (+Y) - CCW winding from outside (looking down from +Y)
-            {
-                pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z),
-                pos + new Vector3(halfSize.X, halfSize.Y, -halfSize.Z),
-                pos + new Vector3(halfSize.X, halfSize.Y, halfSize.Z),
-                pos + new Vector3(-halfSize.X, halfSize.Y, halfSize.Z)
-            },
-            3 => new[] // Bottom (-Y) - CCW winding from outside (looking up from -Y)
-            {
-                pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
-                pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),
                 pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
+                pos + new Vector3(halfSize.X, halfSize.Y, halfSize.Z),
+                pos + new Vector3(halfSize.X, halfSize.Y, -halfSize.Z),
                 pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z)
             },
-            4 => new[] // Front (+Z)
+            1 => new[] // Left (-X) - CCW when looking from -X towards +X
             {
-                pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),
-                pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
-                pos + new Vector3(halfSize.X, halfSize.Y, halfSize.Z),
-                pos + new Vector3(-halfSize.X, halfSize.Y, halfSize.Z)
-            },
-            _ => new[] // Back (-Z)
-            {
-                pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),
                 pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
                 pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z),
-                pos + new Vector3(halfSize.X, halfSize.Y, -halfSize.Z)
+                pos + new Vector3(-halfSize.X, halfSize.Y, halfSize.Z),
+                pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z)
+            },
+            2 => new[] // Top (+Y) - CCW when looking from +Y towards -Y (looking down)
+            {
+                pos + new Vector3(-halfSize.X, halfSize.Y, halfSize.Z),
+                pos + new Vector3(halfSize.X, halfSize.Y, halfSize.Z),
+                pos + new Vector3(halfSize.X, halfSize.Y, -halfSize.Z),
+                pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z)
+            },
+            3 => new[] // Bottom (-Y) - CCW when looking from -Y towards +Y (looking up)
+            {
+                pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
+                pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),
+                pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
+                pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z)
+            },
+            4 => new[] // Front (+Z) - CCW when looking from +Z towards -Z
+            {
+                pos + new Vector3(halfSize.X, -halfSize.Y, halfSize.Z),
+                pos + new Vector3(-halfSize.X, -halfSize.Y, halfSize.Z),
+                pos + new Vector3(-halfSize.X, halfSize.Y, halfSize.Z),
+                pos + new Vector3(halfSize.X, halfSize.Y, halfSize.Z)
+            },
+            _ => new[] // Back (-Z) - CCW when looking from -Z towards +Z
+            {
+                pos + new Vector3(-halfSize.X, -halfSize.Y, -halfSize.Z),
+                pos + new Vector3(halfSize.X, -halfSize.Y, -halfSize.Z),
+                pos + new Vector3(halfSize.X, halfSize.Y, -halfSize.Z),
+                pos + new Vector3(-halfSize.X, halfSize.Y, -halfSize.Z)
             }
         };
         
@@ -483,6 +484,7 @@ public class GreedyMeshBuilder
         Vector3[] vertices = new Vector3[4];
         Vector3 normal;
         
+        // All faces use CCW winding order when viewed from outside the volume
         switch (axis)
         {
             case 0: // X axis
@@ -493,20 +495,20 @@ public class GreedyMeshBuilder
                     float z1 = minZ + v;
                     float z2 = minZ + v + width;
                     
-                    if (direction > 0)
-                    {
-                        vertices[0] = new Vector3(x, y1, z1);
-                        vertices[1] = new Vector3(x, y2, z1);
-                        vertices[2] = new Vector3(x, y2, z2);
-                        vertices[3] = new Vector3(x, y1, z2);
-                        normal = new Vector3(1, 0, 0);
-                    }
-                    else
+                    if (direction > 0) // Right face (+X) - CCW when looking from +X towards -X
                     {
                         vertices[0] = new Vector3(x, y1, z2);
                         vertices[1] = new Vector3(x, y2, z2);
                         vertices[2] = new Vector3(x, y2, z1);
                         vertices[3] = new Vector3(x, y1, z1);
+                        normal = new Vector3(1, 0, 0);
+                    }
+                    else // Left face (-X) - CCW when looking from -X towards +X
+                    {
+                        vertices[0] = new Vector3(x, y1, z1);
+                        vertices[1] = new Vector3(x, y2, z1);
+                        vertices[2] = new Vector3(x, y2, z2);
+                        vertices[3] = new Vector3(x, y1, z2);
                         normal = new Vector3(-1, 0, 0);
                     }
                     break;
@@ -519,20 +521,20 @@ public class GreedyMeshBuilder
                     float z1 = minZ + v;
                     float z2 = minZ + v + height;
                     
-                    if (direction > 0) // Top face (+Y) - CCW winding from outside (looking down from +Y)
+                    if (direction > 0) // Top face (+Y) - CCW when looking from +Y towards -Y (looking down)
+                    {
+                        vertices[0] = new Vector3(x1, y, z2);
+                        vertices[1] = new Vector3(x2, y, z2);
+                        vertices[2] = new Vector3(x2, y, z1);
+                        vertices[3] = new Vector3(x1, y, z1);
+                        normal = new Vector3(0, 1, 0);
+                    }
+                    else // Bottom face (-Y) - CCW when looking from -Y towards +Y (looking up)
                     {
                         vertices[0] = new Vector3(x1, y, z1);
                         vertices[1] = new Vector3(x2, y, z1);
                         vertices[2] = new Vector3(x2, y, z2);
                         vertices[3] = new Vector3(x1, y, z2);
-                        normal = new Vector3(0, 1, 0);
-                    }
-                    else // Bottom face (-Y) - CCW winding from outside (looking up from -Y)
-                    {
-                        vertices[0] = new Vector3(x1, y, z1);
-                        vertices[1] = new Vector3(x1, y, z2);
-                        vertices[2] = new Vector3(x2, y, z2);
-                        vertices[3] = new Vector3(x2, y, z1);
                         normal = new Vector3(0, -1, 0);
                     }
                     break;
@@ -545,20 +547,20 @@ public class GreedyMeshBuilder
                     float y1 = minY + v;
                     float y2 = minY + v + height;
                     
-                    if (direction > 0)
-                    {
-                        vertices[0] = new Vector3(x1, y1, z);
-                        vertices[1] = new Vector3(x2, y1, z);
-                        vertices[2] = new Vector3(x2, y2, z);
-                        vertices[3] = new Vector3(x1, y2, z);
-                        normal = new Vector3(0, 0, 1);
-                    }
-                    else
+                    if (direction > 0) // Front face (+Z) - CCW when looking from +Z towards -Z
                     {
                         vertices[0] = new Vector3(x2, y1, z);
                         vertices[1] = new Vector3(x1, y1, z);
                         vertices[2] = new Vector3(x1, y2, z);
                         vertices[3] = new Vector3(x2, y2, z);
+                        normal = new Vector3(0, 0, 1);
+                    }
+                    else // Back face (-Z) - CCW when looking from -Z towards +Z
+                    {
+                        vertices[0] = new Vector3(x1, y1, z);
+                        vertices[1] = new Vector3(x2, y1, z);
+                        vertices[2] = new Vector3(x2, y2, z);
+                        vertices[3] = new Vector3(x1, y2, z);
                         normal = new Vector3(0, 0, -1);
                     }
                     break;
