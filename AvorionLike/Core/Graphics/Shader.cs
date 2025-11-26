@@ -78,6 +78,15 @@ public class Shader : IDisposable
         _gl.Uniform1(location, value);
     }
 
+    public void SetBool(string name, bool value)
+    {
+        int location = _gl.GetUniformLocation(_handle, name);
+        if (location == -1)
+            return;
+        
+        _gl.Uniform1(location, value ? 1 : 0);
+    }
+
     private uint CompileShader(ShaderType type, string source)
     {
         uint shader = _gl.CreateShader(type);
