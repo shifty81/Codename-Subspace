@@ -22,7 +22,6 @@ public class MainMenuSystem
     
     // New Game state
     private NewGameSettings _newGameSettings = new();
-    private NewGamePage _currentNewGamePage = NewGamePage.Presets;
     private string _selectedPreset = "normal";
     
     // Save/Load state
@@ -71,17 +70,6 @@ public class MainMenuSystem
         MultiplayerJoin,
         Settings,
         Quit
-    }
-    
-    public enum NewGamePage
-    {
-        Presets,
-        Galaxy,
-        Sectors,
-        Factions,
-        AI,
-        Starting,
-        Summary
     }
     
     public MainMenuSystem(GameEngine gameEngine)
@@ -268,7 +256,6 @@ public class MainMenuSystem
             {
                 _currentState = MenuState.NewGame;
                 _newGameSettings = new NewGameSettings();
-                _currentNewGamePage = NewGamePage.Presets;
             }
             
             ImGui.Dummy(new Vector2(0, 10));
@@ -334,49 +321,42 @@ public class MainMenuSystem
             {
                 if (ImGui.BeginTabItem("Presets"))
                 {
-                    _currentNewGamePage = NewGamePage.Presets;
                     RenderPresetsPage();
                     ImGui.EndTabItem();
                 }
                 
                 if (ImGui.BeginTabItem("Galaxy"))
                 {
-                    _currentNewGamePage = NewGamePage.Galaxy;
                     RenderGalaxyPage();
                     ImGui.EndTabItem();
                 }
                 
                 if (ImGui.BeginTabItem("Sectors"))
                 {
-                    _currentNewGamePage = NewGamePage.Sectors;
                     RenderSectorsPage();
                     ImGui.EndTabItem();
                 }
                 
                 if (ImGui.BeginTabItem("Factions"))
                 {
-                    _currentNewGamePage = NewGamePage.Factions;
                     RenderFactionsPage();
                     ImGui.EndTabItem();
                 }
                 
                 if (ImGui.BeginTabItem("AI & Difficulty"))
                 {
-                    _currentNewGamePage = NewGamePage.AI;
                     RenderAIPage();
                     ImGui.EndTabItem();
                 }
                 
                 if (ImGui.BeginTabItem("Starting Conditions"))
                 {
-                    _currentNewGamePage = NewGamePage.Starting;
                     RenderStartingPage();
                     ImGui.EndTabItem();
                 }
                 
                 if (ImGui.BeginTabItem("Summary"))
                 {
-                    _currentNewGamePage = NewGamePage.Summary;
                     RenderSummaryPage();
                     ImGui.EndTabItem();
                 }
