@@ -657,13 +657,11 @@ For detailed credits and acknowledgments, see [CREDITS.md](CREDITS.md).
 ## Documentation
 
 ### 📋 Quick Reference
+- **[Development Status](DEVELOPMENT_STATUS.md)** - 📌 **START HERE** - Current state, priorities, and what's working
 - **[Gameplay Features](GAMEPLAY_FEATURES.md)** - 🎮 **COMPLETE GUIDE** - All gameplay features, controls, and systems
-- **[Quick Status](QUICK_STATUS.md)** - ⚡⚡ **SUPER QUICK** - Status in 1 minute
-- **[What's Left to Implement](WHATS_LEFT_TO_IMPLEMENT.md)** - 📝 **COMPLETE GUIDE** - Detailed breakdown of remaining work (580+ lines)
-- **[Playability FAQ](PLAYABILITY_FAQ.md)** - ⚡ **QUICK ANSWERS** - Is it playable? What can I do? FAQ format
+- **[What's Left to Implement](WHATS_LEFT_TO_IMPLEMENT.md)** - 📝 **DETAILED** - Breakdown of remaining work and priorities
 - **[Roadmap Status](ROADMAP_STATUS.md)** - 📊 **CURRENT STATUS** - Feature completeness and verification results
-- **[Project Summary](PROJECT_SUMMARY.md)** - 📌 **START HERE** - Quick overview of current state and next steps
-- **[Next Steps & Recommendations](NEXT_STEPS.md)** - 📌 **COMPREHENSIVE GUIDE** - Detailed analysis and prioritized recommendations (980+ lines)
+- **[Next Steps & Recommendations](NEXT_STEPS.md)** - 📌 **COMPREHENSIVE GUIDE** - Detailed analysis and prioritized recommendations
 - **[Architecture Diagram](ARCHITECTURE_DIAGRAM.md)** - Visual system architecture and component relationships
 
 ### 📚 Detailed Documentation
