@@ -12,6 +12,7 @@ using AvorionLike.Core.Progression;
 using AvorionLike.Core.Fleet;
 using AvorionLike.Core.UI;
 using AvorionLike.Core.Configuration;
+using AvorionLike.Core.AI;
 using AvorionLike.Examples;
 using System.Numerics;
 
@@ -59,7 +60,8 @@ class Program
             Console.WriteLine("╚═══════════════════════════════════════════════════╝");
             Console.WriteLine();
             Console.WriteLine("  1. Start New Game - Full Gameplay Experience");
-            Console.WriteLine("  2. About / Version Info");
+            Console.WriteLine("  2. Experience Full Solar System - Complete Test Environment");
+            Console.WriteLine("  3. About / Version Info");
             Console.WriteLine("  0. Exit");
             Console.WriteLine();
             Console.Write("Select option: ");
@@ -72,6 +74,9 @@ class Program
                     StartNewGame();
                     break;
                 case "2":
+                    ExperienceFullSolarSystem();
+                    break;
+                case "3":
                     ShowVersionInfo();
                     break;
                 case "0":
@@ -267,6 +272,466 @@ class Program
         }
 
         Console.WriteLine("\nReturned to main menu.");
+    }
+
+    static void ExperienceFullSolarSystem()
+    {
+        Console.WriteLine("\n╔═══════════════════════════════════════════════════════════════════════════╗");
+        Console.WriteLine("║     FULL SOLAR SYSTEM - COMPREHENSIVE TEST ENVIRONMENT                   ║");
+        Console.WriteLine("║     Experience everything that has been implemented                       ║");
+        Console.WriteLine("╚═══════════════════════════════════════════════════════════════════════════╝");
+        Console.WriteLine();
+        Console.WriteLine("Creating a complete solar system with all implemented features...\n");
+        
+        // Create player ship with full capabilities
+        Console.WriteLine("=== Creating Player Ship ===");
+        var playerShip = _gameEngine!.EntityManager.CreateEntity("Player Ship - Command Cruiser");
+        
+        // Use procedural generation for a well-equipped player ship
+        var shipGenerator = new ProceduralShipGenerator(Environment.TickCount);
+        var playerShipConfig = new ShipGenerationConfig
+        {
+            Size = ShipSize.Cruiser,
+            Role = ShipRole.Multipurpose,
+            Material = "Avorion",
+            Style = FactionShipStyle.GetDefaultStyle("Military"),
+            Seed = 12345,
+            RequireHyperdrive = true,
+            RequireCargo = true,
+            MinimumWeaponMounts = 6
+        };
+        
+        var generatedPlayerShip = shipGenerator.GenerateShip(playerShipConfig);
+        var voxelComponent = generatedPlayerShip.Structure;
+        _gameEngine.EntityManager.AddComponent(playerShip.Id, voxelComponent);
+        
+        // Add physics at origin
+        var physicsComponent = new PhysicsComponent
+        {
+            Position = new Vector3(0, 0, 0),
+            Velocity = Vector3.Zero,
+            Mass = voxelComponent.TotalMass,
+            MomentOfInertia = voxelComponent.MomentOfInertia,
+            MaxThrust = voxelComponent.TotalThrust,
+            MaxTorque = voxelComponent.TotalTorque
+        };
+        _gameEngine.EntityManager.AddComponent(playerShip.Id, physicsComponent);
+        
+        // Add full inventory with all resource types
+        var inventoryComponent = new InventoryComponent(5000);
+        inventoryComponent.Inventory.AddResource(ResourceType.Credits, 1000000);
+        inventoryComponent.Inventory.AddResource(ResourceType.Iron, 2000);
+        inventoryComponent.Inventory.AddResource(ResourceType.Titanium, 1500);
+        inventoryComponent.Inventory.AddResource(ResourceType.Naonite, 1000);
+        inventoryComponent.Inventory.AddResource(ResourceType.Trinium, 800);
+        inventoryComponent.Inventory.AddResource(ResourceType.Xanion, 500);
+        inventoryComponent.Inventory.AddResource(ResourceType.Ogonite, 300);
+        inventoryComponent.Inventory.AddResource(ResourceType.Avorion, 200);
+        _gameEngine.EntityManager.AddComponent(playerShip.Id, inventoryComponent);
+        
+        // Add progression - mid-level to test progression features
+        var progressionComponent = new ProgressionComponent
+        {
+            EntityId = playerShip.Id,
+            Level = 10,
+            Experience = 50000,
+            SkillPoints = 25
+        };
+        _gameEngine.EntityManager.AddComponent(playerShip.Id, progressionComponent);
+        
+        // Add combat capabilities
+        var combatComponent = new CombatComponent
+        {
+            EntityId = playerShip.Id,
+            MaxShields = voxelComponent.ShieldCapacity,
+            CurrentShields = voxelComponent.ShieldCapacity,
+            MaxEnergy = voxelComponent.PowerGeneration,
+            CurrentEnergy = voxelComponent.PowerGeneration
+        };
+        _gameEngine.EntityManager.AddComponent(playerShip.Id, combatComponent);
+        
+        // Add hyperdrive with good range
+        var hyperdriveComponent = new HyperdriveComponent
+        {
+            EntityId = playerShip.Id,
+            JumpRange = 15f
+        };
+        _gameEngine.EntityManager.AddComponent(playerShip.Id, hyperdriveComponent);
+        
+        // Start in mid-galaxy for variety (Naonite zone)
+        var locationComponent = new SectorLocationComponent
+        {
+            EntityId = playerShip.Id,
+            CurrentSector = new SectorCoordinate(200, 0, 0)
+        };
+        _gameEngine.EntityManager.AddComponent(playerShip.Id, locationComponent);
+        
+        // Add galaxy progression tracking
+        var playerProgressionComp = new PlayerProgressionComponent
+        {
+            EntityId = playerShip.Id,
+            ClosestDistanceToCenter = 200,
+            CurrentZone = "Mid-Galaxy (Naonite Zone)",
+            FurthestZoneReached = "Mid-Galaxy (Naonite Zone)",
+            AvailableMaterialTier = MaterialTier.Naonite,
+            HighestMaterialTierAcquired = MaterialTier.Naonite,
+            CurrentZoneDifficulty = 1.5f,
+            SectorsExplored = 1
+        };
+        _gameEngine.EntityManager.AddComponent(playerShip.Id, playerProgressionComp);
+        
+        Console.WriteLine($"✓ Player ship created!");
+        Console.WriteLine($"  Type: {playerShipConfig.Size} {playerShipConfig.Role}");
+        Console.WriteLine($"  Blocks: {voxelComponent.Blocks.Count}");
+        Console.WriteLine($"  Mass: {voxelComponent.TotalMass:F2} kg");
+        Console.WriteLine($"  Thrust: {voxelComponent.TotalThrust:F2} N");
+        Console.WriteLine($"  Power: {voxelComponent.PowerGeneration:F2} W");
+        Console.WriteLine($"  Shields: {voxelComponent.ShieldCapacity:F2}");
+        Console.WriteLine($"  Credits: {inventoryComponent.Inventory.GetResourceAmount(ResourceType.Credits):N0}");
+        Console.WriteLine($"  Level: {progressionComponent.Level}");
+        
+        // Register systems
+        var galaxyProgressionSystem = new GalaxyProgressionSystem(_gameEngine.EntityManager);
+        var fleetAutomationSystem = new FleetAutomationSystem(_gameEngine.EntityManager);
+        _gameEngine.EntityManager.RegisterSystem(galaxyProgressionSystem);
+        _gameEngine.EntityManager.RegisterSystem(fleetAutomationSystem);
+        
+        // Create comprehensive solar system with all features
+        Console.WriteLine("\n=== Populating Solar System ===");
+        CreateCompleteSolarSystem(playerShip.Id, physicsComponent.Position);
+        
+        Console.WriteLine("\n=== System Features Summary ===");
+        Console.WriteLine("✓ Player Ship: Fully equipped Cruiser with all capabilities");
+        Console.WriteLine("✓ Diverse Fleet: 20+ ships of all sizes and roles");
+        Console.WriteLine("✓ Asteroid Fields: Rich with all material types");
+        Console.WriteLine("✓ Space Stations: Multiple types (Trading, Military, Industrial, Research)");
+        Console.WriteLine("✓ AI Ships: Traders, Miners, Pirates, Explorers");
+        Console.WriteLine("✓ Galaxy Progression: Visible material tier zones");
+        Console.WriteLine("✓ Fleet Automation: Demonstrating captain assignments");
+        Console.WriteLine();
+        Console.WriteLine("💡 TESTING TIPS:");
+        Console.WriteLine("  • Press ~ or click Console button for testing commands");
+        Console.WriteLine("  • Type 'help' for all available commands");
+        Console.WriteLine("  • Use M key to open Galaxy Map");
+        Console.WriteLine("  • Press I for Inventory, B for Ship Builder");
+        Console.WriteLine("  • Fly around to explore all generated content");
+        Console.WriteLine("  • Try combat with 'spawn_enemy' command");
+        Console.WriteLine("  • Test mining with nearby asteroids");
+        Console.WriteLine("  • Visit stations for trading");
+        Console.WriteLine();
+        
+        // Launch the game
+        Console.WriteLine("=== Launching Full Solar System Experience ===");
+        Console.WriteLine("Opening 3D window...\n");
+        
+        try
+        {
+            using var graphicsWindow = new GraphicsWindow(_gameEngine);
+            graphicsWindow.SetPlayerShip(playerShip.Id);
+            graphicsWindow.Run();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error running game: {ex.Message}");
+            Console.WriteLine("Graphics rendering may not be available on this system.");
+        }
+        
+        Console.WriteLine("\nReturned to main menu.");
+    }
+    
+    /// <summary>
+    /// Creates a complete solar system with all implemented features for comprehensive testing
+    /// </summary>
+    static void CreateCompleteSolarSystem(Guid playerShipId, Vector3 centerPosition)
+    {
+        var shipGenerator = new ProceduralShipGenerator(Environment.TickCount);
+        var stationGenerator = new ProceduralStationGenerator(Environment.TickCount);
+        int entityCount = 0;
+        
+        // === 1. Create diverse fleet of ships at various distances ===
+        Console.WriteLine("Generating diverse ship fleet...");
+        
+        var shipConfigs = new[]
+        {
+            // Fighters (close by)
+            (Size: ShipSize.Fighter, Role: ShipRole.Combat, Material: "Titanium", Position: new Vector3(100, 20, 0)),
+            (Size: ShipSize.Fighter, Role: ShipRole.Exploration, Material: "Trinium", Position: new Vector3(-100, -20, 50)),
+            (Size: ShipSize.Fighter, Role: ShipRole.Combat, Material: "Naonite", Position: new Vector3(80, 0, -80)),
+            
+            // Corvettes (medium distance)
+            (Size: ShipSize.Corvette, Role: ShipRole.Mining, Material: "Iron", Position: new Vector3(200, 0, 100)),
+            (Size: ShipSize.Corvette, Role: ShipRole.Trading, Material: "Titanium", Position: new Vector3(-180, 30, -120)),
+            (Size: ShipSize.Corvette, Role: ShipRole.Combat, Material: "Titanium", Position: new Vector3(150, -40, 150)),
+            (Size: ShipSize.Corvette, Role: ShipRole.Multipurpose, Material: "Naonite", Position: new Vector3(-200, 0, 0)),
+            
+            // Frigates (further out)
+            (Size: ShipSize.Frigate, Role: ShipRole.Combat, Material: "Ogonite", Position: new Vector3(350, 0, 200)),
+            (Size: ShipSize.Frigate, Role: ShipRole.Trading, Material: "Xanion", Position: new Vector3(-320, 50, -180)),
+            (Size: ShipSize.Frigate, Role: ShipRole.Exploration, Material: "Naonite", Position: new Vector3(280, -30, -250)),
+            (Size: ShipSize.Frigate, Role: ShipRole.Mining, Material: "Iron", Position: new Vector3(-300, 0, 220)),
+            (Size: ShipSize.Frigate, Role: ShipRole.Multipurpose, Material: "Trinium", Position: new Vector3(320, 40, -200)),
+            
+            // Destroyers (distant)
+            (Size: ShipSize.Destroyer, Role: ShipRole.Combat, Material: "Avorion", Position: new Vector3(500, 0, 300)),
+            (Size: ShipSize.Destroyer, Role: ShipRole.Salvage, Material: "Ogonite", Position: new Vector3(-480, -60, -320)),
+            
+            // Cruisers (very distant)
+            (Size: ShipSize.Cruiser, Role: ShipRole.Combat, Material: "Avorion", Position: new Vector3(650, 50, 400)),
+            (Size: ShipSize.Cruiser, Role: ShipRole.Trading, Material: "Xanion", Position: new Vector3(-600, 0, -450)),
+            
+            // Capital ships (extremely distant)
+            (Size: ShipSize.Battleship, Role: ShipRole.Combat, Material: "Avorion", Position: new Vector3(850, 100, 500)),
+            (Size: ShipSize.Carrier, Role: ShipRole.Multipurpose, Material: "Avorion", Position: new Vector3(-800, -80, -550)),
+        };
+        
+        foreach (var config in shipConfigs)
+        {
+            try
+            {
+                var shipConfig = new ShipGenerationConfig
+                {
+                    Size = config.Size,
+                    Role = config.Role,
+                    Material = config.Material,
+                    Style = FactionShipStyle.GetDefaultStyle("Default"),
+                    Seed = config.Position.GetHashCode()
+                };
+                
+                var generatedShip = shipGenerator.GenerateShip(shipConfig);
+                var ship = _gameEngine!.EntityManager.CreateEntity($"{config.Size} - {config.Role}");
+                
+                _gameEngine.EntityManager.AddComponent(ship.Id, generatedShip.Structure);
+                
+                var shipPhysics = new PhysicsComponent
+                {
+                    Position = centerPosition + config.Position,
+                    Velocity = Vector3.Zero,
+                    Mass = generatedShip.Structure.TotalMass,
+                    MomentOfInertia = generatedShip.Structure.MomentOfInertia,
+                    MaxThrust = generatedShip.Structure.TotalThrust,
+                    MaxTorque = generatedShip.Structure.TotalTorque
+                };
+                _gameEngine.EntityManager.AddComponent(ship.Id, shipPhysics);
+                
+                // Add combat component for combat ships
+                if (config.Role == ShipRole.Combat)
+                {
+                    var shipCombat = new CombatComponent
+                    {
+                        EntityId = ship.Id,
+                        MaxShields = generatedShip.Structure.ShieldCapacity,
+                        CurrentShields = generatedShip.Structure.ShieldCapacity,
+                        MaxEnergy = generatedShip.Structure.PowerGeneration,
+                        CurrentEnergy = generatedShip.Structure.PowerGeneration
+                    };
+                    _gameEngine.EntityManager.AddComponent(ship.Id, shipCombat);
+                }
+                
+                entityCount++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"  Warning: Failed to generate {config.Size} {config.Role}: {ex.Message}");
+            }
+        }
+        
+        Console.WriteLine($"  ✓ Generated {entityCount} ships");
+        
+        // === 2. Create rich asteroid fields with all material types ===
+        Console.WriteLine("Creating asteroid fields...");
+        
+        var asteroidConfigs = new[]
+        {
+            // Iron field (close)
+            (Material: ResourceType.Iron, Center: new Vector3(150, 0, 200), Count: 20),
+            // Titanium field
+            (Material: ResourceType.Titanium, Center: new Vector3(-250, 50, -150), Count: 15),
+            // Naonite field
+            (Material: ResourceType.Naonite, Center: new Vector3(300, -30, 300), Count: 12),
+            // Trinium field
+            (Material: ResourceType.Trinium, Center: new Vector3(-350, 0, 250), Count: 10),
+            // Xanion field
+            (Material: ResourceType.Xanion, Center: new Vector3(450, 40, -350), Count: 8),
+            // Ogonite field
+            (Material: ResourceType.Ogonite, Center: new Vector3(-500, -50, -400), Count: 6),
+            // Avorion field (rare, far away)
+            (Material: ResourceType.Avorion, Center: new Vector3(600, 80, 450), Count: 4),
+        };
+        
+        int asteroidCount = 0;
+        foreach (var field in asteroidConfigs)
+        {
+            for (int i = 0; i < field.Count; i++)
+            {
+                var asteroid = _gameEngine!.EntityManager.CreateEntity($"Asteroid - {field.Material}");
+                
+                // Create asteroid voxel structure
+                var asteroidVoxel = new VoxelStructureComponent();
+                var asteroidSize = 3f + (float)(_gameEngine.GetHashCode() % 5);
+                asteroidVoxel.AddBlock(new VoxelBlock(
+                    Vector3.Zero,
+                    new Vector3(asteroidSize, asteroidSize, asteroidSize),
+                    GetMaterialForResource(field.Material),
+                    BlockType.Hull // Asteroids use Hull block type
+                ));
+                _gameEngine.EntityManager.AddComponent(asteroid.Id, asteroidVoxel);
+                
+                // Random position within field
+                var offset = new Vector3(
+                    (float)(new Random(i).NextDouble() * 100 - 50),
+                    (float)(new Random(i + 1000).NextDouble() * 50 - 25),
+                    (float)(new Random(i + 2000).NextDouble() * 100 - 50)
+                );
+                
+                var asteroidPhysics = new PhysicsComponent
+                {
+                    Position = centerPosition + field.Center + offset,
+                    Mass = asteroidVoxel.TotalMass,
+                    IsStatic = true
+                };
+                _gameEngine.EntityManager.AddComponent(asteroid.Id, asteroidPhysics);
+                
+                // Note: Resource extraction is handled by the mining system based on asteroid material
+                
+                asteroidCount++;
+            }
+        }
+        
+        Console.WriteLine($"  ✓ Generated {asteroidCount} asteroids across {asteroidConfigs.Length} fields");
+        
+        // === 3. Create multiple space stations ===
+        Console.WriteLine("Creating space stations...");
+        
+        var stationConfigs = new[]
+        {
+            (Type: "Trading", Material: "Titanium", Position: new Vector3(400, 100, 0), Arch: StationArchitecture.Modular),
+            (Type: "Military", Material: "Ogonite", Position: new Vector3(-450, -80, 300), Arch: StationArchitecture.Modular),
+            (Type: "Industrial", Material: "Iron", Position: new Vector3(0, 150, -400), Arch: StationArchitecture.Sprawling),
+            (Type: "Research", Material: "Avorion", Position: new Vector3(-300, -120, -350), Arch: StationArchitecture.Modular),
+        };
+        
+        int stationCount = 0;
+        foreach (var config in stationConfigs)
+        {
+            try
+            {
+                var stationConfig = new StationGenerationConfig
+                {
+                    Size = StationSize.Large,
+                    StationType = config.Type,
+                    Material = config.Material,
+                    Architecture = config.Arch,
+                    Seed = config.Type.GetHashCode()
+                };
+                
+                var generatedStation = stationGenerator.GenerateStation(stationConfig);
+                var station = _gameEngine!.EntityManager.CreateEntity($"{config.Type} Station");
+                
+                _gameEngine.EntityManager.AddComponent(station.Id, generatedStation.Structure);
+                
+                var stationPhysics = new PhysicsComponent
+                {
+                    Position = centerPosition + config.Position,
+                    Mass = generatedStation.Structure.TotalMass,
+                    IsStatic = true
+                };
+                _gameEngine.EntityManager.AddComponent(station.Id, stationPhysics);
+                
+                stationCount++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"  Warning: Failed to generate {config.Type} station: {ex.Message}");
+            }
+        }
+        
+        Console.WriteLine($"  ✓ Generated {stationCount} space stations");
+        
+        // === 4. Create AI ships with behaviors ===
+        Console.WriteLine("Creating AI ships...");
+        
+        var aiShipConfigs = new[]
+        {
+            (Name: "Trader 1", Role: ShipRole.Trading, Position: new Vector3(380, 95, 20)),
+            (Name: "Trader 2", Role: ShipRole.Trading, Position: new Vector3(420, 105, -30)),
+            (Name: "Miner 1", Role: ShipRole.Mining, Position: new Vector3(130, 10, 180)),
+            (Name: "Miner 2", Role: ShipRole.Mining, Position: new Vector3(170, -10, 220)),
+            (Name: "Pirate 1", Role: ShipRole.Combat, Position: new Vector3(-600, 50, 200)),
+            (Name: "Pirate 2", Role: ShipRole.Combat, Position: new Vector3(-650, -40, 250)),
+            (Name: "Explorer 1", Role: ShipRole.Exploration, Position: new Vector3(500, 120, 350)),
+        };
+        
+        int aiShipCount = 0;
+        foreach (var aiConfig in aiShipConfigs)
+        {
+            try
+            {
+                var aiShipGenConfig = new ShipGenerationConfig
+                {
+                    Size = ShipSize.Corvette,
+                    Role = aiConfig.Role,
+                    Material = "Titanium",
+                    Style = FactionShipStyle.GetDefaultStyle("Default"),
+                    Seed = aiConfig.Name.GetHashCode()
+                };
+                
+                var generatedAIShip = shipGenerator.GenerateShip(aiShipGenConfig);
+                var aiShip = _gameEngine!.EntityManager.CreateEntity(aiConfig.Name);
+                
+                _gameEngine.EntityManager.AddComponent(aiShip.Id, generatedAIShip.Structure);
+                
+                var aiPhysics = new PhysicsComponent
+                {
+                    Position = centerPosition + aiConfig.Position,
+                    Velocity = Vector3.Zero,
+                    Mass = generatedAIShip.Structure.TotalMass
+                };
+                _gameEngine.EntityManager.AddComponent(aiShip.Id, aiPhysics);
+                
+                // Add AI component with appropriate personality and capabilities
+                var aiComponent = new AIComponent
+                {
+                    EntityId = aiShip.Id,
+                    Personality = aiConfig.Role == ShipRole.Combat ? AIPersonality.Aggressive : 
+                                 aiConfig.Role == ShipRole.Trading ? AIPersonality.Trader :
+                                 aiConfig.Role == ShipRole.Mining ? AIPersonality.Miner : AIPersonality.Balanced,
+                    CurrentState = aiConfig.Role == ShipRole.Combat ? AIState.Patrol :
+                                  aiConfig.Role == ShipRole.Trading ? AIState.Trading :
+                                  aiConfig.Role == ShipRole.Mining ? AIState.Mining : AIState.Patrol,
+                    CanMine = aiConfig.Role == ShipRole.Mining,
+                    CanTrade = aiConfig.Role == ShipRole.Trading
+                };
+                _gameEngine.EntityManager.AddComponent(aiShip.Id, aiComponent);
+                
+                aiShipCount++;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"  Warning: Failed to generate AI ship {aiConfig.Name}: {ex.Message}");
+            }
+        }
+        
+        Console.WriteLine($"  ✓ Generated {aiShipCount} AI ships");
+        
+        Console.WriteLine($"\n✓ Solar system populated with {entityCount + asteroidCount + stationCount + aiShipCount} entities!");
+    }
+    
+    /// <summary>
+    /// Helper method to get material name for a resource type
+    /// </summary>
+    static string GetMaterialForResource(ResourceType resourceType)
+    {
+        return resourceType switch
+        {
+            ResourceType.Iron => "Iron",
+            ResourceType.Titanium => "Titanium",
+            ResourceType.Naonite => "Naonite",
+            ResourceType.Trinium => "Trinium",
+            ResourceType.Xanion => "Xanion",
+            ResourceType.Ogonite => "Ogonite",
+            ResourceType.Avorion => "Avorion",
+            _ => "Iron"
+        };
     }
 
     static void CreateTestShipDemo()
@@ -2717,6 +3182,9 @@ class Program
     /// <summary>
     /// Creates a comprehensive test showcase with all implementations visible for testing
     /// </summary>
+    /// <summary>
+    /// Creates a comprehensive test showcase with all implementations visible for testing
+    /// </summary>
     static void CreateComprehensiveTestShowcase(Guid playerShipId, Vector3 playerPosition)
     {
         Console.WriteLine("Generating test showcase with multiple ship types...");
@@ -2724,55 +3192,64 @@ class Program
         var shipGenerator = new ProceduralShipGenerator(Environment.TickCount);
         int shipCount = 0;
         
+        // Use varied seeds for more variety each time you play
+        int baseSeed = Environment.TickCount;
+        
         // Configuration for different ship types to test
         var testConfigurations = new[]
         {
-            // Fighter examples (different factions and styles)
-            new { Name = "Military Fighter", Size = ShipSize.Fighter, Role = ShipRole.Combat, Material = "Avorion", Style = "Military", Position = new Vector3(150, 0, 0) },
-            new { Name = "Scout Fighter", Size = ShipSize.Fighter, Role = ShipRole.Exploration, Material = "Trinium", Style = "Explorers", Position = new Vector3(150, 50, 0) },
+            // Fighter examples (different factions, styles, and hull shapes)
+            new { Name = "Military Fighter", Size = ShipSize.Fighter, Role = ShipRole.Combat, Material = "Avorion", Style = "Military", Hull = ShipHullShape.Angular, Position = new Vector3(150, 0, 0) },
+            new { Name = "Scout Fighter", Size = ShipSize.Fighter, Role = ShipRole.Exploration, Material = "Trinium", Style = "Explorers", Hull = ShipHullShape.Sleek, Position = new Vector3(150, 50, 0) },
             
-            // Corvette examples
-            new { Name = "Combat Corvette", Size = ShipSize.Corvette, Role = ShipRole.Combat, Material = "Titanium", Style = "Military", Position = new Vector3(200, 0, 0) },
-            new { Name = "Mining Corvette", Size = ShipSize.Corvette, Role = ShipRole.Mining, Material = "Iron", Style = "Miners", Position = new Vector3(200, 50, 0) },
+            // Corvette examples with varied hulls
+            new { Name = "Combat Corvette", Size = ShipSize.Corvette, Role = ShipRole.Combat, Material = "Titanium", Style = "Military", Hull = ShipHullShape.Angular, Position = new Vector3(200, 0, 0) },
+            new { Name = "Mining Corvette", Size = ShipSize.Corvette, Role = ShipRole.Mining, Material = "Iron", Style = "Miners", Hull = ShipHullShape.Blocky, Position = new Vector3(200, 50, 0) },
             
-            // Frigate examples
-            new { Name = "Military Frigate", Size = ShipSize.Frigate, Role = ShipRole.Combat, Material = "Ogonite", Style = "Military", Position = new Vector3(300, 0, 0) },
-            new { Name = "Trading Frigate", Size = ShipSize.Frigate, Role = ShipRole.Trading, Material = "Xanion", Style = "Traders", Position = new Vector3(300, 50, 0) },
-            new { Name = "Explorer Frigate", Size = ShipSize.Frigate, Role = ShipRole.Exploration, Material = "Naonite", Style = "Explorers", Position = new Vector3(300, -50, 0) },
+            // Frigate examples with distinct shapes
+            new { Name = "Military Frigate", Size = ShipSize.Frigate, Role = ShipRole.Combat, Material = "Ogonite", Style = "Military", Hull = ShipHullShape.Angular, Position = new Vector3(300, 0, 0) },
+            new { Name = "Trading Frigate", Size = ShipSize.Frigate, Role = ShipRole.Trading, Material = "Xanion", Style = "Traders", Hull = ShipHullShape.Cylindrical, Position = new Vector3(300, 50, 0) },
+            new { Name = "Explorer Frigate", Size = ShipSize.Frigate, Role = ShipRole.Exploration, Material = "Naonite", Style = "Explorers", Hull = ShipHullShape.Sleek, Position = new Vector3(300, -50, 0) },
             
             // Destroyer examples
-            new { Name = "Heavy Destroyer", Size = ShipSize.Destroyer, Role = ShipRole.Combat, Material = "Avorion", Style = "Military", Position = new Vector3(450, 0, 0) },
-            new { Name = "Salvage Destroyer", Size = ShipSize.Destroyer, Role = ShipRole.Salvage, Material = "Ogonite", Style = "Pirates", Position = new Vector3(450, 50, 0) },
+            new { Name = "Heavy Destroyer", Size = ShipSize.Destroyer, Role = ShipRole.Combat, Material = "Avorion", Style = "Military", Hull = ShipHullShape.Angular, Position = new Vector3(450, 0, 0) },
+            new { Name = "Salvage Destroyer", Size = ShipSize.Destroyer, Role = ShipRole.Salvage, Material = "Ogonite", Style = "Pirates", Hull = ShipHullShape.Irregular, Position = new Vector3(450, 50, 0) },
             
             // Cruiser examples
-            new { Name = "Battle Cruiser", Size = ShipSize.Cruiser, Role = ShipRole.Combat, Material = "Avorion", Style = "Military", Position = new Vector3(600, 0, 0) },
-            new { Name = "Trade Cruiser", Size = ShipSize.Cruiser, Role = ShipRole.Trading, Material = "Xanion", Style = "Traders", Position = new Vector3(600, 50, 0) },
+            new { Name = "Battle Cruiser", Size = ShipSize.Cruiser, Role = ShipRole.Combat, Material = "Avorion", Style = "Military", Hull = ShipHullShape.Angular, Position = new Vector3(600, 0, 0) },
+            new { Name = "Trade Cruiser", Size = ShipSize.Cruiser, Role = ShipRole.Trading, Material = "Xanion", Style = "Traders", Hull = ShipHullShape.Cylindrical, Position = new Vector3(600, 50, 0) },
             
             // Battleship examples
-            new { Name = "Dreadnought", Size = ShipSize.Battleship, Role = ShipRole.Combat, Material = "Avorion", Style = "Military", Position = new Vector3(800, 0, 0) },
+            new { Name = "Dreadnought", Size = ShipSize.Battleship, Role = ShipRole.Combat, Material = "Avorion", Style = "Military", Hull = ShipHullShape.Angular, Position = new Vector3(800, 0, 0) },
             
             // Carrier example
-            new { Name = "Fleet Carrier", Size = ShipSize.Carrier, Role = ShipRole.Multipurpose, Material = "Avorion", Style = "Military", Position = new Vector3(1000, 0, 0) },
+            new { Name = "Fleet Carrier", Size = ShipSize.Carrier, Role = ShipRole.Multipurpose, Material = "Avorion", Style = "Military", Hull = ShipHullShape.Blocky, Position = new Vector3(1000, 0, 0) },
             
             // Different hull shapes at various positions (for visual comparison)
-            new { Name = "Angular Fighter", Size = ShipSize.Fighter, Role = ShipRole.Combat, Material = "Titanium", Style = "Military", Position = new Vector3(-150, 0, 100) },
-            new { Name = "Sleek Fighter", Size = ShipSize.Fighter, Role = ShipRole.Combat, Material = "Trinium", Style = "Military", Position = new Vector3(-150, 0, 150) },
-            new { Name = "Blocky Trader", Size = ShipSize.Corvette, Role = ShipRole.Trading, Material = "Iron", Style = "Traders", Position = new Vector3(-150, 0, 200) },
-            new { Name = "Cylindrical Hauler", Size = ShipSize.Frigate, Role = ShipRole.Trading, Material = "Titanium", Style = "Traders", Position = new Vector3(-150, 0, 250) },
+            new { Name = "Angular Fighter", Size = ShipSize.Fighter, Role = ShipRole.Combat, Material = "Titanium", Style = "Military", Hull = ShipHullShape.Angular, Position = new Vector3(-150, 0, 100) },
+            new { Name = "Sleek Fighter", Size = ShipSize.Fighter, Role = ShipRole.Combat, Material = "Trinium", Style = "Explorers", Hull = ShipHullShape.Sleek, Position = new Vector3(-150, 0, 150) },
+            new { Name = "Blocky Trader", Size = ShipSize.Corvette, Role = ShipRole.Trading, Material = "Iron", Style = "Traders", Hull = ShipHullShape.Blocky, Position = new Vector3(-150, 0, 200) },
+            new { Name = "Cylindrical Hauler", Size = ShipSize.Frigate, Role = ShipRole.Trading, Material = "Titanium", Style = "Traders", Hull = ShipHullShape.Cylindrical, Position = new Vector3(-150, 0, 250) },
+            new { Name = "Irregular Pirate", Size = ShipSize.Corvette, Role = ShipRole.Combat, Material = "Iron", Style = "Pirates", Hull = ShipHullShape.Irregular, Position = new Vector3(-150, 0, 300) },
         };
         
-        // Generate all test ships
-        foreach (var config in testConfigurations)
+        // Generate all test ships with varied seeds
+        for (int i = 0; i < testConfigurations.Length; i++)
         {
+            var config = testConfigurations[i];
             try
             {
+                // Create faction style with specified hull shape
+                var style = FactionShipStyle.GetDefaultStyle(config.Style);
+                style.PreferredHullShape = config.Hull;
+                
                 var shipConfig = new ShipGenerationConfig
                 {
                     Size = config.Size,
                     Role = config.Role,
                     Material = config.Material,
-                    Style = FactionShipStyle.GetDefaultStyle(config.Style),
-                    Seed = config.Name.GetHashCode()
+                    Style = style,
+                    Seed = baseSeed + i * 1000 + config.Name.GetHashCode() // Varied seed for different results each time
                 };
                 
                 var generatedShip = shipGenerator.GenerateShip(shipConfig);
@@ -2812,39 +3289,44 @@ class Program
             }
         }
         
-        // Add some enhanced stations (using visual enhancements)
+        // Add some enhanced stations (using visual enhancements) with varied seeds
         Console.WriteLine("Adding test stations...");
         try
         {
-            var stationGenerator = new ProceduralStationGenerator(seed: 789);
-            var stationTypes = new[] { "Trading", "Military", "Industrial" };
-            int stationNum = 0;
-            
-            foreach (var stationType in stationTypes)
+            var stationGenerator = new ProceduralStationGenerator(baseSeed + 5000);
+            var stationConfigs = new[]
             {
+                new { Type = "Trading", Material = "Titanium", Arch = StationArchitecture.Modular, Position = new Vector3(0, 200, 400) },
+                new { Type = "Military", Material = "Ogonite", Arch = StationArchitecture.Modular, Position = new Vector3(0, 350, 400) },
+                new { Type = "Industrial", Material = "Iron", Arch = StationArchitecture.Sprawling, Position = new Vector3(0, 500, 400) },
+                new { Type = "Research", Material = "Avorion", Arch = StationArchitecture.Modular, Position = new Vector3(0, 650, 400) },
+            };
+            
+            for (int i = 0; i < stationConfigs.Length; i++)
+            {
+                var stationConfig = stationConfigs[i];
                 var config = new StationGenerationConfig
                 {
                     Size = StationSize.Medium,
-                    StationType = stationType,
-                    Material = "Titanium",
-                    Architecture = StationArchitecture.Modular,
-                    Seed = stationType.GetHashCode()
+                    StationType = stationConfig.Type,
+                    Material = stationConfig.Material,
+                    Architecture = stationConfig.Arch,
+                    Seed = baseSeed + 6000 + i * 100 // Varied seed for stations too
                 };
                 
                 var generatedStation = stationGenerator.GenerateStation(config);
-                var stationEntity = _gameEngine!.EntityManager.CreateEntity($"{stationType} Station");
+                var stationEntity = _gameEngine!.EntityManager.CreateEntity($"{stationConfig.Type} Station");
                 
                 _gameEngine.EntityManager.AddComponent(stationEntity.Id, generatedStation.Structure);
                 
                 var stationPhysics = new PhysicsComponent
                 {
-                    Position = playerPosition + new Vector3(0, 200 + (stationNum * 150), 400),
+                    Position = playerPosition + stationConfig.Position,
                     Velocity = Vector3.Zero,
                     Mass = generatedStation.Structure.TotalMass,
                     IsStatic = true
                 };
                 _gameEngine.EntityManager.AddComponent(stationEntity.Id, stationPhysics);
-                stationNum++;
             }
         }
         catch (Exception ex)
@@ -2864,7 +3346,9 @@ class Program
         }
         
         Console.WriteLine($"✓ Test showcase created: {shipCount} ships generated");
-        Console.WriteLine($"  Ships are positioned at various distances from player ship");
+        Console.WriteLine($"  Ships use varied seeds for different designs each playthrough");
+        Console.WriteLine($"  Multiple hull shapes: Angular, Sleek, Blocky, Cylindrical, Irregular");
+        Console.WriteLine($"  Ships positioned at various distances from player ship");
         Console.WriteLine($"  Use camera controls to fly around and inspect each design");
         Console.WriteLine($"  All implementations are now visible for testing!");
     }
