@@ -1053,15 +1053,120 @@ public class ProceduralShipGenerator
     
     /// <summary>
     /// Generate irregular hull (pirate/cobbled together ships)
+    /// ENHANCED: Add connected protrusions while maintaining structural integrity
     /// </summary>
     private void GenerateIrregularHull(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config)
     {
-        // Start with a basic blocky hull
-        GenerateBlockyHull(ship, dimensions * 0.9f, config);
+        // Start with a slightly smaller core hull for base connectivity
+        GenerateBlockyHull(ship, dimensions * 0.85f, config);
         
-        // For now, irregular ships are just slightly smaller blocky hulls to differentiate them
-        // Future enhancement: Add connected protrusions that maintain structural integrity
-        // The key is all blocks must connect - random protrusions violate this
+        // Get existing hull blocks to build from
+        var existingHullBlocks = ship.Structure.Blocks
+            .Where(b => b.BlockType == BlockType.Hull || b.BlockType == BlockType.Armor)
+            .ToList();
+        
+        if (existingHullBlocks.Count == 0) return;
+        
+        // Add asymmetric connected protrusions for "cobbled together" look
+        int protrusionCount = 3 + _random.Next(5); // 3-7 protrusions
+        float blockSize = 2f;
+        
+        for (int i = 0; i < protrusionCount; i++)
+        {
+            // Pick a random existing hull block to grow from (ensures connectivity)
+            var baseBlock = existingHullBlocks[_random.Next(existingHullBlocks.Count)];
+            
+            // Determine protrusion direction (outward from center)
+            Vector3 protrusionDir = Vector3.Normalize(baseBlock.Position);
+            if (protrusionDir.Length() < 0.1f) protrusionDir = new Vector3(1, 0, 0);
+            
+            // Vary the direction slightly for irregularity
+            protrusionDir += new Vector3(
+                ((float)_random.NextDouble() - 0.5f) * 0.6f,
+                ((float)_random.NextDouble() - 0.5f) * 0.6f,
+                ((float)_random.NextDouble() - 0.5f) * 0.6f
+            );
+            protrusionDir = Vector3.Normalize(protrusionDir);
+            
+            // Build protrusion block by block (guarantees connectivity)
+            int protrusionLength = 2 + _random.Next(4); // 2-5 blocks
+            Vector3 currentPos = baseBlock.Position;
+            
+            for (int j = 0; j < protrusionLength; j++)
+            {
+                // Move in the protrusion direction
+                currentPos += protrusionDir * blockSize * 1.2f; // Slightly overlapping
+                
+                // Vary block size for irregular look
+                Vector3 irregularSize = new Vector3(
+                    blockSize * (0.8f + (float)_random.NextDouble() * 0.6f),
+                    blockSize * (0.8f + (float)_random.NextDouble() * 0.6f),
+                    blockSize * (0.8f + (float)_random.NextDouble() * 0.6f)
+                );
+                
+                var protrusionBlock = new VoxelBlock(
+                    currentPos,
+                    irregularSize,
+                    config.Material,
+                    BlockType.Hull
+                );
+                ship.Structure.AddBlock(protrusionBlock);
+                existingHullBlocks.Add(protrusionBlock); // Add to pool for potential branching
+                
+                // Occasionally branch
+                if (_random.NextDouble() < 0.3 && j > 0)
+                {
+                    Vector3 branchDir = Vector3.Normalize(protrusionDir + new Vector3(
+                        ((float)_random.NextDouble() - 0.5f),
+                        ((float)_random.NextDouble() - 0.5f),
+                        ((float)_random.NextDouble() - 0.5f)
+                    ));
+                    
+                    int branchLength = 1 + _random.Next(3);
+                    Vector3 branchPos = currentPos;
+                    
+                    for (int k = 0; k < branchLength; k++)
+                    {
+                        branchPos += branchDir * blockSize * 1.2f;
+                        var branchBlock = new VoxelBlock(
+                            branchPos,
+                            new Vector3(blockSize * 0.9f, blockSize * 0.9f, blockSize * 0.9f),
+                            config.Material,
+                            BlockType.Hull
+                        );
+                        ship.Structure.AddBlock(branchBlock);
+                    }
+                }
+            }
+        }
+        
+        // Add random asymmetric armor plates for "patched up" appearance
+        int armorPatchCount = 4 + _random.Next(6);
+        for (int i = 0; i < armorPatchCount; i++)
+        {
+            var baseBlock = existingHullBlocks[_random.Next(existingHullBlocks.Count)];
+            
+            // Add irregular armor patch
+            var patchSize = new Vector3(
+                blockSize * (1.2f + (float)_random.NextDouble() * 0.8f),
+                blockSize * (0.6f + (float)_random.NextDouble() * 0.4f),
+                blockSize * (1.2f + (float)_random.NextDouble() * 0.8f)
+            );
+            
+            Vector3 patchOffset = new Vector3(
+                ((float)_random.NextDouble() - 0.5f) * blockSize,
+                ((float)_random.NextDouble() - 0.5f) * blockSize,
+                ((float)_random.NextDouble() - 0.5f) * blockSize
+            );
+            
+            var armorPatch = new VoxelBlock(
+                baseBlock.Position + patchOffset,
+                patchSize,
+                config.Material,
+                BlockType.Armor
+            );
+            ship.Structure.AddBlock(armorPatch);
+        }
     }
     
     /// <summary>
