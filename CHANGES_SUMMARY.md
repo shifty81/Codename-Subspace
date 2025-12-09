@@ -1,4 +1,4 @@
-# Changes Summary - December 9, 2024
+# Changes Summary
 
 ## Overview
 This document summarizes the changes made to streamline Codename:Subspace and address user questions about menu cleanup, mouse functionality, and galaxy map/travel features.

@@ -78,7 +78,7 @@ class Program
                     _running = false;
                     break;
                 default:
-                    Console.WriteLine("\n⚠ Invalid option! Please select 1, 2, or 0.");
+                    Console.WriteLine("\n⚠ Invalid option! Please select a valid menu option.");
                     break;
             }
         }

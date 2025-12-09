@@ -1,6 +1,6 @@
 # Codename:Subspace - Gameplay Features Status
 
-**Last Updated:** December 9, 2024  
+**Last Updated:** December 2024  
 **Version:** v0.9.0+
 
 ---
