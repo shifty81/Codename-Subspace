@@ -54,46 +54,15 @@ class Program
     {
         while (_running)
         {
-            Console.WriteLine("\n=== Main Menu ===");
-            Console.WriteLine("--- PLAY GAME ---");
-            Console.WriteLine("1. NEW GAME - Start Full Gameplay Experience");
-            Console.WriteLine("19. SHOWCASE MODE - Visual Demo with Enhanced UI [NEW! ✨]");
+            Console.WriteLine("\n╔═══════════════════════════════════════════════════╗");
+            Console.WriteLine("║      Codename:Subspace - Main Menu              ║");
+            Console.WriteLine("╚═══════════════════════════════════════════════════╝");
             Console.WriteLine();
-            Console.WriteLine("--- DEMOS & TESTS ---");
-            Console.WriteLine("2. Engine Demo - Create Test Ship");
-            Console.WriteLine("3. Voxel System Demo - Build Ship Structure");
-            Console.WriteLine("4. Physics Demo - Simulate Movement");
-            Console.WriteLine("5. Procedural Generation - Generate Galaxy Sector");
-            Console.WriteLine("6. Resource Management Demo");
-            Console.WriteLine("7. RPG Systems Demo - Trading & Progression");
-            Console.WriteLine("8. Scripting Demo - Execute Lua Script");
-            Console.WriteLine("9. Multiplayer - Start Server");
-            Console.WriteLine("10. View Statistics");
-            Console.WriteLine("11. 3D Graphics Demo - Visualize Voxel Ships");
-            Console.WriteLine("12. Persistence Demo - Save/Load Game");
-            Console.WriteLine("13. Player Pod Demo - Character System");
-            Console.WriteLine("14. Enhanced Pod Demo - Skills & Abilities");
-            Console.WriteLine("16. Collision & Damage Test - Test Physics Collision");
-            Console.WriteLine("17. System Verification - Test All Systems");
-            Console.WriteLine("18. Ship Generation Demo - Procedural Ships & Textures");
-            Console.WriteLine("21. Integration Test - Test All Systems Together [NEW! 🧪]");
-            Console.WriteLine("22. Movement & Shape Test - Verify Smooth Movement & Ship Shapes [NEW! ✨]");
-            Console.WriteLine("23. Test Ship Connectivity - Verify No Floating Blocks [NEW! 🔧]");
-            Console.WriteLine("24. Test Ship Shape Variety - Verify Different Hull Shapes [NEW! 🎨]");
-            Console.WriteLine("25. Ship Showcase - Generate 20 Ships for Selection [NEW! 🚀⭐]");
-            Console.WriteLine("26. AI Ship Generation - AI-Driven Voxel Construction [NEW! 🤖✨]");
-            Console.WriteLine("27. Visual Enhancements Test - Test Ship/Station/Asteroid Details [NEW! ✨]");
-            Console.WriteLine("28. GRAPHICAL MAIN MENU - Comprehensive Game Setup [NEW! 🎮✨]");
-            Console.WriteLine("29. Industrial Mining Ship Demo - Angular/Blocky Mining Ships [NEW! ⛏️🚀]");
-            Console.WriteLine("30. NPR/PBR Rendering Mode Demo - Fix Visual Issues on Blocks [NEW! 🎨✨]");
-            Console.WriteLine("31. World Generation Showcase - Visual Demo of All Options [NEW! 🌌🔮]");
-            Console.WriteLine("32. NMS-Style Modular Ship Generator - Snap-Together Modules [NEW! 🚀🔧]");
+            Console.WriteLine("  1. Start New Game - Full Gameplay Experience");
+            Console.WriteLine("  2. About / Version Info");
+            Console.WriteLine("  0. Exit");
             Console.WriteLine();
-            Console.WriteLine("--- INFO ---");
-            Console.WriteLine("15. About / Version Info");
-            Console.WriteLine("20. Generate HTML Demo Viewer [NEW! 📄]");
-            Console.WriteLine("0. Exit");
-            Console.Write("\nSelect option: ");
+            Console.Write("Select option: ");
 
             var choice = Console.ReadLine();
 
@@ -103,103 +72,13 @@ class Program
                     StartNewGame();
                     break;
                 case "2":
-                    CreateTestShipDemo();
-                    break;
-                case "3":
-                    VoxelSystemDemo();
-                    break;
-                case "4":
-                    PhysicsDemo();
-                    break;
-                case "5":
-                    ProceduralGenerationDemo();
-                    break;
-                case "6":
-                    ResourceManagementDemo();
-                    break;
-                case "7":
-                    RPGSystemsDemo();
-                    break;
-                case "8":
-                    ScriptingDemo();
-                    break;
-                case "9":
-                    MultiplayerDemo();
-                    break;
-                case "10":
-                    ShowStatistics();
-                    break;
-                case "11":
-                    GraphicsDemo();
-                    break;
-                case "12":
-                    PersistenceDemo();
-                    break;
-                case "13":
-                    PlayerPodDemo();
-                    break;
-                case "14":
-                    EnhancedPlayerPodDemo();
-                    break;
-                case "15":
                     ShowVersionInfo();
-                    break;
-                case "16":
-                    CollisionDamageDemo();
-                    break;
-                case "17":
-                    SystemVerificationDemo();
-                    break;
-                case "18":
-                    ShipGenerationDemo();
-                    break;
-                case "19":
-                    ShowcaseMode();
-                    break;
-                case "20":
-                    GenerateHTMLDemoViewer();
-                    break;
-                case "21":
-                    RunIntegrationTest();
-                    break;
-                case "22":
-                    RunMovementAndShapeTest();
-                    break;
-                case "23":
-                    TestShipConnectivity.Run();
-                    break;
-                case "24":
-                    TestShipShapes.Run();
-                    break;
-                case "25":
-                    RunShipShowcase();
-                    break;
-                case "26":
-                    RunAIShipGenerationDemo();
-                    break;
-                case "27":
-                    RunVisualEnhancementsTest();
-                    break;
-                case "28":
-                    LaunchGraphicalMainMenu();
-                    break;
-                case "29":
-                    RunIndustrialMiningShipDemo();
-                    break;
-                case "30":
-                    RunRenderingModeDemo();
-                    break;
-                case "31":
-                    RunWorldGenerationShowcase();
-                    break;
-                case "32":
-                    RunModularShipDemo();
                     break;
                 case "0":
                     _running = false;
                     break;
                 default:
-                    Console.WriteLine("Invalid option!");
+                    Console.WriteLine("\n⚠ Invalid option! Please select a valid menu option.");
                     break;
             }
         }

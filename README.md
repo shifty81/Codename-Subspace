@@ -34,9 +34,11 @@ dotnet run
 - **C** - Toggle between Camera and Ship Control
 - **WASD + Space/Shift** - Movement/Thrust
 - **Arrow Keys + Q/E** - Ship rotation
-- **~** (Tilde) - In-Game Testing Console ✨ **NEW!**
+- **M** - Galaxy Map (sector travel and navigation) ✨
+- **~** (Tilde) - In-Game Testing Console ✨
 - **TAB** - Player Status, **I** - Inventory, **B** - Ship Builder
-- **ESC** - Exit
+- **Mouse** - Free-look camera (hold ALT to show cursor for UI)
+- **ESC** - Pause Menu
 
 ## 🌟 Overview
 
@@ -404,38 +406,76 @@ Or download from [dotnet.microsoft.com/download](https://dotnet.microsoft.com/do
 
 ### Running the Application
 
-The application provides an interactive console menu with various demos:
+The application now features a streamlined menu focused on the playable game:
 
-1. **Engine Demo** - Create a test ship with voxel structure, physics, and inventory
-2. **Voxel System Demo** - Build custom ship structures
-3. **Physics Demo** - Simulate Newtonian physics
-4. **Procedural Generation** - Generate galaxy sectors
-5. **Resource Management** - Manage inventory and crafting
-6. **RPG Systems** - Trading, progression, and loot
-7. **Scripting** - Execute Lua scripts
-8. **Multiplayer** - Start multiplayer server
-9. **Statistics** - View engine statistics
-10. **3D Graphics Demo** - **NEW!** 🎨 Visualize voxel ships in real-time 3D
-11. **Persistence Demo** - **NEW!** 💾 Save and load game state
+**Main Menu:**
+1. **Start New Game** - Full gameplay experience with ship selection, exploration, combat, and trading
+2. **About / Version Info** - View game information and system requirements
+0. **Exit** - Close the application
 
-#### Using 3D Graphics Visualization
+> **🎮 For detailed gameplay features, controls, and systems, see [GAMEPLAY_FEATURES.md](GAMEPLAY_FEATURES.md)**
 
-Select option 10 from the main menu to open a 3D graphics window that visualizes your voxel ships!
+#### Starting Your Journey
 
-**Controls:**
-- **WASD** - Move camera forward/back/left/right
-- **Space/Shift** - Move camera up/down
-- **Mouse** - Look around (free camera)
-- **ESC** - Close graphics window and return to menu
+When you select **Start New Game**, you will:
+1. **Choose your starting ship** from 12 procedurally generated options
+   - View detailed stats for each ship
+   - Press **V** to preview ships in 3D before choosing
+   - Different roles: Combat, Exploration, Mining, Trading, Multipurpose
+2. **Enter the game world** at the galaxy rim (Iron Zone)
+3. **Control your ship** with full 6DOF movement
+4. **Explore the galaxy** - Use **M** key to open the Galaxy Map
+5. **Travel to new sectors** via hyperdrive jumps
+6. **Mine, trade, fight, and build** your way to the galactic core
 
-**Features:**
-- Real-time 3D rendering of voxel structures
-- Phong lighting with ambient, diffuse, and specular components
-- Material-based colors (Iron=gray, Titanium=blue, Naonite=green, etc.)
-- Smooth camera controls for navigation
-- Automatic creation of demo ships if none exist
+#### Game Controls Summary
 
-If no entities are present when you start the graphics demo, the engine will automatically create three sample ships with different designs to showcase the rendering capabilities.
+**Movement:**
+- **C** - Toggle between Camera Mode and Ship Control Mode
+- **WASD** - Forward/Back/Strafe
+- **Space/Shift** - Thrust Up/Down
+- **Arrow Keys + Q/E** - Ship Rotation
+
+**UI & Navigation:**
+- **M** - Galaxy Map (sector travel, navigation)
+- **ESC** - Pause Menu
+- **TAB** - Player Status
+- **I** - Inventory
+- **B** - Ship Builder
+- **~** - In-Game Testing Console (40+ commands)
+
+**Mouse:**
+- Free-look camera in Camera Mode
+- Hold **ALT** to show cursor for UI interaction
+- Automatic cursor management in menus
+
+#### Key Features You Can Use Now
+
+✅ **Galaxy Exploration** - Press **M** to open the Galaxy Map
+- View your current sector and surrounding regions
+- Right-click sectors to initiate hyperdrive jumps
+- Travel toward the galactic center (0,0,0) to unlock better materials
+- Tech zones: Iron → Titanium → Naonite → Trinium → Xanion → Ogonite → Avorion
+
+✅ **Ship Building** - Press **B** to modify your ship
+- 9 block types: Armor, Engine, Thruster, Generator, Shield, Gyro, Weapon, Cargo, Crew
+- 7 material types with different properties
+- Real-time voxel construction
+
+✅ **Combat & Mining**
+- Find and engage enemy ships
+- Mine asteroids for resources
+- Manage shields and energy
+
+✅ **Trading & Economy**
+- Visit stations to buy/sell resources
+- 12 resource types available
+- Dynamic pricing system
+
+✅ **Fleet Management** - Unlocks as you progress
+- Hire captains in Ogonite zones
+- Command multiple ships
+- Automated fleet behaviors
 
 #### Using Development Tools
 
@@ -617,6 +657,7 @@ For detailed credits and acknowledgments, see [CREDITS.md](CREDITS.md).
 ## Documentation
 
 ### 📋 Quick Reference
+- **[Gameplay Features](GAMEPLAY_FEATURES.md)** - 🎮 **COMPLETE GUIDE** - All gameplay features, controls, and systems
 - **[Quick Status](QUICK_STATUS.md)** - ⚡⚡ **SUPER QUICK** - Status in 1 minute
 - **[What's Left to Implement](WHATS_LEFT_TO_IMPLEMENT.md)** - 📝 **COMPLETE GUIDE** - Detailed breakdown of remaining work (580+ lines)
 - **[Playability FAQ](PLAYABILITY_FAQ.md)** - ⚡ **QUICK ANSWERS** - Is it playable? What can I do? FAQ format
@@ -629,6 +670,8 @@ For detailed credits and acknowledgments, see [CREDITS.md](CREDITS.md).
 - **[Quick Start Guide](QUICKSTART.md)** - Get up and running in minutes
 - **[How to Build and Run](HOW_TO_BUILD_AND_RUN.md)** - Complete build instructions
 - **[Core Gameplay Mechanics](CORE_GAMEPLAY_MECHANICS.md)** - 🎮 Avorion-inspired design and implementation
+- **[Galaxy Map Guide](GALAXY_MAP_GUIDE.md)** - 🗺️ Complete galaxy map and sector travel documentation
+- **[In-Game Testing Guide](IN_GAME_TESTING_GUIDE.md)** - 🧪 Testing console commands and features
 - **[Architecture Review](ARCHITECTURE.md)** - Comprehensive backend architecture analysis (540+ lines)
 - **[Implementation Roadmap](IMPLEMENTATION_ROADMAP.md)** - Detailed development plan and timelines
 - **[Executive Summary](EXECUTIVE_SUMMARY.md)** - Backend review summary
