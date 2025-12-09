@@ -16,7 +16,7 @@ public enum StationSize
 }
 
 /// <summary>
-/// Station architectural style
+/// Station architectural style - ENHANCED with more creative options
 /// </summary>
 public enum StationArchitecture
 {
@@ -24,7 +24,12 @@ public enum StationArchitecture
     Ring,           // Ring-shaped station (rotating habitat)
     Tower,          // Tall spire structure
     Industrial,     // Complex industrial framework
-    Sprawling       // Spread-out complex structure
+    Sprawling,      // Spread-out complex structure
+    Organic,        // Bio-inspired flowing shapes
+    Crystalline,    // Crystal-like geometric structures
+    Spherical,      // Massive sphere-based design
+    Helix,          // Double-helix DNA-like structure
+    Flower          // Petal-like radiating sections
 }
 
 /// <summary>
@@ -143,6 +148,21 @@ public class ProceduralStationGenerator
                 break;
             case StationArchitecture.Sprawling:
                 GenerateSprawlingStation(station, dimensions, config);
+                break;
+            case StationArchitecture.Organic:
+                GenerateOrganicStation(station, dimensions, config);
+                break;
+            case StationArchitecture.Crystalline:
+                GenerateCrystallineStation(station, dimensions, config);
+                break;
+            case StationArchitecture.Spherical:
+                GenerateSphericalStation(station, dimensions, config);
+                break;
+            case StationArchitecture.Helix:
+                GenerateHelixStation(station, dimensions, config);
+                break;
+            case StationArchitecture.Flower:
+                GenerateFlowerStation(station, dimensions, config);
                 break;
         }
     }
@@ -970,6 +990,431 @@ public class ProceduralStationGenerator
             else if (block.BlockType == BlockType.TurretMount)
             {
                 block.ColorRGB = accentColor;
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Generate organic flowing station (bio-inspired design)
+    /// </summary>
+    private void GenerateOrganicStation(GeneratedStation station, Vector3 dimensions, StationGenerationConfig config)
+    {
+        float blockSize = 2.5f;
+        float spacing = 3f;
+        
+        // Central "core" - organic bulbous shape
+        float coreRadius = Math.Min(dimensions.X, Math.Min(dimensions.Y, dimensions.Z)) / 4;
+        GenerateSphereSection(station, Vector3.Zero, coreRadius, config.Material);
+        
+        // Add 4-6 flowing "tentacles" or arms radiating outward
+        int armCount = 4 + _random.Next(3);
+        
+        for (int i = 0; i < armCount; i++)
+        {
+            float baseAngle = (float)(i * 2 * Math.PI / armCount);
+            float angleVariation = (float)((_random.NextDouble() - 0.5f) * Math.PI / 6);
+            float angle = baseAngle + angleVariation;
+            
+            // Create flowing curved arm
+            int segments = 10 + _random.Next(10);
+            float armLength = dimensions.X * 0.4f;
+            float segmentLength = armLength / segments;
+            
+            Vector3 currentPos = Vector3.Zero;
+            Vector3 currentDir = new Vector3(
+                (float)Math.Cos(angle),
+                (float)(_random.NextDouble() - 0.5f) * 0.3f,
+                (float)Math.Sin(angle)
+            );
+            
+            for (int j = 0; j < segments; j++)
+            {
+                float progress = j / (float)segments;
+                float radius = coreRadius * (1.0f - progress * 0.7f); // Taper
+                
+                // Add slight curve/wave
+                float wave = (float)Math.Sin(progress * Math.PI * 2 + angle) * 5f;
+                currentDir = Vector3.Normalize(currentDir + new Vector3(
+                    (float)(_random.NextDouble() - 0.5f) * 0.2f,
+                    wave * 0.1f,
+                    (float)(_random.NextDouble() - 0.5f) * 0.2f
+                ));
+                
+                currentPos += currentDir * segmentLength;
+                
+                // Generate segment - organic bulbous sections
+                for (float r = 0; r < radius; r += spacing)
+                {
+                    for (float theta = 0; theta < 360; theta += 30)
+                    {
+                        float rad = theta * MathF.PI / 180f;
+                        Vector3 offset = new Vector3(
+                            r * MathF.Cos(rad),
+                            r * MathF.Sin(rad),
+                            0
+                        );
+                        
+                        station.Structure.AddBlock(new VoxelBlock(
+                            currentPos + offset,
+                            new Vector3(blockSize, blockSize, blockSize),
+                            config.Material,
+                            BlockType.Hull
+                        ));
+                    }
+                }
+                
+                // Add occasional bulges
+                if (j % 3 == 0)
+                {
+                    float bulgeRadius = radius * 1.3f;
+                    GenerateSphereSection(station, currentPos, bulgeRadius, config.Material);
+                }
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Generate crystalline geometric station
+    /// </summary>
+    private void GenerateCrystallineStation(GeneratedStation station, Vector3 dimensions, StationGenerationConfig config)
+    {
+        float blockSize = 2.5f;
+        float spacing = 3f;
+        
+        // Central geometric core - octahedron
+        float coreSize = Math.Min(dimensions.X, Math.Min(dimensions.Y, dimensions.Z)) / 3;
+        GenerateOctahedron(station, Vector3.Zero, coreSize, config.Material);
+        
+        // Add crystal spikes radiating outward
+        int spikeCount = 8 + _random.Next(8);
+        
+        for (int i = 0; i < spikeCount; i++)
+        {
+            float angle = (float)(i * 2 * Math.PI / spikeCount);
+            float elevation = (float)((_random.NextDouble() - 0.5f) * Math.PI / 3);
+            
+            Vector3 direction = new Vector3(
+                (float)(Math.Cos(angle) * Math.Cos(elevation)),
+                (float)Math.Sin(elevation),
+                (float)(Math.Sin(angle) * Math.Cos(elevation))
+            );
+            
+            // Create sharp crystal spike
+            int spikeLength = 15 + _random.Next(20);
+            float baseWidth = 4f + (float)_random.NextDouble() * 3f;
+            
+            for (int j = 0; j < spikeLength; j++)
+            {
+                float progress = j / (float)spikeLength;
+                float width = baseWidth * (1.0f - progress * 0.9f); // Sharp taper
+                
+                Vector3 pos = direction * (coreSize + j * spacing);
+                
+                // Create diamond cross-section
+                for (float x = -width; x <= width; x += spacing)
+                {
+                    for (float y = -width; y <= width; y += spacing)
+                    {
+                        // Diamond shape filter
+                        if (Math.Abs(x) + Math.Abs(y) <= width)
+                        {
+                            station.Structure.AddBlock(new VoxelBlock(
+                                pos + new Vector3(x, y, 0),
+                                new Vector3(blockSize, blockSize, blockSize),
+                                "Crystal",  // Use crystal material
+                                BlockType.Hull
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Add floating crystal fragments
+        int fragmentCount = 10 + _random.Next(15);
+        for (int i = 0; i < fragmentCount; i++)
+        {
+            float distance = dimensions.X * 0.3f + (float)_random.NextDouble() * dimensions.X * 0.3f;
+            float angle = (float)(_random.NextDouble() * Math.PI * 2);
+            float elevation = (float)((_random.NextDouble() - 0.5f) * Math.PI / 4);
+            
+            Vector3 pos = new Vector3(
+                (float)(Math.Cos(angle) * Math.Cos(elevation)) * distance,
+                (float)Math.Sin(elevation) * distance,
+                (float)(Math.Sin(angle) * Math.Cos(elevation)) * distance
+            );
+            
+            float fragmentSize = 3f + (float)_random.NextDouble() * 5f;
+            GenerateOctahedron(station, pos, fragmentSize, "Crystal");
+        }
+    }
+    
+    /// <summary>
+    /// Generate massive spherical station (Death Star-style)
+    /// </summary>
+    private void GenerateSphericalStation(GeneratedStation station, Vector3 dimensions, StationGenerationConfig config)
+    {
+        float blockSize = 2.5f;
+        float spacing = 3.5f;
+        
+        // Main sphere
+        float mainRadius = Math.Min(dimensions.X, Math.Min(dimensions.Y, dimensions.Z)) / 2.5f;
+        GenerateSphereSection(station, Vector3.Zero, mainRadius, config.Material);
+        
+        // Add equatorial trench/ring
+        float trenchRadius = mainRadius * 1.05f;
+        float trenchWidth = mainRadius * 0.15f;
+        
+        for (float angle = 0; angle < 360; angle += 10)
+        {
+            float rad = angle * MathF.PI / 180f;
+            
+            for (float z = -trenchWidth; z <= trenchWidth; z += spacing)
+            {
+                Vector3 pos = new Vector3(
+                    trenchRadius * MathF.Cos(rad),
+                    z,
+                    trenchRadius * MathF.Sin(rad)
+                );
+                
+                station.Structure.AddBlock(new VoxelBlock(
+                    pos,
+                    new Vector3(blockSize, blockSize * 2, blockSize),
+                    config.Material,
+                    BlockType.Hull
+                ));
+            }
+        }
+        
+        // Add surface details - panels and structures
+        int panelCount = 20 + _random.Next(30);
+        for (int i = 0; i < panelCount; i++)
+        {
+            float angle = (float)(_random.NextDouble() * Math.PI * 2);
+            float elevation = (float)((_random.NextDouble() - 0.5f) * Math.PI);
+            
+            Vector3 surfacePos = new Vector3(
+                mainRadius * (float)(Math.Cos(angle) * Math.Cos(elevation)),
+                mainRadius * (float)Math.Sin(elevation),
+                mainRadius * (float)(Math.Sin(angle) * Math.Cos(elevation))
+            );
+            
+            // Add small surface structure
+            float panelSize = 3f + (float)_random.NextDouble() * 4f;
+            GenerateBox(station, surfacePos, new Vector3(panelSize, panelSize * 0.3f, panelSize), config.Material);
+        }
+        
+        // Add polar docking ports
+        GenerateCylinder(station, new Vector3(0, mainRadius, 0), mainRadius * 0.15f, mainRadius * 0.3f, config.Material);
+        GenerateCylinder(station, new Vector3(0, -mainRadius, 0), mainRadius * 0.15f, mainRadius * 0.3f, config.Material);
+    }
+    
+    /// <summary>
+    /// Generate helix/DNA-style station
+    /// </summary>
+    private void GenerateHelixStation(GeneratedStation station, Vector3 dimensions, StationGenerationConfig config)
+    {
+        float blockSize = 2.5f;
+        float spacing = 3f;
+        
+        float height = dimensions.Y;
+        float radius = dimensions.X / 4;
+        int turns = 3 + _random.Next(3);  // 3-5 full turns
+        
+        // Generate two intertwined helixes
+        for (int helixIndex = 0; helixIndex < 2; helixIndex++)
+        {
+            float angleOffset = helixIndex * MathF.PI;  // 180° offset for second helix
+            
+            for (float y = -height / 2; y < height / 2; y += spacing)
+            {
+                float progress = (y + height / 2) / height;
+                float angle = progress * turns * 2 * MathF.PI + angleOffset;
+                
+                Vector3 pos = new Vector3(
+                    radius * MathF.Cos(angle),
+                    y,
+                    radius * MathF.Sin(angle)
+                );
+                
+                // Create tube cross-section
+                float tubeRadius = 4f + (float)Math.Sin(progress * Math.PI * 4) * 2f;  // Varying thickness
+                
+                for (float r = 0; r < tubeRadius; r += spacing / 2)
+                {
+                    for (float theta = 0; theta < 360; theta += 30)
+                    {
+                        float rad = theta * MathF.PI / 180f;
+                        Vector3 offset = new Vector3(
+                            r * MathF.Cos(rad) * MathF.Cos(angle),
+                            0,
+                            r * MathF.Sin(rad)
+                        );
+                        
+                        station.Structure.AddBlock(new VoxelBlock(
+                            pos + offset,
+                            new Vector3(blockSize, blockSize, blockSize),
+                            config.Material,
+                            BlockType.Hull
+                        ));
+                    }
+                }
+            }
+        }
+        
+        // Add connecting rungs between helixes
+        int rungCount = turns * 4;  // 4 rungs per turn
+        for (int i = 0; i < rungCount; i++)
+        {
+            float progress = i / (float)rungCount;
+            float y = -height / 2 + progress * height;
+            float angle = progress * turns * 2 * MathF.PI;
+            
+            Vector3 pos1 = new Vector3(
+                radius * MathF.Cos(angle),
+                y,
+                radius * MathF.Sin(angle)
+            );
+            
+            Vector3 pos2 = new Vector3(
+                radius * MathF.Cos(angle + MathF.PI),
+                y,
+                radius * MathF.Sin(angle + MathF.PI)
+            );
+            
+            GenerateCorridor(station, pos1, pos2, 2f, config.Material);
+        }
+    }
+    
+    /// <summary>
+    /// Generate flower/petal-style radiating station
+    /// </summary>
+    private void GenerateFlowerStation(GeneratedStation station, Vector3 dimensions, StationGenerationConfig config)
+    {
+        float blockSize = 2.5f;
+        float spacing = 3f;
+        
+        // Central bulb
+        float bulbRadius = Math.Min(dimensions.X, dimensions.Z) / 6;
+        GenerateSphereSection(station, Vector3.Zero, bulbRadius, config.Material);
+        
+        // Generate petals radiating outward
+        int petalCount = 5 + _random.Next(4);  // 5-8 petals
+        
+        for (int i = 0; i < petalCount; i++)
+        {
+            float angle = (float)(i * 2 * Math.PI / petalCount);
+            
+            // Each petal is a curved, flattened structure
+            int petalSegments = 15;
+            float petalLength = dimensions.X * 0.35f;
+            float petalMaxWidth = petalLength * 0.4f;
+            
+            for (int j = 0; j < petalSegments; j++)
+            {
+                float progress = j / (float)(petalSegments - 1);
+                float distance = bulbRadius + progress * petalLength;
+                
+                // Petal width - wide in middle, narrow at tip
+                float widthFactor = (float)Math.Sin(progress * Math.PI);
+                float width = petalMaxWidth * widthFactor;
+                
+                // Upward curve
+                float curvature = (float)Math.Sin(progress * Math.PI) * petalLength * 0.2f;
+                
+                Vector3 petalCenter = new Vector3(
+                    (float)Math.Cos(angle) * distance,
+                    curvature,
+                    (float)Math.Sin(angle) * distance
+                );
+                
+                // Create petal cross-section (flat and wide)
+                for (float x = -width; x <= width; x += spacing)
+                {
+                    // Elliptical cross-section
+                    float maxZ = width * 0.3f * (1.0f - Math.Abs(x) / width);
+                    
+                    for (float z = -maxZ; z <= maxZ; z += spacing)
+                    {
+                        // Rotate around center
+                        float rotX = x * (float)Math.Cos(angle) - z * (float)Math.Sin(angle);
+                        float rotZ = x * (float)Math.Sin(angle) + z * (float)Math.Cos(angle);
+                        
+                        station.Structure.AddBlock(new VoxelBlock(
+                            petalCenter + new Vector3(rotX, 0, rotZ),
+                            new Vector3(blockSize, blockSize * 0.5f, blockSize),
+                            config.Material,
+                            BlockType.Hull
+                        ));
+                    }
+                }
+            }
+        }
+        
+        // Add connecting structures between petals (stamens)
+        for (int i = 0; i < petalCount; i++)
+        {
+            float angle = (float)(i * 2 * Math.PI / petalCount + Math.PI / petalCount);
+            float stamenLength = dimensions.X * 0.2f;
+            
+            Vector3 stamenTip = new Vector3(
+                (float)Math.Cos(angle) * (bulbRadius + stamenLength),
+                stamenLength * 0.5f,
+                (float)Math.Sin(angle) * (bulbRadius + stamenLength)
+            );
+            
+            // Thin cylindrical stamen
+            for (float t = 0; t < stamenLength; t += spacing)
+            {
+                float progress = t / stamenLength;
+                Vector3 pos = Vector3.Lerp(Vector3.Zero, stamenTip, progress);
+                
+                station.Structure.AddBlock(new VoxelBlock(
+                    pos,
+                    new Vector3(blockSize * 0.5f, blockSize * 0.5f, blockSize * 0.5f),
+                    config.Material,
+                    BlockType.Hull
+                ));
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Generate octahedron (8-sided polyhedron) - useful for crystal structures
+    /// </summary>
+    private void GenerateOctahedron(GeneratedStation station, Vector3 center, float size, string material)
+    {
+        float blockSize = 2.5f;
+        float spacing = 3f;
+        
+        // Octahedron has 6 vertices: ±size on each axis
+        Vector3[] vertices = {
+            center + new Vector3(size, 0, 0),
+            center + new Vector3(-size, 0, 0),
+            center + new Vector3(0, size, 0),
+            center + new Vector3(0, -size, 0),
+            center + new Vector3(0, 0, size),
+            center + new Vector3(0, 0, -size)
+        };
+        
+        // Fill octahedron volume
+        for (float x = -size; x <= size; x += spacing)
+        {
+            for (float y = -size; y <= size; y += spacing)
+            {
+                for (float z = -size; z <= size; z += spacing)
+                {
+                    // Octahedron SDF: |x| + |y| + |z| <= size
+                    if (Math.Abs(x) + Math.Abs(y) + Math.Abs(z) <= size)
+                    {
+                        station.Structure.AddBlock(new VoxelBlock(
+                            center + new Vector3(x, y, z),
+                            new Vector3(blockSize, blockSize, blockSize),
+                            material,
+                            BlockType.Hull
+                        ));
+                    }
+                }
             }
         }
     }
