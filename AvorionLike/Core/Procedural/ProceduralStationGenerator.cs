@@ -16,7 +16,7 @@ public enum StationSize
 }
 
 /// <summary>
-/// Station architectural style
+/// Station architectural style - ENHANCED with more creative options
 /// </summary>
 public enum StationArchitecture
 {
@@ -24,7 +24,12 @@ public enum StationArchitecture
     Ring,           // Ring-shaped station (rotating habitat)
     Tower,          // Tall spire structure
     Industrial,     // Complex industrial framework
-    Sprawling       // Spread-out complex structure
+    Sprawling,      // Spread-out complex structure
+    Organic,        // Bio-inspired flowing shapes
+    Crystalline,    // Crystal-like geometric structures
+    Spherical,      // Massive sphere-based design
+    Helix,          // Double-helix DNA-like structure
+    Flower          // Petal-like radiating sections
 }
 
 /// <summary>

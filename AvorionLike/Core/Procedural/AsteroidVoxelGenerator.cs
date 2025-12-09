@@ -17,7 +17,7 @@ public class AsteroidVoxelGenerator
     }
     
     /// <summary>
-    /// Generate a voxel asteroid with procedural shape and resources
+    /// Generate a voxel asteroid with procedural shape and resources - ENHANCED for realistic rock appearance
     /// </summary>
     public List<VoxelBlock> GenerateAsteroid(AsteroidData asteroidData, int voxelResolution = 8)
     {
@@ -34,7 +34,7 @@ public class AsteroidVoxelGenerator
         float voxelSize = size / voxelResolution;
         float halfSize = size / 2f;
         
-        // Generate voxel grid
+        // Generate voxel grid with more organic, rock-like shapes
         for (int x = 0; x < voxelResolution; x++)
         {
             for (int y = 0; y < voxelResolution; y++)
@@ -49,36 +49,80 @@ public class AsteroidVoxelGenerator
                     );
                     Vector3 worldPos = center + localPos;
                     
-                    // Use SDF and noise to determine if this voxel should exist
+                    // Use SDF and multi-octave noise for realistic rock shape
                     float distanceFromCenter = localPos.Length();
                     float baseRadius = size / 2.5f; // Base sphere
                     
-                    // Add noise distortion for irregular shape
-                    float noiseScale = 0.1f;
-                    float noise = NoiseGenerator.FractalNoise3D(
-                        (worldPos.X + noiseOffsetX) * noiseScale,
-                        (worldPos.Y + noiseOffsetY) * noiseScale,
-                        (worldPos.Z + noiseOffsetZ) * noiseScale,
+                    // Multi-scale noise for realistic rocky surface
+                    float noiseScale1 = 0.08f;  // Large features (big bumps and depressions)
+                    float noise1 = NoiseGenerator.FractalNoise3D(
+                        (worldPos.X + noiseOffsetX) * noiseScale1,
+                        (worldPos.Y + noiseOffsetY) * noiseScale1,
+                        (worldPos.Z + noiseOffsetZ) * noiseScale1,
+                        octaves: 4,
+                        persistence: 0.6f
+                    );
+                    
+                    float noiseScale2 = 0.15f;  // Medium features
+                    float noise2 = NoiseGenerator.FractalNoise3D(
+                        (worldPos.X - noiseOffsetX) * noiseScale2,
+                        (worldPos.Y - noiseOffsetY) * noiseScale2,
+                        (worldPos.Z - noiseOffsetZ) * noiseScale2,
                         octaves: 3,
                         persistence: 0.5f
                     );
                     
-                    // Apply noise to radius (creates bumpy surface)
-                    float distortedRadius = baseRadius * (1.0f + (noise - 0.5f) * 0.6f);
+                    float noiseScale3 = 0.25f;  // Small surface detail
+                    float noise3 = NoiseGenerator.PerlinNoise3D(
+                        worldPos.X * noiseScale3,
+                        worldPos.Y * noiseScale3,
+                        worldPos.Z * noiseScale3
+                    );
+                    
+                    // Combine noise layers for realistic rocky appearance
+                    float combinedNoise = noise1 * 0.6f + noise2 * 0.3f + noise3 * 0.1f;
+                    
+                    // Apply strong distortion for irregular, realistic rock shape
+                    float distortedRadius = baseRadius * (1.0f + (combinedNoise - 0.5f) * 0.9f);
+                    
+                    // Add occasional large protrusions and deep crevices
+                    float protrusion = NoiseGenerator.FractalNoise3D(
+                        (worldPos.X + noiseOffsetZ) * 0.05f,
+                        (worldPos.Y + noiseOffsetZ) * 0.05f,
+                        (worldPos.Z + noiseOffsetZ) * 0.05f,
+                        octaves: 2
+                    );
+                    if (protrusion > 0.7f)
+                    {
+                        distortedRadius *= 1.3f; // Large protrusion
+                    }
+                    else if (protrusion < 0.3f)
+                    {
+                        distortedRadius *= 0.85f; // Deep crevice
+                    }
                     
                     // Check if voxel is inside asteroid
                     if (distanceFromCenter <= distortedRadius)
                     {
-                        // Determine material/resource type
+                        // Determine material/resource type with glowing veins
                         string material = DetermineMaterial(worldPos, asteroidData.ResourceType, noiseOffsetX);
+                        
+                        // Check if this block should be a glowing vein
+                        bool isVein = IsVeinLocation(worldPos, asteroidData.ResourceType, noiseOffsetX);
                         
                         // Create voxel block
                         var block = new VoxelBlock(
                             worldPos,
                             new Vector3(voxelSize, voxelSize, voxelSize),
-                            material,
+                            isVein ? GetGlowingMaterial(asteroidData.ResourceType) : material,
                             BlockType.Hull
                         );
+                        
+                        // Apply glowing color to vein blocks
+                        if (isVein)
+                        {
+                            block.ColorRGB = GetResourceColor(asteroidData.ResourceType);
+                        }
                         
                         blocks.Add(block);
                     }
@@ -87,6 +131,24 @@ public class AsteroidVoxelGenerator
         }
         
         return blocks;
+    }
+    
+    /// <summary>
+    /// Determine if a location should be part of a glowing resource vein
+    /// </summary>
+    private bool IsVeinLocation(Vector3 position, string primaryResource, float seed)
+    {
+        // Use 3D noise to create vein-like patterns
+        float veinNoise = NoiseGenerator.FractalNoise3D(
+            (position.X + seed) * 0.1f,
+            (position.Y + seed) * 0.1f,
+            (position.Z + seed) * 0.1f,
+            octaves: 3,
+            persistence: 0.6f
+        );
+        
+        // Veins appear in concentrated bands
+        return veinNoise > 0.6f && veinNoise < 0.75f;
     }
     
     /// <summary>
@@ -308,13 +370,13 @@ public class AsteroidVoxelGenerator
     }
     
     /// <summary>
-    /// Add craters to asteroid surface
+    /// Add realistic craters to asteroid surface
     /// </summary>
     private void AddCraters(List<VoxelBlock> blocks, Vector3 asteroidCenter, float asteroidSize)
     {
         if (blocks.Count == 0) return;
         
-        int craterCount = 2 + _random.Next(4); // 2-5 craters
+        int craterCount = 3 + _random.Next(6); // 3-8 craters for more realistic appearance
         
         for (int i = 0; i < craterCount; i++)
         {
@@ -327,18 +389,31 @@ public class AsteroidVoxelGenerator
             if (surfaceBlocks.Count == 0) continue;
             
             var craterCenter = surfaceBlocks[_random.Next(surfaceBlocks.Count)].Position;
-            float craterRadius = asteroidSize * 0.1f + (float)_random.NextDouble() * asteroidSize * 0.15f;
+            float craterRadius = asteroidSize * 0.08f + (float)_random.NextDouble() * asteroidSize * 0.18f;
+            float craterDepth = craterRadius * 0.4f; // Crater depth relative to radius
             
-            // Remove blocks within crater radius
+            // Remove blocks within crater with depth falloff for realistic bowl shape
             blocks.RemoveAll(b => 
-                (b.Position - craterCenter).Length() < craterRadius &&
-                (b.Position - asteroidCenter).Length() > asteroidSize * 0.3f // Don't create holes through asteroid
-            );
+            {
+                float distanceToCenter = (b.Position - craterCenter).Length();
+                float distanceToCore = (b.Position - asteroidCenter).Length();
+                
+                // Create bowl-shaped crater with smooth falloff
+                if (distanceToCenter < craterRadius && distanceToCore > asteroidSize * 0.25f)
+                {
+                    float depthFactor = 1.0f - (distanceToCenter / craterRadius);
+                    float requiredDepth = craterDepth * depthFactor;
+                    float actualDepth = distanceToCore - asteroidSize * 0.5f;
+                    
+                    return actualDepth < requiredDepth;
+                }
+                return false;
+            });
         }
     }
     
     /// <summary>
-    /// Add surface details like rock outcroppings
+    /// Add realistic surface details like rock outcroppings, spires, and irregular formations
     /// </summary>
     private void AddSurfaceDetails(List<VoxelBlock> blocks, AsteroidData asteroidData)
     {
@@ -346,10 +421,10 @@ public class AsteroidVoxelGenerator
         
         var surfaceBlocks = blocks
             .OrderByDescending(b => (b.Position - asteroidData.Position).Length())
-            .Take(blocks.Count / 4)
+            .Take(blocks.Count / 3)
             .ToList();
         
-        int detailCount = 5 + _random.Next(10); // 5-14 details
+        int detailCount = 8 + _random.Next(15); // 8-22 details for more realistic rocky surface
         
         for (int i = 0; i < detailCount; i++)
         {
@@ -358,23 +433,85 @@ public class AsteroidVoxelGenerator
             var baseBlock = surfaceBlocks[_random.Next(surfaceBlocks.Count)];
             Vector3 direction = Vector3.Normalize(baseBlock.Position - asteroidData.Position);
             
-            // Add small rock protrusion
-            int protrusions = 1 + _random.Next(3); // 1-3 stacked blocks
-            for (int j = 0; j < protrusions; j++)
+            // Random feature type
+            int featureType = _random.Next(3);
+            
+            if (featureType == 0)
             {
-                var detailSize = new Vector3(
-                    0.5f + (float)_random.NextDouble() * 0.5f,
-                    0.5f + (float)_random.NextDouble() * 0.5f,
-                    0.5f + (float)_random.NextDouble() * 0.5f
-                );
-                
-                var detail = new VoxelBlock(
-                    baseBlock.Position + direction * (j + 1) * 0.6f,
-                    detailSize,
-                    baseBlock.MaterialType,
-                    BlockType.Hull
-                );
-                blocks.Add(detail);
+                // Sharp spire/needle
+                int spireHeight = 2 + _random.Next(4); // 2-5 blocks tall
+                for (int j = 0; j < spireHeight; j++)
+                {
+                    float sizeFactor = 1.0f - (j / (float)spireHeight) * 0.6f; // Taper toward tip
+                    var detailSize = new Vector3(
+                        0.4f + (float)_random.NextDouble() * 0.3f,
+                        0.4f + (float)_random.NextDouble() * 0.3f,
+                        0.6f + (float)_random.NextDouble() * 0.4f
+                    ) * sizeFactor;
+                    
+                    var detail = new VoxelBlock(
+                        baseBlock.Position + direction * (j + 1) * 0.7f,
+                        detailSize,
+                        baseBlock.MaterialType,
+                        BlockType.Hull
+                    );
+                    blocks.Add(detail);
+                }
+            }
+            else if (featureType == 1)
+            {
+                // Boulder/outcropping - wider, flatter
+                int boulderLayers = 1 + _random.Next(3); // 1-3 layers
+                for (int j = 0; j < boulderLayers; j++)
+                {
+                    var detailSize = new Vector3(
+                        0.8f + (float)_random.NextDouble() * 0.6f,
+                        0.4f + (float)_random.NextDouble() * 0.3f,
+                        0.8f + (float)_random.NextDouble() * 0.6f
+                    );
+                    
+                    // Random offset for irregular stacking
+                    Vector3 offset = new Vector3(
+                        ((float)_random.NextDouble() - 0.5f) * 0.4f,
+                        ((float)_random.NextDouble() - 0.5f) * 0.4f,
+                        0
+                    );
+                    
+                    var detail = new VoxelBlock(
+                        baseBlock.Position + direction * (j + 0.5f) * 0.5f + offset,
+                        detailSize,
+                        baseBlock.MaterialType,
+                        BlockType.Hull
+                    );
+                    blocks.Add(detail);
+                }
+            }
+            else
+            {
+                // Cluster of small rocks
+                int clusterSize = 2 + _random.Next(4); // 2-5 small rocks
+                for (int j = 0; j < clusterSize; j++)
+                {
+                    Vector3 clusterOffset = new Vector3(
+                        ((float)_random.NextDouble() - 0.5f) * 1.2f,
+                        ((float)_random.NextDouble() - 0.5f) * 1.2f,
+                        ((float)_random.NextDouble() - 0.5f) * 1.2f
+                    );
+                    
+                    var detailSize = new Vector3(
+                        0.3f + (float)_random.NextDouble() * 0.4f,
+                        0.3f + (float)_random.NextDouble() * 0.4f,
+                        0.3f + (float)_random.NextDouble() * 0.4f
+                    );
+                    
+                    var detail = new VoxelBlock(
+                        baseBlock.Position + direction * 0.6f + clusterOffset,
+                        detailSize,
+                        baseBlock.MaterialType,
+                        BlockType.Hull
+                    );
+                    blocks.Add(detail);
+                }
             }
         }
     }
