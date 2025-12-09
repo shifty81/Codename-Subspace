@@ -168,37 +168,121 @@ public class ProceduralStationGenerator
     }
     
     /// <summary>
-    /// Generate modular station with connected sections
+    /// Generate modular station with connected sections - ENHANCED with more variety
     /// </summary>
     private void GenerateModularStation(GeneratedStation station, Vector3 dimensions, StationGenerationConfig config)
     {
-        // Central hub - large sphere-like core
+        // Central hub - varied core shapes
         float coreRadius = Math.Min(dimensions.X, Math.Min(dimensions.Y, dimensions.Z)) / 3;
-        GenerateSphereSection(station, Vector3.Zero, coreRadius, config.Material);
+        int coreStyle = _random.Next(3);
         
-        // Add 6-8 large modules connected to the core
-        int moduleCount = 6 + _random.Next(3);
-        float moduleDistance = coreRadius * 2.5f;
+        if (coreStyle == 0)
+        {
+            // Spherical core
+            GenerateSphereSection(station, Vector3.Zero, coreRadius, config.Material);
+        }
+        else if (coreStyle == 1)
+        {
+            // Cylindrical core
+            GenerateCylinder(station, Vector3.Zero, coreRadius * 0.8f, coreRadius * 2f, config.Material);
+        }
+        else
+        {
+            // Cubic core
+            GenerateBox(station, Vector3.Zero, new Vector3(coreRadius * 1.6f, coreRadius * 1.6f, coreRadius * 1.6f), config.Material);
+        }
+        
+        // Add 6-10 large modules connected to the core - MORE variety
+        int moduleCount = 6 + _random.Next(5); // 6-10 modules (increased max)
+        float moduleDistance = coreRadius * (2.2f + (float)_random.NextDouble() * 0.8f); // Varied distance
         
         for (int i = 0; i < moduleCount; i++)
         {
             float angle = (float)(i * 2 * Math.PI / moduleCount);
+            
+            // Vary vertical positioning more dramatically
+            float verticalVariation = (i % 3 == 0 ? 1 : (i % 3 == 1 ? -1 : 0)) * moduleDistance * (0.3f + (float)_random.NextDouble() * 0.3f);
+            
             Vector3 modulePos = new Vector3(
                 MathF.Cos(angle) * moduleDistance,
-                MathF.Sin(angle) * moduleDistance,
-                (i % 2 == 0 ? 1 : -1) * moduleDistance * 0.3f
+                MathF.Sin(angle) * moduleDistance * 0.7f + verticalVariation,
+                (i % 2 == 0 ? 1 : -1) * moduleDistance * (0.2f + (float)_random.NextDouble() * 0.3f)
             );
             
-            // Generate module
-            Vector3 moduleSize = new Vector3(
-                15 + _random.Next(10),
-                15 + _random.Next(10),
-                20 + _random.Next(15)
-            );
-            GenerateBox(station, modulePos, moduleSize, config.Material);
+            // VARIED module shapes and sizes
+            int moduleShape = _random.Next(4);
             
-            // Connect module to core with corridor
-            GenerateCorridor(station, Vector3.Zero, modulePos, 3f, config.Material);
+            if (moduleShape == 0)
+            {
+                // Box module
+                Vector3 moduleSize = new Vector3(
+                    12 + _random.Next(12),
+                    12 + _random.Next(12),
+                    18 + _random.Next(18)
+                );
+                GenerateBox(station, modulePos, moduleSize, config.Material);
+            }
+            else if (moduleShape == 1)
+            {
+                // Cylindrical module
+                float moduleRadius = 8 + _random.Next(6);
+                float moduleHeight = 15 + _random.Next(15);
+                GenerateCylinder(station, modulePos, moduleRadius, moduleHeight, config.Material);
+            }
+            else if (moduleShape == 2)
+            {
+                // Spherical module
+                float moduleRadius = 10 + _random.Next(8);
+                GenerateSphereSection(station, modulePos, moduleRadius, config.Material);
+            }
+            else
+            {
+                // Composite module (multiple smaller sections)
+                for (int j = 0; j < 2 + _random.Next(2); j++)
+                {
+                    Vector3 submoduleOffset = new Vector3(
+                        ((float)_random.NextDouble() - 0.5f) * 8,
+                        ((float)_random.NextDouble() - 0.5f) * 8,
+                        ((float)_random.NextDouble() - 0.5f) * 8
+                    );
+                    Vector3 submoduleSize = new Vector3(
+                        6 + _random.Next(6),
+                        6 + _random.Next(6),
+                        8 + _random.Next(8)
+                    );
+                    GenerateBox(station, modulePos + submoduleOffset, submoduleSize, config.Material);
+                }
+            }
+            
+            // Connect module to core with corridor - VARIED corridor styles
+            int corridorStyle = _random.Next(3);
+            
+            if (corridorStyle == 0)
+            {
+                // Single thick corridor
+                GenerateCorridor(station, Vector3.Zero, modulePos, 3f + (float)_random.NextDouble() * 1.5f, config.Material);
+            }
+            else if (corridorStyle == 1)
+            {
+                // Double parallel corridors
+                Vector3 offset = Vector3.Normalize(Vector3.Cross(modulePos, Vector3.UnitY)) * 2f;
+                GenerateCorridor(station, Vector3.Zero, modulePos + offset, 2f, config.Material);
+                GenerateCorridor(station, Vector3.Zero, modulePos - offset, 2f, config.Material);
+            }
+            else
+            {
+                // Curved/articulated corridor with intermediate connection point
+                Vector3 midPoint = modulePos * 0.5f + new Vector3(
+                    ((float)_random.NextDouble() - 0.5f) * moduleDistance * 0.3f,
+                    ((float)_random.NextDouble() - 0.5f) * moduleDistance * 0.3f,
+                    ((float)_random.NextDouble() - 0.5f) * moduleDistance * 0.3f
+                );
+                GenerateCorridor(station, Vector3.Zero, midPoint, 2.5f, config.Material);
+                GenerateCorridor(station, midPoint, modulePos, 2.5f, config.Material);
+                
+                // Add junction box at midpoint
+                GenerateBox(station, midPoint, new Vector3(4, 4, 4), config.Material);
+            }
         }
     }
     
@@ -362,43 +446,136 @@ public class ProceduralStationGenerator
     }
     
     /// <summary>
-    /// Generate sprawling complex with many interconnected sections
+    /// Generate sprawling complex with many interconnected sections - ENHANCED variety
     /// </summary>
     private void GenerateSprawlingStation(GeneratedStation station, Vector3 dimensions, StationGenerationConfig config)
     {
-        // Start with central section
-        GenerateBox(station, Vector3.Zero, new Vector3(25, 25, 25), config.Material);
+        // Start with central section - VARIED core
+        int coreStyle = _random.Next(3);
+        if (coreStyle == 0)
+        {
+            GenerateBox(station, Vector3.Zero, new Vector3(25, 25, 25), config.Material);
+        }
+        else if (coreStyle == 1)
+        {
+            GenerateSphereSection(station, Vector3.Zero, 15f, config.Material);
+        }
+        else
+        {
+            GenerateCylinder(station, Vector3.Zero, 12f, 25f, config.Material);
+        }
         
-        // Grow outward with branching sections
+        // Grow outward with branching sections - MORE variety in section types
         List<Vector3> growthPoints = new List<Vector3> { Vector3.Zero };
-        int sectionCount = 30 + _random.Next(20);
+        int sectionCount = 35 + _random.Next(25); // 35-59 sections (increased for more sprawl)
         
         for (int i = 0; i < sectionCount; i++)
         {
             // Pick a random existing point to grow from
             Vector3 fromPoint = growthPoints[_random.Next(growthPoints.Count)];
             
-            // Generate random direction
+            // Generate random direction with bias toward outward growth
             Vector3 direction = new Vector3(
                 (_random.NextSingle() - 0.5f) * 2f,
                 (_random.NextSingle() - 0.5f) * 2f,
                 (_random.NextSingle() - 0.5f) * 2f
             );
+            
+            // Bias outward from center
+            Vector3 outwardBias = Vector3.Normalize(fromPoint);
+            if (outwardBias.Length() > 0.1f)
+            {
+                direction += outwardBias * 0.6f;
+            }
+            
             direction = Vector3.Normalize(direction);
             
-            float distance = 20 + _random.Next(20);
+            float distance = 15 + _random.Next(25); // Varied distances
             Vector3 newPoint = fromPoint + direction * distance;
             
-            // Add new section
-            Vector3 sectionSize = new Vector3(
-                10 + _random.Next(10),
-                10 + _random.Next(10),
-                15 + _random.Next(10)
-            );
-            GenerateBox(station, newPoint, sectionSize, config.Material);
+            // VARIED section types
+            int sectionType = _random.Next(5);
             
-            // Connect with corridor
-            GenerateCorridor(station, fromPoint, newPoint, 3f, config.Material);
+            if (sectionType == 0)
+            {
+                // Standard box
+                Vector3 sectionSize = new Vector3(
+                    8 + _random.Next(12),
+                    8 + _random.Next(12),
+                    12 + _random.Next(15)
+                );
+                GenerateBox(station, newPoint, sectionSize, config.Material);
+            }
+            else if (sectionType == 1)
+            {
+                // Small sphere
+                float sphereRadius = 6 + _random.Next(6);
+                GenerateSphereSection(station, newPoint, sphereRadius, config.Material);
+            }
+            else if (sectionType == 2)
+            {
+                // Cylinder
+                float cylRadius = 4 + _random.Next(4);
+                float cylHeight = 10 + _random.Next(12);
+                GenerateCylinder(station, newPoint, cylRadius, cylHeight, config.Material);
+            }
+            else if (sectionType == 3)
+            {
+                // Cluster of small boxes
+                for (int j = 0; j < 2 + _random.Next(3); j++)
+                {
+                    Vector3 clusterOffset = new Vector3(
+                        (_random.NextSingle() - 0.5f) * 10,
+                        (_random.NextSingle() - 0.5f) * 10,
+                        (_random.NextSingle() - 0.5f) * 10
+                    );
+                    GenerateBox(station, newPoint + clusterOffset, 
+                        new Vector3(5 + _random.Next(5), 5 + _random.Next(5), 6 + _random.Next(6)),
+                        config.Material);
+                }
+            }
+            else
+            {
+                // Ring section
+                float ringRadius = 8 + _random.Next(6);
+                for (int angle = 0; angle < 360; angle += 30)
+                {
+                    float rad = angle * MathF.PI / 180f;
+                    Vector3 ringPos = newPoint + new Vector3(
+                        ringRadius * MathF.Cos(rad),
+                        ringRadius * MathF.Sin(rad),
+                        0
+                    );
+                    station.Structure.AddBlock(new VoxelBlock(
+                        ringPos,
+                        new Vector3(2.5f, 2.5f, 2.5f),
+                        config.Material,
+                        BlockType.Hull
+                    ));
+                }
+            }
+            
+            // Connect with corridor - VARIED corridor thickness
+            float corridorThickness = 2f + _random.NextSingle() * 2f;
+            GenerateCorridor(station, fromPoint, newPoint, corridorThickness, config.Material);
+            
+            growthPoints.Add(newPoint);
+            
+            // Occasionally add cross-connections for more structural integrity
+            if (i > 10 && _random.NextDouble() < 0.15)
+            {
+                // Connect to a nearby growth point (not the one we just grew from)
+                var nearbyPoints = growthPoints
+                    .Where(p => p != fromPoint && Vector3.Distance(p, newPoint) < 40 && Vector3.Distance(p, newPoint) > 15)
+                    .ToList();
+                
+                if (nearbyPoints.Count > 0)
+                {
+                    Vector3 connectTo = nearbyPoints[_random.Next(nearbyPoints.Count)];
+                    GenerateCorridor(station, newPoint, connectTo, 1.5f, config.Material);
+                }
+            }
+        }
             
             growthPoints.Add(newPoint);
         }
