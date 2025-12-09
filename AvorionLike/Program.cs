@@ -402,22 +402,24 @@ class Program
         
         Console.WriteLine("\n=== System Features Summary ===");
         Console.WriteLine("✓ Player Ship: Fully equipped Cruiser with all capabilities");
-        Console.WriteLine("✓ Diverse Fleet: 20+ ships of all sizes and roles");
-        Console.WriteLine("✓ Asteroid Fields: Rich with all material types");
+        Console.WriteLine("✓ Diverse Fleet: 18+ ships of all sizes and roles with VARIED VISUAL STYLES");
+        Console.WriteLine("✓ Asteroid Fields: Rich with all material types (SPREAD ACROSS LARGE DISTANCES)");
         Console.WriteLine("✓ Space Stations: Multiple types (Trading, Military, Industrial, Research)");
+        Console.WriteLine("✓ PLANETS: 4 diverse planets (Rocky, Gas Giant, Ice, Desert) - NEW!");
         Console.WriteLine("✓ AI Ships: Traders, Miners, Pirates, Explorers");
         Console.WriteLine("✓ Galaxy Progression: Visible material tier zones");
-        Console.WriteLine("✓ Fleet Automation: Demonstrating captain assignments");
+        Console.WriteLine("✓ Improved Spacing: Objects are 3-5x more spread out for better visibility");
         Console.WriteLine();
         Console.WriteLine("💡 TESTING TIPS:");
         Console.WriteLine("  • Press ~ or click Console button for testing commands");
         Console.WriteLine("  • Type 'help' for all available commands");
         Console.WriteLine("  • Use M key to open Galaxy Map");
         Console.WriteLine("  • Press I for Inventory, B for Ship Builder");
-        Console.WriteLine("  • Fly around to explore all generated content");
+        Console.WriteLine("  • Fly around to explore all generated content - look at the HORIZON!");
         Console.WriteLine("  • Try combat with 'spawn_enemy' command");
         Console.WriteLine("  • Test mining with nearby asteroids");
         Console.WriteLine("  • Visit stations for trading");
+        Console.WriteLine("  • Ships now have varied designs based on their role");
         Console.WriteLine();
         
         // Launch the game
