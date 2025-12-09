@@ -498,7 +498,7 @@ class Program
                     ShipRole.Trading => "Trader",
                     ShipRole.Mining => "Industrial",
                     ShipRole.Exploration => "Explorer",
-                    ShipRole.Salvage => "Salvager",
+                    ShipRole.Salvage => "Industrial", // Salvagers use industrial style
                     _ => "Default"
                 };
                 
@@ -637,9 +637,11 @@ class Program
             var planetVoxel = new VoxelStructureComponent();
             
             // Create a simple sphere-approximation with multiple blocks
+            // Limit complexity to prevent performance issues (max 8 blocks per axis = 512 blocks max)
             float radius = planetConfig.Size / 2f;
-            int blocksPerAxis = Math.Max(5, (int)(planetConfig.Size / 20f)); // More blocks for larger planets
+            int blocksPerAxis = Math.Min(8, Math.Max(5, (int)(planetConfig.Size / 20f))); // Cap at 8 for performance
             float blockSize = planetConfig.Size / blocksPerAxis;
+            float radiusSquared = radius * radius; // Pre-compute for performance
             
             for (int x = 0; x < blocksPerAxis; x++)
             {
@@ -653,8 +655,8 @@ class Program
                             (z - blocksPerAxis / 2f) * blockSize
                         );
                         
-                        // Only add blocks within sphere radius
-                        if (blockPos.Length() <= radius)
+                        // Only add blocks within sphere radius (use LengthSquared for performance)
+                        if (blockPos.LengthSquared() <= radiusSquared)
                         {
                             planetVoxel.AddBlock(new VoxelBlock(
                                 blockPos,
