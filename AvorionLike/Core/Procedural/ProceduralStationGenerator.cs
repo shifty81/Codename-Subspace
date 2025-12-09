@@ -575,7 +575,6 @@ public class ProceduralStationGenerator
                     GenerateCorridor(station, newPoint, connectTo, 1.5f, config.Material);
                 }
             }
-        }
             
             growthPoints.Add(newPoint);
         }
