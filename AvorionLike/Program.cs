@@ -489,12 +489,23 @@ class Program
         {
             try
             {
+                // Vary ship styles based on role for more visual diversity
+                string styleName = config.Role switch
+                {
+                    ShipRole.Combat => "Military",
+                    ShipRole.Trading => "Trader",
+                    ShipRole.Mining => "Industrial",
+                    ShipRole.Exploration => "Explorer",
+                    ShipRole.Salvage => "Salvager",
+                    _ => "Default"
+                };
+                
                 var shipConfig = new ShipGenerationConfig
                 {
                     Size = config.Size,
                     Role = config.Role,
                     Material = config.Material,
-                    Style = FactionShipStyle.GetDefaultStyle("Default"),
+                    Style = FactionShipStyle.GetDefaultStyle(styleName),
                     Seed = config.Position.GetHashCode()
                 };
                 
@@ -736,12 +747,19 @@ class Program
         {
             try
             {
+                // Determine style based on name and role
+                string aiStyleName = aiConfig.Name.Contains("Pirate") ? "Pirate" :
+                                    aiConfig.Role == ShipRole.Trading ? "Trader" :
+                                    aiConfig.Role == ShipRole.Mining ? "Industrial" :
+                                    aiConfig.Role == ShipRole.Exploration ? "Explorer" :
+                                    "Default";
+                
                 var aiShipGenConfig = new ShipGenerationConfig
                 {
                     Size = ShipSize.Corvette,
                     Role = aiConfig.Role,
                     Material = "Titanium",
-                    Style = FactionShipStyle.GetDefaultStyle("Default"),
+                    Style = FactionShipStyle.GetDefaultStyle(aiStyleName),
                     Seed = aiConfig.Name.GetHashCode()
                 };
                 
