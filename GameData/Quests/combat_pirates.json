@@ -1,0 +1,41 @@
+{
+  "Id": "quest_combat_pirates",
+  "Title": "Clear the Sector",
+  "Description": "Local traders are being harassed by pirates in this sector. Destroy 5 pirate ships to make the area safe for commerce. The trading guild will reward you generously.",
+  "Difficulty": "Normal",
+  "CanAbandon": true,
+  "IsRepeatable": true,
+  "TimeLimit": 3600,
+  "Tags": ["combat", "pirates", "repeatable"],
+  "Objectives": [
+    {
+      "Type": "Destroy",
+      "Description": "Destroy 5 pirate ships",
+      "Target": "enemy",
+      "RequiredQuantity": 5,
+      "IsOptional": false,
+      "IsHidden": false,
+      "Prerequisites": []
+    }
+  ],
+  "Rewards": [
+    {
+      "Type": "Credits",
+      "RewardId": "credits",
+      "Amount": 5000,
+      "Description": "5,000 Credits"
+    },
+    {
+      "Type": "Experience",
+      "RewardId": "xp",
+      "Amount": 200,
+      "Description": "200 Experience Points"
+    },
+    {
+      "Type": "Reputation",
+      "RewardId": "trading_guild",
+      "Amount": 10,
+      "Description": "+10 Trading Guild Reputation"
+    }
+  ]
+}

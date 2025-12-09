@@ -1,0 +1,35 @@
+{
+  "Id": "quest_tutorial_mining",
+  "Title": "First Steps: Mining",
+  "Description": "Welcome to the galaxy! Learn the basics of mining by collecting Iron ore from nearby asteroids. Mining is essential for gathering resources to build and upgrade your ship.",
+  "Difficulty": "Easy",
+  "CanAbandon": false,
+  "IsRepeatable": false,
+  "TimeLimit": 0,
+  "Tags": ["tutorial", "mining"],
+  "Objectives": [
+    {
+      "Type": "Mine",
+      "Description": "Mine 100 Iron ore from asteroids",
+      "Target": "Iron",
+      "RequiredQuantity": 100,
+      "IsOptional": false,
+      "IsHidden": false,
+      "Prerequisites": []
+    }
+  ],
+  "Rewards": [
+    {
+      "Type": "Credits",
+      "RewardId": "credits",
+      "Amount": 1000,
+      "Description": "1,000 Credits"
+    },
+    {
+      "Type": "Experience",
+      "RewardId": "xp",
+      "Amount": 50,
+      "Description": "50 Experience Points"
+    }
+  ]
+}

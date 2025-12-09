@@ -670,6 +670,7 @@ For detailed credits and acknowledgments, see [CREDITS.md](CREDITS.md).
 - **[Core Gameplay Mechanics](CORE_GAMEPLAY_MECHANICS.md)** - 🎮 Avorion-inspired design and implementation
 - **[Galaxy Map Guide](GALAXY_MAP_GUIDE.md)** - 🗺️ Complete galaxy map and sector travel documentation
 - **[In-Game Testing Guide](IN_GAME_TESTING_GUIDE.md)** - 🧪 Testing console commands and features
+- **[Quest System Guide](QUEST_SYSTEM_GUIDE.md)** - 📋 Quest creation and management **NEW!**
 - **[Architecture Review](ARCHITECTURE.md)** - Comprehensive backend architecture analysis (540+ lines)
 - **[Implementation Roadmap](IMPLEMENTATION_ROADMAP.md)** - Detailed development plan and timelines
 - **[Executive Summary](EXECUTIVE_SUMMARY.md)** - Backend review summary
