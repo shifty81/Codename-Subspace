@@ -8,6 +8,8 @@ using AvorionLike.Core.Physics;
 using AvorionLike.Core.UI;
 using AvorionLike.Core.Input;
 using AvorionLike.Core.DevTools;
+using AvorionLike.Core.Config;
+using AvorionLike.Core.Procedural;
 using Silk.NET.OpenGL.Extensions.ImGui;
 
 namespace AvorionLike.Core.Graphics;
@@ -22,6 +24,7 @@ public class GraphicsWindow : IDisposable
     private GL? _gl;
     private EnhancedVoxelRenderer? _voxelRenderer;
     private StarfieldRenderer? _starfieldRenderer;
+    private DebugRenderer? _debugRenderer;
     private Camera? _camera;
     private IInputContext? _inputContext;
     private ImGuiController? _imguiController;
@@ -126,6 +129,7 @@ public class GraphicsWindow : IDisposable
         // Initialize renderers
         _voxelRenderer = new EnhancedVoxelRenderer(_gl);
         _starfieldRenderer = new StarfieldRenderer(_gl);
+        _debugRenderer = new DebugRenderer(_gl);
 
         // Initialize custom UI renderer for game HUD and menus
         // Note: _window is guaranteed to be non-null here as it's assigned in Run() before OnLoad() is called
@@ -200,6 +204,11 @@ public class GraphicsWindow : IDisposable
         Console.WriteLine("    F1 - Toggle Debug HUD (enabled by default)");
         Console.WriteLine("    F2 - Toggle Entity List");
         Console.WriteLine("    F3 - Toggle Resource Panel");
+        Console.WriteLine("  Debug Helpers (for voxel rendering issues):");
+        Console.WriteLine("    F7 - Toggle Two-Sided Rendering (fixes disappearing faces)");
+        Console.WriteLine("    F8 - Bypass Frustum/Occlusion Culling (render all chunks)");
+        Console.WriteLine("    F11 - Show Wireframe AABBs (bounding boxes)");
+        Console.WriteLine("    F12 - Show Generation Stats (pending tasks/results)");
         Console.WriteLine("=====================================\n");
     }
 
@@ -330,6 +339,16 @@ public class GraphicsWindow : IDisposable
 
         // Clear the screen (clear color is set once in OnLoad)
         _gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+        
+        // Toggle backface culling based on debug flag
+        if (DebugConfig.TwoSidedRendering)
+        {
+            _gl.Disable(EnableCap.CullFace);
+        }
+        else
+        {
+            _gl.Enable(EnableCap.CullFace);
+        }
 
         // Calculate aspect ratio from window size
         float aspectRatio = (float)_window.Size.X / _window.Size.Y;
@@ -359,6 +378,35 @@ public class GraphicsWindow : IDisposable
 
                 _voxelRenderer.RenderVoxelStructure(voxelComponent, _camera, position, aspectRatio);
             }
+        }
+        
+        // Render debug visualizations if enabled
+        if (_debugRenderer != null && DebugConfig.ShowAABBs)
+        {
+            // Clear previous frame's debug lines
+            _debugRenderer.Clear();
+            
+            // Note: ChunkManager is not directly accessible from GameEngine
+            // AABB visualization would be implemented when ChunkManager is exposed
+            // For now, this is a placeholder for the debug visualization framework
+            
+            // Example of how AABBs would be drawn if ChunkManager was accessible:
+            // foreach (var chunk in chunkManager.GetLoadedChunks())
+            // {
+            //     if (chunk.BoundingBox != null)
+            //     {
+            //         _debugRenderer.DrawAABB(chunk.BoundingBox.Min, chunk.BoundingBox.Max, "Yellow");
+            //     }
+            // }
+            
+            // Render the debug visualizations
+            _debugRenderer.Render(_camera.GetViewMatrix(), _camera.GetProjectionMatrix(aspectRatio));
+        }
+        
+        // Update debug renderer (remove expired items)
+        if (_debugRenderer != null)
+        {
+            _debugRenderer.Update(_deltaTime);
         }
         
         // Render custom game HUD (crosshair, ship status, radar, corner frames)
@@ -495,6 +543,32 @@ public class GraphicsWindow : IDisposable
     private void OnKeyDown(IKeyboard keyboard, Key key, int keyCode)
     {
         _keysPressed.Add(key);
+        
+        // Debug toggle keys F7-F10 (note: F9 is for quick load, so moved to F11)
+        if (key == Key.F7)
+        {
+            Config.DebugConfig.TwoSidedRendering = !Config.DebugConfig.TwoSidedRendering;
+            Console.WriteLine($"[DEBUG] Two-Sided Rendering: {(Config.DebugConfig.TwoSidedRendering ? "ON" : "OFF")}");
+            Console.WriteLine("  This fixes disappearing faces by rendering both sides of triangles");
+        }
+        else if (key == Key.F8)
+        {
+            Config.DebugConfig.BypassCulling = !Config.DebugConfig.BypassCulling;
+            Console.WriteLine($"[DEBUG] Bypass Culling: {(Config.DebugConfig.BypassCulling ? "ON" : "OFF")}");
+            Console.WriteLine("  This forces all chunks to render regardless of camera position");
+        }
+        else if (key == Key.F11)
+        {
+            Config.DebugConfig.ShowAABBs = !Config.DebugConfig.ShowAABBs;
+            Console.WriteLine($"[DEBUG] Show AABBs: {(Config.DebugConfig.ShowAABBs ? "ON" : "OFF")}");
+            Console.WriteLine("  This shows wireframe bounding boxes for all chunks");
+        }
+        else if (key == Key.F12)
+        {
+            Config.DebugConfig.ShowGenStats = !Config.DebugConfig.ShowGenStats;
+            Console.WriteLine($"[DEBUG] Show Generation Stats: {(Config.DebugConfig.ShowGenStats ? "ON" : "OFF")}");
+            Console.WriteLine("  This displays world generation task/result counts on screen");
+        }
         
         // Track Shift for console input
         if (key == Key.ShiftLeft || key == Key.ShiftRight)
