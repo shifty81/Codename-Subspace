@@ -7,7 +7,8 @@ public static class DebugConfig
 {
     /// <summary>
     /// Enable two-sided rendering (disable backface culling) for voxel meshes
-    /// Helps diagnose face culling issues
+    /// Renders both front and back faces by disabling OpenGL backface culling
+    /// Helps diagnose face culling issues while preserving hollow structure visibility
     /// Toggle with F7
     /// </summary>
     public static bool TwoSidedRendering { get; set; } = false;

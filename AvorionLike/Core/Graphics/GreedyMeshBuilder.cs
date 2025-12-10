@@ -1,6 +1,5 @@
 using System.Numerics;
 using AvorionLike.Core.Voxel;
-using AvorionLike.Core.Config;
 
 namespace AvorionLike.Core.Graphics;
 
@@ -460,34 +459,6 @@ public class GreedyMeshBuilder
         mesh.Indices.Add(vertexStart + 0);
         mesh.Indices.Add(vertexStart + 1);
         mesh.Indices.Add(vertexStart + 2);
-        
-        // Add reversed-winding triangle for two-sided rendering if enabled
-        if (DebugConfig.TwoSidedRendering)
-        {
-            AddReversedTriangle(mesh, vertices, normal, color, blockType);
-        }
-    }
-    
-    /// <summary>
-    /// Add a reversed-winding triangle for two-sided rendering
-    /// </summary>
-    private static void AddReversedTriangle(OptimizedMesh mesh, Vector3[] vertices, Vector3 normal, uint color, float blockType)
-    {
-        int vertexStart = mesh.Vertices.Count;
-        
-        // Add vertices with reversed normal
-        foreach (var vertex in vertices)
-        {
-            mesh.Vertices.Add(vertex);
-            mesh.Normals.Add(-normal);
-            mesh.Colors.Add(color);
-            mesh.BlockTypes.Add(blockType);
-        }
-        
-        // Add indices in reverse order (CW instead of CCW)
-        mesh.Indices.Add(vertexStart + 2);
-        mesh.Indices.Add(vertexStart + 1);
-        mesh.Indices.Add(vertexStart + 0);
     }
     
     /// <summary>
@@ -513,38 +484,6 @@ public class GreedyMeshBuilder
         mesh.Indices.Add(vertexStart + 0);
         mesh.Indices.Add(vertexStart + 2);
         mesh.Indices.Add(vertexStart + 3);
-        
-        // Add reversed-winding quads for two-sided rendering if enabled
-        if (DebugConfig.TwoSidedRendering)
-        {
-            AddReversedQuad(mesh, vertices, normal, color, blockType);
-        }
-    }
-    
-    /// <summary>
-    /// Add a reversed-winding quad for two-sided rendering
-    /// </summary>
-    private static void AddReversedQuad(OptimizedMesh mesh, Vector3[] vertices, Vector3 normal, uint color, float blockType)
-    {
-        int vertexStart = mesh.Vertices.Count;
-        
-        // Add vertices with reversed normal
-        foreach (var vertex in vertices)
-        {
-            mesh.Vertices.Add(vertex);
-            mesh.Normals.Add(-normal);
-            mesh.Colors.Add(color);
-            mesh.BlockTypes.Add(blockType);
-        }
-        
-        // Add indices in reverse order (CW instead of CCW)
-        mesh.Indices.Add(vertexStart + 2);
-        mesh.Indices.Add(vertexStart + 1);
-        mesh.Indices.Add(vertexStart + 0);
-        
-        mesh.Indices.Add(vertexStart + 3);
-        mesh.Indices.Add(vertexStart + 2);
-        mesh.Indices.Add(vertexStart + 0);
     }
     
     /// <summary>
