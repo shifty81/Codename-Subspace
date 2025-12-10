@@ -4,6 +4,7 @@ using AvorionLike.Core.ECS;
 using AvorionLike.Core.Physics;
 using AvorionLike.Core.Resources;
 using AvorionLike.Core.RPG;
+using AvorionLike.Core.Config;
 
 namespace AvorionLike.Core.UI;
 
@@ -34,6 +35,9 @@ public class HUDSystem
         
         if (_showResourceInfo)
             RenderResourcePanel();
+            
+        if (Config.DebugConfig.ShowGenStats)
+            RenderGenerationStats();
     }
     
     private void RenderMainHUD()
@@ -270,5 +274,45 @@ public class HUDSystem
         
         if (ImGui.IsKeyPressed(ImGuiKey.F3))
             _showResourceInfo = !_showResourceInfo;
+    }
+    
+    private void RenderGenerationStats()
+    {
+        // Top-right corner for generation stats
+        var io = ImGui.GetIO();
+        ImGui.SetNextWindowPos(new Vector2(io.DisplaySize.X - 320, 10));
+        ImGui.SetNextWindowBgAlpha(0.35f);
+        
+        ImGuiWindowFlags windowFlags = ImGuiWindowFlags.NoDecoration | 
+                                       ImGuiWindowFlags.AlwaysAutoResize | 
+                                       ImGuiWindowFlags.NoSavedSettings | 
+                                       ImGuiWindowFlags.NoFocusOnAppearing | 
+                                       ImGuiWindowFlags.NoNav;
+        
+        bool open = true;
+        if (ImGui.Begin("Generation Stats", ref open, windowFlags))
+        {
+            ImGui.TextColored(new Vector4(0.0f, 1.0f, 1.0f, 1.0f), "World Generation Stats");
+            ImGui.Separator();
+            
+            // Note: WorldGenerator is not directly accessible from GameEngine
+            // This panel shows debug flags and keyboard shortcuts
+            ImGui.TextColored(new Vector4(0.8f, 0.8f, 0.8f, 1.0f), "Generation system not monitored");
+            ImGui.TextColored(new Vector4(0.6f, 0.6f, 0.6f, 0.8f), "(No direct access to generator stats)");
+            
+            ImGui.Separator();
+            ImGui.TextColored(new Vector4(0.5f, 0.8f, 1.0f, 1.0f), "Debug Flags:");
+            ImGui.Text($"Two-Sided: {(DebugConfig.TwoSidedRendering ? "ON" : "OFF")}");
+            ImGui.Text($"Bypass Culling: {(DebugConfig.BypassCulling ? "ON" : "OFF")}");
+            ImGui.Text($"Show AABBs: {(DebugConfig.ShowAABBs ? "ON" : "OFF")}");
+            
+            ImGui.Separator();
+            ImGui.TextColored(new Vector4(0.5f, 0.8f, 1.0f, 1.0f), "Debug Keys:");
+            ImGui.Text("F7 - Two-Sided Rendering");
+            ImGui.Text("F8 - Bypass Culling");
+            ImGui.Text("F11 - Show AABBs");
+            ImGui.Text("F12 - Toggle This Panel");
+        }
+        ImGui.End();
     }
 }

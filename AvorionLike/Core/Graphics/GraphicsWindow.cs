@@ -8,6 +8,8 @@ using AvorionLike.Core.Physics;
 using AvorionLike.Core.UI;
 using AvorionLike.Core.Input;
 using AvorionLike.Core.DevTools;
+using AvorionLike.Core.Config;
+using AvorionLike.Core.Procedural;
 using Silk.NET.OpenGL.Extensions.ImGui;
 
 namespace AvorionLike.Core.Graphics;
@@ -22,6 +24,7 @@ public class GraphicsWindow : IDisposable
     private GL? _gl;
     private EnhancedVoxelRenderer? _voxelRenderer;
     private StarfieldRenderer? _starfieldRenderer;
+    private DebugRenderer? _debugRenderer;
     private Camera? _camera;
     private IInputContext? _inputContext;
     private ImGuiController? _imguiController;
@@ -126,6 +129,7 @@ public class GraphicsWindow : IDisposable
         // Initialize renderers
         _voxelRenderer = new EnhancedVoxelRenderer(_gl);
         _starfieldRenderer = new StarfieldRenderer(_gl);
+        _debugRenderer = new DebugRenderer(_gl);
 
         // Initialize custom UI renderer for game HUD and menus
         // Note: _window is guaranteed to be non-null here as it's assigned in Run() before OnLoad() is called
@@ -359,6 +363,35 @@ public class GraphicsWindow : IDisposable
 
                 _voxelRenderer.RenderVoxelStructure(voxelComponent, _camera, position, aspectRatio);
             }
+        }
+        
+        // Render debug visualizations if enabled
+        if (_debugRenderer != null && DebugConfig.ShowAABBs)
+        {
+            // Clear previous frame's debug lines
+            _debugRenderer.Clear();
+            
+            // Note: ChunkManager is not directly accessible from GameEngine
+            // AABB visualization would be implemented when ChunkManager is exposed
+            // For now, this is a placeholder for the debug visualization framework
+            
+            // Example of how AABBs would be drawn if ChunkManager was accessible:
+            // foreach (var chunk in chunkManager.GetLoadedChunks())
+            // {
+            //     if (chunk.BoundingBox != null)
+            //     {
+            //         _debugRenderer.DrawAABB(chunk.BoundingBox.Min, chunk.BoundingBox.Max, "Yellow");
+            //     }
+            // }
+            
+            // Render the debug visualizations
+            _debugRenderer.Render(_camera.GetViewMatrix(), _camera.GetProjectionMatrix(aspectRatio));
+        }
+        
+        // Update debug renderer (remove expired items)
+        if (_debugRenderer != null)
+        {
+            _debugRenderer.Update(_deltaTime);
         }
         
         // Render custom game HUD (crosshair, ship status, radar, corner frames)
