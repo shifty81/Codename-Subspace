@@ -10,8 +10,9 @@ public static class DebugConfig
     /// Renders both front and back faces by disabling OpenGL backface culling
     /// Helps diagnose face culling issues while preserving hollow structure visibility
     /// Toggle with F7
+    /// Default is TRUE to prevent hollow-looking blocks from incorrect face winding
     /// </summary>
-    public static bool TwoSidedRendering { get; set; } = false;
+    public static bool TwoSidedRendering { get; set; } = true;
 
     /// <summary>
     /// Bypass frustum and occlusion culling - render all chunks regardless of visibility

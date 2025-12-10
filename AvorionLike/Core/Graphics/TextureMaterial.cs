@@ -102,35 +102,35 @@ public static class MaterialLibrary
     
     private static void InitializeMaterials()
     {
-        // Structural materials
+        // Structural materials - Enhanced with more visual variety
         _materials[MaterialType.Hull] = new TextureMaterial
         {
             Type = MaterialType.Hull,
             Name = "Hull Plating",
-            BaseColor = new Vector3(0.5f, 0.5f, 0.5f), // Light gray
-            SecondaryColor = new Vector3(0.3f, 0.3f, 0.3f), // Dark gray
-            Roughness = 0.6f,
-            Metallic = 0.8f,
-            NoiseScale = 2.0f,
-            NoiseStrength = 0.15f,
-            BumpStrength = 0.3f,
+            BaseColor = new Vector3(0.55f, 0.58f, 0.62f), // Steel blue-gray
+            SecondaryColor = new Vector3(0.35f, 0.38f, 0.42f), // Darker blue-gray for panel seams
+            Roughness = 0.45f,  // Shinier for metallic look
+            Metallic = 0.85f,   // More metallic
+            NoiseScale = 3.0f,  // Increased for more detail
+            NoiseStrength = 0.25f, // More noise variation for wear
+            BumpStrength = 0.4f,
             Pattern = TexturePattern.Paneled,
-            PatternScale = 4.0f
+            PatternScale = 3.5f  // Larger panels for better visibility
         };
         
         _materials[MaterialType.Armor] = new TextureMaterial
         {
             Type = MaterialType.Armor,
             Name = "Armor Plating",
-            BaseColor = new Vector3(0.3f, 0.3f, 0.35f), // Dark blue-gray
-            SecondaryColor = new Vector3(0.2f, 0.2f, 0.25f),
-            Roughness = 0.4f,
-            Metallic = 0.9f,
-            NoiseScale = 1.5f,
-            NoiseStrength = 0.1f,
-            BumpStrength = 0.5f,
-            Pattern = TexturePattern.Paneled,
-            PatternScale = 3.0f
+            BaseColor = new Vector3(0.35f, 0.38f, 0.45f), // Slate blue-gray armor
+            SecondaryColor = new Vector3(0.25f, 0.28f, 0.35f), // Darker for contrast
+            Roughness = 0.35f, // Shinier armor plating
+            Metallic = 0.92f,  // Very metallic for military look
+            NoiseScale = 2.5f, // More fine detail
+            NoiseStrength = 0.2f, // Battle-worn appearance
+            BumpStrength = 0.6f, // Strong relief for armored look
+            Pattern = TexturePattern.Hexagonal, // Honeycomb armor pattern
+            PatternScale = 2.5f
         };
         
         // Natural materials
