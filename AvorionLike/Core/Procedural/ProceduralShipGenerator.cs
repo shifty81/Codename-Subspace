@@ -261,6 +261,83 @@ public class ProceduralShipGenerator
     }
     
     /// <summary>
+    /// Get a random shape for visual variety
+    /// Increases shape variation to avoid "just blocks" appearance
+    /// </summary>
+    private BlockShape GetRandomShape(float wedgeProbability = 0.3f, float cornerProbability = 0.15f)
+    {
+        float roll = (float)_random.NextDouble();
+        
+        if (roll < wedgeProbability)
+            return BlockShape.Wedge;
+        else if (roll < wedgeProbability + cornerProbability)
+            return BlockShape.Corner;
+        else if (roll < wedgeProbability + cornerProbability + 0.1f)
+            return BlockShape.HalfBlock;
+        else
+            return BlockShape.Cube;
+    }
+    
+    /// <summary>
+    /// Get a random orientation for shaped blocks
+    /// </summary>
+    private BlockOrientation GetRandomOrientation()
+    {
+        int orientations = 6;
+        int choice = _random.Next(orientations);
+        
+        return choice switch
+        {
+            0 => BlockOrientation.PosX,
+            1 => BlockOrientation.NegX,
+            2 => BlockOrientation.PosY,
+            3 => BlockOrientation.NegY,
+            4 => BlockOrientation.PosZ,
+            5 => BlockOrientation.NegZ,
+            _ => BlockOrientation.PosY
+        };
+    }
+    
+    /// <summary>
+    /// Get edge-appropriate shape for hull boundaries
+    /// Returns wedges/corners oriented to create smooth transitions
+    /// </summary>
+    private (BlockShape shape, BlockOrientation orientation) GetEdgeShape(Vector3 position, Vector3 dimensions)
+    {
+        float halfX = dimensions.X / 2;
+        float halfY = dimensions.Y / 2;
+        float halfZ = dimensions.Z / 2;
+        
+        // Check if near edges
+        bool nearLeft = position.X < -halfX + 2;
+        bool nearRight = position.X > halfX - 2;
+        bool nearTop = position.Y > halfY - 2;
+        bool nearBottom = position.Y < -halfY + 2;
+        bool nearFront = position.Z > halfZ - 2;
+        bool nearBack = position.Z < -halfZ + 2;
+        
+        // Return appropriate shapes for edges
+        if (nearFront)
+        {
+            if (nearTop) return (BlockShape.Corner, BlockOrientation.PosZ);
+            if (nearBottom) return (BlockShape.Corner, BlockOrientation.NegZ);
+            return (BlockShape.Wedge, BlockOrientation.PosZ);
+        }
+        if (nearBack)
+        {
+            if (nearTop) return (BlockShape.Corner, BlockOrientation.NegZ);
+            return (BlockShape.Wedge, BlockOrientation.NegZ);
+        }
+        if (nearTop && (nearLeft || nearRight))
+        {
+            return (BlockShape.Corner, nearLeft ? BlockOrientation.NegX : BlockOrientation.PosX);
+        }
+        
+        // Default to cube
+        return (BlockShape.Cube, BlockOrientation.PosY);
+    }
+    
+    /// <summary>
     /// Generate the basic hull structure based on faction style
     /// </summary>
     private void GenerateHullStructure(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config)
@@ -786,29 +863,55 @@ public class ProceduralShipGenerator
     /// <summary>
     /// Generate cylindrical hull (cargo/trading ships)
     /// Enhanced with cargo sections and distinctive industrial appearance
-    /// FIXED: Hollow shell design with consistent spacing
+    /// FIXED: Now includes interior fill and varied block shapes for solidity
     /// </summary>
     private void GenerateCylindricalHull(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config)
     {
         float radius = Math.Min(dimensions.X, dimensions.Y) / 2;
         float blockSize = 2f;
         
-        // Main cylindrical hull section - Dense shell for cohesive appearance
+        // Main cylindrical hull section - Shell with INTERIOR FILL for solidity
         for (float z = -dimensions.Z / 2; z < dimensions.Z / 2; z += 2)  // Dense Z spacing for solid look
         {
-            // Create circular shell using angle sampling
+            // Create circular shell using angle sampling with varied shapes
             for (float angle = 0; angle < 360; angle += 20)  // 18 blocks per ring (360/20)
             {
                 float rad = angle * MathF.PI / 180f;
                 float x = radius * MathF.Cos(rad);
                 float y = radius * MathF.Sin(rad);
                 
+                // Use varied shapes for more visual interest
+                BlockShape shape = GetRandomShape(0.2f, 0.1f);
+                BlockOrientation orientation = shape != BlockShape.Cube ? GetRandomOrientation() : BlockOrientation.PosY;
+                
                 ship.Structure.AddBlock(new VoxelBlock(
                     new Vector3(x, y, z),
                     new Vector3(blockSize, blockSize, blockSize),
                     config.Material,
-                    BlockType.Hull
+                    BlockType.Hull,
+                    shape,
+                    orientation
                 ));
+            }
+            
+            // CRITICAL FIX: Add interior fill rings to prevent hollow/flat appearance
+            // This ensures the ship looks solid from all viewing angles
+            if (_random.NextDouble() < 0.4) // Don't fill every layer, keep some space
+            {
+                float innerRadius = radius * 0.5f; // Interior ring
+                for (float angle = 0; angle < 360; angle += 45) // 8 blocks per inner ring
+                {
+                    float rad = angle * MathF.PI / 180f;
+                    float x = innerRadius * MathF.Cos(rad);
+                    float y = innerRadius * MathF.Sin(rad);
+                    
+                    ship.Structure.AddBlock(new VoxelBlock(
+                        new Vector3(x, y, z),
+                        new Vector3(blockSize, blockSize, blockSize),
+                        config.Material,
+                        BlockType.Hull
+                    ));
+                }
             }
         }
         
