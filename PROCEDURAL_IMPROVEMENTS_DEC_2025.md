@@ -52,22 +52,45 @@ foreach (var block in asteroidBlocks) {
 
 **Visual Impact**: Planets are now much more visible and impressive, especially the gas giant which dominates the skybox.
 
-### 3. Ships - Already Well-Designed
-**Status**: Ships were already generating correctly with extensive features.
+### 3. Ships - Enhanced for Better Visual Impact
+**Problem**: Ships looked like "bricks with antennas" - not enough visual distinction.
 
-**Existing Features**:
+**Solution**:
+- Added prominent wing structures to Combat and Exploration ships
+- Enlarged engines from 3×3×3 to 4×4×4 (33% increase)
+- Added visible engine nozzles extending backwards
+- Enhanced engine glow with 2-layer effect
+- Added blue color tinting to engines
+
+**Wing Structures** (NEW):
+- Combat and Exploration ships now generate with 2-4 wing structures
+- Wings extend from the sides using wedge-shaped blocks
+- Wing count scales with ship size:
+  - Fighter/Corvette/Frigate: 2 wings
+  - Destroyer/Cruiser: 3 wings
+  - Battleship/Carrier: 4 wings
+- Wings taper toward tips for aerodynamic appearance
+- Colored with faction accent color for visibility
+
+**Engine Improvements** (NEW):
+- Engine block size: 3×3×3 → 4×4×4
+- Added engine nozzles (2 unit extension backwards)
+- Blue color tint on engines (0x3366FF)
+- Darker blue on nozzles (0x2244CC)
+- Engines more visually prominent from rear view
+
+**Engine Glow Effects** (NEW):
+- Primary glow size: 0.8 units → 1.5 units (87% increase)
+- Added secondary outer glow (2×2×0.5) for depth
+- Two-tone cyan/blue glow system
+- Glows extend further behind engines for visibility
+
+**Existing Features** (Already Good):
 - Structural integrity validation with automatic disconnected block fixing
 - Multiple hull shapes: Angular, Blocky, Cylindrical, Sleek, Irregular
-- Visible external components:
-  - Engines with glowing effects
-  - Thrusters distributed for maneuverability
-  - Weapon mounts
-  - Antennas and sensor arrays
-  - Surface panels and details
-- Role-based designs (Combat ships look different from Traders)
+- Surface detailing: antennas, sensors, panels
+- Role-based designs (Combat, Trading, Mining, etc.)
 - Faction style variations
-
-**No Changes Needed**: The ship generator (ProceduralShipGenerator.cs) already produces diverse, well-connected ship designs.
 
 ### 4. Stations - Already Feature-Rich
 **Status**: Stations were already generating with extensive variety.
@@ -138,6 +161,14 @@ The changes ensure:
    - Lines 554-626: Rewrote asteroid generation to use AsteroidVoxelGenerator
    - Lines 630-731: Enhanced planet generation with size increases and color variation
 
+2. `AvorionLike/Core/Procedural/ProceduralShipGenerator.cs`
+   - Lines 1729-1767: Enhanced PlaceEngines() with larger engines, nozzles, and color
+   - Lines 2120-2200: Added AddWingStructures() method for Combat/Exploration ships
+   - Lines 2261-2294: Enhanced AddEngineGlow() with 2-layer glow effect
+
+3. `PROCEDURAL_IMPROVEMENTS_DEC_2025.md`
+   - Complete documentation of all changes
+
 ## Future Enhancements
 
 Potential future improvements:
@@ -149,8 +180,17 @@ Potential future improvements:
 
 ## Conclusion
 
-The most critical fix was changing asteroids from single blocks to proper multi-block structures using the AsteroidVoxelGenerator. This change alone makes asteroids look like actual rocky asteroids rather than simple cubes.
+The improvements significantly enhance the visual quality of procedurally generated content:
 
-Ships and stations were already well-designed and didn't require changes. The planet size increase makes them more impressive and visible from a distance.
+1. **Asteroids** (Critical Fix): Changed from single blocks to proper 50-150 block irregular structures using AsteroidVoxelGenerator
+2. **Planets** (Enhanced): Increased sizes by 50-67% for better visibility and impact
+3. **Ships** (Enhanced): Added wing structures, enlarged engines with nozzles, and 2-layer glow effects
+4. **Stations** (Already Good): No changes needed - already feature-rich with 10 architecture types
 
-All generated structures are guaranteed to have proper block connectivity through structural integrity validation systems.
+**Visual Impact**:
+- Asteroids now look like actual rocky asteroids, not cubes
+- Planets are large and impressive, especially the 220-unit gas giant
+- Ships look like spacecraft with wings and prominent engines, not "bricks with antennas"
+- Stations remain impressive architectural structures
+
+All generated structures maintain proper block connectivity through structural integrity validation systems.
