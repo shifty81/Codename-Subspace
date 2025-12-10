@@ -9,7 +9,8 @@ A cutting-edge game engine for voxel-based space exploration and combat, featuri
 > **🚀 New to Codename:Subspace?** Check out our [Quick Start Guide](QUICKSTART.md) for one-click setup!
 > 
 > **✨ LATEST FEATURES:** 
-> - 🎮 **INTEGRATED PLAYER UI** - Full gameplay experience with player-controlled ships! ✨ **NEW!**
+> - 🎨 **ENHANCED VISUALS** - Fixed hollow-looking blocks, improved textures with panel lines and patterns! ✨ **NEW!**
+> - 🎮 **INTEGRATED PLAYER UI** - Full gameplay experience with player-controlled ships!
 > - 🕹️ **6DOF Ship Controls** - Realistic space flight with thrust, rotation, and braking
 > - 📊 **Player Status HUD** - Real-time ship stats, inventory, and mission tracking
 > - 🎭 **Stellaris-Style Faction System** - Dynamic faction politics with pops, policies, and influence
@@ -116,24 +117,40 @@ Codename:Subspace is a powerful game engine designed for creating voxel-based sp
 - `ValidationHelper` - Common validation operations
 - `ErrorHandler` - Centralized error handling
 
-### 7. 3D Graphics Rendering **NEW** 🎨
-- Real-time OpenGL-based 3D rendering using Silk.NET
-- Voxel mesh generation and rendering
-- Free-look camera with WASD and mouse controls
-- Phong lighting model (ambient, diffuse, specular)
-- Material-based coloring for different block types
-- Cross-platform windowing and input handling
+### 7. 3D Graphics Rendering **ENHANCED** 🎨
+
+Real-time OpenGL rendering with enhanced visual quality:
+- **PBR Materials**: Metallic, roughness, and emissive properties for realistic surfaces
+- **Procedural Textures**: Dynamic texture generation with multiple pattern types
+  - Paneled hulls with panel lines, seams, and highlights
+  - Hexagonal honeycomb patterns for armor plating
+  - Cracked patterns for asteroids, crystalline for special materials
+  - 10 different procedural patterns to choose from
+- **Two-Sided Rendering**: Fixed hollow-looking blocks - now solid from all angles
+- **Voxel-Based Rendering**: Optimized mesh generation with greedy meshing and face culling
+- **Camera System**: Free-look and ship-follow modes with smooth interpolation
+- **Starfield**: Dynamic star rendering with parallax effects
+- **Debug Visualization**: AABB rendering, wireframes, and performance stats
+
+**Texture Customization**: 
+- See [TEXTURE_CUSTOMIZATION_GUIDE.md](TEXTURE_CUSTOMIZATION_GUIDE.md) for how to customize colors and patterns
+- Built-in material library with Hull, Armor, Rock, Ice, Metal, and more
+- Easy-to-edit color values and pattern parameters
 
 **Key Classes:**
+- `GraphicsWindow` - Main graphics window and rendering loop
+- `ProceduralTextureGenerator` - Pattern generation algorithms
+- `TextureMaterial` - Material definitions and properties
+- `GreedyMeshBuilder` - Optimized voxel mesh generation
 - `Camera` - 3D camera with movement and rotation
 - `Shader` - OpenGL shader program wrapper
 - `VoxelRenderer` - Renders voxel structures as 3D cubes
-- `GraphicsWindow` - Main graphics window and rendering loop
+- `DebugConfig` - Rendering debug options (F7-F12 hotkeys)
 
 **Features:**
-- Visualize voxel ships in real-time 3D
+- Visualize voxel ships in real-time 3D with enhanced textures
 - Navigate around structures with smooth camera controls
-- Material differentiation through colors
+- Material differentiation through procedural textures and colors
 - Integrated with ECS for seamless entity rendering
 
 ### 8. Voxel-Based Architecture
