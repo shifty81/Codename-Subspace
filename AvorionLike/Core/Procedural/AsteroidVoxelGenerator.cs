@@ -17,6 +17,36 @@ public class AsteroidVoxelGenerator
     }
     
     /// <summary>
+    /// Create voxel block with occasional shape variety for asteroids
+    /// </summary>
+    private VoxelBlock CreateAsteroidBlock(Vector3 position, Vector3 size, string material, float shapeVariety = 0.25f)
+    {
+        BlockShape shape = BlockShape.Cube;
+        BlockOrientation orientation = BlockOrientation.PosY;
+        
+        // Add shape variety to make asteroids less blocky
+        if (_random.NextDouble() < shapeVariety)
+        {
+            int shapeChoice = _random.Next(5);
+            shape = shapeChoice switch
+            {
+                0 => BlockShape.Wedge,
+                1 => BlockShape.Corner,
+                2 => BlockShape.HalfBlock,
+                3 => BlockShape.Tetrahedron,
+                _ => BlockShape.Cube
+            };
+            
+            if (shape != BlockShape.Cube)
+            {
+                orientation = (BlockOrientation)_random.Next(6);
+            }
+        }
+        
+        return new VoxelBlock(position, size, material, BlockType.Hull, shape, orientation);
+    }
+    
+    /// <summary>
     /// Generate a voxel asteroid with procedural shape and resources - ENHANCED for realistic rock appearance
     /// Now with much more variety: elongated, flat, chunky, spiky shapes - NOT spherical!
     /// </summary>
@@ -143,12 +173,12 @@ public class AsteroidVoxelGenerator
                         // Check if this block should be a glowing vein
                         bool isVein = IsVeinLocation(worldPos, asteroidData.ResourceType, noiseOffsetX);
                         
-                        // Create voxel block
-                        var block = new VoxelBlock(
+                        // Create voxel block with shape variety
+                        var block = CreateAsteroidBlock(
                             worldPos,
                             new Vector3(voxelSize, voxelSize, voxelSize),
                             isVein ? GetGlowingMaterial(asteroidData.ResourceType) : material,
-                            BlockType.Hull
+                            0.3f // 30% chance of non-cube shapes
                         );
                         
                         // Apply glowing color to vein blocks

@@ -67,6 +67,37 @@ public class ProceduralStationGenerator
     private Random _random;
     private readonly Logger _logger = Logger.Instance;
     
+    /// <summary>
+    /// Create a voxel block with occasional shape variety for stations
+    /// </summary>
+    private VoxelBlock CreateStationBlock(Vector3 position, Vector3 size, string material, BlockType blockType, float shapeVariety = 0.2f)
+    {
+        BlockShape shape = BlockShape.Cube;
+        BlockOrientation orientation = BlockOrientation.PosY;
+        
+        // Add shape variety to make stations more architectural
+        if (_random.NextDouble() < shapeVariety)
+        {
+            int shapeChoice = _random.Next(6);
+            shape = shapeChoice switch
+            {
+                0 => BlockShape.Wedge,
+                1 => BlockShape.Corner,
+                2 => BlockShape.HalfBlock,
+                3 => BlockShape.Tetrahedron,
+                4 => BlockShape.InnerCorner,
+                _ => BlockShape.Cube
+            };
+            
+            if (shape != BlockShape.Cube)
+            {
+                orientation = (BlockOrientation)_random.Next(6);
+            }
+        }
+        
+        return new VoxelBlock(position, size, material, blockType, shape, orientation);
+    }
+    
     public ProceduralStationGenerator(int seed = 0)
     {
         _random = seed == 0 ? new Random() : new Random(seed);
@@ -781,12 +812,12 @@ public class ProceduralStationGenerator
                     
                     if (isEdge)
                     {
-                        station.Structure.AddBlock(new VoxelBlock(
+                        station.Structure.AddBlock(CreateStationBlock(
                             center + new Vector3(x, y, z),
                             new Vector3(blockSize, blockSize, blockSize),
                             material,
-                            BlockType.Hull
-                        ));
+                            BlockType.Hull,
+                            0.3f)); // Add shape variety to box edges
                     }
                 }
             }
