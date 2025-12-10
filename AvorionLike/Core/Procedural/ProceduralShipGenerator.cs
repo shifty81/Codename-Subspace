@@ -116,6 +116,12 @@ public class ProceduralShipGenerator
     private Random _random;
     private readonly Logger _logger = Logger.Instance;
     
+    // Visual effect colors
+    private const uint ENGINE_COLOR = 0x3366FF;      // Blue tint for engines
+    private const uint NOZZLE_COLOR = 0x2244CC;      // Darker blue for nozzles
+    private const uint ENGINE_GLOW_COLOR = 0x00FFFF; // Cyan primary glow
+    private const uint OUTER_GLOW_COLOR = 0x0088CC;  // Dimmer blue outer glow
+    
     public ProceduralShipGenerator(int seed = 0)
     {
         _random = seed == 0 ? new Random() : new Random(seed);
@@ -1730,7 +1736,7 @@ public class ProceduralShipGenerator
     {
         // Place engines at the rear of the ship, ensuring they connect to hull
         float engineZ = -dimensions.Z / 2 + 2; // Near the back
-        Vector3 engineSize = new Vector3(3, 3, 3); // Engines are larger
+        Vector3 engineSize = new Vector3(4, 4, 4); // INCREASED: Engines are larger and more visible
         
         for (int i = 0; i < count; i++)
         {
@@ -1749,7 +1755,22 @@ public class ProceduralShipGenerator
                 config.Material,
                 BlockType.Engine
             );
+            
+            // Add distinctive color to engines
+            engine.ColorRGB = ENGINE_COLOR;
+            
             ship.Structure.AddBlock(engine);
+            
+            // Add larger engine nozzle extending backwards for visual prominence
+            var nozzleSize = new Vector3(engineSize.X * 0.8f, engineSize.Y * 0.8f, 2f);
+            var nozzle = new VoxelBlock(
+                placementPosition + new Vector3(0, 0, -(engineSize.Z / 2 + nozzleSize.Z / 2)),
+                nozzleSize,
+                config.Material,
+                BlockType.Hull
+            );
+            nozzle.ColorRGB = NOZZLE_COLOR;
+            ship.Structure.AddBlock(nozzle);
         }
     }
     
@@ -2111,6 +2132,12 @@ public class ProceduralShipGenerator
         int detailCount = (int)(ship.Structure.Blocks.Count * 0.15f); // 15% of blocks as details
         detailCount = Math.Max(5, Math.Min(detailCount, 50)); // Between 5 and 50 details
         
+        // Add wing structures for Combat and Exploration ships
+        if (config.Role == ShipRole.Combat || config.Role == ShipRole.Exploration)
+        {
+            AddWingStructures(ship, dimensions, config);
+        }
+        
         // Add antennas on top of ship
         AddAntennas(ship, dimensions, config, detailCount / 5);
         
@@ -2125,6 +2152,62 @@ public class ProceduralShipGenerator
         
         // Add hull pattern variations (stripes, decals)
         AddHullPatterns(ship, dimensions, config);
+    }
+    
+    /// <summary>
+    /// Add wing structures to make ships look more like actual spacecraft
+    /// </summary>
+    private void AddWingStructures(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config)
+    {
+        // Add 2-4 wing structures depending on ship size
+        int wingCount = config.Size switch
+        {
+            ShipSize.Fighter => 2,
+            ShipSize.Corvette => 2,
+            ShipSize.Frigate => 2,
+            ShipSize.Destroyer => 3,
+            ShipSize.Cruiser => 3,
+            ShipSize.Battleship => 4,
+            ShipSize.Carrier => 4,
+            _ => 2
+        };
+        
+        for (int i = 0; i < wingCount; i++)
+        {
+            // Wings extend from the sides
+            float side = i % 2 == 0 ? 1 : -1; // Alternate left/right
+            float zPosition = dimensions.Z * (0.2f - 0.4f * (i / 2)); // Stagger along length
+            
+            // Wing dimensions - larger for bigger ships
+            float wingSpan = dimensions.X * 0.4f + (float)config.Size * 0.5f;
+            float wingLength = dimensions.Z * 0.3f;
+            float wingThickness = 2f;
+            
+            // Create wing as a series of blocks extending outward
+            int wingBlocks = 5 + (int)config.Size / 2;
+            for (int j = 0; j < wingBlocks; j++)
+            {
+                float progress = (float)j / wingBlocks;
+                float xOffset = side * (dimensions.X / 2 + progress * wingSpan);
+                
+                // Taper the wing toward the tip
+                float currentThickness = wingThickness * (1 - progress * 0.5f);
+                float currentLength = wingLength * (1 - progress * 0.3f);
+                
+                var wingBlock = new VoxelBlock(
+                    new Vector3(xOffset, 0, zPosition),
+                    new Vector3(2f, currentThickness, currentLength),
+                    config.Material,
+                    BlockType.Hull,
+                    BlockShape.Wedge,
+                    side > 0 ? BlockOrientation.PosX : BlockOrientation.NegX
+                );
+                
+                // Color wings with accent color
+                wingBlock.ColorRGB = config.Style.AccentColor;
+                ship.Structure.AddBlock(wingBlock);
+            }
+        }
     }
     
     /// <summary>
@@ -2251,9 +2334,9 @@ public class ProceduralShipGenerator
         
         foreach (var engine in engines)
         {
-            // Add small glowing block behind engine
-            var glowSize = new Vector3(0.8f, 0.8f, 0.8f);
-            var glowOffset = new Vector3(0, 0, -engine.Size.Z / 2 - 0.5f);
+            // Add LARGER glowing block behind engine for better visibility
+            var glowSize = new Vector3(1.5f, 1.5f, 1.5f); // INCREASED from 0.8
+            var glowOffset = new Vector3(0, 0, -engine.Size.Z / 2 - glowSize.Z / 2 - 0.3f);
             
             var glow = new VoxelBlock(
                 engine.Position + glowOffset,
@@ -2261,8 +2344,21 @@ public class ProceduralShipGenerator
                 "Energy", // Use energy material for glow effect
                 BlockType.Hull
             );
-            glow.ColorRGB = 0x00FFFF; // Cyan glow
+            glow.ColorRGB = ENGINE_GLOW_COLOR;
             ship.Structure.AddBlock(glow);
+            
+            // Add secondary dimmer glow for depth effect
+            var outerGlowSize = new Vector3(2f, 2f, 0.5f);
+            var outerGlowOffset = new Vector3(0, 0, -engine.Size.Z / 2 - glowSize.Z - 0.8f);
+            
+            var outerGlow = new VoxelBlock(
+                engine.Position + outerGlowOffset,
+                outerGlowSize,
+                "Energy",
+                BlockType.Hull
+            );
+            outerGlow.ColorRGB = OUTER_GLOW_COLOR;
+            ship.Structure.AddBlock(outerGlow);
         }
     }
     
