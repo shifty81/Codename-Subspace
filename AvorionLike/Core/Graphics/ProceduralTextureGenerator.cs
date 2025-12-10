@@ -66,20 +66,32 @@ public class ProceduralTextureGenerator
                 break;
                 
             case TexturePattern.Paneled:
-                // Hull panels with grid
+                // Hull panels with grid - Enhanced for better visibility
                 float gridX = MathF.Abs(worldPos.X % material.PatternScale - material.PatternScale / 2);
                 float gridY = MathF.Abs(worldPos.Y % material.PatternScale - material.PatternScale / 2);
                 float gridZ = MathF.Abs(worldPos.Z % material.PatternScale - material.PatternScale / 2);
                 
-                // Panel lines
-                float lineThickness = 0.1f;
+                // Panel lines with highlights and shadows
+                float lineThickness = 0.15f; // Slightly thicker for visibility
+                float edgeHighlight = 0.05f;
+                
                 if (gridX < lineThickness || gridY < lineThickness || gridZ < lineThickness)
                 {
-                    patternValue = -0.3f; // Darker panel lines
+                    // Panel seam - create a groove effect
+                    patternValue = -0.4f; // Darker panel lines
+                }
+                else if (gridX < lineThickness + edgeHighlight || 
+                         gridY < lineThickness + edgeHighlight || 
+                         gridZ < lineThickness + edgeHighlight)
+                {
+                    // Edge highlight for depth
+                    patternValue = 0.15f;
                 }
                 else
                 {
-                    patternValue = 0.05f; // Slight variation on panels
+                    // Panel surface with subtle variation
+                    float panelNoise = PerlinNoise3D(worldPos * 2.0f) * 0.1f;
+                    patternValue = 0.05f + panelNoise; // Slight variation on panels
                 }
                 break;
                 
@@ -196,12 +208,35 @@ public class ProceduralTextureGenerator
     
     private float HexagonalPattern(Vector3 pos, float scale)
     {
-        // Simplified hexagonal pattern using triangular grid
+        // Enhanced hexagonal honeycomb pattern for armor plating
         float x = pos.X * scale;
         float y = pos.Y * scale;
+        float z = pos.Z * scale;
         
-        float hex = MathF.Sin(x) + MathF.Sin(x * 0.5f + y * 0.866f) + MathF.Sin(x * 0.5f - y * 0.866f);
-        return hex / 3.0f;
+        // Create hexagonal grid using three sine waves at 120 degrees
+        float hex1 = MathF.Sin(x);
+        float hex2 = MathF.Sin(x * 0.5f + y * 0.866f);
+        float hex3 = MathF.Sin(x * 0.5f - y * 0.866f);
+        
+        float hexPattern = (hex1 + hex2 + hex3) / 3.0f;
+        
+        // Add depth variation for 3D hexagon cells
+        float cellNoise = PerlinNoise3D(new Vector3(x, y, z) * 0.5f);
+        
+        // Create cell borders (darker lines)
+        float cellBorder = MathF.Abs(hexPattern);
+        if (cellBorder > 0.7f)
+        {
+            return -0.5f; // Dark borders for cell separation
+        }
+        else if (cellBorder > 0.6f)
+        {
+            return 0.2f; // Highlight edge
+        }
+        else
+        {
+            return cellNoise * 0.15f; // Cell interior with subtle variation
+        }
     }
     
     private float CrackedPattern(Vector3 pos, float scale)
