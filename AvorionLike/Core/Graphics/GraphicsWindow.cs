@@ -47,7 +47,7 @@ public class GraphicsWindow : IDisposable
     
     private readonly GameEngine _gameEngine;
     private bool _disposed = false;
-    private bool _playerControlMode = false; // Toggle between camera and ship control
+    private bool _playerControlMode = true; // Start in ship control mode (third-person) by default
     private bool _shouldClose = false; // Signal to close window and return to main menu
     
     // Mouse state
@@ -123,8 +123,10 @@ public class GraphicsWindow : IDisposable
         _gl = _window!.CreateOpenGL();
         _inputContext = _window!.CreateInput();
 
-        // Initialize camera
+        // Initialize camera with better third-person view position
         _camera = new Camera(new Vector3(0, 50, 150));
+        // Set chase camera parameters for good ship visibility (distance, height, smoothness)
+        _camera.SetChaseParameters(80.0f, 40.0f, 5.0f); // Further back and higher for better view
 
         // Initialize renderers
         _voxelRenderer = new EnhancedVoxelRenderer(_gl);
@@ -185,16 +187,17 @@ public class GraphicsWindow : IDisposable
 
         Console.WriteLine("\n=== 3D Graphics Window Active ===");
         Console.WriteLine("Controls:");
-        Console.WriteLine("  Camera Mode (Default):");
-        Console.WriteLine("    WASD - Move camera");
-        Console.WriteLine("    Space/Shift - Move up/down");
-        Console.WriteLine("    Mouse - Look around (free-look)");
-        Console.WriteLine("  Ship Control Mode (Press C to toggle):");
+        Console.WriteLine("  Ship Control Mode (Third-Person - DEFAULT):");
         Console.WriteLine("    WASD - Thrust (Forward/Back/Left/Right)");
         Console.WriteLine("    Space/Shift - Thrust Up/Down");
         Console.WriteLine("    Arrow Keys - Pitch/Yaw");
         Console.WriteLine("    Q/E - Roll");
         Console.WriteLine("    X - Emergency Brake");
+        Console.WriteLine("    Mouse - Look around (camera follows ship)");
+        Console.WriteLine("  Free Camera Mode (Press C to toggle):");
+        Console.WriteLine("    WASD - Move camera");
+        Console.WriteLine("    Space/Shift - Move up/down");
+        Console.WriteLine("    Mouse - Look around (free-look)");
         Console.WriteLine("  UI Controls:");
         Console.WriteLine("    M - Toggle Galaxy Map");
         Console.WriteLine("    ~ (Tilde) - Toggle In-Game Testing Console");
@@ -603,7 +606,7 @@ public class GraphicsWindow : IDisposable
         if (key == Key.C)
         {
             _playerControlMode = !_playerControlMode;
-            Console.WriteLine($"Control Mode: {(_playerControlMode ? "Ship Control" : "Camera")}");
+            Console.WriteLine($"Control Mode: {(_playerControlMode ? "Ship Control (Third-Person)" : "Free Camera")}");
         }
         
         // Toggle debug UI with F1

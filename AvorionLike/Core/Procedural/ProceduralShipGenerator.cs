@@ -2156,6 +2156,7 @@ public class ProceduralShipGenerator
     
     /// <summary>
     /// Add wing structures to make ships look more like actual spacecraft
+    /// Uses layered blocks and smooth transitions for professional appearance
     /// </summary>
     private void AddWingStructures(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config)
     {
@@ -2181,33 +2182,150 @@ public class ProceduralShipGenerator
             // Wing dimensions - larger for bigger ships
             float wingSpan = dimensions.X * 0.4f + (float)config.Size * 0.5f;
             float wingLength = dimensions.Z * 0.3f;
-            float wingThickness = 2f;
+            float baseThickness = 2.5f;
             
-            // Create wing as a series of blocks extending outward
-            int wingBlocks = 5 + (int)config.Size / 2;
+            // Wing root position (where it connects to hull)
+            float rootX = side * (dimensions.X / 2);
+            
+            // Add transition blocks at wing root for smooth connection to hull
+            AddWingRootTransition(ship, new Vector3(rootX, 0, zPosition), side, baseThickness, wingLength, config);
+            
+            // Create wing with layered blocks for smooth appearance
+            int wingBlocks = 6 + (int)config.Size / 2;
             for (int j = 0; j < wingBlocks; j++)
             {
                 float progress = (float)j / wingBlocks;
                 float xOffset = side * (dimensions.X / 2 + progress * wingSpan);
                 
-                // Taper the wing toward the tip
-                float currentThickness = wingThickness * (1 - progress * 0.5f);
-                float currentLength = wingLength * (1 - progress * 0.3f);
+                // Smooth tapering - reduce both thickness and length
+                float currentThickness = baseThickness * (1 - progress * 0.7f);
+                float currentLength = wingLength * (1 - progress * 0.4f);
+                float blockWidth = 1.5f * (1 - progress * 0.3f); // Taper width too
                 
-                var wingBlock = new VoxelBlock(
+                // Add multiple layers for wing thickness and smooth edges
+                // Main wing surface (wedge for aerodynamic look)
+                var mainWingBlock = new VoxelBlock(
                     new Vector3(xOffset, 0, zPosition),
-                    new Vector3(2f, currentThickness, currentLength),
+                    new Vector3(blockWidth, currentThickness, currentLength),
                     config.Material,
                     BlockType.Hull,
                     BlockShape.Wedge,
                     side > 0 ? BlockOrientation.PosX : BlockOrientation.NegX
                 );
+                mainWingBlock.ColorRGB = config.Style.AccentColor;
+                ship.Structure.AddBlock(mainWingBlock);
                 
-                // Color wings with accent color
-                wingBlock.ColorRGB = config.Style.AccentColor;
-                ship.Structure.AddBlock(wingBlock);
+                // Add supporting blocks for more realistic structure (every other block)
+                if (j % 2 == 0 && progress < 0.8f)
+                {
+                    // Top edge smoothing block
+                    var topEdgeBlock = new VoxelBlock(
+                        new Vector3(xOffset, currentThickness * 0.5f, zPosition),
+                        new Vector3(blockWidth * 0.8f, currentThickness * 0.3f, currentLength * 0.8f),
+                        config.Material,
+                        BlockType.Hull,
+                        BlockShape.HalfBlock,
+                        BlockOrientation.PosY
+                    );
+                    topEdgeBlock.ColorRGB = config.Style.AccentColor;
+                    ship.Structure.AddBlock(topEdgeBlock);
+                    
+                    // Bottom reinforcement (if early in wing)
+                    if (progress < 0.5f)
+                    {
+                        var bottomBlock = new VoxelBlock(
+                            new Vector3(xOffset, -currentThickness * 0.3f, zPosition),
+                            new Vector3(blockWidth * 0.7f, currentThickness * 0.4f, currentLength * 0.7f),
+                            config.Material,
+                            BlockType.Hull,
+                            BlockShape.Corner,
+                            side > 0 ? BlockOrientation.PosX : BlockOrientation.NegX
+                        );
+                        bottomBlock.ColorRGB = config.Style.AccentColor;
+                        ship.Structure.AddBlock(bottomBlock);
+                    }
+                }
+                
+                // Add leading edge detail for realism (forward facing blocks)
+                if (j % 3 == 0 && progress < 0.7f)
+                {
+                    var leadingEdge = new VoxelBlock(
+                        new Vector3(xOffset, 0, zPosition + currentLength * 0.4f),
+                        new Vector3(blockWidth * 0.6f, currentThickness * 0.7f, currentLength * 0.2f),
+                        config.Material,
+                        BlockType.Hull,
+                        BlockShape.Wedge,
+                        BlockOrientation.PosZ
+                    );
+                    leadingEdge.ColorRGB = config.Style.AccentColor;
+                    ship.Structure.AddBlock(leadingEdge);
+                }
             }
         }
+    }
+    
+    /// <summary>
+    /// Add transition blocks where wing connects to hull for smooth appearance
+    /// </summary>
+    private void AddWingRootTransition(GeneratedShip ship, Vector3 rootPosition, float side, float thickness, float length, ShipGenerationConfig config)
+    {
+        // Create 3-4 transition blocks that blend wing into hull
+        for (int i = 0; i < 3; i++)
+        {
+            float transitionProgress = (float)i / 3;
+            float transitionOffset = side * i * 0.5f;
+            
+            // Use corner and inner corner blocks for smooth blending
+            BlockShape transitionShape = i switch
+            {
+                0 => BlockShape.InnerCorner,  // Closest to hull
+                1 => BlockShape.Corner,        // Middle transition
+                _ => BlockShape.Wedge          // Outer transition
+            };
+            
+            BlockOrientation orientation = side > 0 
+                ? (i == 0 ? BlockOrientation.PosX : BlockOrientation.PosX)
+                : (i == 0 ? BlockOrientation.NegX : BlockOrientation.NegX);
+            
+            var transitionBlock = new VoxelBlock(
+                rootPosition + new Vector3(transitionOffset, 0, 0),
+                new Vector3(1.2f, thickness * (0.7f + transitionProgress * 0.3f), length * (0.8f + transitionProgress * 0.2f)),
+                config.Material,
+                BlockType.Hull,
+                transitionShape,
+                orientation
+            );
+            
+            // Blend colors from hull to accent
+            transitionBlock.ColorRGB = LerpColor(config.Style.PrimaryColor, config.Style.AccentColor, transitionProgress);
+            ship.Structure.AddBlock(transitionBlock);
+        }
+    }
+    
+    /// <summary>
+    /// Linearly interpolate between two RGB colors represented as uint
+    /// </summary>
+    private uint LerpColor(uint color1, uint color2, float t)
+    {
+        t = Math.Clamp(t, 0f, 1f);
+        
+        // Extract RGB components from color1
+        byte r1 = (byte)((color1 >> 16) & 0xFF);
+        byte g1 = (byte)((color1 >> 8) & 0xFF);
+        byte b1 = (byte)(color1 & 0xFF);
+        
+        // Extract RGB components from color2
+        byte r2 = (byte)((color2 >> 16) & 0xFF);
+        byte g2 = (byte)((color2 >> 8) & 0xFF);
+        byte b2 = (byte)(color2 & 0xFF);
+        
+        // Interpolate each component
+        byte r = (byte)(r1 + (r2 - r1) * t);
+        byte g = (byte)(g1 + (g2 - g1) * t);
+        byte b = (byte)(b1 + (b2 - b1) * t);
+        
+        // Recombine into uint
+        return (uint)((r << 16) | (g << 8) | b);
     }
     
     /// <summary>
