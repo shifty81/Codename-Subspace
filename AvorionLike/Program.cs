@@ -3451,6 +3451,17 @@ class Program
             Console.WriteLine($"  ⚠ Connectivity tests skipped: {ex.Message}");
         }
         
+        // Test block shape variety (verify non-cube shapes are generated)
+        Console.WriteLine("\nTesting block shape variety...");
+        try
+        {
+            TestBlockShapeVariety.Run();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"  ⚠ Shape variety tests skipped: {ex.Message}");
+        }
+        
         Console.WriteLine($"✓ Test showcase created: {shipCount} ships generated");
         Console.WriteLine($"  Ships use varied seeds for different designs each playthrough");
         Console.WriteLine($"  Multiple hull shapes: Angular, Sleek, Blocky, Cylindrical, Irregular");
