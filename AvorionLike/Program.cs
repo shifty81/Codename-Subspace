@@ -26,7 +26,7 @@ class Program
 {
     private static GameEngine? _gameEngine;
     private static bool _running = true;
-    private static Random _random = new Random();
+    private static Random _random = new Random(Environment.TickCount); // Seeded for varied generation each run
 
     static void Main(string[] args)
     {

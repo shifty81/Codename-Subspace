@@ -116,6 +116,12 @@ public class ProceduralShipGenerator
     private Random _random;
     private readonly Logger _logger = Logger.Instance;
     
+    // Visual effect colors
+    private const uint ENGINE_COLOR = 0x3366FF;      // Blue tint for engines
+    private const uint NOZZLE_COLOR = 0x2244CC;      // Darker blue for nozzles
+    private const uint ENGINE_GLOW_COLOR = 0x00FFFF; // Cyan primary glow
+    private const uint OUTER_GLOW_COLOR = 0x0088CC;  // Dimmer blue outer glow
+    
     public ProceduralShipGenerator(int seed = 0)
     {
         _random = seed == 0 ? new Random() : new Random(seed);
@@ -1751,7 +1757,7 @@ public class ProceduralShipGenerator
             );
             
             // Add distinctive color to engines
-            engine.ColorRGB = 0x3366FF; // Blue tint for engines
+            engine.ColorRGB = ENGINE_COLOR;
             
             ship.Structure.AddBlock(engine);
             
@@ -1763,7 +1769,7 @@ public class ProceduralShipGenerator
                 config.Material,
                 BlockType.Hull
             );
-            nozzle.ColorRGB = 0x2244CC; // Darker blue for nozzle
+            nozzle.ColorRGB = NOZZLE_COLOR;
             ship.Structure.AddBlock(nozzle);
         }
     }
@@ -2338,7 +2344,7 @@ public class ProceduralShipGenerator
                 "Energy", // Use energy material for glow effect
                 BlockType.Hull
             );
-            glow.ColorRGB = 0x00FFFF; // Cyan glow - very visible
+            glow.ColorRGB = ENGINE_GLOW_COLOR;
             ship.Structure.AddBlock(glow);
             
             // Add secondary dimmer glow for depth effect
@@ -2351,7 +2357,7 @@ public class ProceduralShipGenerator
                 "Energy",
                 BlockType.Hull
             );
-            outerGlow.ColorRGB = 0x0088CC; // Dimmer blue glow
+            outerGlow.ColorRGB = OUTER_GLOW_COLOR;
             ship.Structure.AddBlock(outerGlow);
         }
     }
