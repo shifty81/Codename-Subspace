@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Numerics;
 using AvorionLike.Core.Voxel;
+using AvorionLike.Core.Logging;
 
 namespace AvorionLike.Core.Procedural;
 
@@ -17,6 +18,7 @@ public class ThreadedWorldGenerator
     private readonly Thread[] _workerThreads;
     private readonly int _threadCount;
     private bool _isRunning = false;
+    private readonly Logger _logger = Logger.Instance;
     
     public ThreadedWorldGenerator(
         int seed,
@@ -41,14 +43,18 @@ public class ThreadedWorldGenerator
             
         _isRunning = true;
         
+        _logger.Info("WorldGen", $"Starting {_threadCount} worker threads");
+        
         for (int i = 0; i < _threadCount; i++)
         {
+            int threadIndex = i;
             _workerThreads[i] = new Thread(WorkerThreadLoop)
             {
                 IsBackground = true,
-                Name = $"WorldGen-{i}"
+                Name = $"WorldGen-{threadIndex}"
             };
             _workerThreads[i].Start();
+            _logger.Debug("WorldGen", $"Worker thread {threadIndex} started");
         }
     }
     
@@ -60,6 +66,7 @@ public class ThreadedWorldGenerator
         if (!_isRunning)
             return;
             
+        _logger.Info("WorldGen", "Stopping worker threads");
         _isRunning = false;
         _cancellationTokenSource.Cancel();
         
@@ -68,6 +75,8 @@ public class ThreadedWorldGenerator
         {
             thread?.Join(1000); // Wait up to 1 second per thread
         }
+        
+        _logger.Info("WorldGen", "All worker threads stopped");
     }
     
     /// <summary>
@@ -82,6 +91,8 @@ public class ThreadedWorldGenerator
             SectorY = y,
             SectorZ = z
         });
+        
+        _logger.Debug("WorldGen", $"Enqueued sector generation task: ({x}, {y}, {z})");
     }
     
     /// <summary>
@@ -143,18 +154,22 @@ public class ThreadedWorldGenerator
     /// </summary>
     private void WorkerThreadLoop()
     {
+        var threadName = Thread.CurrentThread.Name ?? "Unknown";
+        
         while (_isRunning && !_cancellationTokenSource.Token.IsCancellationRequested)
         {
             if (_taskQueue.TryDequeue(out var task))
             {
+                _logger.Debug("WorldGen", $"{threadName}: Dequeued task type {task.Type}");
                 try
                 {
                     var result = ProcessTask(task);
                     _resultQueue.Enqueue(result);
+                    _logger.Debug("WorldGen", $"{threadName}: Completed task type {task.Type}");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error in world generation thread: {ex.Message}");
+                    _logger.Error("WorldGen", $"{threadName}: Error processing task: {ex.Message}", ex);
                 }
             }
             else
@@ -163,6 +178,8 @@ public class ThreadedWorldGenerator
                 Thread.Sleep(10);
             }
         }
+        
+        _logger.Debug("WorldGen", $"{threadName}: Exiting worker loop");
     }
     
     /// <summary>
@@ -229,10 +246,34 @@ public class ThreadedWorldGenerator
         if (result.VoxelBlocks == null)
             return;
             
+        _logger.Debug("WorldGen", $"Processing asteroid result with {result.VoxelBlocks.Count} blocks");
+            
         // Add blocks to chunk manager
         foreach (var block in result.VoxelBlocks)
         {
             _chunkManager.AddBlock(block);
+        }
+        
+        // Update bounding boxes for affected chunks
+        var affectedChunks = new HashSet<VoxelChunk>();
+        foreach (var block in result.VoxelBlocks)
+        {
+            var chunk = _chunkManager.GetChunkAtPosition(block.Position);
+            if (chunk != null)
+            {
+                affectedChunks.Add(chunk);
+            }
+        }
+        
+        foreach (var chunk in affectedChunks)
+        {
+            chunk.UpdateBoundingBox();
+            if (chunk.BoundingBox != null)
+            {
+                _logger.Debug("WorldGen", 
+                    $"Updated chunk AABB: Min={chunk.BoundingBox.Min}, Max={chunk.BoundingBox.Max}, " +
+                    $"Size={chunk.BoundingBox.Size}, Center={chunk.BoundingBox.Center}");
+            }
         }
     }
 }

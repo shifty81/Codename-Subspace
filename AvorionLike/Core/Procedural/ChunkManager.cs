@@ -5,6 +5,24 @@ using AvorionLike.Core.Voxel;
 namespace AvorionLike.Core.Procedural;
 
 /// <summary>
+/// Axis-aligned bounding box
+/// </summary>
+public class AABB
+{
+    public Vector3 Min { get; set; }
+    public Vector3 Max { get; set; }
+    
+    public AABB(Vector3 min, Vector3 max)
+    {
+        Min = min;
+        Max = max;
+    }
+    
+    public Vector3 Center => (Min + Max) / 2.0f;
+    public Vector3 Size => Max - Min;
+}
+
+/// <summary>
 /// Represents a chunk of voxel data
 /// </summary>
 public class VoxelChunk
@@ -15,6 +33,7 @@ public class VoxelChunk
     public bool IsLoaded { get; set; } = false;
     public bool IsDirty { get; set; } = true; // Needs mesh rebuild
     public DateTime LastAccessTime { get; set; } = DateTime.UtcNow;
+    public AABB? BoundingBox { get; set; } = null; // Bounding box for frustum culling
     
     public VoxelChunk(Vector3 position, int size)
     {
@@ -49,6 +68,33 @@ public class VoxelChunk
     {
         LastAccessTime = DateTime.UtcNow;
         return Blocks;
+    }
+    
+    /// <summary>
+    /// Update bounding box from block positions
+    /// </summary>
+    public void UpdateBoundingBox()
+    {
+        if (Blocks.Count == 0)
+        {
+            BoundingBox = null;
+            return;
+        }
+        
+        Vector3 min = new Vector3(float.MaxValue);
+        Vector3 max = new Vector3(float.MinValue);
+        
+        foreach (var block in Blocks)
+        {
+            Vector3 halfSize = block.Size / 2.0f;
+            Vector3 blockMin = block.Position - halfSize;
+            Vector3 blockMax = block.Position + halfSize;
+            
+            min = Vector3.Min(min, blockMin);
+            max = Vector3.Max(max, blockMax);
+        }
+        
+        BoundingBox = new AABB(min, max);
     }
 }
 

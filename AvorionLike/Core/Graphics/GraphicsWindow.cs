@@ -496,6 +496,32 @@ public class GraphicsWindow : IDisposable
     {
         _keysPressed.Add(key);
         
+        // Debug toggle keys F7-F10 (note: F9 is for quick load, so moved to F11)
+        if (key == Key.F7)
+        {
+            Config.DebugConfig.TwoSidedRendering = !Config.DebugConfig.TwoSidedRendering;
+            Console.WriteLine($"[DEBUG] Two-Sided Rendering: {(Config.DebugConfig.TwoSidedRendering ? "ON" : "OFF")}");
+            Console.WriteLine("  This fixes disappearing faces by rendering both sides of triangles");
+        }
+        else if (key == Key.F8)
+        {
+            Config.DebugConfig.BypassCulling = !Config.DebugConfig.BypassCulling;
+            Console.WriteLine($"[DEBUG] Bypass Culling: {(Config.DebugConfig.BypassCulling ? "ON" : "OFF")}");
+            Console.WriteLine("  This forces all chunks to render regardless of camera position");
+        }
+        else if (key == Key.F11)
+        {
+            Config.DebugConfig.ShowAABBs = !Config.DebugConfig.ShowAABBs;
+            Console.WriteLine($"[DEBUG] Show AABBs: {(Config.DebugConfig.ShowAABBs ? "ON" : "OFF")}");
+            Console.WriteLine("  This shows wireframe bounding boxes for all chunks");
+        }
+        else if (key == Key.F12)
+        {
+            Config.DebugConfig.ShowGenStats = !Config.DebugConfig.ShowGenStats;
+            Console.WriteLine($"[DEBUG] Show Generation Stats: {(Config.DebugConfig.ShowGenStats ? "ON" : "OFF")}");
+            Console.WriteLine("  This displays world generation task/result counts on screen");
+        }
+        
         // Track Shift for console input
         if (key == Key.ShiftLeft || key == Key.ShiftRight)
         {
