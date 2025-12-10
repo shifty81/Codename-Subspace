@@ -549,7 +549,8 @@ public class GraphicsWindow : IDisposable
         {
             Config.DebugConfig.TwoSidedRendering = !Config.DebugConfig.TwoSidedRendering;
             Console.WriteLine($"[DEBUG] Two-Sided Rendering: {(Config.DebugConfig.TwoSidedRendering ? "ON" : "OFF")}");
-            Console.WriteLine("  This fixes disappearing faces by rendering both sides of triangles");
+            Console.WriteLine("  This disables backface culling to render both sides of triangles");
+            Console.WriteLine("  Useful for debugging missing faces while preserving hollow structures");
         }
         else if (key == Key.F8)
         {
