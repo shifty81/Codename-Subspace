@@ -152,8 +152,10 @@ public class GraphicsWindow : IDisposable
         // Set clear color to pure black for space (fixes light blue screen on startup)
         _gl.ClearColor(0.0f, 0.0f, 0.0f, 1.0f);
         
-        // Enable depth testing
+        // Enable depth testing with proper depth function
         _gl.Enable(EnableCap.DepthTest);
+        _gl.DepthFunc(DepthFunction.Less);
+        _gl.DepthMask(true); // Ensure depth writes are enabled
         
         // Enable face culling for performance (~50% fewer fragments to render)
         // Voxel vertices use correct CCW winding order for front faces

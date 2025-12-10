@@ -402,22 +402,24 @@ class Program
         
         Console.WriteLine("\n=== System Features Summary ===");
         Console.WriteLine("✓ Player Ship: Fully equipped Cruiser with all capabilities");
-        Console.WriteLine("✓ Diverse Fleet: 20+ ships of all sizes and roles");
-        Console.WriteLine("✓ Asteroid Fields: Rich with all material types");
+        Console.WriteLine("✓ Diverse Fleet: 18+ ships of all sizes and roles with VARIED VISUAL STYLES");
+        Console.WriteLine("✓ Asteroid Fields: Rich with all material types (SPREAD ACROSS LARGE DISTANCES)");
         Console.WriteLine("✓ Space Stations: Multiple types (Trading, Military, Industrial, Research)");
+        Console.WriteLine("✓ PLANETS: 4 diverse planets (Rocky, Gas Giant, Ice, Desert) - NEW!");
         Console.WriteLine("✓ AI Ships: Traders, Miners, Pirates, Explorers");
         Console.WriteLine("✓ Galaxy Progression: Visible material tier zones");
-        Console.WriteLine("✓ Fleet Automation: Demonstrating captain assignments");
+        Console.WriteLine("✓ Improved Spacing: Objects are 3-5x more spread out for better visibility");
         Console.WriteLine();
         Console.WriteLine("💡 TESTING TIPS:");
         Console.WriteLine("  • Press ~ or click Console button for testing commands");
         Console.WriteLine("  • Type 'help' for all available commands");
         Console.WriteLine("  • Use M key to open Galaxy Map");
         Console.WriteLine("  • Press I for Inventory, B for Ship Builder");
-        Console.WriteLine("  • Fly around to explore all generated content");
+        Console.WriteLine("  • Fly around to explore all generated content - look at the HORIZON!");
         Console.WriteLine("  • Try combat with 'spawn_enemy' command");
         Console.WriteLine("  • Test mining with nearby asteroids");
         Console.WriteLine("  • Visit stations for trading");
+        Console.WriteLine("  • Ships now have varied designs based on their role");
         Console.WriteLine();
         
         // Launch the game
@@ -451,49 +453,61 @@ class Program
         // === 1. Create diverse fleet of ships at various distances ===
         Console.WriteLine("Generating diverse ship fleet...");
         
+        // INCREASED SPACING: Objects are now spread out much more (3-5x multiplier)
         var shipConfigs = new[]
         {
-            // Fighters (close by)
-            (Size: ShipSize.Fighter, Role: ShipRole.Combat, Material: "Titanium", Position: new Vector3(100, 20, 0)),
-            (Size: ShipSize.Fighter, Role: ShipRole.Exploration, Material: "Trinium", Position: new Vector3(-100, -20, 50)),
-            (Size: ShipSize.Fighter, Role: ShipRole.Combat, Material: "Naonite", Position: new Vector3(80, 0, -80)),
+            // Fighters (close by but more spread out)
+            (Size: ShipSize.Fighter, Role: ShipRole.Combat, Material: "Titanium", Position: new Vector3(300, 50, 0)),
+            (Size: ShipSize.Fighter, Role: ShipRole.Exploration, Material: "Trinium", Position: new Vector3(-350, -40, 150)),
+            (Size: ShipSize.Fighter, Role: ShipRole.Combat, Material: "Naonite", Position: new Vector3(250, 0, -280)),
             
-            // Corvettes (medium distance)
-            (Size: ShipSize.Corvette, Role: ShipRole.Mining, Material: "Iron", Position: new Vector3(200, 0, 100)),
-            (Size: ShipSize.Corvette, Role: ShipRole.Trading, Material: "Titanium", Position: new Vector3(-180, 30, -120)),
-            (Size: ShipSize.Corvette, Role: ShipRole.Combat, Material: "Titanium", Position: new Vector3(150, -40, 150)),
-            (Size: ShipSize.Corvette, Role: ShipRole.Multipurpose, Material: "Naonite", Position: new Vector3(-200, 0, 0)),
+            // Corvettes (medium distance - much more spread out)
+            (Size: ShipSize.Corvette, Role: ShipRole.Mining, Material: "Iron", Position: new Vector3(600, 0, 350)),
+            (Size: ShipSize.Corvette, Role: ShipRole.Trading, Material: "Titanium", Position: new Vector3(-650, 80, -400)),
+            (Size: ShipSize.Corvette, Role: ShipRole.Combat, Material: "Titanium", Position: new Vector3(550, -100, 500)),
+            (Size: ShipSize.Corvette, Role: ShipRole.Multipurpose, Material: "Naonite", Position: new Vector3(-700, 0, 0)),
             
-            // Frigates (further out)
-            (Size: ShipSize.Frigate, Role: ShipRole.Combat, Material: "Ogonite", Position: new Vector3(350, 0, 200)),
-            (Size: ShipSize.Frigate, Role: ShipRole.Trading, Material: "Xanion", Position: new Vector3(-320, 50, -180)),
-            (Size: ShipSize.Frigate, Role: ShipRole.Exploration, Material: "Naonite", Position: new Vector3(280, -30, -250)),
-            (Size: ShipSize.Frigate, Role: ShipRole.Mining, Material: "Iron", Position: new Vector3(-300, 0, 220)),
-            (Size: ShipSize.Frigate, Role: ShipRole.Multipurpose, Material: "Trinium", Position: new Vector3(320, 40, -200)),
+            // Frigates (further out - significantly more distant)
+            (Size: ShipSize.Frigate, Role: ShipRole.Combat, Material: "Ogonite", Position: new Vector3(1200, 0, 800)),
+            (Size: ShipSize.Frigate, Role: ShipRole.Trading, Material: "Xanion", Position: new Vector3(-1100, 150, -750)),
+            (Size: ShipSize.Frigate, Role: ShipRole.Exploration, Material: "Naonite", Position: new Vector3(950, -80, -900)),
+            (Size: ShipSize.Frigate, Role: ShipRole.Mining, Material: "Iron", Position: new Vector3(-1050, 0, 850)),
+            (Size: ShipSize.Frigate, Role: ShipRole.Multipurpose, Material: "Trinium", Position: new Vector3(1100, 120, -800)),
             
-            // Destroyers (distant)
-            (Size: ShipSize.Destroyer, Role: ShipRole.Combat, Material: "Avorion", Position: new Vector3(500, 0, 300)),
-            (Size: ShipSize.Destroyer, Role: ShipRole.Salvage, Material: "Ogonite", Position: new Vector3(-480, -60, -320)),
+            // Destroyers (distant - much farther)
+            (Size: ShipSize.Destroyer, Role: ShipRole.Combat, Material: "Avorion", Position: new Vector3(1800, 0, 1200)),
+            (Size: ShipSize.Destroyer, Role: ShipRole.Salvage, Material: "Ogonite", Position: new Vector3(-1700, -150, -1300)),
             
-            // Cruisers (very distant)
-            (Size: ShipSize.Cruiser, Role: ShipRole.Combat, Material: "Avorion", Position: new Vector3(650, 50, 400)),
-            (Size: ShipSize.Cruiser, Role: ShipRole.Trading, Material: "Xanion", Position: new Vector3(-600, 0, -450)),
+            // Cruisers (very distant - far on the horizon)
+            (Size: ShipSize.Cruiser, Role: ShipRole.Combat, Material: "Avorion", Position: new Vector3(2500, 200, 1600)),
+            (Size: ShipSize.Cruiser, Role: ShipRole.Trading, Material: "Xanion", Position: new Vector3(-2400, 0, -1800)),
             
-            // Capital ships (extremely distant)
-            (Size: ShipSize.Battleship, Role: ShipRole.Combat, Material: "Avorion", Position: new Vector3(850, 100, 500)),
-            (Size: ShipSize.Carrier, Role: ShipRole.Multipurpose, Material: "Avorion", Position: new Vector3(-800, -80, -550)),
+            // Capital ships (extremely distant - barely visible on horizon)
+            (Size: ShipSize.Battleship, Role: ShipRole.Combat, Material: "Avorion", Position: new Vector3(3500, 300, 2000)),
+            (Size: ShipSize.Carrier, Role: ShipRole.Multipurpose, Material: "Avorion", Position: new Vector3(-3300, -250, -2200)),
         };
         
         foreach (var config in shipConfigs)
         {
             try
             {
+                // Vary ship styles based on role for more visual diversity
+                string styleName = config.Role switch
+                {
+                    ShipRole.Combat => "Military",
+                    ShipRole.Trading => "Trader",
+                    ShipRole.Mining => "Industrial",
+                    ShipRole.Exploration => "Explorer",
+                    ShipRole.Salvage => "Industrial", // Salvagers use industrial style
+                    _ => "Default"
+                };
+                
                 var shipConfig = new ShipGenerationConfig
                 {
                     Size = config.Size,
                     Role = config.Role,
                     Material = config.Material,
-                    Style = FactionShipStyle.GetDefaultStyle("Default"),
+                    Style = FactionShipStyle.GetDefaultStyle(styleName),
                     Seed = config.Position.GetHashCode()
                 };
                 
@@ -537,25 +551,25 @@ class Program
         
         Console.WriteLine($"  ✓ Generated {entityCount} ships");
         
-        // === 2. Create rich asteroid fields with all material types ===
+        // === 2. Create rich asteroid fields with all material types (INCREASED SPACING) ===
         Console.WriteLine("Creating asteroid fields...");
         
         var asteroidConfigs = new[]
         {
-            // Iron field (close)
-            (Material: ResourceType.Iron, Center: new Vector3(150, 0, 200), Count: 20),
+            // Iron field (close but more spread)
+            (Material: ResourceType.Iron, Center: new Vector3(450, 0, 600), Count: 20),
             // Titanium field
-            (Material: ResourceType.Titanium, Center: new Vector3(-250, 50, -150), Count: 15),
+            (Material: ResourceType.Titanium, Center: new Vector3(-800, 150, -500), Count: 15),
             // Naonite field
-            (Material: ResourceType.Naonite, Center: new Vector3(300, -30, 300), Count: 12),
+            (Material: ResourceType.Naonite, Center: new Vector3(1000, -100, 1000), Count: 12),
             // Trinium field
-            (Material: ResourceType.Trinium, Center: new Vector3(-350, 0, 250), Count: 10),
+            (Material: ResourceType.Trinium, Center: new Vector3(-1200, 0, 900), Count: 10),
             // Xanion field
-            (Material: ResourceType.Xanion, Center: new Vector3(450, 40, -350), Count: 8),
+            (Material: ResourceType.Xanion, Center: new Vector3(1500, 120, -1200), Count: 8),
             // Ogonite field
-            (Material: ResourceType.Ogonite, Center: new Vector3(-500, -50, -400), Count: 6),
+            (Material: ResourceType.Ogonite, Center: new Vector3(-1700, -150, -1400), Count: 6),
             // Avorion field (rare, far away)
-            (Material: ResourceType.Avorion, Center: new Vector3(600, 80, 450), Count: 4),
+            (Material: ResourceType.Avorion, Center: new Vector3(2000, 250, 1500), Count: 4),
         };
         
         int asteroidCount = 0;
@@ -576,11 +590,11 @@ class Program
                 ));
                 _gameEngine.EntityManager.AddComponent(asteroid.Id, asteroidVoxel);
                 
-                // Random position within field
+                // Random position within field (larger spread)
                 var offset = new Vector3(
-                    (float)(new Random(i).NextDouble() * 100 - 50),
-                    (float)(new Random(i + 1000).NextDouble() * 50 - 25),
-                    (float)(new Random(i + 2000).NextDouble() * 100 - 50)
+                    (float)(new Random(i).NextDouble() * 250 - 125),
+                    (float)(new Random(i + 1000).NextDouble() * 120 - 60),
+                    (float)(new Random(i + 2000).NextDouble() * 250 - 125)
                 );
                 
                 var asteroidPhysics = new PhysicsComponent
@@ -599,15 +613,86 @@ class Program
         
         Console.WriteLine($"  ✓ Generated {asteroidCount} asteroids across {asteroidConfigs.Length} fields");
         
-        // === 3. Create multiple space stations ===
+        // === 3. Create PLANETS for visual interest and scale (NEW!) ===
+        Console.WriteLine("Creating planets...");
+        
+        var planetConfigs = new[]
+        {
+            // Rocky inner planet (close, visible)
+            (Name: "Rocky Planet Alpha", Size: 80f, Position: new Vector3(1500, -200, 800), Type: "Rocky"),
+            // Gas giant (medium distance, large and visible)
+            (Name: "Gas Giant Beta", Size: 150f, Position: new Vector3(-2500, 300, -1800), Type: "Gas"),
+            // Ice planet (distant but visible on horizon)
+            (Name: "Ice World Gamma", Size: 60f, Position: new Vector3(3200, -100, 2400), Type: "Ice"),
+            // Desert planet (mid distance)
+            (Name: "Desert World Delta", Size: 70f, Position: new Vector3(-1800, 150, 2000), Type: "Desert"),
+        };
+        
+        int planetCount = 0;
+        foreach (var planetConfig in planetConfigs)
+        {
+            var planet = _gameEngine!.EntityManager.CreateEntity(planetConfig.Name);
+            
+            // Create planet as a large sphere-like voxel structure
+            var planetVoxel = new VoxelStructureComponent();
+            
+            // Create a simple sphere-approximation with multiple blocks
+            // Limit complexity to prevent performance issues (max 8 blocks per axis = 512 blocks max)
+            float radius = planetConfig.Size / 2f;
+            int blocksPerAxis = Math.Min(8, Math.Max(5, (int)(planetConfig.Size / 20f))); // Cap at 8 for performance
+            float blockSize = planetConfig.Size / blocksPerAxis;
+            float radiusSquared = radius * radius; // Pre-compute for performance
+            
+            for (int x = 0; x < blocksPerAxis; x++)
+            {
+                for (int y = 0; y < blocksPerAxis; y++)
+                {
+                    for (int z = 0; z < blocksPerAxis; z++)
+                    {
+                        Vector3 blockPos = new Vector3(
+                            (x - blocksPerAxis / 2f) * blockSize,
+                            (y - blocksPerAxis / 2f) * blockSize,
+                            (z - blocksPerAxis / 2f) * blockSize
+                        );
+                        
+                        // Only add blocks within sphere radius (use LengthSquared for performance)
+                        if (blockPos.LengthSquared() <= radiusSquared)
+                        {
+                            planetVoxel.AddBlock(new VoxelBlock(
+                                blockPos,
+                                new Vector3(blockSize, blockSize, blockSize),
+                                GetMaterialForPlanetType(planetConfig.Type),
+                                BlockType.Hull
+                            ));
+                        }
+                    }
+                }
+            }
+            
+            _gameEngine.EntityManager.AddComponent(planet.Id, planetVoxel);
+            
+            var planetPhysics = new PhysicsComponent
+            {
+                Position = centerPosition + planetConfig.Position,
+                Mass = planetVoxel.TotalMass * 1000f, // Planets are very massive
+                IsStatic = true // Planets don't move
+            };
+            _gameEngine.EntityManager.AddComponent(planet.Id, planetPhysics);
+            
+            planetCount++;
+        }
+        
+        Console.WriteLine($"  ✓ Generated {planetCount} planets");
+        
+        // === 4. Create multiple space stations (INCREASED SPACING) ===
         Console.WriteLine("Creating space stations...");
         
         var stationConfigs = new[]
         {
-            (Type: "Trading", Material: "Titanium", Position: new Vector3(400, 100, 0), Arch: StationArchitecture.Modular),
-            (Type: "Military", Material: "Ogonite", Position: new Vector3(-450, -80, 300), Arch: StationArchitecture.Modular),
-            (Type: "Industrial", Material: "Iron", Position: new Vector3(0, 150, -400), Arch: StationArchitecture.Sprawling),
-            (Type: "Research", Material: "Avorion", Position: new Vector3(-300, -120, -350), Arch: StationArchitecture.Modular),
+            (Type: "Trading", Material: "Titanium", Position: new Vector3(1300, 300, 0), Arch: StationArchitecture.Modular),
+            (Type: "Military", Material: "Ogonite", Position: new Vector3(-1500, -250, 1000), Arch: StationArchitecture.Modular),
+            (Type: "Industrial", Material: "Iron", Position: new Vector3(0, 450, -1400), Arch: StationArchitecture.Sprawling),
+            (Type: "Research", Material: "Avorion", Position: new Vector3(-1100, -350, -1200), Arch: StationArchitecture.Modular),
         };
         
         int stationCount = 0;
@@ -647,18 +732,18 @@ class Program
         
         Console.WriteLine($"  ✓ Generated {stationCount} space stations");
         
-        // === 4. Create AI ships with behaviors ===
+        // === 5. Create AI ships with behaviors (INCREASED SPACING) ===
         Console.WriteLine("Creating AI ships...");
         
         var aiShipConfigs = new[]
         {
-            (Name: "Trader 1", Role: ShipRole.Trading, Position: new Vector3(380, 95, 20)),
-            (Name: "Trader 2", Role: ShipRole.Trading, Position: new Vector3(420, 105, -30)),
-            (Name: "Miner 1", Role: ShipRole.Mining, Position: new Vector3(130, 10, 180)),
-            (Name: "Miner 2", Role: ShipRole.Mining, Position: new Vector3(170, -10, 220)),
-            (Name: "Pirate 1", Role: ShipRole.Combat, Position: new Vector3(-600, 50, 200)),
-            (Name: "Pirate 2", Role: ShipRole.Combat, Position: new Vector3(-650, -40, 250)),
-            (Name: "Explorer 1", Role: ShipRole.Exploration, Position: new Vector3(500, 120, 350)),
+            (Name: "Trader 1", Role: ShipRole.Trading, Position: new Vector3(1250, 280, 60)),
+            (Name: "Trader 2", Role: ShipRole.Trading, Position: new Vector3(1350, 310, -90)),
+            (Name: "Miner 1", Role: ShipRole.Mining, Position: new Vector3(420, 30, 550)),
+            (Name: "Miner 2", Role: ShipRole.Mining, Position: new Vector3(520, -30, 650)),
+            (Name: "Pirate 1", Role: ShipRole.Combat, Position: new Vector3(-2000, 150, 700)),
+            (Name: "Pirate 2", Role: ShipRole.Combat, Position: new Vector3(-2200, -120, 900)),
+            (Name: "Explorer 1", Role: ShipRole.Exploration, Position: new Vector3(1700, 350, 1200)),
         };
         
         int aiShipCount = 0;
@@ -666,12 +751,19 @@ class Program
         {
             try
             {
+                // Determine style based on name and role
+                string aiStyleName = aiConfig.Name.Contains("Pirate") ? "Pirate" :
+                                    aiConfig.Role == ShipRole.Trading ? "Trader" :
+                                    aiConfig.Role == ShipRole.Mining ? "Industrial" :
+                                    aiConfig.Role == ShipRole.Exploration ? "Explorer" :
+                                    "Default";
+                
                 var aiShipGenConfig = new ShipGenerationConfig
                 {
                     Size = ShipSize.Corvette,
                     Role = aiConfig.Role,
                     Material = "Titanium",
-                    Style = FactionShipStyle.GetDefaultStyle("Default"),
+                    Style = FactionShipStyle.GetDefaultStyle(aiStyleName),
                     Seed = aiConfig.Name.GetHashCode()
                 };
                 
@@ -731,6 +823,20 @@ class Program
             ResourceType.Ogonite => "Ogonite",
             ResourceType.Avorion => "Avorion",
             _ => "Iron"
+        };
+    }
+
+    static string GetMaterialForPlanetType(string planetType)
+    {
+        return planetType switch
+        {
+            "Rocky" => "Iron",        // Gray/dark rocky appearance
+            "Gas" => "Xanion",        // Golden/yellow gas giant
+            "Ice" => "Titanium",      // Light blue ice world
+            "Desert" => "Ogonite",    // Reddish desert world
+            "Lava" => "Avorion",      // Purple/dark volcanic world
+            "Ocean" => "Naonite",     // Green/teal ocean world
+            _ => "Trinium"            // Default blue
         };
     }
 

@@ -77,7 +77,7 @@ public class Camera
         return Matrix4x4.CreateLookAt(Position, Position + Front, Up);
     }
 
-    public Matrix4x4 GetProjectionMatrix(float aspectRatio, float nearPlane = 0.1f, float farPlane = 10000.0f)
+    public Matrix4x4 GetProjectionMatrix(float aspectRatio, float nearPlane = 0.1f, float farPlane = 50000.0f)
     {
         return Matrix4x4.CreatePerspectiveFieldOfView(
             Fov * (MathF.PI / 180.0f),
