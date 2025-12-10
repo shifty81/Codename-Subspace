@@ -274,8 +274,32 @@ public class ProceduralShipGenerator
             return BlockShape.Corner;
         else if (roll < wedgeProbability + cornerProbability + 0.1f)
             return BlockShape.HalfBlock;
+        else if (roll < wedgeProbability + cornerProbability + 0.15f)
+            return BlockShape.Tetrahedron;
+        else if (roll < wedgeProbability + cornerProbability + 0.2f)
+            return BlockShape.InnerCorner;
         else
             return BlockShape.Cube;
+    }
+    
+    /// <summary>
+    /// Helper to create a VoxelBlock with shape variety
+    /// </summary>
+    private VoxelBlock CreateBlockWithShapeVariety(Vector3 position, Vector3 size, string material, BlockType blockType, float shapeVariety = 0.3f)
+    {
+        BlockShape shape = BlockShape.Cube;
+        BlockOrientation orientation = BlockOrientation.PosY;
+        
+        if (_random.NextDouble() < shapeVariety)
+        {
+            shape = GetRandomShape(0.4f, 0.2f);
+            if (shape != BlockShape.Cube)
+            {
+                orientation = GetRandomOrientation();
+            }
+        }
+        
+        return new VoxelBlock(position, size, material, blockType, shape, orientation);
     }
     
     /// <summary>
@@ -540,10 +564,11 @@ public class ProceduralShipGenerator
                     
                     if (isEdge || isInterior)
                     {
-                        ship.Structure.AddBlock(new VoxelBlock(
+                        // Use shape variety for edges to make ships more interesting
+                        ship.Structure.AddBlock(CreateBlockWithShapeVariety(
                             center + new Vector3(x, y, z),
                             new Vector3(blockSize, blockSize, blockSize),
-                            config.Material, BlockType.Hull));
+                            config.Material, BlockType.Hull, isEdge ? 0.4f : 0.1f));
                     }
                 }
             }
@@ -652,10 +677,11 @@ public class ProceduralShipGenerator
                     
                     if (isEdge || _random.NextDouble() < config.BlockComplexity * 0.2f)
                     {
-                        ship.Structure.AddBlock(new VoxelBlock(
+                        // Use varied shapes for irregular ships to enhance cobbled-together look
+                        ship.Structure.AddBlock(CreateBlockWithShapeVariety(
                             new Vector3(x, y, z),
                             new Vector3(blockSize, blockSize, blockSize),
-                            config.Material, BlockType.Hull));
+                            config.Material, BlockType.Hull, 0.5f)); // High shape variety for irregular ships
                     }
                 }
             }
