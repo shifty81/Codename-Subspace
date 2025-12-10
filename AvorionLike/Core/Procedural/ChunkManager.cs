@@ -5,14 +5,14 @@ using AvorionLike.Core.Voxel;
 namespace AvorionLike.Core.Procedural;
 
 /// <summary>
-/// Axis-aligned bounding box
+/// Bounding box for voxel chunks
 /// </summary>
-public class AABB
+public class ChunkBounds
 {
     public Vector3 Min { get; set; }
     public Vector3 Max { get; set; }
     
-    public AABB(Vector3 min, Vector3 max)
+    public ChunkBounds(Vector3 min, Vector3 max)
     {
         Min = min;
         Max = max;
@@ -33,7 +33,7 @@ public class VoxelChunk
     public bool IsLoaded { get; set; } = false;
     public bool IsDirty { get; set; } = true; // Needs mesh rebuild
     public DateTime LastAccessTime { get; set; } = DateTime.UtcNow;
-    public AABB? BoundingBox { get; set; } = null; // Bounding box for frustum culling
+    public ChunkBounds? BoundingBox { get; set; } = null; // Bounding box for frustum culling
     
     public VoxelChunk(Vector3 position, int size)
     {
@@ -94,7 +94,7 @@ public class VoxelChunk
             max = Vector3.Max(max, blockMax);
         }
         
-        BoundingBox = new AABB(min, max);
+        BoundingBox = new ChunkBounds(min, max);
     }
 }
 

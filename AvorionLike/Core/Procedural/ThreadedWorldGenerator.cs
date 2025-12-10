@@ -47,14 +47,13 @@ public class ThreadedWorldGenerator
         
         for (int i = 0; i < _threadCount; i++)
         {
-            int threadIndex = i;
             _workerThreads[i] = new Thread(WorkerThreadLoop)
             {
                 IsBackground = true,
-                Name = $"WorldGen-{threadIndex}"
+                Name = $"WorldGen-{i}"
             };
             _workerThreads[i].Start();
-            _logger.Debug("WorldGen", $"Worker thread {threadIndex} started");
+            _logger.Debug("WorldGen", $"Worker thread {i} started");
         }
     }
     
