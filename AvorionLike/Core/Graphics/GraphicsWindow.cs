@@ -204,6 +204,11 @@ public class GraphicsWindow : IDisposable
         Console.WriteLine("    F1 - Toggle Debug HUD (enabled by default)");
         Console.WriteLine("    F2 - Toggle Entity List");
         Console.WriteLine("    F3 - Toggle Resource Panel");
+        Console.WriteLine("  Debug Helpers (for voxel rendering issues):");
+        Console.WriteLine("    F7 - Toggle Two-Sided Rendering (fixes disappearing faces)");
+        Console.WriteLine("    F8 - Bypass Frustum/Occlusion Culling (render all chunks)");
+        Console.WriteLine("    F11 - Show Wireframe AABBs (bounding boxes)");
+        Console.WriteLine("    F12 - Show Generation Stats (pending tasks/results)");
         Console.WriteLine("=====================================\n");
     }
 
@@ -334,6 +339,16 @@ public class GraphicsWindow : IDisposable
 
         // Clear the screen (clear color is set once in OnLoad)
         _gl.Clear(ClearBufferMask.ColorBufferBit | ClearBufferMask.DepthBufferBit);
+        
+        // Toggle backface culling based on debug flag
+        if (DebugConfig.TwoSidedRendering)
+        {
+            _gl.Disable(EnableCap.CullFace);
+        }
+        else
+        {
+            _gl.Enable(EnableCap.CullFace);
+        }
 
         // Calculate aspect ratio from window size
         float aspectRatio = (float)_window.Size.X / _window.Size.Y;
