@@ -26,6 +26,7 @@ class Program
 {
     private static GameEngine? _gameEngine;
     private static bool _running = true;
+    private static Random _random = new Random();
 
     static void Main(string[] args)
     {
@@ -554,6 +555,8 @@ class Program
         // === 2. Create rich asteroid fields with all material types (INCREASED SPACING) ===
         Console.WriteLine("Creating asteroid fields...");
         
+        var asteroidGenerator = new AsteroidVoxelGenerator(Environment.TickCount);
+        
         var asteroidConfigs = new[]
         {
             // Iron field (close but more spread)
@@ -579,17 +582,6 @@ class Program
             {
                 var asteroid = _gameEngine!.EntityManager.CreateEntity($"Asteroid - {field.Material}");
                 
-                // Create asteroid voxel structure
-                var asteroidVoxel = new VoxelStructureComponent();
-                var asteroidSize = 3f + (float)(_gameEngine.GetHashCode() % 5);
-                asteroidVoxel.AddBlock(new VoxelBlock(
-                    Vector3.Zero,
-                    new Vector3(asteroidSize, asteroidSize, asteroidSize),
-                    GetMaterialForResource(field.Material),
-                    BlockType.Hull // Asteroids use Hull block type
-                ));
-                _gameEngine.EntityManager.AddComponent(asteroid.Id, asteroidVoxel);
-                
                 // Random position within field (larger spread)
                 var offset = new Vector3(
                     (float)(new Random(i).NextDouble() * 250 - 125),
@@ -597,9 +589,31 @@ class Program
                     (float)(new Random(i + 2000).NextDouble() * 250 - 125)
                 );
                 
+                Vector3 asteroidPosition = centerPosition + field.Center + offset;
+                
+                // Create asteroid voxel structure using procedural generator
+                var asteroidVoxel = new VoxelStructureComponent();
+                var asteroidSize = 15f + (float)(_random.NextDouble() * 10); // Larger asteroids (15-25 units)
+                
+                var asteroidData = new AsteroidData
+                {
+                    Position = Vector3.Zero, // Local position relative to asteroid center
+                    Size = asteroidSize,
+                    ResourceType = GetMaterialForResource(field.Material)
+                };
+                
+                // Generate multi-block asteroid structure
+                var asteroidBlocks = asteroidGenerator.GenerateAsteroid(asteroidData, voxelResolution: 6);
+                foreach (var block in asteroidBlocks)
+                {
+                    asteroidVoxel.AddBlock(block);
+                }
+                
+                _gameEngine.EntityManager.AddComponent(asteroid.Id, asteroidVoxel);
+                
                 var asteroidPhysics = new PhysicsComponent
                 {
-                    Position = centerPosition + field.Center + offset,
+                    Position = asteroidPosition,
                     Mass = asteroidVoxel.TotalMass,
                     IsStatic = true
                 };
@@ -618,14 +632,14 @@ class Program
         
         var planetConfigs = new[]
         {
-            // Rocky inner planet (close, visible)
-            (Name: "Rocky Planet Alpha", Size: 80f, Position: new Vector3(1500, -200, 800), Type: "Rocky"),
-            // Gas giant (medium distance, large and visible)
-            (Name: "Gas Giant Beta", Size: 150f, Position: new Vector3(-2500, 300, -1800), Type: "Gas"),
-            // Ice planet (distant but visible on horizon)
-            (Name: "Ice World Gamma", Size: 60f, Position: new Vector3(3200, -100, 2400), Type: "Ice"),
-            // Desert planet (mid distance)
-            (Name: "Desert World Delta", Size: 70f, Position: new Vector3(-1800, 150, 2000), Type: "Desert"),
+            // Rocky inner planet (close, visible) - INCREASED SIZE
+            (Name: "Rocky Planet Alpha", Size: 120f, Position: new Vector3(1500, -200, 800), Type: "Rocky"),
+            // Gas giant (medium distance, large and visible) - MUCH LARGER
+            (Name: "Gas Giant Beta", Size: 220f, Position: new Vector3(-2500, 300, -1800), Type: "Gas"),
+            // Ice planet (distant but visible on horizon) - INCREASED SIZE
+            (Name: "Ice World Gamma", Size: 100f, Position: new Vector3(3200, -100, 2400), Type: "Ice"),
+            // Desert planet (mid distance) - INCREASED SIZE
+            (Name: "Desert World Delta", Size: 110f, Position: new Vector3(-1800, 150, 2000), Type: "Desert"),
         };
         
         int planetCount = 0;
@@ -637,11 +651,15 @@ class Program
             var planetVoxel = new VoxelStructureComponent();
             
             // Create a simple sphere-approximation with multiple blocks
-            // Limit complexity to prevent performance issues (max 8 blocks per axis = 512 blocks max)
+            // Limit complexity to prevent performance issues (max 10 blocks per axis for larger planets)
             float radius = planetConfig.Size / 2f;
-            int blocksPerAxis = Math.Min(8, Math.Max(5, (int)(planetConfig.Size / 20f))); // Cap at 8 for performance
+            int blocksPerAxis = Math.Min(10, Math.Max(6, (int)(planetConfig.Size / 15f))); // Increased from 8 to 10 max
             float blockSize = planetConfig.Size / blocksPerAxis;
             float radiusSquared = radius * radius; // Pre-compute for performance
+            
+            // Add some variation for non-spherical planets
+            float noiseOffsetX = (float)_random.NextDouble() * 100f;
+            float noiseOffsetY = (float)_random.NextDouble() * 100f;
             
             for (int x = 0; x < blocksPerAxis; x++)
             {
@@ -655,15 +673,64 @@ class Program
                             (z - blocksPerAxis / 2f) * blockSize
                         );
                         
-                        // Only add blocks within sphere radius (use LengthSquared for performance)
-                        if (blockPos.LengthSquared() <= radiusSquared)
+                        // Add slight noise variation for more natural appearance
+                        float distortedRadius = radius;
+                        if (planetConfig.Type != "Gas") // Gas giants should be smooth
                         {
-                            planetVoxel.AddBlock(new VoxelBlock(
+                            float noise = NoiseGenerator.PerlinNoise3D(
+                                (blockPos.X + noiseOffsetX) * 0.02f,
+                                (blockPos.Y + noiseOffsetY) * 0.02f,
+                                blockPos.Z * 0.02f
+                            );
+                            distortedRadius = radius * (1.0f + (noise - 0.5f) * 0.15f); // Slight variation
+                        }
+                        
+                        // Only add blocks within sphere radius (use LengthSquared for performance)
+                        if (blockPos.LengthSquared() <= distortedRadius * distortedRadius)
+                        {
+                            // Add color variation based on planet type
+                            var block = new VoxelBlock(
                                 blockPos,
                                 new Vector3(blockSize, blockSize, blockSize),
                                 GetMaterialForPlanetType(planetConfig.Type),
                                 BlockType.Hull
-                            ));
+                            );
+                            
+                            // Add subtle color variation for visual interest
+                            if (planetConfig.Type == "Rocky")
+                            {
+                                float colorNoise = NoiseGenerator.PerlinNoise3D(blockPos.X * 0.05f, blockPos.Y * 0.05f, blockPos.Z * 0.05f);
+                                byte r = (byte)((0.6f + colorNoise * 0.2f) * 255);
+                                byte g = (byte)((0.5f + colorNoise * 0.1f) * 255);
+                                byte b = (byte)(0.4f * 255);
+                                block.ColorRGB = (uint)((r << 16) | (g << 8) | b);
+                            }
+                            else if (planetConfig.Type == "Ice")
+                            {
+                                float colorNoise = NoiseGenerator.PerlinNoise3D(blockPos.X * 0.05f, blockPos.Y * 0.05f, blockPos.Z * 0.05f);
+                                byte r = (byte)((0.8f + colorNoise * 0.2f) * 255);
+                                byte g = (byte)((0.9f + colorNoise * 0.1f) * 255);
+                                byte b = 255;
+                                block.ColorRGB = (uint)((r << 16) | (g << 8) | b);
+                            }
+                            else if (planetConfig.Type == "Desert")
+                            {
+                                float colorNoise = NoiseGenerator.PerlinNoise3D(blockPos.X * 0.05f, blockPos.Y * 0.05f, blockPos.Z * 0.05f);
+                                byte r = (byte)((0.9f + colorNoise * 0.1f) * 255);
+                                byte g = (byte)((0.7f + colorNoise * 0.2f) * 255);
+                                byte b = (byte)(0.4f * 255);
+                                block.ColorRGB = (uint)((r << 16) | (g << 8) | b);
+                            }
+                            else if (planetConfig.Type == "Gas")
+                            {
+                                float colorNoise = NoiseGenerator.PerlinNoise3D(blockPos.X * 0.03f, blockPos.Y * 0.03f, blockPos.Z * 0.03f);
+                                byte r = (byte)((0.7f + colorNoise * 0.2f) * 255);
+                                byte g = (byte)((0.5f + colorNoise * 0.3f) * 255);
+                                byte b = (byte)(0.3f * 255);
+                                block.ColorRGB = (uint)((r << 16) | (g << 8) | b);
+                            }
+                            
+                            planetVoxel.AddBlock(block);
                         }
                     }
                 }
