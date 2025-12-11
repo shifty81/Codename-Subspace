@@ -168,11 +168,12 @@ public class ProceduralShipGenerator
         // Step 8: Apply faction color scheme
         ApplyColorScheme(result, config);
         
-        // Step 9: Add surface detailing (greebles, antennas, vents) based on complexity
-        if (config.BlockComplexity > 0.3f)
-        {
-            AddSurfaceDetailing(result, config);
-        }
+        // Step 9: Add surface detailing (greebles, antennas, vents) - ALWAYS add for distinctiveness
+        // Removed complexity threshold - all ships need visual features to be recognizable as spaceships
+        AddSurfaceDetailing(result, config);
+        
+        // Step 9.5: Add prominent cockpit/bridge structure for visual identification
+        AddProminentCockpit(result, config);
         
         // Step 10: Calculate final statistics including upgrade slots
         CalculateShipStats(result);
@@ -2165,18 +2166,19 @@ public class ProceduralShipGenerator
     /// <summary>
     /// Add wing structures to make ships look more like actual spacecraft
     /// Uses layered blocks and smooth transitions for professional appearance
+    /// ENHANCED: More dramatic and recognizable wing structures inspired by iconic spaceships
     /// </summary>
     private void AddWingStructures(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config)
     {
         // Add 2-4 wing structures depending on ship size
         int wingCount = config.Size switch
         {
-            ShipSize.Fighter => 2,
+            ShipSize.Fighter => 2,      // Small ships: 2 wings (like X-wing)
             ShipSize.Corvette => 2,
             ShipSize.Frigate => 2,
             ShipSize.Destroyer => 3,
             ShipSize.Cruiser => 3,
-            ShipSize.Battleship => 4,
+            ShipSize.Battleship => 4,   // Large ships: 4 wings
             ShipSize.Carrier => 4,
             _ => 2
         };
@@ -2187,10 +2189,10 @@ public class ProceduralShipGenerator
             float side = i % 2 == 0 ? 1 : -1; // Alternate left/right
             float zPosition = dimensions.Z * (0.2f - 0.4f * (i / 2)); // Stagger along length
             
-            // Wing dimensions - larger for bigger ships, INCREASED thickness
-            float wingSpan = dimensions.X * 0.4f + (float)config.Size * 0.5f;
-            float wingLength = dimensions.Z * 0.3f;
-            float baseThickness = 5.0f; // INCREASED from 2.5f for more substantial wings
+            // Wing dimensions - SIGNIFICANTLY LARGER and more pronounced
+            float wingSpan = dimensions.X * 0.6f + (float)config.Size * 0.8f; // INCREASED from 0.4 and 0.5
+            float wingLength = dimensions.Z * 0.45f; // INCREASED from 0.3
+            float baseThickness = 7.0f; // INCREASED from 5.0f for even more substantial wings
             
             // Wing root position (where it connects to hull)
             float rootX = side * (dimensions.X / 2);
@@ -2199,16 +2201,16 @@ public class ProceduralShipGenerator
             AddWingRootTransition(ship, new Vector3(rootX, 0, zPosition), side, baseThickness, wingLength, config);
             
             // Create wing with layered blocks for proper 3D structure
-            int wingBlocks = 8 + (int)config.Size / 2; // More blocks for smoother wing
+            int wingBlocks = 12 + (int)config.Size; // INCREASED from 8 for smoother, larger wing
             for (int j = 0; j < wingBlocks; j++)
             {
                 float progress = (float)j / wingBlocks;
                 float xOffset = side * (dimensions.X / 2 + progress * wingSpan);
                 
                 // Smooth tapering - reduce both thickness and length
-                float currentThickness = baseThickness * (1 - progress * 0.6f); // Less aggressive taper
-                float currentLength = wingLength * (1 - progress * 0.3f);
-                float blockWidth = 2.0f * (1 - progress * 0.4f); // Wider blocks
+                float currentThickness = baseThickness * (1 - progress * 0.5f); // LESS aggressive taper for more visible wings
+                float currentLength = wingLength * (1 - progress * 0.2f); // LESS taper
+                float blockWidth = 2.5f * (1 - progress * 0.3f); // INCREASED base width
                 
                 // CORE WING STRUCTURE - Build from bottom to top for proper layering
                 
@@ -2588,6 +2590,141 @@ public class ProceduralShipGenerator
     }
     
     /// <summary>
+    /// Add a prominent cockpit/bridge structure to make ships clearly identifiable as spacecraft
+    /// Inspired by iconic spaceship designs (X-wing, Star Destroyers, Serenity, etc.)
+    /// </summary>
+    private void AddProminentCockpit(GeneratedShip ship, ShipGenerationConfig config)
+    {
+        var dimensions = GetShipDimensions(config.Size);
+        float blockSize = 2f;
+        
+        // Position cockpit at front-top of ship for visibility
+        float cockpitZ = dimensions.Z / 2 - blockSize * 3; // Front section
+        float cockpitY = dimensions.Y / 3; // Top of ship
+        
+        // Cockpit size scales with ship size
+        int cockpitWidth = config.Size switch
+        {
+            ShipSize.Fighter => 1,
+            ShipSize.Corvette => 2,
+            ShipSize.Frigate => 2,
+            ShipSize.Destroyer => 3,
+            ShipSize.Cruiser => 4,
+            ShipSize.Battleship => 5,
+            ShipSize.Carrier => 6,
+            _ => 2
+        };
+        
+        // Create different cockpit styles based on ship style
+        if (config.Style.PreferredHullShape == ShipHullShape.Angular || 
+            config.Style.Philosophy == DesignPhilosophy.CombatFocused)
+        {
+            // Angular military cockpit (like Star Destroyer bridge or F-16 canopy)
+            for (int x = -cockpitWidth; x <= cockpitWidth; x++)
+            {
+                for (int z = 0; z < 3; z++) // 3 layers deep
+                {
+                    // Create raised bridge structure
+                    var bridgeBlock = new VoxelBlock(
+                        new Vector3(x * blockSize, cockpitY + blockSize, cockpitZ + z * blockSize),
+                        new Vector3(blockSize, blockSize, blockSize),
+                        config.Material,
+                        BlockType.CrewQuarters, // Use CrewQuarters as it's a key block
+                        BlockShape.Cube,
+                        BlockOrientation.PosY
+                    );
+                    bridgeBlock.ColorRGB = config.Style.SecondaryColor;
+                    ship.Structure.AddBlock(bridgeBlock);
+                }
+                
+                // Add angled canopy at front (wedge shape)
+                var canopy = new VoxelBlock(
+                    new Vector3(x * blockSize, cockpitY + blockSize * 1.5f, cockpitZ + blockSize * 3),
+                    new Vector3(blockSize, blockSize, blockSize),
+                    config.Material,
+                    BlockType.Hull,
+                    BlockShape.Wedge,
+                    BlockOrientation.PosZ
+                );
+                canopy.ColorRGB = 0x00FFFF; // Cyan/blue for canopy glass effect
+                ship.Structure.AddBlock(canopy);
+            }
+        }
+        else if (config.Style.PreferredHullShape == ShipHullShape.Sleek)
+        {
+            // Sleek teardrop cockpit (like X-wing or modern fighter)
+            for (int x = -cockpitWidth; x <= cockpitWidth; x++)
+            {
+                float xDist = Math.Abs(x);
+                float heightReduction = xDist * 0.3f; // Taper down at edges
+                
+                var cockpitBlock = new VoxelBlock(
+                    new Vector3(x * blockSize, cockpitY + blockSize - heightReduction, cockpitZ),
+                    new Vector3(blockSize, blockSize * 0.8f, blockSize * 1.5f),
+                    config.Material,
+                    BlockType.CrewQuarters,
+                    BlockShape.Wedge,
+                    BlockOrientation.PosZ
+                );
+                cockpitBlock.ColorRGB = 0x4169E1; // Royal blue for canopy
+                ship.Structure.AddBlock(cockpitBlock);
+            }
+        }
+        else if (config.Style.PreferredHullShape == ShipHullShape.Cylindrical)
+        {
+            // Bulbous cargo ship bridge (like Serenity or cargo hauler)
+            for (int x = -cockpitWidth; x <= cockpitWidth; x++)
+            {
+                for (int y = 0; y <= 1; y++)
+                {
+                    var bridgeBlock = new VoxelBlock(
+                        new Vector3(x * blockSize, cockpitY + y * blockSize, cockpitZ),
+                        new Vector3(blockSize, blockSize, blockSize),
+                        config.Material,
+                        BlockType.CrewQuarters,
+                        BlockShape.Cube,
+                        BlockOrientation.PosY
+                    );
+                    bridgeBlock.ColorRGB = config.Style.SecondaryColor;
+                    ship.Structure.AddBlock(bridgeBlock);
+                }
+            }
+            
+            // Add windows along the front
+            for (int x = -cockpitWidth + 1; x < cockpitWidth; x++)
+            {
+                var window = new VoxelBlock(
+                    new Vector3(x * blockSize, cockpitY + blockSize, cockpitZ + blockSize),
+                    new Vector3(blockSize * 0.5f, blockSize * 0.5f, blockSize * 0.3f),
+                    config.Material,
+                    BlockType.Hull,
+                    BlockShape.Cube,
+                    BlockOrientation.PosZ
+                );
+                window.ColorRGB = 0x87CEEB; // Sky blue for windows
+                ship.Structure.AddBlock(window);
+            }
+        }
+        else
+        {
+            // Default blocky cockpit
+            for (int x = -cockpitWidth; x <= cockpitWidth; x++)
+            {
+                var cockpitBlock = new VoxelBlock(
+                    new Vector3(x * blockSize, cockpitY, cockpitZ),
+                    new Vector3(blockSize, blockSize * 1.5f, blockSize * 1.5f),
+                    config.Material,
+                    BlockType.CrewQuarters,
+                    BlockShape.Cube,
+                    BlockOrientation.PosY
+                );
+                cockpitBlock.ColorRGB = config.Style.SecondaryColor;
+                ship.Structure.AddBlock(cockpitBlock);
+            }
+        }
+    }
+    
+    /// <summary>
     /// Calculate ship statistics
     /// </summary>
     private void CalculateShipStats(GeneratedShip ship)
@@ -2662,19 +2799,14 @@ public class ProceduralShipGenerator
         
         if (!result.IsValid)
         {
-            foreach (var error in result.Errors)
-            {
-                ship.Warnings.Add($"STRUCTURAL INTEGRITY: {error}");
-                _logger.Warning("ShipGenerator", error);
-            }
-            
-            // Attempt to fix disconnected blocks
+            // Attempt to fix disconnected blocks FIRST before adding warnings
             if (result.DisconnectedBlocks.Count > 0)
             {
                 _logger.Info("ShipGenerator", $"Attempting to connect {result.DisconnectedBlocks.Count} disconnected blocks");
                 var connectingBlocks = integritySystem.SuggestConnectingBlocks(ship.Structure, result);
                 
-                foreach (var block in connectingBlocks.Take(10)) // Limit repairs to avoid bloat
+                // Add more connecting blocks if needed for better coverage
+                foreach (var block in connectingBlocks.Take(20)) // Increased from 10 to ensure better connectivity
                 {
                     ship.Structure.AddBlock(block);
                 }
@@ -2684,6 +2816,24 @@ public class ProceduralShipGenerator
                 if (revalidation.IsValid)
                 {
                     _logger.Info("ShipGenerator", "Structural integrity restored by adding connecting blocks");
+                    // Update result to use the revalidated one
+                    result = revalidation;
+                }
+                else
+                {
+                    // Still have issues after repair - add warnings
+                    _logger.Warning("ShipGenerator", $"Failed to fully repair structure. {revalidation.DisconnectedBlocks.Count} blocks still disconnected");
+                    result = revalidation;
+                }
+            }
+            
+            // Only add warnings if we still have errors after repair attempt
+            if (!result.IsValid)
+            {
+                foreach (var error in result.Errors)
+                {
+                    ship.Warnings.Add($"STRUCTURAL INTEGRITY: {error}");
+                    _logger.Warning("ShipGenerator", error);
                 }
             }
         }
@@ -2692,7 +2842,7 @@ public class ProceduralShipGenerator
             _logger.Info("ShipGenerator", $"Structural integrity validated - all {ship.Structure.Blocks.Count} blocks connected");
         }
         
-        // Store integrity percentage
+        // Store integrity percentage (using final result after any repairs)
         ship.Stats["StructuralIntegrity"] = integritySystem.CalculateStructuralIntegrityPercentage(ship.Structure, result);
     }
     
