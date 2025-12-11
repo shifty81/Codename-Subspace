@@ -2122,6 +2122,7 @@ public class ProceduralShipGenerator
     /// <summary>
     /// Add surface detailing to ships (greebles, antennas, panels, vents)
     /// Enhances visual distinctiveness and adds character to ships
+    /// UNIFIED: Now handles all ship roles including Mining and Salvage
     /// </summary>
     private void AddSurfaceDetailing(GeneratedShip ship, ShipGenerationConfig config)
     {
@@ -2136,6 +2137,13 @@ public class ProceduralShipGenerator
         if (config.Role == ShipRole.Combat || config.Role == ShipRole.Exploration)
         {
             AddWingStructures(ship, dimensions, config);
+        }
+        
+        // Add mining equipment for Mining and Salvage ships
+        if (config.Role == ShipRole.Mining || config.Role == ShipRole.Salvage)
+        {
+            AddMiningEquipment(ship, dimensions, config);
+            AddCargoContainers(ship, dimensions, config);
         }
         
         // Add antennas on top of ship
@@ -2749,5 +2757,146 @@ public class ProceduralShipGenerator
         ship.Stats["Symmetry"] = result.SymmetryScore;
         ship.Stats["Balance"] = result.BalanceScore;
         ship.Stats["DesignLanguage"] = result.HasConsistentDesignLanguage ? 1f : 0f;
+    }
+    
+    // ========== UNIFIED MINING SHIP SUPPORT ==========
+    // These methods add mining-specific equipment to ships
+    // Previously in separate IndustrialMiningShipGenerator, now unified here
+    
+    /// <summary>
+    /// Add mining equipment (lasers, drills, arms) to mining/salvage ships
+    /// UNIFIED: Integrated from IndustrialMiningShipGenerator
+    /// </summary>
+    private void AddMiningEquipment(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config)
+    {
+        // Determine number of mining lasers based on ship size and role
+        int laserCount = config.Size switch
+        {
+            ShipSize.Fighter => 2,      // Small mining drone
+            ShipSize.Corvette => 3,     // Light mining vessel
+            ShipSize.Frigate => 4,      // Standard mining ship
+            ShipSize.Destroyer => 6,    // Heavy mining ship
+            ShipSize.Cruiser => 8,      // Mining cruiser
+            ShipSize.Battleship => 10,  // Industrial behemoth
+            ShipSize.Carrier => 12,     // Massive mining vessel
+            _ => 4
+        };
+        
+        // Mining equipment positioned at front of ship
+        float frontZ = dimensions.Z * 0.4f;
+        float armLength = 4f + (float)config.Size * 1.5f;
+        
+        // Add mining arms/lasers in a symmetric pattern
+        for (int i = 0; i < laserCount; i++)
+        {
+            // Distribute in circular pattern around front
+            float angle = (float)(2 * Math.PI * i / laserCount);
+            float radius = dimensions.X * 0.3f + (float)config.Size * 0.5f;
+            float xOffset = (float)Math.Cos(angle) * radius;
+            float yOffset = (float)Math.Sin(angle) * radius;
+            
+            // Mining arm base
+            var armBase = new VoxelBlock(
+                new Vector3(xOffset, yOffset, frontZ),
+                new Vector3(2f, 2f, 3f),
+                config.Material,
+                BlockType.Hull,
+                BlockShape.Cube,
+                BlockOrientation.PosY
+            );
+            armBase.ColorRGB = config.Style.SecondaryColor;
+            ship.Structure.AddBlock(armBase);
+            
+            // Mining laser extension
+            for (int j = 0; j < 3; j++)
+            {
+                float progress = (float)j / 3;
+                var laserSegment = new VoxelBlock(
+                    new Vector3(xOffset, yOffset, frontZ + 3f + j * 2f),
+                    new Vector3(1.5f * (1 - progress * 0.4f), 1.5f * (1 - progress * 0.4f), 2f),
+                    config.Material,
+                    BlockType.Hull,
+                    BlockShape.Cube,  // Use cube for laser segments
+                    BlockOrientation.PosZ
+                );
+                laserSegment.ColorRGB = LerpColor(config.Style.SecondaryColor, config.Style.AccentColor, progress);
+                ship.Structure.AddBlock(laserSegment);
+            }
+            
+            // Mining laser emitter tip
+            var emitter = new VoxelBlock(
+                new Vector3(xOffset, yOffset, frontZ + armLength),
+                new Vector3(1.2f, 1.2f, 1.5f),
+                config.Material,
+                BlockType.TurretMount, // Functional mining laser mount
+                BlockShape.Wedge,
+                BlockOrientation.PosZ
+            );
+            emitter.ColorRGB = config.Style.AccentColor; // Bright color for visibility
+            ship.Structure.AddBlock(emitter);
+        }
+    }
+    
+    /// <summary>
+    /// Add large cargo containers to mining/trading ships
+    /// UNIFIED: Integrated from IndustrialMiningShipGenerator
+    /// </summary>
+    private void AddCargoContainers(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config)
+    {
+        // Number of cargo modules based on ship size and role
+        int cargoCount = config.Size switch
+        {
+            ShipSize.Fighter => 1,
+            ShipSize.Corvette => 2,
+            ShipSize.Frigate => 4,
+            ShipSize.Destroyer => 6,
+            ShipSize.Cruiser => 8,
+            ShipSize.Battleship => 10,
+            ShipSize.Carrier => 12,
+            _ => 4
+        };
+        
+        // Increase for trading role
+        if (config.Role == ShipRole.Trading)
+        {
+            cargoCount = (int)(cargoCount * 1.5f);
+        }
+        
+        // Cargo containers positioned along mid-section of ship
+        float containerSize = 4f + (float)config.Size * 0.5f;
+        float zStart = -dimensions.Z * 0.3f;
+        float zSpacing = dimensions.Z * 0.6f / cargoCount;
+        
+        for (int i = 0; i < cargoCount; i++)
+        {
+            float zPos = zStart + i * zSpacing;
+            
+            // Alternate sides for asymmetric industrial look
+            float xOffset = (i % 2 == 0 ? 1 : -1) * dimensions.X * 0.3f;
+            
+            // Large blocky cargo container
+            var cargoContainer = new VoxelBlock(
+                new Vector3(xOffset, -dimensions.Y * 0.2f, zPos),
+                new Vector3(containerSize, containerSize * 0.8f, containerSize),
+                config.Material,
+                BlockType.Cargo,
+                BlockShape.Cube,
+                BlockOrientation.PosY
+            );
+            cargoContainer.ColorRGB = config.Style.SecondaryColor;
+            ship.Structure.AddBlock(cargoContainer);
+            
+            // Add container details (access panels, vents)
+            var accessPanel = new VoxelBlock(
+                new Vector3(xOffset, -dimensions.Y * 0.2f - containerSize * 0.4f, zPos),
+                new Vector3(containerSize * 0.6f, 0.5f, containerSize * 0.6f),
+                config.Material,
+                BlockType.Hull,
+                BlockShape.HalfBlock,
+                BlockOrientation.NegY
+            );
+            accessPanel.ColorRGB = config.Style.AccentColor;
+            ship.Structure.AddBlock(accessPanel);
+        }
     }
 }
