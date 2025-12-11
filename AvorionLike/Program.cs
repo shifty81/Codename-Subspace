@@ -3786,15 +3786,15 @@ class Program
         Console.WriteLine($"✓ Creating Player Pod (your character)");
         Console.WriteLine($"  The pod is a small utility ship that represents YOU in the game");
         
-        // Add the player pod component
+        // Add the player pod component with base capabilities
         var podComponent = new PlayerPodComponent
         {
             EntityId = pod.Id,
             BaseEfficiencyMultiplier = 0.5f,
-            BaseThrustPower = 100f,  // Increased for better maneuverability
+            BaseThrustPower = 100f,  // Base thrust for good maneuverability
             BasePowerGeneration = 200f,
             BaseShieldCapacity = 300f,
-            BaseTorque = 50f,  // Increased for better rotation
+            BaseTorque = 50f,  // Base torque for good rotation
             MaxUpgradeSlots = 5
         };
         _gameEngine.EntityManager.AddComponent(pod.Id, podComponent);
@@ -3868,14 +3868,15 @@ class Program
         _gameEngine.EntityManager.AddComponent(pod.Id, voxelComponent);
         
         // Add physics with good maneuverability
+        const float PLAYER_POD_THRUST_MULTIPLIER = 1.5f; // Player pod gets boost for better controls
         var physicsComponent = new PhysicsComponent
         {
             Position = position,
             Velocity = Vector3.Zero,
             Mass = voxelComponent.TotalMass,
             MomentOfInertia = voxelComponent.MomentOfInertia,
-            MaxThrust = podComponent.GetTotalThrust() * 1.5f,  // Extra boost for player pod
-            MaxTorque = podComponent.GetTotalTorque() * 1.5f
+            MaxThrust = podComponent.GetTotalThrust() * PLAYER_POD_THRUST_MULTIPLIER,
+            MaxTorque = podComponent.GetTotalTorque() * PLAYER_POD_THRUST_MULTIPLIER
         };
         _gameEngine.EntityManager.AddComponent(pod.Id, physicsComponent);
         
