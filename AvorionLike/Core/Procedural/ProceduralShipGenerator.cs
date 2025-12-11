@@ -2122,6 +2122,7 @@ public class ProceduralShipGenerator
     /// <summary>
     /// Add surface detailing to ships (greebles, antennas, panels, vents)
     /// Enhances visual distinctiveness and adds character to ships
+    /// UNIFIED: Now handles all ship roles including Mining and Salvage
     /// </summary>
     private void AddSurfaceDetailing(GeneratedShip ship, ShipGenerationConfig config)
     {
@@ -2136,6 +2137,13 @@ public class ProceduralShipGenerator
         if (config.Role == ShipRole.Combat || config.Role == ShipRole.Exploration)
         {
             AddWingStructures(ship, dimensions, config);
+        }
+        
+        // Add mining equipment for Mining and Salvage ships
+        if (config.Role == ShipRole.Mining || config.Role == ShipRole.Salvage)
+        {
+            AddMiningEquipment(ship, dimensions, config);
+            AddCargoContainers(ship, dimensions, config);
         }
         
         // Add antennas on top of ship
@@ -2179,10 +2187,10 @@ public class ProceduralShipGenerator
             float side = i % 2 == 0 ? 1 : -1; // Alternate left/right
             float zPosition = dimensions.Z * (0.2f - 0.4f * (i / 2)); // Stagger along length
             
-            // Wing dimensions - larger for bigger ships
+            // Wing dimensions - larger for bigger ships, INCREASED thickness
             float wingSpan = dimensions.X * 0.4f + (float)config.Size * 0.5f;
             float wingLength = dimensions.Z * 0.3f;
-            float baseThickness = 2.5f;
+            float baseThickness = 5.0f; // INCREASED from 2.5f for more substantial wings
             
             // Wing root position (where it connects to hull)
             float rootX = side * (dimensions.X / 2);
@@ -2190,68 +2198,62 @@ public class ProceduralShipGenerator
             // Add transition blocks at wing root for smooth connection to hull
             AddWingRootTransition(ship, new Vector3(rootX, 0, zPosition), side, baseThickness, wingLength, config);
             
-            // Create wing with layered blocks for smooth appearance
-            int wingBlocks = 6 + (int)config.Size / 2;
+            // Create wing with layered blocks for proper 3D structure
+            int wingBlocks = 8 + (int)config.Size / 2; // More blocks for smoother wing
             for (int j = 0; j < wingBlocks; j++)
             {
                 float progress = (float)j / wingBlocks;
                 float xOffset = side * (dimensions.X / 2 + progress * wingSpan);
                 
                 // Smooth tapering - reduce both thickness and length
-                float currentThickness = baseThickness * (1 - progress * 0.7f);
-                float currentLength = wingLength * (1 - progress * 0.4f);
-                float blockWidth = 1.5f * (1 - progress * 0.3f); // Taper width too
+                float currentThickness = baseThickness * (1 - progress * 0.6f); // Less aggressive taper
+                float currentLength = wingLength * (1 - progress * 0.3f);
+                float blockWidth = 2.0f * (1 - progress * 0.4f); // Wider blocks
                 
-                // Add multiple layers for wing thickness and smooth edges
-                // Main wing surface (wedge for aerodynamic look)
-                var mainWingBlock = new VoxelBlock(
+                // CORE WING STRUCTURE - Build from bottom to top for proper layering
+                
+                // 1. Bottom surface layer (inverted wedge for underside)
+                var bottomSurface = new VoxelBlock(
+                    new Vector3(xOffset, -currentThickness * 0.4f, zPosition),
+                    new Vector3(blockWidth, currentThickness * 0.3f, currentLength),
+                    config.Material,
+                    BlockType.Hull,
+                    BlockShape.Wedge,
+                    BlockOrientation.NegY  // Point downward
+                );
+                bottomSurface.ColorRGB = LerpColor(config.Style.PrimaryColor, config.Style.AccentColor, 0.3f);
+                ship.Structure.AddBlock(bottomSurface);
+                
+                // 2. Main wing core (thicker center section)
+                var wingCore = new VoxelBlock(
                     new Vector3(xOffset, 0, zPosition),
                     new Vector3(blockWidth, currentThickness, currentLength),
                     config.Material,
                     BlockType.Hull,
-                    BlockShape.Wedge,
-                    side > 0 ? BlockOrientation.PosX : BlockOrientation.NegX
+                    BlockShape.Cube,  // Solid center
+                    BlockOrientation.PosY
                 );
-                mainWingBlock.ColorRGB = config.Style.AccentColor;
-                ship.Structure.AddBlock(mainWingBlock);
+                wingCore.ColorRGB = config.Style.AccentColor;
+                ship.Structure.AddBlock(wingCore);
                 
-                // Add supporting blocks for more realistic structure (every other block)
-                if (j % 2 == 0 && progress < 0.8f)
-                {
-                    // Top edge smoothing block
-                    var topEdgeBlock = new VoxelBlock(
-                        new Vector3(xOffset, currentThickness * 0.5f, zPosition),
-                        new Vector3(blockWidth * 0.8f, currentThickness * 0.3f, currentLength * 0.8f),
-                        config.Material,
-                        BlockType.Hull,
-                        BlockShape.HalfBlock,
-                        BlockOrientation.PosY
-                    );
-                    topEdgeBlock.ColorRGB = config.Style.AccentColor;
-                    ship.Structure.AddBlock(topEdgeBlock);
-                    
-                    // Bottom reinforcement (if early in wing)
-                    if (progress < 0.5f)
-                    {
-                        var bottomBlock = new VoxelBlock(
-                            new Vector3(xOffset, -currentThickness * 0.3f, zPosition),
-                            new Vector3(blockWidth * 0.7f, currentThickness * 0.4f, currentLength * 0.7f),
-                            config.Material,
-                            BlockType.Hull,
-                            BlockShape.Corner,
-                            side > 0 ? BlockOrientation.PosX : BlockOrientation.NegX
-                        );
-                        bottomBlock.ColorRGB = config.Style.AccentColor;
-                        ship.Structure.AddBlock(bottomBlock);
-                    }
-                }
+                // 3. Top surface layer (wedge for aerodynamic profile)
+                var topSurface = new VoxelBlock(
+                    new Vector3(xOffset, currentThickness * 0.4f, zPosition),
+                    new Vector3(blockWidth * 0.9f, currentThickness * 0.4f, currentLength * 0.95f),
+                    config.Material,
+                    BlockType.Hull,
+                    BlockShape.Wedge,
+                    BlockOrientation.PosY
+                );
+                topSurface.ColorRGB = config.Style.AccentColor;
+                ship.Structure.AddBlock(topSurface);
                 
-                // Add leading edge detail for realism (forward facing blocks)
-                if (j % 3 == 0 && progress < 0.7f)
+                // 4. Leading edge detail (forward-facing wedges for swept look)
+                if (progress < 0.8f)
                 {
                     var leadingEdge = new VoxelBlock(
-                        new Vector3(xOffset, 0, zPosition + currentLength * 0.4f),
-                        new Vector3(blockWidth * 0.6f, currentThickness * 0.7f, currentLength * 0.2f),
+                        new Vector3(xOffset, 0, zPosition + currentLength * 0.35f),
+                        new Vector3(blockWidth * 0.7f, currentThickness * 0.8f, currentLength * 0.25f),
                         config.Material,
                         BlockType.Hull,
                         BlockShape.Wedge,
@@ -2260,45 +2262,123 @@ public class ProceduralShipGenerator
                     leadingEdge.ColorRGB = config.Style.AccentColor;
                     ship.Structure.AddBlock(leadingEdge);
                 }
+                
+                // 5. Trailing edge detail (rear-facing wedges)
+                if (progress < 0.7f)
+                {
+                    var trailingEdge = new VoxelBlock(
+                        new Vector3(xOffset, 0, zPosition - currentLength * 0.35f),
+                        new Vector3(blockWidth * 0.6f, currentThickness * 0.7f, currentLength * 0.2f),
+                        config.Material,
+                        BlockType.Hull,
+                        BlockShape.Wedge,
+                        BlockOrientation.NegZ
+                    );
+                    trailingEdge.ColorRGB = LerpColor(config.Style.AccentColor, config.Style.SecondaryColor, 0.4f);
+                    ship.Structure.AddBlock(trailingEdge);
+                }
+                
+                // 6. Wing ribs/structure (every 2nd block for internal structure look)
+                if (j % 2 == 0 && progress < 0.6f)
+                {
+                    // Internal rib running along wing length
+                    var rib = new VoxelBlock(
+                        new Vector3(xOffset, 0, zPosition),
+                        new Vector3(blockWidth * 0.4f, currentThickness * 0.9f, currentLength * 1.1f),
+                        config.Material,
+                        BlockType.Hull,
+                        BlockShape.HalfBlock,
+                        side > 0 ? BlockOrientation.PosX : BlockOrientation.NegX
+                    );
+                    rib.ColorRGB = LerpColor(config.Style.PrimaryColor, config.Style.AccentColor, 0.5f);
+                    ship.Structure.AddBlock(rib);
+                }
+                
+                // 7. Wingtip details (for outer sections)
+                if (progress > 0.7f)
+                {
+                    // Angled wingtip
+                    var wingtip = new VoxelBlock(
+                        new Vector3(xOffset, currentThickness * 0.2f, zPosition),
+                        new Vector3(blockWidth * 0.6f, currentThickness * 0.6f, currentLength * 0.7f),
+                        config.Material,
+                        BlockType.Hull,
+                        BlockShape.Corner,
+                        side > 0 ? BlockOrientation.PosX : BlockOrientation.NegX
+                    );
+                    wingtip.ColorRGB = config.Style.AccentColor;
+                    ship.Structure.AddBlock(wingtip);
+                }
             }
         }
     }
     
     /// <summary>
     /// Add transition blocks where wing connects to hull for smooth appearance
+    /// Enhanced with multi-layer transitions for professional blending
     /// </summary>
     private void AddWingRootTransition(GeneratedShip ship, Vector3 rootPosition, float side, float thickness, float length, ShipGenerationConfig config)
     {
-        // Create 3-4 transition blocks that blend wing into hull
-        for (int i = 0; i < 3; i++)
+        // Create 4-5 transition blocks that blend wing into hull with multiple layers
+        for (int i = 0; i < 4; i++)
         {
-            float transitionProgress = (float)i / 3;
-            float transitionOffset = side * i * 0.5f;
+            float transitionProgress = (float)i / 4;
+            float transitionOffset = side * i * 0.8f;
             
-            // Use corner and inner corner blocks for smooth blending
+            // Use varied blocks for smooth blending - InnerCorner -> Corner -> Wedge progression
             BlockShape transitionShape = i switch
             {
-                0 => BlockShape.InnerCorner,  // Closest to hull
-                1 => BlockShape.Corner,        // Middle transition
-                _ => BlockShape.Wedge          // Outer transition
+                0 => BlockShape.InnerCorner,  // Closest to hull - smoothest blend
+                1 => BlockShape.Corner,        // Early transition
+                2 => BlockShape.Wedge,         // Mid transition  
+                _ => BlockShape.HalfBlock      // Final transition to wing
             };
             
             BlockOrientation orientation = side > 0 
-                ? (i == 0 ? BlockOrientation.PosX : BlockOrientation.PosX)
-                : (i == 0 ? BlockOrientation.NegX : BlockOrientation.NegX);
+                ? BlockOrientation.PosX
+                : BlockOrientation.NegX;
             
+            // Main transition block
             var transitionBlock = new VoxelBlock(
                 rootPosition + new Vector3(transitionOffset, 0, 0),
-                new Vector3(1.2f, thickness * (0.7f + transitionProgress * 0.3f), length * (0.8f + transitionProgress * 0.2f)),
+                new Vector3(1.5f, thickness * (0.6f + transitionProgress * 0.4f), length * (0.75f + transitionProgress * 0.25f)),
                 config.Material,
                 BlockType.Hull,
                 transitionShape,
                 orientation
             );
             
-            // Blend colors from hull to accent
+            // Blend colors from hull primary to accent
             transitionBlock.ColorRGB = LerpColor(config.Style.PrimaryColor, config.Style.AccentColor, transitionProgress);
             ship.Structure.AddBlock(transitionBlock);
+            
+            // Add top/bottom reinforcement layers for first 2 transition blocks
+            if (i < 2)
+            {
+                // Top layer
+                var topLayer = new VoxelBlock(
+                    rootPosition + new Vector3(transitionOffset, thickness * 0.3f, 0),
+                    new Vector3(1.3f, thickness * 0.4f, length * 0.9f),
+                    config.Material,
+                    BlockType.Hull,
+                    BlockShape.HalfBlock,
+                    BlockOrientation.PosY
+                );
+                topLayer.ColorRGB = LerpColor(config.Style.PrimaryColor, config.Style.AccentColor, transitionProgress * 0.7f);
+                ship.Structure.AddBlock(topLayer);
+                
+                // Bottom layer
+                var bottomLayer = new VoxelBlock(
+                    rootPosition + new Vector3(transitionOffset, -thickness * 0.3f, 0),
+                    new Vector3(1.3f, thickness * 0.4f, length * 0.9f),
+                    config.Material,
+                    BlockType.Hull,
+                    BlockShape.HalfBlock,
+                    BlockOrientation.NegY
+                );
+                bottomLayer.ColorRGB = LerpColor(config.Style.PrimaryColor, config.Style.AccentColor, transitionProgress * 0.5f);
+                ship.Structure.AddBlock(bottomLayer);
+            }
         }
     }
     
@@ -2677,5 +2757,146 @@ public class ProceduralShipGenerator
         ship.Stats["Symmetry"] = result.SymmetryScore;
         ship.Stats["Balance"] = result.BalanceScore;
         ship.Stats["DesignLanguage"] = result.HasConsistentDesignLanguage ? 1f : 0f;
+    }
+    
+    // ========== UNIFIED MINING SHIP SUPPORT ==========
+    // These methods add mining-specific equipment to ships
+    // Previously in separate IndustrialMiningShipGenerator, now unified here
+    
+    /// <summary>
+    /// Add mining equipment (lasers, drills, arms) to mining/salvage ships
+    /// UNIFIED: Integrated from IndustrialMiningShipGenerator
+    /// </summary>
+    private void AddMiningEquipment(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config)
+    {
+        // Determine number of mining lasers based on ship size and role
+        int laserCount = config.Size switch
+        {
+            ShipSize.Fighter => 2,      // Small mining drone
+            ShipSize.Corvette => 3,     // Light mining vessel
+            ShipSize.Frigate => 4,      // Standard mining ship
+            ShipSize.Destroyer => 6,    // Heavy mining ship
+            ShipSize.Cruiser => 8,      // Mining cruiser
+            ShipSize.Battleship => 10,  // Industrial behemoth
+            ShipSize.Carrier => 12,     // Massive mining vessel
+            _ => 4
+        };
+        
+        // Mining equipment positioned at front of ship
+        float frontZ = dimensions.Z * 0.4f;
+        float armLength = 4f + (float)config.Size * 1.5f;
+        
+        // Add mining arms/lasers in a symmetric pattern
+        for (int i = 0; i < laserCount; i++)
+        {
+            // Distribute in circular pattern around front
+            float angle = (float)(2 * Math.PI * i / laserCount);
+            float radius = dimensions.X * 0.3f + (float)config.Size * 0.5f;
+            float xOffset = (float)Math.Cos(angle) * radius;
+            float yOffset = (float)Math.Sin(angle) * radius;
+            
+            // Mining arm base
+            var armBase = new VoxelBlock(
+                new Vector3(xOffset, yOffset, frontZ),
+                new Vector3(2f, 2f, 3f),
+                config.Material,
+                BlockType.Hull,
+                BlockShape.Cube,
+                BlockOrientation.PosY
+            );
+            armBase.ColorRGB = config.Style.SecondaryColor;
+            ship.Structure.AddBlock(armBase);
+            
+            // Mining laser extension
+            for (int j = 0; j < 3; j++)
+            {
+                float progress = (float)j / 3;
+                var laserSegment = new VoxelBlock(
+                    new Vector3(xOffset, yOffset, frontZ + 3f + j * 2f),
+                    new Vector3(1.5f * (1 - progress * 0.4f), 1.5f * (1 - progress * 0.4f), 2f),
+                    config.Material,
+                    BlockType.Hull,
+                    BlockShape.Cube,  // Use cube for laser segments
+                    BlockOrientation.PosZ
+                );
+                laserSegment.ColorRGB = LerpColor(config.Style.SecondaryColor, config.Style.AccentColor, progress);
+                ship.Structure.AddBlock(laserSegment);
+            }
+            
+            // Mining laser emitter tip
+            var emitter = new VoxelBlock(
+                new Vector3(xOffset, yOffset, frontZ + armLength),
+                new Vector3(1.2f, 1.2f, 1.5f),
+                config.Material,
+                BlockType.TurretMount, // Functional mining laser mount
+                BlockShape.Wedge,
+                BlockOrientation.PosZ
+            );
+            emitter.ColorRGB = config.Style.AccentColor; // Bright color for visibility
+            ship.Structure.AddBlock(emitter);
+        }
+    }
+    
+    /// <summary>
+    /// Add large cargo containers to mining/trading ships
+    /// UNIFIED: Integrated from IndustrialMiningShipGenerator
+    /// </summary>
+    private void AddCargoContainers(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config)
+    {
+        // Number of cargo modules based on ship size and role
+        int cargoCount = config.Size switch
+        {
+            ShipSize.Fighter => 1,
+            ShipSize.Corvette => 2,
+            ShipSize.Frigate => 4,
+            ShipSize.Destroyer => 6,
+            ShipSize.Cruiser => 8,
+            ShipSize.Battleship => 10,
+            ShipSize.Carrier => 12,
+            _ => 4
+        };
+        
+        // Increase for trading role
+        if (config.Role == ShipRole.Trading)
+        {
+            cargoCount = (int)(cargoCount * 1.5f);
+        }
+        
+        // Cargo containers positioned along mid-section of ship
+        float containerSize = 4f + (float)config.Size * 0.5f;
+        float zStart = -dimensions.Z * 0.3f;
+        float zSpacing = dimensions.Z * 0.6f / cargoCount;
+        
+        for (int i = 0; i < cargoCount; i++)
+        {
+            float zPos = zStart + i * zSpacing;
+            
+            // Alternate sides for asymmetric industrial look
+            float xOffset = (i % 2 == 0 ? 1 : -1) * dimensions.X * 0.3f;
+            
+            // Large blocky cargo container
+            var cargoContainer = new VoxelBlock(
+                new Vector3(xOffset, -dimensions.Y * 0.2f, zPos),
+                new Vector3(containerSize, containerSize * 0.8f, containerSize),
+                config.Material,
+                BlockType.Cargo,
+                BlockShape.Cube,
+                BlockOrientation.PosY
+            );
+            cargoContainer.ColorRGB = config.Style.SecondaryColor;
+            ship.Structure.AddBlock(cargoContainer);
+            
+            // Add container details (access panels, vents)
+            var accessPanel = new VoxelBlock(
+                new Vector3(xOffset, -dimensions.Y * 0.2f - containerSize * 0.4f, zPos),
+                new Vector3(containerSize * 0.6f, 0.5f, containerSize * 0.6f),
+                config.Material,
+                BlockType.Hull,
+                BlockShape.HalfBlock,
+                BlockOrientation.NegY
+            );
+            accessPanel.ColorRGB = config.Style.AccentColor;
+            ship.Structure.AddBlock(accessPanel);
+        }
     }
 }
