@@ -2140,10 +2140,28 @@ public class ProceduralShipGenerator
             AddWingStructures(ship, dimensions, config);
         }
         
+        // Add engine nacelles for larger ships (Frigate+) to look like Star Trek/Star Wars capital ships
+        if (config.Size >= ShipSize.Frigate)
+        {
+            AddEngineNacelles(ship, dimensions, config);
+        }
+        
+        // Add visible weapon turrets for combat ships
+        if (config.Role == ShipRole.Combat)
+        {
+            AddWeaponTurrets(ship, dimensions, config);
+        }
+        
         // Add mining equipment for Mining and Salvage ships
         if (config.Role == ShipRole.Mining || config.Role == ShipRole.Salvage)
         {
             AddMiningEquipment(ship, dimensions, config);
+            AddCargoContainers(ship, dimensions, config);
+        }
+        
+        // Add cargo pods for trading ships
+        if (config.Role == ShipRole.Trading)
+        {
             AddCargoContainers(ship, dimensions, config);
         }
         
@@ -3047,6 +3065,148 @@ public class ProceduralShipGenerator
             );
             accessPanel.ColorRGB = config.Style.AccentColor;
             ship.Structure.AddBlock(accessPanel);
+        }
+    }
+    
+    /// <summary>
+    /// Add engine nacelles to larger ships (like Star Wars Star Destroyer or Star Trek Enterprise)
+    /// Makes capital ships more recognizable and impressive
+    /// </summary>
+    private void AddEngineNacelles(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config)
+    {
+        // Number of nacelles based on ship size
+        int nacelleCount = config.Size switch
+        {
+            ShipSize.Frigate => 2,      // 2 nacelles (like TIE Advanced)
+            ShipSize.Destroyer => 2,     // 2 nacelles
+            ShipSize.Cruiser => 3,       // 3 nacelles (asymmetric)
+            ShipSize.Battleship => 4,    // 4 nacelles (like X-wing config)
+            ShipSize.Carrier => 4,       // 4 nacelles
+            _ => 2
+        };
+        
+        float nacelleLength = dimensions.Z * 0.4f;
+        float nacelleRadius = 3f + (float)config.Size * 0.5f;
+        float nacelleOffset = dimensions.X * 0.35f; // Distance from centerline
+        
+        for (int i = 0; i < nacelleCount; i++)
+        {
+            // Position nacelles in symmetric pairs
+            float side = i % 2 == 0 ? 1 : -1;
+            float verticalOffset = i < 2 ? 0 : dimensions.Y * 0.3f; // Upper pair for 4-nacelle config
+            
+            Vector3 nacelleStart = new Vector3(
+                side * nacelleOffset,
+                verticalOffset,
+                -dimensions.Z * 0.4f
+            );
+            
+            // Build nacelle as cylindrical structure
+            for (float z = 0; z < nacelleLength; z += 2f)
+            {
+                // Main nacelle body
+                var nacelleSegment = new VoxelBlock(
+                    nacelleStart + new Vector3(0, 0, z),
+                    new Vector3(nacelleRadius, nacelleRadius, 2.5f),
+                    config.Material,
+                    BlockType.Hull,
+                    BlockShape.Cube,
+                    BlockOrientation.PosZ
+                );
+                nacelleSegment.ColorRGB = config.Style.SecondaryColor;
+                ship.Structure.AddBlock(nacelleSegment);
+                
+                // Add glowing engine end at nacelle rear
+                if (z > nacelleLength * 0.8f)
+                {
+                    var engineGlow = new VoxelBlock(
+                        nacelleStart + new Vector3(0, 0, z - 1f),
+                        new Vector3(nacelleRadius * 0.8f, nacelleRadius * 0.8f, 1f),
+                        "Energy",
+                        BlockType.Hull,
+                        BlockShape.Cube,
+                        BlockOrientation.NegZ
+                    );
+                    engineGlow.ColorRGB = ENGINE_GLOW_COLOR;
+                    ship.Structure.AddBlock(engineGlow);
+                }
+            }
+            
+            // Add connecting strut from hull to nacelle
+            float strutLength = nacelleOffset - dimensions.X / 2;
+            for (float x = dimensions.X / 2; x < Math.Abs(nacelleStart.X); x += 2f)
+            {
+                var strut = new VoxelBlock(
+                    new Vector3(side * x, verticalOffset, nacelleStart.Z + nacelleLength / 2),
+                    new Vector3(2f, 1.5f, nacelleLength * 0.3f),
+                    config.Material,
+                    BlockType.Hull,
+                    BlockShape.Cube,
+                    BlockOrientation.PosY
+                );
+                strut.ColorRGB = config.Style.PrimaryColor;
+                ship.Structure.AddBlock(strut);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Add visible weapon turrets to combat ships (like Star Destroyer gun batteries)
+    /// Makes combat ships clearly recognizable
+    /// </summary>
+    private void AddWeaponTurrets(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config)
+    {
+        // Number of turrets based on ship size
+        int turretCount = config.Size switch
+        {
+            ShipSize.Fighter => 0,       // Fighters have integrated weapons
+            ShipSize.Corvette => 2,      // Small turrets
+            ShipSize.Frigate => 4,       // Medium turrets
+            ShipSize.Destroyer => 6,     // Heavy turrets
+            ShipSize.Cruiser => 8,       // Many turrets
+            ShipSize.Battleship => 12,   // Bristling with weapons
+            ShipSize.Carrier => 10,      // Defensive turrets
+            _ => 4
+        };
+        
+        float turretSize = 2f + (float)config.Size * 0.3f;
+        
+        for (int i = 0; i < turretCount; i++)
+        {
+            // Position turrets along top and sides of ship
+            float progress = (float)i / turretCount;
+            float zPos = -dimensions.Z * 0.3f + progress * dimensions.Z * 0.6f;
+            float side = i % 2 == 0 ? 1 : -1;
+            bool isTopTurret = i % 3 == 0; // Every 3rd turret on top
+            
+            Vector3 turretPos = isTopTurret 
+                ? new Vector3(side * dimensions.X * 0.2f, dimensions.Y / 2 + turretSize, zPos)
+                : new Vector3(side * dimensions.X / 2, 0, zPos);
+            
+            // Turret base
+            var turretBase = new VoxelBlock(
+                turretPos,
+                new Vector3(turretSize, turretSize * 0.6f, turretSize),
+                config.Material,
+                BlockType.TurretMount,
+                BlockShape.Cube,
+                BlockOrientation.PosY
+            );
+            turretBase.ColorRGB = config.Style.SecondaryColor;
+            ship.Structure.AddBlock(turretBase);
+            
+            // Turret barrel (pointing outward or upward)
+            Vector3 barrelDirection = isTopTurret ? new Vector3(0, 1, 0) : new Vector3(side, 0, 0);
+            var barrel = new VoxelBlock(
+                turretPos + barrelDirection * turretSize,
+                new Vector3(turretSize * 0.4f, turretSize * 0.4f, turretSize * 1.2f),
+                config.Material,
+                BlockType.Hull,
+                BlockShape.Cube,
+                isTopTurret ? BlockOrientation.PosY : (side > 0 ? BlockOrientation.PosX : BlockOrientation.NegX)
+            );
+            barrel.ColorRGB = config.Style.AccentColor;
+            ship.Structure.AddBlock(barrel);
         }
     }
 }
