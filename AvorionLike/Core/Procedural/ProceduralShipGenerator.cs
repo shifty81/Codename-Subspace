@@ -2156,11 +2156,10 @@ public class ProceduralShipGenerator
         if (config.Role == ShipRole.Mining || config.Role == ShipRole.Salvage)
         {
             AddMiningEquipment(ship, dimensions, config);
-            AddCargoContainers(ship, dimensions, config);
         }
         
-        // Add cargo pods for trading ships
-        if (config.Role == ShipRole.Trading)
+        // Add cargo containers for ships that need cargo (Mining, Salvage, Trading)
+        if (config.Role == ShipRole.Mining || config.Role == ShipRole.Salvage || config.Role == ShipRole.Trading)
         {
             AddCargoContainers(ship, dimensions, config);
         }
