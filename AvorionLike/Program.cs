@@ -92,135 +92,42 @@ class Program
 
     static void StartNewGame()
     {
-        Console.WriteLine("\n=== NEW GAME - Full Visual Testing Experience ===");
-        Console.WriteLine("Creating comprehensive test environment with all implementations...\n");
-        
-        // Step 1: Let user choose their ship generation
-        var selectedShip = SelectShipGeneration();
-        if (selectedShip == null)
-        {
-            Console.WriteLine("Ship selection cancelled. Returning to main menu.");
-            return;
-        }
-        
-        Console.WriteLine($"\n✓ Selected Ship: {selectedShip.Description}");
-        Console.WriteLine("Creating your game world...\n");
-        
-        // Create player ship with the selected generation
-        var playerShip = _gameEngine!.EntityManager.CreateEntity("Player Ship");
-        var voxelComponent = selectedShip.ShipData.Structure;
-        
-        _gameEngine.EntityManager.AddComponent(playerShip.Id, voxelComponent);
-        
-        // Add physics
-        var physicsComponent = new PhysicsComponent
-        {
-            Position = new Vector3(0, 0, 0),
-            Velocity = Vector3.Zero,
-            Mass = voxelComponent.TotalMass,
-            MomentOfInertia = voxelComponent.MomentOfInertia,
-            MaxThrust = voxelComponent.TotalThrust,
-            MaxTorque = voxelComponent.TotalTorque
-        };
-        _gameEngine.EntityManager.AddComponent(playerShip.Id, physicsComponent);
-        
-        // Add inventory
-        var inventoryComponent = new InventoryComponent(1000);
-        inventoryComponent.Inventory.AddResource(ResourceType.Credits, 10000);
-        inventoryComponent.Inventory.AddResource(ResourceType.Iron, 500);
-        inventoryComponent.Inventory.AddResource(ResourceType.Titanium, 200);
-        _gameEngine.EntityManager.AddComponent(playerShip.Id, inventoryComponent);
-
-        // Add progression
-        var progressionComponent = new ProgressionComponent
-        {
-            EntityId = playerShip.Id,
-            Level = 1,
-            Experience = 0,
-            SkillPoints = 0
-        };
-        _gameEngine.EntityManager.AddComponent(playerShip.Id, progressionComponent);
-        
-        // Add combat capabilities
-        var combatComponent = new CombatComponent
-        {
-            EntityId = playerShip.Id,
-            MaxShields = voxelComponent.ShieldCapacity,
-            CurrentShields = voxelComponent.ShieldCapacity,
-            MaxEnergy = voxelComponent.PowerGeneration,
-            CurrentEnergy = voxelComponent.PowerGeneration
-        };
-        _gameEngine.EntityManager.AddComponent(playerShip.Id, combatComponent);
-        
-        // Add hyperdrive
-        var hyperdriveComponent = new HyperdriveComponent
-        {
-            EntityId = playerShip.Id,
-            JumpRange = 5f
-        };
-        _gameEngine.EntityManager.AddComponent(playerShip.Id, hyperdriveComponent);
-        
-        // Add sector location - Start at galaxy rim (400 sectors from center)
-        var locationComponent = new SectorLocationComponent
-        {
-            EntityId = playerShip.Id,
-            CurrentSector = new SectorCoordinate(400, 0, 0)  // Galaxy rim starting position
-        };
-        _gameEngine.EntityManager.AddComponent(playerShip.Id, locationComponent);
-        
-        // Add galaxy progression tracking
-        var playerProgressionComp = new PlayerProgressionComponent
-        {
-            EntityId = playerShip.Id,
-            ClosestDistanceToCenter = 400,
-            CurrentZone = "Galaxy Rim (Iron Zone)",
-            FurthestZoneReached = "Galaxy Rim (Iron Zone)",
-            AvailableMaterialTier = MaterialTier.Iron,
-            HighestMaterialTierAcquired = MaterialTier.Iron,
-            CurrentZoneDifficulty = 1.0f,
-            SectorsExplored = 1
-        };
-        _gameEngine.EntityManager.AddComponent(playerShip.Id, playerProgressionComp);
+        Console.WriteLine("\n=== NEW GAME - Player Character Implementation ===");
+        Console.WriteLine("Creating your player pod (character) and game world...\n");
         
         // Register Galaxy Progression System and Fleet Automation System
-        var galaxyProgressionSystem = new GalaxyProgressionSystem(_gameEngine.EntityManager);
+        var galaxyProgressionSystem = new GalaxyProgressionSystem(_gameEngine!.EntityManager);
         var fleetAutomationSystem = new FleetAutomationSystem(_gameEngine.EntityManager);
         
         _gameEngine.EntityManager.RegisterSystem(galaxyProgressionSystem);
         _gameEngine.EntityManager.RegisterSystem(fleetAutomationSystem);
         
-        Console.WriteLine($"\n✓ Player ship created!");
-        Console.WriteLine($"  Name: {playerShip.Name}");
-        Console.WriteLine($"  Blocks: {voxelComponent.Blocks.Count}");
-        Console.WriteLine($"  Mass: {voxelComponent.TotalMass:F2} kg");
-        Console.WriteLine($"  Thrust: {voxelComponent.TotalThrust:F2} N");
-        Console.WriteLine($"  Torque: {voxelComponent.TotalTorque:F2} Nm");
-        Console.WriteLine($"  Power: {voxelComponent.PowerGeneration:F2} W");
-        Console.WriteLine($"  Shields: {voxelComponent.ShieldCapacity:F2}");
-        Console.WriteLine($"  Credits: {inventoryComponent.Inventory.GetResourceAmount(ResourceType.Credits):N0}");
+        // Create player pod (the actual player character)
+        Console.WriteLine("=== Creating Your Player Character ===");
+        var playerPodId = CreatePlayerPod(new Vector3(0, 0, 0));
         
-        Console.WriteLine("\n--- Ship Materials (Colorful!) ---");
-        Console.WriteLine("  Core: Titanium (Silver-Blue, Metallic)");
-        Console.WriteLine("  Engines: Ogonite (Red/Orange with Glow)");
-        Console.WriteLine("  Thrusters: Trinium (Bright Blue with Glow)");
-        Console.WriteLine("  Generator: Xanion (Gold/Yellow with Strong Glow)");
-        Console.WriteLine("  Shields: Naonite (Bright Green with Glow)");
-        Console.WriteLine("  Gyros: Avorion (Purple with Strong Glow)");
-        Console.WriteLine("\n  Each block type has distinct colors to verify rendering!");
+        // Get the physics component to use for world population
+        var podPhysics = _gameEngine.EntityManager.GetComponent<PhysicsComponent>(playerPodId);
+        var podLocation = _gameEngine.EntityManager.GetComponent<SectorLocationComponent>(playerPodId);
+        
+        if (podPhysics == null || podLocation == null)
+        {
+            Console.WriteLine("Error: Failed to create player pod properly");
+            return;
+        }
         
         // Display galaxy progression information
-        int distance = GalaxyProgressionSystem.GetDistanceFromCenter(locationComponent.CurrentSector);
+        int distance = GalaxyProgressionSystem.GetDistanceFromCenter(podLocation.CurrentSector);
         var zoneName = GalaxyProgressionSystem.GetZoneName(distance);
         var availableTier = GalaxyProgressionSystem.GetAvailableMaterialTier(distance);
         var difficulty = GalaxyProgressionSystem.GetDifficultyMultiplier(distance);
         
         Console.WriteLine("\n=== GALAXY PROGRESSION SYSTEM ===");
-        Console.WriteLine($"  📍 Starting Location: Sector [{locationComponent.CurrentSector.X}, {locationComponent.CurrentSector.Y}, {locationComponent.CurrentSector.Z}]");
+        Console.WriteLine($"  📍 Starting Location: Sector [{podLocation.CurrentSector.X}, {podLocation.CurrentSector.Y}, {podLocation.CurrentSector.Z}]");
         Console.WriteLine($"  🌌 Current Zone: {zoneName}");
         Console.WriteLine($"  📏 Distance from Center: {distance} sectors");
         Console.WriteLine($"  ⚔️  Zone Difficulty: {difficulty:F1}x");
         Console.WriteLine($"  🔨 Available Materials: {availableTier}");
-        Console.WriteLine($"  📊 Highest Tier Acquired: {playerProgressionComp.HighestMaterialTierAcquired}");
         
         // Display material tier unlocks
         var features = MaterialTierInfo.GetUnlockedFeatures(availableTier);
@@ -242,15 +149,25 @@ class Program
         // Populate the game world with zone-appropriate content
         Console.WriteLine("\n=== Populating Game World ===");
         var worldPopulator = new GameWorldPopulator(_gameEngine, seed: 12345);
-        worldPopulator.PopulateZoneArea(physicsComponent.Position, locationComponent.CurrentSector, radius: 800f);
+        worldPopulator.PopulateZoneArea(podPhysics.Position, podLocation.CurrentSector, radius: 800f);
         
         // Add comprehensive test showcase - All implementations in one place!
-        Console.WriteLine("\n=== Creating Test Showcase - All Implementations ===");
-        CreateComprehensiveTestShowcase(playerShip.Id, physicsComponent.Position);
+        Console.WriteLine("\n=== Creating Test Showcase - Ships and Stations ===");
+        CreateComprehensiveTestShowcase(playerPodId, podPhysics.Position);
         
         Console.WriteLine("\n=== Launching Full Game Experience ===");
-        Console.WriteLine("Opening 3D window with Player UI...");
-        Console.WriteLine("You can now control your ship and explore!\n");
+        Console.WriteLine("Opening 3D window with Player Pod...");
+        Console.WriteLine("You are now controlling your player pod character!\n");
+        
+        Console.WriteLine("🎮 CONTROLS:");
+        Console.WriteLine("  • WASD - Thrust (Forward/Back/Left/Right)");
+        Console.WriteLine("  • Space/Shift - Thrust Up/Down");
+        Console.WriteLine("  • Arrow Keys - Pitch/Yaw");
+        Console.WriteLine("  • Q/E - Roll");
+        Console.WriteLine("  • X - Emergency Brake");
+        Console.WriteLine("  • Mouse - Look around (camera follows your pod)");
+        Console.WriteLine("  • M - Toggle Galaxy Map");
+        Console.WriteLine("  • ESC - Pause Menu\n");
         
         Console.WriteLine("💡 TESTING FEATURES:");
         Console.WriteLine("  • Press ~ or click Console button to open testing console");
@@ -263,7 +180,7 @@ class Program
         try
         {
             using var graphicsWindow = new GraphicsWindow(_gameEngine);
-            graphicsWindow.SetPlayerShip(playerShip.Id);
+            graphicsWindow.SetPlayerShip(playerPodId);
             graphicsWindow.Run();
         }
         catch (Exception ex)
@@ -284,129 +201,71 @@ class Program
         Console.WriteLine();
         Console.WriteLine("Creating a complete solar system with all implemented features...\n");
         
-        // Create player ship with full capabilities
-        Console.WriteLine("=== Creating Player Ship ===");
-        var playerShip = _gameEngine!.EntityManager.CreateEntity("Player Ship - Command Cruiser");
-        
-        // Use procedural generation for a well-equipped player ship
-        var shipGenerator = new ProceduralShipGenerator(Environment.TickCount);
-        var playerShipConfig = new ShipGenerationConfig
-        {
-            Size = ShipSize.Cruiser,
-            Role = ShipRole.Multipurpose,
-            Material = "Avorion",
-            Style = FactionShipStyle.GetDefaultStyle("Military"),
-            Seed = 12345,
-            RequireHyperdrive = true,
-            RequireCargo = true,
-            MinimumWeaponMounts = 6
-        };
-        
-        var generatedPlayerShip = shipGenerator.GenerateShip(playerShipConfig);
-        var voxelComponent = generatedPlayerShip.Structure;
-        _gameEngine.EntityManager.AddComponent(playerShip.Id, voxelComponent);
-        
-        // Add physics at origin
-        var physicsComponent = new PhysicsComponent
-        {
-            Position = new Vector3(0, 0, 0),
-            Velocity = Vector3.Zero,
-            Mass = voxelComponent.TotalMass,
-            MomentOfInertia = voxelComponent.MomentOfInertia,
-            MaxThrust = voxelComponent.TotalThrust,
-            MaxTorque = voxelComponent.TotalTorque
-        };
-        _gameEngine.EntityManager.AddComponent(playerShip.Id, physicsComponent);
-        
-        // Add full inventory with all resource types
-        var inventoryComponent = new InventoryComponent(5000);
-        inventoryComponent.Inventory.AddResource(ResourceType.Credits, 1000000);
-        inventoryComponent.Inventory.AddResource(ResourceType.Iron, 2000);
-        inventoryComponent.Inventory.AddResource(ResourceType.Titanium, 1500);
-        inventoryComponent.Inventory.AddResource(ResourceType.Naonite, 1000);
-        inventoryComponent.Inventory.AddResource(ResourceType.Trinium, 800);
-        inventoryComponent.Inventory.AddResource(ResourceType.Xanion, 500);
-        inventoryComponent.Inventory.AddResource(ResourceType.Ogonite, 300);
-        inventoryComponent.Inventory.AddResource(ResourceType.Avorion, 200);
-        _gameEngine.EntityManager.AddComponent(playerShip.Id, inventoryComponent);
-        
-        // Add progression - mid-level to test progression features
-        var progressionComponent = new ProgressionComponent
-        {
-            EntityId = playerShip.Id,
-            Level = 10,
-            Experience = 50000,
-            SkillPoints = 25
-        };
-        _gameEngine.EntityManager.AddComponent(playerShip.Id, progressionComponent);
-        
-        // Add combat capabilities
-        var combatComponent = new CombatComponent
-        {
-            EntityId = playerShip.Id,
-            MaxShields = voxelComponent.ShieldCapacity,
-            CurrentShields = voxelComponent.ShieldCapacity,
-            MaxEnergy = voxelComponent.PowerGeneration,
-            CurrentEnergy = voxelComponent.PowerGeneration
-        };
-        _gameEngine.EntityManager.AddComponent(playerShip.Id, combatComponent);
-        
-        // Add hyperdrive with good range
-        var hyperdriveComponent = new HyperdriveComponent
-        {
-            EntityId = playerShip.Id,
-            JumpRange = 15f
-        };
-        _gameEngine.EntityManager.AddComponent(playerShip.Id, hyperdriveComponent);
-        
-        // Start in mid-galaxy for variety (Naonite zone)
-        var locationComponent = new SectorLocationComponent
-        {
-            EntityId = playerShip.Id,
-            CurrentSector = new SectorCoordinate(200, 0, 0)
-        };
-        _gameEngine.EntityManager.AddComponent(playerShip.Id, locationComponent);
-        
-        // Add galaxy progression tracking
-        var playerProgressionComp = new PlayerProgressionComponent
-        {
-            EntityId = playerShip.Id,
-            ClosestDistanceToCenter = 200,
-            CurrentZone = "Mid-Galaxy (Naonite Zone)",
-            FurthestZoneReached = "Mid-Galaxy (Naonite Zone)",
-            AvailableMaterialTier = MaterialTier.Naonite,
-            HighestMaterialTierAcquired = MaterialTier.Naonite,
-            CurrentZoneDifficulty = 1.5f,
-            SectorsExplored = 1
-        };
-        _gameEngine.EntityManager.AddComponent(playerShip.Id, playerProgressionComp);
-        
-        Console.WriteLine($"✓ Player ship created!");
-        Console.WriteLine($"  Type: {playerShipConfig.Size} {playerShipConfig.Role}");
-        Console.WriteLine($"  Blocks: {voxelComponent.Blocks.Count}");
-        Console.WriteLine($"  Mass: {voxelComponent.TotalMass:F2} kg");
-        Console.WriteLine($"  Thrust: {voxelComponent.TotalThrust:F2} N");
-        Console.WriteLine($"  Power: {voxelComponent.PowerGeneration:F2} W");
-        Console.WriteLine($"  Shields: {voxelComponent.ShieldCapacity:F2}");
-        Console.WriteLine($"  Credits: {inventoryComponent.Inventory.GetResourceAmount(ResourceType.Credits):N0}");
-        Console.WriteLine($"  Level: {progressionComponent.Level}");
-        
         // Register systems
-        var galaxyProgressionSystem = new GalaxyProgressionSystem(_gameEngine.EntityManager);
+        var galaxyProgressionSystem = new GalaxyProgressionSystem(_gameEngine!.EntityManager);
         var fleetAutomationSystem = new FleetAutomationSystem(_gameEngine.EntityManager);
         _gameEngine.EntityManager.RegisterSystem(galaxyProgressionSystem);
         _gameEngine.EntityManager.RegisterSystem(fleetAutomationSystem);
         
+        // Create player pod (the actual player character)
+        Console.WriteLine("=== Creating Player Pod (Your Character) ===");
+        var playerPodId = CreatePlayerPod(new Vector3(0, 0, 0));
+        
+        // Get the player pod components
+        var podPhysics = _gameEngine.EntityManager.GetComponent<PhysicsComponent>(playerPodId);
+        var podInventory = _gameEngine.EntityManager.GetComponent<InventoryComponent>(playerPodId);
+        var podProgression = _gameEngine.EntityManager.GetComponent<ProgressionComponent>(playerPodId);
+        var podLocation = _gameEngine.EntityManager.GetComponent<SectorLocationComponent>(playerPodId);
+        
+        if (podPhysics == null || podInventory == null || podProgression == null || podLocation == null)
+        {
+            Console.WriteLine("Error: Failed to create player pod properly");
+            return;
+        }
+        
+        // Give the player pod extra resources for this demo
+        podInventory.Inventory.AddResource(ResourceType.Credits, 990000); // Total 1M
+        podInventory.Inventory.AddResource(ResourceType.Iron, 1500);
+        podInventory.Inventory.AddResource(ResourceType.Titanium, 1300);
+        podInventory.Inventory.AddResource(ResourceType.Naonite, 1000);
+        podInventory.Inventory.AddResource(ResourceType.Trinium, 800);
+        podInventory.Inventory.AddResource(ResourceType.Xanion, 500);
+        podInventory.Inventory.AddResource(ResourceType.Ogonite, 300);
+        podInventory.Inventory.AddResource(ResourceType.Avorion, 200);
+        
+        // Level up for demo
+        podProgression.Level = 10;
+        podProgression.Experience = 50000;
+        podProgression.SkillPoints = 25;
+        
+        // Update location to mid-galaxy for more variety
+        podLocation.CurrentSector = new SectorCoordinate(200, 0, 0);
+        var playerProgressionComp = _gameEngine.EntityManager.GetComponent<PlayerProgressionComponent>(playerPodId);
+        if (playerProgressionComp != null)
+        {
+            playerProgressionComp.ClosestDistanceToCenter = 200;
+            playerProgressionComp.CurrentZone = "Mid-Galaxy (Naonite Zone)";
+            playerProgressionComp.FurthestZoneReached = "Mid-Galaxy (Naonite Zone)";
+            playerProgressionComp.AvailableMaterialTier = MaterialTier.Naonite;
+            playerProgressionComp.HighestMaterialTierAcquired = MaterialTier.Naonite;
+            playerProgressionComp.CurrentZoneDifficulty = 1.5f;
+        }
+        
+        Console.WriteLine($"✓ Player pod ready!");
+        Console.WriteLine($"  Level: {podProgression.Level}");
+        Console.WriteLine($"  Credits: {podInventory.Inventory.GetResourceAmount(ResourceType.Credits):N0}");
+        Console.WriteLine($"  Location: Mid-Galaxy (Naonite Zone)");
+        
         // Create comprehensive solar system with all features
         Console.WriteLine("\n=== Populating Solar System ===");
-        CreateCompleteSolarSystem(playerShip.Id, physicsComponent.Position);
+        CreateCompleteSolarSystem(playerPodId, podPhysics.Position);
         
         Console.WriteLine("\n=== System Features Summary ===");
-        Console.WriteLine("✓ Player Ship: Fully equipped Cruiser with all capabilities");
+        Console.WriteLine("✓ Player Pod: Small, maneuverable character ship");
         Console.WriteLine("✓ Diverse Fleet: 18+ ships of all sizes and roles with VARIED VISUAL STYLES");
         Console.WriteLine("✓ Asteroid Fields: Rich with all material types (SPREAD ACROSS LARGE DISTANCES)");
         Console.WriteLine("✓ Space Stations: Multiple types (Trading, Military, Industrial, Research)");
-        Console.WriteLine("✓ PLANETS: 4 diverse planets (Rocky, Gas Giant, Ice, Desert) - NEW!");
+        Console.WriteLine("✓ PLANETS: 4 diverse planets (Rocky, Gas Giant, Ice, Desert)");
         Console.WriteLine("✓ AI Ships: Traders, Miners, Pirates, Explorers");
         Console.WriteLine("✓ Galaxy Progression: Visible material tier zones");
         Console.WriteLine("✓ Improved Spacing: Objects are 3-5x more spread out for better visibility");
@@ -415,12 +274,12 @@ class Program
         Console.WriteLine("  • Press ~ or click Console button for testing commands");
         Console.WriteLine("  • Type 'help' for all available commands");
         Console.WriteLine("  • Use M key to open Galaxy Map");
-        Console.WriteLine("  • Press I for Inventory, B for Ship Builder");
         Console.WriteLine("  • Fly around to explore all generated content - look at the HORIZON!");
         Console.WriteLine("  • Try combat with 'spawn_enemy' command");
         Console.WriteLine("  • Test mining with nearby asteroids");
         Console.WriteLine("  • Visit stations for trading");
         Console.WriteLine("  • Ships now have varied designs based on their role");
+        Console.WriteLine("  • You are controlling a PLAYER POD - a small character ship");
         Console.WriteLine();
         
         // Launch the game
@@ -430,7 +289,7 @@ class Program
         try
         {
             using var graphicsWindow = new GraphicsWindow(_gameEngine);
-            graphicsWindow.SetPlayerShip(playerShip.Id);
+            graphicsWindow.SetPlayerShip(playerPodId);
             graphicsWindow.Run();
         }
         catch (Exception ex)
@@ -3912,5 +3771,179 @@ class Program
         
         Console.WriteLine("\nPress any key to return to main menu...");
         Console.ReadKey();
+    }
+    
+    /// <summary>
+    /// Creates a player pod entity - the actual player character in the game
+    /// </summary>
+    static Guid CreatePlayerPod(Vector3 position)
+    {
+        if (_gameEngine == null) throw new InvalidOperationException("Game engine not initialized");
+        
+        // Create the player pod entity
+        var pod = _gameEngine.EntityManager.CreateEntity("Player Pod");
+        
+        Console.WriteLine($"✓ Creating Player Pod (your character)");
+        Console.WriteLine($"  The pod is a small utility ship that represents YOU in the game");
+        
+        // Add the player pod component
+        var podComponent = new PlayerPodComponent
+        {
+            EntityId = pod.Id,
+            BaseEfficiencyMultiplier = 0.5f,
+            BaseThrustPower = 100f,  // Increased for better maneuverability
+            BasePowerGeneration = 200f,
+            BaseShieldCapacity = 300f,
+            BaseTorque = 50f,  // Increased for better rotation
+            MaxUpgradeSlots = 5
+        };
+        _gameEngine.EntityManager.AddComponent(pod.Id, podComponent);
+        
+        // Create a visually distinct pod structure (small ship-like appearance)
+        var voxelComponent = new VoxelStructureComponent();
+        
+        // Core cockpit (center) - bright blue Trinium for visibility
+        voxelComponent.AddBlock(new VoxelBlock(
+            new Vector3(0, 0, 0),
+            new Vector3(2, 2, 2),
+            "Trinium",
+            BlockType.Hull,
+            BlockShape.Cube
+        ));
+        
+        // Engine block (back) - glowing red/orange Ogonite
+        voxelComponent.AddBlock(new VoxelBlock(
+            new Vector3(-2.5f, 0, 0),
+            new Vector3(1.5f, 1.5f, 1.5f),
+            "Ogonite",
+            BlockType.Engine,
+            BlockShape.Cube
+        ));
+        
+        // Front nose cone (wedge shape) - silver Titanium
+        voxelComponent.AddBlock(new VoxelBlock(
+            new Vector3(2.5f, 0, 0),
+            new Vector3(1.5f, 1.5f, 1.5f),
+            "Titanium",
+            BlockType.Hull,
+            BlockShape.Wedge,
+            BlockOrientation.PosX
+        ));
+        
+        // Side thrusters for maneuverability - bright blue Trinium
+        voxelComponent.AddBlock(new VoxelBlock(
+            new Vector3(0, 1.5f, 0),
+            new Vector3(1, 1, 1),
+            "Trinium",
+            BlockType.Thruster,
+            BlockShape.Cube
+        ));
+        
+        voxelComponent.AddBlock(new VoxelBlock(
+            new Vector3(0, -1.5f, 0),
+            new Vector3(1, 1, 1),
+            "Trinium",
+            BlockType.Thruster,
+            BlockShape.Cube
+        ));
+        
+        // Generator (small, on top) - glowing yellow Xanion
+        voxelComponent.AddBlock(new VoxelBlock(
+            new Vector3(0, 0, 1.5f),
+            new Vector3(1, 1, 1),
+            "Xanion",
+            BlockType.Generator,
+            BlockShape.Cube
+        ));
+        
+        // Shield generator (small, on bottom) - glowing green Naonite
+        voxelComponent.AddBlock(new VoxelBlock(
+            new Vector3(0, 0, -1.5f),
+            new Vector3(1, 1, 1),
+            "Naonite",
+            BlockType.ShieldGenerator,
+            BlockShape.Cube
+        ));
+        
+        _gameEngine.EntityManager.AddComponent(pod.Id, voxelComponent);
+        
+        // Add physics with good maneuverability
+        var physicsComponent = new PhysicsComponent
+        {
+            Position = position,
+            Velocity = Vector3.Zero,
+            Mass = voxelComponent.TotalMass,
+            MomentOfInertia = voxelComponent.MomentOfInertia,
+            MaxThrust = podComponent.GetTotalThrust() * 1.5f,  // Extra boost for player pod
+            MaxTorque = podComponent.GetTotalTorque() * 1.5f
+        };
+        _gameEngine.EntityManager.AddComponent(pod.Id, physicsComponent);
+        
+        // Add progression (pod levels up like a character)
+        var progressionComponent = new ProgressionComponent
+        {
+            EntityId = pod.Id,
+            Level = 1,
+            Experience = 0,
+            SkillPoints = 0
+        };
+        _gameEngine.EntityManager.AddComponent(pod.Id, progressionComponent);
+        
+        // Add inventory
+        var inventoryComponent = new InventoryComponent(1000);
+        inventoryComponent.Inventory.AddResource(ResourceType.Credits, 10000);
+        inventoryComponent.Inventory.AddResource(ResourceType.Iron, 500);
+        inventoryComponent.Inventory.AddResource(ResourceType.Titanium, 200);
+        _gameEngine.EntityManager.AddComponent(pod.Id, inventoryComponent);
+        
+        // Add combat capabilities
+        var combatComponent = new CombatComponent
+        {
+            EntityId = pod.Id,
+            MaxShields = podComponent.GetTotalShieldCapacity(),
+            CurrentShields = podComponent.GetTotalShieldCapacity(),
+            MaxEnergy = podComponent.GetTotalPowerGeneration(),
+            CurrentEnergy = podComponent.GetTotalPowerGeneration()
+        };
+        _gameEngine.EntityManager.AddComponent(pod.Id, combatComponent);
+        
+        // Add hyperdrive
+        var hyperdriveComponent = new HyperdriveComponent
+        {
+            EntityId = pod.Id,
+            JumpRange = 5f
+        };
+        _gameEngine.EntityManager.AddComponent(pod.Id, hyperdriveComponent);
+        
+        // Add sector location - Start at galaxy rim (400 sectors from center)
+        var locationComponent = new SectorLocationComponent
+        {
+            EntityId = pod.Id,
+            CurrentSector = new SectorCoordinate(400, 0, 0)
+        };
+        _gameEngine.EntityManager.AddComponent(pod.Id, locationComponent);
+        
+        // Add galaxy progression tracking
+        var playerProgressionComp = new PlayerProgressionComponent
+        {
+            EntityId = pod.Id,
+            ClosestDistanceToCenter = 400,
+            CurrentZone = "Galaxy Rim (Iron Zone)",
+            FurthestZoneReached = "Galaxy Rim (Iron Zone)",
+            AvailableMaterialTier = MaterialTier.Iron,
+            HighestMaterialTierAcquired = MaterialTier.Iron,
+            CurrentZoneDifficulty = 1.0f,
+            SectorsExplored = 1
+        };
+        _gameEngine.EntityManager.AddComponent(pod.Id, playerProgressionComp);
+        
+        Console.WriteLine($"  ✓ Pod created successfully!");
+        Console.WriteLine($"  Blocks: {voxelComponent.Blocks.Count}");
+        Console.WriteLine($"  Mass: {voxelComponent.TotalMass:F2} kg");
+        Console.WriteLine($"  Thrust: {voxelComponent.TotalThrust:F2} N");
+        Console.WriteLine($"  Shields: {podComponent.GetTotalShieldCapacity():F2}");
+        Console.WriteLine($"  Power: {podComponent.GetTotalPowerGeneration():F2} W");
+        
+        return pod.Id;
     }
 }
