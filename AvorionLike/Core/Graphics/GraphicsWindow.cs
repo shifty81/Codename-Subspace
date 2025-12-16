@@ -284,9 +284,10 @@ public class GraphicsWindow : IDisposable
                 var physics = _gameEngine.EntityManager.GetComponent<PhysicsComponent>(_backgroundShipId.Value);
                 if (physics != null)
                 {
-                    // Camera looks at the ship from an angle
-                    _camera.Position = physics.Position + new Vector3(100, 60, 200);
-                    _camera.SetLookAt(physics.Position);
+                    // Use FollowTarget to smoothly track the ship
+                    // Set chase parameters for title screen viewing
+                    _camera.SetChaseParameters(150.0f, 60.0f, 2.0f);
+                    _camera.FollowTarget(physics.Position, physics.Velocity, _deltaTime);
                 }
             }
             
