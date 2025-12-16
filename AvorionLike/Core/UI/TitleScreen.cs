@@ -17,6 +17,9 @@ public class TitleScreen
     
     public bool IsActive => _isActive;
     
+    // Callback for when new game is requested
+    public Action? OnNewGameRequested { get; set; }
+    
     public TitleScreen(GameEngine gameEngine)
     {
         _gameEngine = gameEngine;
@@ -92,13 +95,40 @@ public class TitleScreen
             
             ImGui.Dummy(new Vector2(0, 50));
             
-            // "Press any key" prompt with blinking effect
-            float blinkAlpha = (MathF.Sin(_titlePulse * 3f) + 1f) * 0.5f;
-            ImGui.SetCursorPos(new Vector2(centerX, centerY + 50));
-            var promptText = "Press any key to start...";
-            var promptSize = ImGui.CalcTextSize(promptText);
-            ImGui.SetCursorPos(new Vector2(centerX - promptSize.X * 0.5f, centerY + 50));
-            ImGui.TextColored(new Vector4(1.0f, 1.0f, 1.0f, 0.5f + blinkAlpha * 0.5f), promptText);
+            // Menu buttons
+            float buttonWidth = 300f;
+            float buttonHeight = 50f;
+            float buttonSpacing = 15f;
+            
+            ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(20, 15));
+            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.1f, 0.3f, 0.5f, 0.8f));
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0.2f, 0.5f, 0.8f, 0.9f));
+            ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0.3f, 0.6f, 0.9f, 1.0f));
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1.0f, 1.0f, 1.0f, 1.0f));
+            
+            // New Game button
+            ImGui.SetCursorPos(new Vector2(centerX - buttonWidth * 0.5f, centerY + 50));
+            if (ImGui.Button("🚀 START NEW GAME", new Vector2(buttonWidth, buttonHeight)))
+            {
+                OnNewGameRequested?.Invoke();
+            }
+            
+            // Settings button
+            ImGui.SetCursorPos(new Vector2(centerX - buttonWidth * 0.5f, centerY + 50 + buttonHeight + buttonSpacing));
+            if (ImGui.Button("⚙️ SETTINGS", new Vector2(buttonWidth, buttonHeight)))
+            {
+                // TODO: Open settings menu
+            }
+            
+            // Exit button
+            ImGui.SetCursorPos(new Vector2(centerX - buttonWidth * 0.5f, centerY + 50 + (buttonHeight + buttonSpacing) * 2));
+            if (ImGui.Button("🚪 EXIT", new Vector2(buttonWidth, buttonHeight)))
+            {
+                Environment.Exit(0);
+            }
+            
+            ImGui.PopStyleColor(4);
+            ImGui.PopStyleVar();
             
             // Feature highlights
             ImGui.SetCursorPos(new Vector2(centerX, centerY + 120));
@@ -157,31 +187,11 @@ public class TitleScreen
     {
         if (!_isActive) return;
         
-        var io = ImGui.GetIO();
-        
-        // Check for any key press using ImGui's WantCaptureKeyboard
-        // If any key was pressed this frame, dismiss the title screen
-        if (!io.WantCaptureKeyboard)
+        // Input is handled through ImGui buttons
+        // ESC key can still dismiss
+        if (ImGui.IsKeyPressed(ImGuiKey.Escape))
         {
-            // Check common keys
-            if (ImGui.IsKeyPressed(ImGuiKey.Space) ||
-                ImGui.IsKeyPressed(ImGuiKey.Enter) ||
-                ImGui.IsKeyPressed(ImGuiKey.Escape) ||
-                ImGui.IsKeyPressed(ImGuiKey.W) ||
-                ImGui.IsKeyPressed(ImGuiKey.A) ||
-                ImGui.IsKeyPressed(ImGuiKey.S) ||
-                ImGui.IsKeyPressed(ImGuiKey.D))
-            {
-                Dismiss();
-                return;
-            }
-        }
-        
-        // Or mouse click
-        if (ImGui.IsMouseClicked(ImGuiMouseButton.Left) || 
-            ImGui.IsMouseClicked(ImGuiMouseButton.Right))
-        {
-            Dismiss();
+            Environment.Exit(0);
         }
     }
     

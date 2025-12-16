@@ -34,6 +34,9 @@ class Program
         Console.WriteLine($"  {VersionInfo.FullVersion}");
         Console.WriteLine("==============================================");
         Console.WriteLine();
+        Console.WriteLine("Launching Codename:Subspace...");
+        Console.WriteLine("Opening graphical window with title screen...");
+        Console.WriteLine();
 
         // Initialize game engine
         _gameEngine = new GameEngine(12345);
@@ -44,12 +47,119 @@ class Program
         // Start the engine
         _gameEngine.Start();
 
-        // Show main menu
-        ShowMainMenu();
+        // Launch directly into graphical window with title screen
+        LaunchGraphicalGame();
 
         // Cleanup
         _gameEngine.Stop();
-        Console.WriteLine("\nThank you for testing Codename:Subspace!");
+        Console.WriteLine("\nThank you for playing Codename:Subspace!");
+    }
+
+    /// <summary>
+    /// Launch the game directly into graphical window with integrated title screen and main menu
+    /// </summary>
+    static void LaunchGraphicalGame()
+    {
+        try
+        {
+            // Create the graphics window which will handle title screen, main menu, and gameplay
+            using var graphicsWindow = new GraphicsWindow(_gameEngine!);
+            
+            // Set up callback for when "New Game" is selected from title screen
+            graphicsWindow.OnNewGameRequested = () =>
+            {
+                Console.WriteLine("\n=== NEW GAME REQUESTED ===");
+                StartNewGameInWindow(graphicsWindow);
+            };
+            
+            // Run the window (starts with title screen)
+            graphicsWindow.Run();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"\n❌ Error running game: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            Console.WriteLine("\nGraphics rendering may not be available on this system.");
+            Console.WriteLine("Please ensure you have:");
+            Console.WriteLine("  - OpenGL 3.3 or higher compatible graphics card");
+            Console.WriteLine("  - Updated graphics drivers");
+            Console.WriteLine("  - .NET 9.0 SDK installed");
+        }
+    }
+    
+    /// <summary>
+    /// Start a new game within the already-open graphics window
+    /// </summary>
+    static void StartNewGameInWindow(GraphicsWindow window)
+    {
+        Console.WriteLine("Creating your player pod (character) and game world...\n");
+        
+        // Register Galaxy Progression System and Fleet Automation System
+        var galaxyProgressionSystem = new GalaxyProgressionSystem(_gameEngine!.EntityManager);
+        var fleetAutomationSystem = new FleetAutomationSystem(_gameEngine.EntityManager);
+        
+        _gameEngine.EntityManager.RegisterSystem(galaxyProgressionSystem);
+        _gameEngine.EntityManager.RegisterSystem(fleetAutomationSystem);
+        
+        // Create player pod (the actual player character)
+        Console.WriteLine("=== Creating Your Player Character ===");
+        var playerPodId = CreatePlayerPod(new Vector3(0, 0, 0));
+        
+        // Get the physics component to use for world population
+        var podPhysics = _gameEngine.EntityManager.GetComponent<PhysicsComponent>(playerPodId);
+        var podLocation = _gameEngine.EntityManager.GetComponent<SectorLocationComponent>(playerPodId);
+        
+        if (podPhysics == null || podLocation == null)
+        {
+            Console.WriteLine("Error: Failed to create player pod properly");
+            return;
+        }
+        
+        // Display galaxy progression information
+        int distance = GalaxyProgressionSystem.GetDistanceFromCenter(podLocation.CurrentSector);
+        var zoneName = GalaxyProgressionSystem.GetZoneName(distance);
+        var availableTier = GalaxyProgressionSystem.GetAvailableMaterialTier(distance);
+        var difficulty = GalaxyProgressionSystem.GetDifficultyMultiplier(distance);
+        
+        Console.WriteLine("\n=== GALAXY PROGRESSION SYSTEM ===");
+        Console.WriteLine($"  📍 Starting Location: Sector [{podLocation.CurrentSector.X}, {podLocation.CurrentSector.Y}, {podLocation.CurrentSector.Z}]");
+        Console.WriteLine($"  🌌 Current Zone: {zoneName}");
+        Console.WriteLine($"  📏 Distance from Center: {distance} sectors");
+        Console.WriteLine($"  ⚔️  Zone Difficulty: {difficulty:F1}x");
+        Console.WriteLine($"  🔨 Available Materials: {availableTier}");
+        
+        // Display material tier unlocks
+        var features = MaterialTierInfo.GetUnlockedFeatures(availableTier);
+        Console.WriteLine($"\n  ✨ Unlocked Features in {availableTier} Zone:");
+        foreach (var feature in features.Take(5))
+        {
+            Console.WriteLine($"     • {feature}");
+        }
+        
+        // Show progression goals
+        Console.WriteLine("\n  🎯 Progression Goals:");
+        Console.WriteLine($"     • Reach Titanium Zone (< 350 sectors from center)");
+        Console.WriteLine($"     • Unlock Shields in Naonite Zone (< 250 sectors)");
+        Console.WriteLine($"     • Hire Captains in Ogonite Zone (< 50 sectors)");
+        Console.WriteLine($"     • Reach Galactic Core (< 25 sectors) for Avorion!");
+        
+        Console.WriteLine("\n  💡 Tip: Journey toward the galactic center (0,0,0) to unlock better materials and features!");
+        
+        // Populate the game world with zone-appropriate content
+        Console.WriteLine("\n=== Populating Game World ===");
+        var worldPopulator = new GameWorldPopulator(_gameEngine, seed: 12345);
+        worldPopulator.PopulateZoneArea(podPhysics.Position, podLocation.CurrentSector, radius: 800f);
+        
+        // Add comprehensive test showcase - All implementations in one place!
+        Console.WriteLine("\n=== Creating Test Showcase - Ships and Stations ===");
+        CreateComprehensiveTestShowcase(playerPodId, podPhysics.Position);
+        
+        Console.WriteLine("\n=== Game World Ready! ===");
+        Console.WriteLine("Starting gameplay...\n");
+        
+        // Set the player ship in the already-running window
+        window.SetPlayerShip(playerPodId);
+        window.DismissTitleScreen(); // Remove title screen and start gameplay
     }
 
     static void ShowMainMenu()
