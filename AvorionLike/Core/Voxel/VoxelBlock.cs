@@ -23,6 +23,9 @@ public class VoxelBlock
     public BlockShape Shape { get; set; } = BlockShape.Cube;
     public BlockOrientation Orientation { get; set; } = BlockOrientation.PosY;
     
+    // Decorative properties - decals can be applied during ship editing
+    public List<BlockDecal> Decals { get; set; } = new List<BlockDecal>();
+    
     // Functional properties for engines, thrusters, etc.
     public float ThrustPower { get; set; } = 0f; // For engines/thrusters
     public float PowerGeneration { get; set; } = 0f; // For generators
@@ -240,5 +243,63 @@ public class VoxelBlock
         }
         
         return block;
+    }
+    
+    /// <summary>
+    /// Add a decal to this block
+    /// </summary>
+    public void AddDecal(BlockDecal decal)
+    {
+        if (decal != null)
+        {
+            Decals.Add(decal.Clone());
+        }
+    }
+    
+    /// <summary>
+    /// Remove a specific decal by ID
+    /// </summary>
+    public bool RemoveDecal(Guid decalId)
+    {
+        var decal = Decals.FirstOrDefault(d => d.Id == decalId);
+        if (decal != null)
+        {
+            Decals.Remove(decal);
+            return true;
+        }
+        return false;
+    }
+    
+    /// <summary>
+    /// Remove all decals of a specific pattern type
+    /// </summary>
+    public int RemoveDecalsByPattern(DecalPattern pattern)
+    {
+        int count = Decals.RemoveAll(d => d.Pattern == pattern);
+        return count;
+    }
+    
+    /// <summary>
+    /// Clear all decals from this block
+    /// </summary>
+    public void ClearDecals()
+    {
+        Decals.Clear();
+    }
+    
+    /// <summary>
+    /// Check if this block has any decals
+    /// </summary>
+    public bool HasDecals()
+    {
+        return Decals.Count > 0;
+    }
+    
+    /// <summary>
+    /// Get all decals of a specific pattern
+    /// </summary>
+    public List<BlockDecal> GetDecalsByPattern(DecalPattern pattern)
+    {
+        return Decals.Where(d => d.Pattern == pattern).ToList();
     }
 }
