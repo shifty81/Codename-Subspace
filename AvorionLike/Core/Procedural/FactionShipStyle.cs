@@ -183,8 +183,7 @@ public class FactionShipStyle
         
         // Miners - industrial, bulky, utility-focused
         // Enhanced for angular, blocky voxel-based mining ship aesthetics
-        if (normalized.Contains("miner") || normalized.Contains("industrial") || 
-            normalized.Contains("mining") || normalized.Contains("construct"))
+        if (normalized.Contains("miner") || normalized.Contains("mining"))
         {
             return new FactionShipStyle
             {
@@ -210,6 +209,38 @@ public class FactionShipStyle
                 TargetUpgradeSlots = 6,
                 UseModularSections = true,
                 ModularSectionCount = 4 // More sections for equipment modules
+            };
+        }
+        
+        // Industrial - dark utilitarian ships with hazard stripes (like Republic of Thule: Liberator)
+        // Matches the aesthetic from 1234.PNG: dark green/brown hulls, cyan engines, yellow hazard stripes
+        if (normalized.Contains("industrial") || normalized.Contains("construct") ||
+            normalized.Contains("republic") || normalized.Contains("thule"))
+        {
+            return new FactionShipStyle
+            {
+                FactionName = factionName,
+                PreferredHullShape = ShipHullShape.Angular,
+                SymmetryLevel = 0.85f,
+                Sleekness = 0.25f, // Utilitarian and angular
+                BlockComplexity = 0.65f, // Detailed with wing structures
+                VolumeScaling = 1.1f, // Slightly larger
+                UseAngledBlocks = true, // Sharp angular wings
+                UseBoxAesthetic = true, // Blocky Avorion aesthetic
+                PrimaryColor = 0x3A4A3A, // Dark olive-green (matches 1234.PNG hull)
+                SecondaryColor = 0x4A3F30, // Dark brown (matches 1234.PNG)
+                AccentColor = 0x00CED1, // Cyan for glowing engines (matches 1234.PNG)
+                ArmorToHullRatio = 0.4f, // Heavy armor
+                ExternalSystemsPreference = 0.5f, // Visible wing structures
+                WeaponDensity = 0.6f, // Combat capable
+                Philosophy = DesignPhilosophy.CombatFocused,
+                PreferredMaterial = "Titanium", // Strong industrial material
+                RequireIntegrityField = true,
+                RequirePowerCore = true,
+                EnginePlacementDepth = 0.85f,
+                TargetUpgradeSlots = 7,
+                UseModularSections = true,
+                ModularSectionCount = 3
             };
         }
         

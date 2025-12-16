@@ -85,7 +85,8 @@ public enum TexturePattern
     Crystalline,  // Crystal structure
     Swirled,      // Turbulent swirl (gas clouds)
     Spotted,      // Random spots/patches
-    Weathered     // Wear and tear
+    Weathered,    // Wear and tear
+    HazardStripes // Yellow/black diagonal hazard warning stripes
 }
 
 /// <summary>

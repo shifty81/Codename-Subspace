@@ -317,34 +317,38 @@ class Program
         var shipConfigs = new[]
         {
             // Fighters (close by but more spread out)
-            (Size: ShipSize.Fighter, Role: ShipRole.Combat, Material: "Titanium", Position: new Vector3(300, 50, 0)),
-            (Size: ShipSize.Fighter, Role: ShipRole.Exploration, Material: "Trinium", Position: new Vector3(-350, -40, 150)),
-            (Size: ShipSize.Fighter, Role: ShipRole.Combat, Material: "Naonite", Position: new Vector3(250, 0, -280)),
+            (Size: ShipSize.Fighter, Role: ShipRole.Combat, Material: "Titanium", Position: new Vector3(300, 50, 0), Style: (string?)null),
+            (Size: ShipSize.Fighter, Role: ShipRole.Exploration, Material: "Trinium", Position: new Vector3(-350, -40, 150), Style: (string?)null),
+            (Size: ShipSize.Fighter, Role: ShipRole.Combat, Material: "Naonite", Position: new Vector3(250, 0, -280), Style: (string?)null),
+            
+            // Industrial/Republic style ships (showcase new hazard stripe pattern from 1234.PNG)
+            (Size: ShipSize.Fighter, Role: ShipRole.Combat, Material: "Titanium", Position: new Vector3(200, 30, 200), Style: "Republic"),
+            (Size: ShipSize.Corvette, Role: ShipRole.Combat, Material: "Titanium", Position: new Vector3(400, -20, 350), Style: "Industrial"),
             
             // Corvettes (medium distance - much more spread out)
-            (Size: ShipSize.Corvette, Role: ShipRole.Mining, Material: "Iron", Position: new Vector3(600, 0, 350)),
-            (Size: ShipSize.Corvette, Role: ShipRole.Trading, Material: "Titanium", Position: new Vector3(-650, 80, -400)),
-            (Size: ShipSize.Corvette, Role: ShipRole.Combat, Material: "Titanium", Position: new Vector3(550, -100, 500)),
-            (Size: ShipSize.Corvette, Role: ShipRole.Multipurpose, Material: "Naonite", Position: new Vector3(-700, 0, 0)),
+            (Size: ShipSize.Corvette, Role: ShipRole.Mining, Material: "Iron", Position: new Vector3(600, 0, 350), Style: (string?)null),
+            (Size: ShipSize.Corvette, Role: ShipRole.Trading, Material: "Titanium", Position: new Vector3(-650, 80, -400), Style: (string?)null),
+            (Size: ShipSize.Corvette, Role: ShipRole.Combat, Material: "Titanium", Position: new Vector3(550, -100, 500), Style: (string?)null),
+            (Size: ShipSize.Corvette, Role: ShipRole.Multipurpose, Material: "Naonite", Position: new Vector3(-700, 0, 0), Style: (string?)null),
             
             // Frigates (further out - significantly more distant)
-            (Size: ShipSize.Frigate, Role: ShipRole.Combat, Material: "Ogonite", Position: new Vector3(1200, 0, 800)),
-            (Size: ShipSize.Frigate, Role: ShipRole.Trading, Material: "Xanion", Position: new Vector3(-1100, 150, -750)),
-            (Size: ShipSize.Frigate, Role: ShipRole.Exploration, Material: "Naonite", Position: new Vector3(950, -80, -900)),
-            (Size: ShipSize.Frigate, Role: ShipRole.Mining, Material: "Iron", Position: new Vector3(-1050, 0, 850)),
-            (Size: ShipSize.Frigate, Role: ShipRole.Multipurpose, Material: "Trinium", Position: new Vector3(1100, 120, -800)),
+            (Size: ShipSize.Frigate, Role: ShipRole.Combat, Material: "Ogonite", Position: new Vector3(1200, 0, 800), Style: (string?)null),
+            (Size: ShipSize.Frigate, Role: ShipRole.Trading, Material: "Xanion", Position: new Vector3(-1100, 150, -750), Style: (string?)null),
+            (Size: ShipSize.Frigate, Role: ShipRole.Exploration, Material: "Naonite", Position: new Vector3(950, -80, -900), Style: (string?)null),
+            (Size: ShipSize.Frigate, Role: ShipRole.Mining, Material: "Iron", Position: new Vector3(-1050, 0, 850), Style: (string?)null),
+            (Size: ShipSize.Frigate, Role: ShipRole.Multipurpose, Material: "Trinium", Position: new Vector3(1100, 120, -800), Style: (string?)null),
             
             // Destroyers (distant - much farther)
-            (Size: ShipSize.Destroyer, Role: ShipRole.Combat, Material: "Avorion", Position: new Vector3(1800, 0, 1200)),
-            (Size: ShipSize.Destroyer, Role: ShipRole.Salvage, Material: "Ogonite", Position: new Vector3(-1700, -150, -1300)),
+            (Size: ShipSize.Destroyer, Role: ShipRole.Combat, Material: "Avorion", Position: new Vector3(1800, 0, 1200), Style: (string?)null),
+            (Size: ShipSize.Destroyer, Role: ShipRole.Salvage, Material: "Ogonite", Position: new Vector3(-1700, -150, -1300), Style: (string?)null),
             
             // Cruisers (very distant - far on the horizon)
-            (Size: ShipSize.Cruiser, Role: ShipRole.Combat, Material: "Avorion", Position: new Vector3(2500, 200, 1600)),
-            (Size: ShipSize.Cruiser, Role: ShipRole.Trading, Material: "Xanion", Position: new Vector3(-2400, 0, -1800)),
+            (Size: ShipSize.Cruiser, Role: ShipRole.Combat, Material: "Avorion", Position: new Vector3(2500, 200, 1600), Style: (string?)null),
+            (Size: ShipSize.Cruiser, Role: ShipRole.Trading, Material: "Xanion", Position: new Vector3(-2400, 0, -1800), Style: (string?)null),
             
             // Capital ships (extremely distant - barely visible on horizon)
-            (Size: ShipSize.Battleship, Role: ShipRole.Combat, Material: "Avorion", Position: new Vector3(3500, 300, 2000)),
-            (Size: ShipSize.Carrier, Role: ShipRole.Multipurpose, Material: "Avorion", Position: new Vector3(-3300, -250, -2200)),
+            (Size: ShipSize.Battleship, Role: ShipRole.Combat, Material: "Avorion", Position: new Vector3(3500, 300, 2000), Style: (string?)null),
+            (Size: ShipSize.Carrier, Role: ShipRole.Multipurpose, Material: "Avorion", Position: new Vector3(-3300, -250, -2200), Style: (string?)null),
         };
         
         foreach (var config in shipConfigs)
@@ -352,7 +356,8 @@ class Program
             try
             {
                 // Vary ship styles based on role for more visual diversity
-                string styleName = config.Role switch
+                // Allow explicit style override, otherwise determine from role
+                string styleName = config.Style ?? (config.Role switch
                 {
                     ShipRole.Combat => "Military",
                     ShipRole.Trading => "Trader",
@@ -360,7 +365,7 @@ class Program
                     ShipRole.Exploration => "Explorer",
                     ShipRole.Salvage => "Industrial", // Salvagers use industrial style
                     _ => "Default"
-                };
+                });
                 
                 var shipConfig = new ShipGenerationConfig
                 {
@@ -618,6 +623,7 @@ class Program
             (Type: "Trading", Material: "Titanium", Position: new Vector3(1300, 300, 0), Arch: StationArchitecture.Modular),
             (Type: "Military", Material: "Ogonite", Position: new Vector3(-1500, -250, 1000), Arch: StationArchitecture.Modular),
             (Type: "Industrial", Material: "Iron", Position: new Vector3(0, 450, -1400), Arch: StationArchitecture.Sprawling),
+            (Type: "Resource Depot", Material: "Iron", Position: new Vector3(800, -200, -600), Arch: StationArchitecture.Industrial),
             (Type: "Research", Material: "Avorion", Position: new Vector3(-1100, -350, -1200), Arch: StationArchitecture.Modular),
         };
         
@@ -649,6 +655,49 @@ class Program
                 _gameEngine.EntityManager.AddComponent(station.Id, stationPhysics);
                 
                 stationCount++;
+                
+                // Generate asteroids around Resource Depot stations (for mining)
+                if (config.Type.ToLower().Contains("resource") || config.Type.ToLower().Contains("depot"))
+                {
+                    var stationWorldPos = centerPosition + config.Position;
+                    var stationAsteroids = stationGenerator.GenerateStationAsteroids(
+                        stationWorldPos,
+                        asteroidCount: 25,
+                        minDistance: 100f,
+                        maxDistance: 250f
+                    );
+                    
+                    Console.WriteLine($"    • Generating {stationAsteroids.Count} asteroids around {config.Type} station...");
+                    
+                    foreach (var (asteroidPos, size, material) in stationAsteroids)
+                    {
+                        var asteroidEntity = _gameEngine!.EntityManager.CreateEntity($"Station Asteroid ({material})");
+                        var asteroidVoxel = new VoxelStructureComponent();
+                        
+                        var asteroidData = new AsteroidData
+                        {
+                            Position = Vector3.Zero,
+                            Size = size,
+                            ResourceType = material
+                        };
+                        
+                        var asteroidBlocks = asteroidGenerator.GenerateAsteroid(asteroidData, voxelResolution: 6);
+                        foreach (var block in asteroidBlocks)
+                        {
+                            asteroidVoxel.AddBlock(block);
+                        }
+                        
+                        _gameEngine.EntityManager.AddComponent(asteroidEntity.Id, asteroidVoxel);
+                        
+                        var asteroidPhysics = new PhysicsComponent
+                        {
+                            Position = asteroidPos,
+                            Mass = asteroidVoxel.TotalMass,
+                            IsStatic = true
+                        };
+                        _gameEngine.EntityManager.AddComponent(asteroidEntity.Id, asteroidPhysics);
+                    }
+                }
             }
             catch (Exception ex)
             {

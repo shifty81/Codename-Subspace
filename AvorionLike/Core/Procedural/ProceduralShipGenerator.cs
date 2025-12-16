@@ -175,6 +175,10 @@ public class ProceduralShipGenerator
         // Step 9.5: Add prominent cockpit/bridge structure for visual identification
         AddProminentCockpit(result, config);
         
+        // Step 9.6: Apply decorative decals (hazard stripes, faction markings, etc.)
+        // Decals can be edited later during ship customization
+        ApplyDecalsToShip(result, config);
+        
         // Step 10: Calculate final statistics including upgrade slots
         CalculateShipStats(result);
         
@@ -2603,6 +2607,80 @@ public class ProceduralShipGenerator
                     sideBlocks[i].ColorRGB = config.Style.AccentColor;
                 }
             }
+        }
+    }
+    
+    /// <summary>
+    /// Apply decals to ship blocks based on faction style and ship role
+    /// Decals are applied as decorative patterns that can be edited later
+    /// Inspired by 1234.PNG showing hazard stripes and accent patterns
+    /// </summary>
+    private void ApplyDecalsToShip(GeneratedShip ship, ShipGenerationConfig config)
+    {
+        bool isIndustrial = config.Style.FactionName.ToLower().Contains("industrial") ||
+                           config.Style.FactionName.ToLower().Contains("republic") ||
+                           config.Style.FactionName.ToLower().Contains("thule");
+        
+        // Apply hazard stripes to wing blocks for Industrial faction
+        if (isIndustrial)
+        {
+            var wingBlocks = ship.Structure.Blocks
+                .Where(b => b.BlockType == BlockType.Hull && 
+                           (b.Shape == BlockShape.Wedge || b.Shape == BlockShape.HalfBlock))
+                .Where(b => Math.Abs(b.Position.X) > 10) // Only outer blocks (wings)
+                .ToList();
+            
+            // Apply hazard stripe decals to every 3rd wing block
+            for (int i = 0; i < wingBlocks.Count; i++)
+            {
+                if (i % 3 == 0) // Every 3rd block gets hazard stripes
+                {
+                    wingBlocks[i].AddDecal(DecalLibrary.HazardStripes());
+                }
+                else if (i % 7 == 0) // Occasional red accent stripes
+                {
+                    wingBlocks[i].AddDecal(DecalLibrary.RedAccentStripe());
+                }
+            }
+        }
+        
+        // Apply engine glow decals to engine blocks
+        var engineBlocks = ship.Structure.Blocks
+            .Where(b => b.BlockType == BlockType.Engine || b.BlockType == BlockType.Thruster)
+            .ToList();
+        
+        foreach (var engineBlock in engineBlocks)
+        {
+            engineBlock.AddDecal(DecalLibrary.EngineGlowStripes());
+        }
+        
+        // Apply racing stripes for speed-focused ships
+        if (config.Style.Philosophy == DesignPhilosophy.SpeedFocused)
+        {
+            var topBlocks = ship.Structure.Blocks
+                .Where(b => b.BlockType == BlockType.Hull || b.BlockType == BlockType.Armor)
+                .Where(b => b.Position.Y > 0) // Top half of ship
+                .OrderBy(b => b.Position.Z)
+                .ToList();
+            
+            // Apply racing stripes to central top blocks
+            foreach (var block in topBlocks.Where((_, i) => i % 5 == 0))
+            {
+                block.AddDecal(DecalLibrary.RacingStripes(config.Style.AccentColor));
+            }
+        }
+        
+        // Apply faction markings to side blocks
+        var sideBlocks = ship.Structure.Blocks
+            .Where(b => b.BlockType == BlockType.Armor)
+            .Where(b => Math.Abs(b.Position.X) > 5 && Math.Abs(b.Position.X) < 15)
+            .ToList();
+        
+        if (sideBlocks.Count > 0 && _random.NextDouble() < 0.3)
+        {
+            // Apply faction marking to a random side block
+            var markingBlock = sideBlocks[_random.Next(sideBlocks.Count)];
+            markingBlock.AddDecal(DecalLibrary.FactionMarking(config.Style.PrimaryColor));
         }
     }
     
