@@ -45,7 +45,7 @@ public class ShipBuilderUI
     private float _totalMass = 0f;
     private int _materialCost = 0;
     
-    // Material colors for UI - matching Avorion reference image 4456.PNG
+    // Material colors for UI - matching reference image 4456.PNG (repository root)
     private readonly Dictionary<string, Vector4> _materialColors = new()
     {
         ["Iron"] = new Vector4(0.72f, 0.72f, 0.75f, 1.0f),      // #B8B8C0 - Polished steel grey
