@@ -65,11 +65,12 @@ The builder UI has been enhanced to match Avorion's build mode interface with th
    - Material selection now uses tabbed interface
    - Block selection now uses grid with visual feedback
 
-2. **AvorionLike/Core/UI/BuilderModeUI.cs** (NEW)
+2. **AvorionLike/Core/UI/BuilderModeUI.cs** (NEW - Reference Implementation)
    - Alternative standalone builder UI implementation
-   - Can be used instead of ShipBuilderUI
+   - Demonstrates comprehensive builder pattern
    - Includes all features from reference image
-   - Ready for integration with PlayerUIManager
+   - NOTE: This is a reference implementation showing an alternative approach
+   - The main implementation is ShipBuilderUI.cs which is actively used
 
 ### Key Features
 
@@ -168,7 +169,11 @@ To test the builder UI:
 
 ### Known Issues
 
-None currently. Build succeeded with only minor warnings about unused fields in BuilderModeUI.cs (which is an alternative implementation kept for reference).
+None in the main implementation (ShipBuilderUI.cs). 
+
+**Note on BuilderModeUI.cs**: This file is a reference implementation showing an alternative comprehensive approach. It's included for educational purposes and future enhancement possibilities. The active implementation is ShipBuilderUI.cs which has been enhanced with all the features from the reference image.
+
+Build status: ✅ Succeeded with only minor warnings about unused fields in BuilderModeUI.cs.
 
 ### Credits
 
