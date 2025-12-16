@@ -35,6 +35,7 @@ public class GraphicsWindow : IDisposable
     private GameHUD? _gameHUD;
     private GameMenuSystem? _gameMenuSystem;
     private GalaxyMapUI? _galaxyMapUI;
+    private TitleScreen? _titleScreen;
     
     // ImGui-based UI systems (for debug/console ONLY)
     private HUDSystem? _debugHUD;  // Renamed to clarify it's for debug
@@ -49,6 +50,12 @@ public class GraphicsWindow : IDisposable
     private bool _disposed = false;
     private bool _playerControlMode = true; // Start in ship control mode (third-person) by default
     private bool _shouldClose = false; // Signal to close window and return to main menu
+    
+    // Title screen and background ship
+    private Guid? _backgroundShipId = null;
+    
+    // Callback for new game request from title screen
+    public Action? OnNewGameRequested { get; set; }
     
     // Mouse state
     private Vector2 _lastMousePos;
@@ -98,6 +105,24 @@ public class GraphicsWindow : IDisposable
         if (_galaxyMapUI != null)
         {
             _galaxyMapUI.PlayerShipId = shipId;
+        }
+    }
+    
+    /// <summary>
+    /// Dismiss the title screen and start gameplay
+    /// </summary>
+    public void DismissTitleScreen()
+    {
+        if (_titleScreen != null)
+        {
+            _titleScreen.Dismiss();
+            
+            // Remove background ship if it exists
+            if (_backgroundShipId.HasValue)
+            {
+                _gameEngine.EntityManager.DestroyEntity(_backgroundShipId.Value);
+                _backgroundShipId = null;
+            }
         }
     }
 
@@ -154,6 +179,18 @@ public class GraphicsWindow : IDisposable
         
         // Initialize Player Control System
         _playerControlSystem = new PlayerControlSystem(_gameEngine.EntityManager);
+        
+        // Initialize Title Screen
+        _titleScreen = new TitleScreen(_gameEngine);
+        
+        // Connect title screen callback to our own callback (set by Program.cs)
+        _titleScreen.OnNewGameRequested = () =>
+        {
+            OnNewGameRequested?.Invoke();
+        };
+        
+        // Create background ship for title screen
+        CreateBackgroundShip();
 
         // Set clear color to pure black for space (fixes light blue screen on startup)
         _gl.ClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -231,6 +268,40 @@ public class GraphicsWindow : IDisposable
 
         // Update ImGui (needed for GameHUD text rendering and debug UI)
         _imguiController.Update(_deltaTime);
+        
+        // Handle title screen if active
+        if (_titleScreen != null && _titleScreen.IsActive)
+        {
+            _titleScreen.Update(_deltaTime);
+            _titleScreen.HandleInput();
+            
+            // Update physics for background ship
+            _gameEngine.PhysicsSystem.Update(_deltaTime);
+            
+            // Position camera to view the background ship
+            if (_backgroundShipId.HasValue)
+            {
+                var physics = _gameEngine.EntityManager.GetComponent<PhysicsComponent>(_backgroundShipId.Value);
+                if (physics != null)
+                {
+                    // Use FollowTarget to smoothly track the ship
+                    // Set chase parameters for title screen viewing
+                    _camera.SetChaseParameters(150.0f, 60.0f, 2.0f);
+                    _camera.FollowTarget(physics.Position, physics.Velocity, _deltaTime);
+                }
+            }
+            
+            // Show mouse cursor on title screen
+            foreach (var mouse in _inputContext.Mice)
+            {
+                if (mouse.Cursor.CursorMode != CursorMode.Normal)
+                {
+                    mouse.Cursor.CursorMode = CursorMode.Normal;
+                }
+            }
+            
+            return; // Skip gameplay update while title screen is active
+        }
         
         // Handle HUD input (F1/F2/F3 toggles)
         if (_debugHUD != null)
@@ -364,7 +435,7 @@ public class GraphicsWindow : IDisposable
         // Render starfield background first (without depth write)
         _starfieldRenderer.Render(_camera, aspectRatio);
 
-        // Render all entities with voxel structures
+        // Render all entities with voxel structures (including background ship on title screen)
         var entities = _gameEngine.EntityManager.GetAllEntities();
         foreach (var entity in entities)
         {
@@ -410,6 +481,16 @@ public class GraphicsWindow : IDisposable
         if (_debugRenderer != null)
         {
             _debugRenderer.Update(_deltaTime);
+        }
+        
+        // Render title screen if active (overlays everything)
+        if (_titleScreen != null && _titleScreen.IsActive)
+        {
+            _titleScreen.Render();
+            
+            // Render ImGui for title screen
+            _imguiController.Render();
+            return; // Skip game UI rendering while title screen is active
         }
         
         // Render custom game HUD (crosshair, ship status, radar, corner frames)
@@ -824,6 +905,58 @@ public class GraphicsWindow : IDisposable
     private void OnClosing()
     {
         Dispose();
+    }
+    
+    /// <summary>
+    /// Create a background ship that slowly flies by on the title screen
+    /// </summary>
+    private void CreateBackgroundShip()
+    {
+        try
+        {
+            Console.WriteLine("Creating background ship for title screen...");
+            
+            var shipGenerator = new ProceduralShipGenerator(Environment.TickCount);
+            
+            // Generate a medium-sized combat ship with interesting details
+            var shipConfig = new ShipGenerationConfig
+            {
+                Size = ShipSize.Frigate,
+                Role = ShipRole.Combat,
+                Material = "Titanium",
+                Style = FactionShipStyle.GetDefaultStyle("Military"),
+                Seed = 12345 // Fixed seed for consistent title screen ship
+            };
+            
+            var generatedShip = shipGenerator.GenerateShip(shipConfig);
+            var ship = _gameEngine.EntityManager.CreateEntity("TitleScreen_BackgroundShip");
+            
+            _gameEngine.EntityManager.AddComponent(ship.Id, generatedShip.Structure);
+            
+            // Position ship to fly across the screen
+            // Start off to the right side, will move left
+            var shipPhysics = new PhysicsComponent
+            {
+                Position = new Vector3(200, 0, -300), // Start to the right and back
+                Velocity = new Vector3(-5, 0, 0), // Slow movement to the left
+                Mass = generatedShip.Structure.TotalMass,
+                MomentOfInertia = generatedShip.Structure.MomentOfInertia,
+                MaxThrust = generatedShip.Structure.TotalThrust,
+                MaxTorque = generatedShip.Structure.TotalTorque,
+                // Slight rotation for visual interest
+                AngularVelocity = new Vector3(0, 0.1f, 0)
+            };
+            _gameEngine.EntityManager.AddComponent(ship.Id, shipPhysics);
+            
+            _backgroundShipId = ship.Id;
+            
+            Console.WriteLine($"✓ Background ship created with {generatedShip.Structure.Blocks.Count} blocks");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Warning: Failed to create background ship: {ex.Message}");
+            // Not critical, continue without background ship
+        }
     }
 
     public void Dispose()
