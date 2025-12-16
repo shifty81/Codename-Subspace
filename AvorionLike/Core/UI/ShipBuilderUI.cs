@@ -45,16 +45,16 @@ public class ShipBuilderUI
     private float _totalMass = 0f;
     private int _materialCost = 0;
     
-    // Material colors for UI
+    // Material colors for UI - matching Avorion reference image 4456.PNG
     private readonly Dictionary<string, Vector4> _materialColors = new()
     {
-        ["Iron"] = new Vector4(0.5f, 0.5f, 0.5f, 1.0f),
-        ["Titanium"] = new Vector4(0.25f, 0.41f, 0.88f, 1.0f),
-        ["Naonite"] = new Vector4(0.2f, 0.8f, 0.2f, 1.0f),
-        ["Trinium"] = new Vector4(0.0f, 0.8f, 0.82f, 1.0f),
-        ["Xanion"] = new Vector4(1.0f, 0.84f, 0.0f, 1.0f),
-        ["Ogonite"] = new Vector4(1.0f, 0.27f, 0.0f, 1.0f),
-        ["Avorion"] = new Vector4(0.58f, 0.44f, 0.86f, 1.0f)
+        ["Iron"] = new Vector4(0.72f, 0.72f, 0.75f, 1.0f),      // #B8B8C0 - Polished steel grey
+        ["Titanium"] = new Vector4(0.82f, 0.87f, 0.95f, 1.0f),   // #D0DEF2 - Brilliant silver-blue
+        ["Naonite"] = new Vector4(0.15f, 0.92f, 0.35f, 1.0f),    // #26EB59 - Vivid emerald green
+        ["Trinium"] = new Vector4(0.25f, 0.65f, 1.0f, 1.0f),     // #40A6FF - Brilliant sapphire blue
+        ["Xanion"] = new Vector4(1.0f, 0.82f, 0.15f, 1.0f),      // #FFD126 - Brilliant gold
+        ["Ogonite"] = new Vector4(1.0f, 0.40f, 0.15f, 1.0f),     // #FF6626 - Fiery orange-red
+        ["Avorion"] = new Vector4(0.85f, 0.20f, 1.0f, 1.0f)      // #D933FF - Royal purple
     };
     
     public bool IsOpen => _isOpen;
