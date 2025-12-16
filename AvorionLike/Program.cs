@@ -623,6 +623,7 @@ class Program
             (Type: "Trading", Material: "Titanium", Position: new Vector3(1300, 300, 0), Arch: StationArchitecture.Modular),
             (Type: "Military", Material: "Ogonite", Position: new Vector3(-1500, -250, 1000), Arch: StationArchitecture.Modular),
             (Type: "Industrial", Material: "Iron", Position: new Vector3(0, 450, -1400), Arch: StationArchitecture.Sprawling),
+            (Type: "Resource Depot", Material: "Iron", Position: new Vector3(800, -200, -600), Arch: StationArchitecture.Industrial),
             (Type: "Research", Material: "Avorion", Position: new Vector3(-1100, -350, -1200), Arch: StationArchitecture.Modular),
         };
         
@@ -654,6 +655,49 @@ class Program
                 _gameEngine.EntityManager.AddComponent(station.Id, stationPhysics);
                 
                 stationCount++;
+                
+                // Generate asteroids around Resource Depot stations (for mining)
+                if (config.Type.ToLower().Contains("resource") || config.Type.ToLower().Contains("depot"))
+                {
+                    var stationWorldPos = centerPosition + config.Position;
+                    var stationAsteroids = stationGenerator.GenerateStationAsteroids(
+                        stationWorldPos,
+                        asteroidCount: 25,
+                        minDistance: 100f,
+                        maxDistance: 250f
+                    );
+                    
+                    Console.WriteLine($"    • Generating {stationAsteroids.Count} asteroids around {config.Type} station...");
+                    
+                    foreach (var (asteroidPos, size, material) in stationAsteroids)
+                    {
+                        var asteroidEntity = _gameEngine!.EntityManager.CreateEntity($"Station Asteroid ({material})");
+                        var asteroidVoxel = new VoxelStructureComponent();
+                        
+                        var asteroidData = new AsteroidData
+                        {
+                            Position = Vector3.Zero,
+                            Size = size,
+                            ResourceType = material
+                        };
+                        
+                        var asteroidBlocks = asteroidGenerator.GenerateAsteroid(asteroidData, voxelResolution: 6);
+                        foreach (var block in asteroidBlocks)
+                        {
+                            asteroidVoxel.AddBlock(block);
+                        }
+                        
+                        _gameEngine.EntityManager.AddComponent(asteroidEntity.Id, asteroidVoxel);
+                        
+                        var asteroidPhysics = new PhysicsComponent
+                        {
+                            Position = asteroidPos,
+                            Mass = asteroidVoxel.TotalMass,
+                            IsStatic = true
+                        };
+                        _gameEngine.EntityManager.AddComponent(asteroidEntity.Id, asteroidPhysics);
+                    }
+                }
             }
             catch (Exception ex)
             {

@@ -626,6 +626,18 @@ public class ProceduralStationGenerator
                 station.Facilities.Add("Cargo Storage");
                 station.Facilities.Add("Trading Floor");
                 break;
+            case "resourcedepot":
+            case "resource depot":
+            case "depot":
+                // Resource Depot: where miners sell their ore (inspired by 1233.PNG)
+                station.Facilities.Add("Ore Receiving Bay");
+                station.Facilities.Add("Ore Storage Silos");
+                station.Facilities.Add("Assay Laboratory");
+                station.Facilities.Add("Trading Office");
+                station.Facilities.Add("Mineral Marketplace");
+                // Add large storage containers for ore
+                AddOreStorageContainers(station, config);
+                break;
             case "military":
                 station.Facilities.Add("Barracks");
                 station.Facilities.Add("Armory");
@@ -1622,5 +1634,146 @@ public class ProceduralStationGenerator
                 }
             }
         }
+    }
+    
+    /// <summary>
+    /// Add large ore storage containers to Resource Depot stations
+    /// Creates industrial-looking cylindrical storage silos
+    /// </summary>
+    private void AddOreStorageContainers(GeneratedStation station, StationGenerationConfig config)
+    {
+        // Create 4-8 large storage silos around the station
+        int siloCount = 4 + _random.Next(5);
+        float siloDistance = 50f;
+        
+        for (int i = 0; i < siloCount; i++)
+        {
+            float angle = (float)(i * 2 * Math.PI / siloCount);
+            Vector3 siloPos = new Vector3(
+                MathF.Cos(angle) * siloDistance,
+                _random.Next(-10, 10), // Slight vertical variation
+                MathF.Sin(angle) * siloDistance
+            );
+            
+            // Create cylindrical silo (vertical)
+            float siloRadius = 8f + _random.Next(4);
+            float siloHeight = 25f + _random.Next(15);
+            
+            // Build silo as vertical cylinder
+            for (float y = 0; y < siloHeight; y += 2.5f)
+            {
+                // Create ring of blocks for cylinder
+                int segments = 12;
+                for (int seg = 0; seg < segments; seg++)
+                {
+                    float segAngle = (float)(seg * 2 * Math.PI / segments);
+                    Vector3 blockPos = siloPos + new Vector3(
+                        MathF.Cos(segAngle) * siloRadius,
+                        y,
+                        MathF.Sin(segAngle) * siloRadius
+                    );
+                    
+                    // Use cargo blocks for storage appearance
+                    var block = CreateStationBlock(
+                        blockPos,
+                        new Vector3(2.5f, 2.5f, 2.5f),
+                        config.Material,
+                        BlockType.Cargo,
+                        0.1f // Low shape variety for clean cylinders
+                    );
+                    
+                    // Industrial colors - dark with orange/yellow accents
+                    if (y < 5 || y > siloHeight - 5)
+                    {
+                        block.ColorRGB = 0xFFA500; // Orange warning stripes at top/bottom
+                    }
+                    else
+                    {
+                        block.ColorRGB = 0x4A4A50; // Industrial gray
+                    }
+                    
+                    station.Structure.AddBlock(block);
+                }
+            }
+            
+            // Add dome top
+            for (float dy = 0; dy < 8; dy += 2.5f)
+            {
+                float topRadius = siloRadius * (1 - dy / 10f);
+                int topSegments = Math.Max(6, (int)(12 * (topRadius / siloRadius)));
+                
+                for (int seg = 0; seg < topSegments; seg++)
+                {
+                    float segAngle = (float)(seg * 2 * Math.PI / topSegments);
+                    Vector3 blockPos = siloPos + new Vector3(
+                        MathF.Cos(segAngle) * topRadius,
+                        siloHeight + dy,
+                        MathF.Sin(segAngle) * topRadius
+                    );
+                    
+                    var block = CreateStationBlock(
+                        blockPos,
+                        new Vector3(2.5f, 2.5f, 2.5f),
+                        config.Material,
+                        BlockType.Hull,
+                        0.3f // More variety for dome
+                    );
+                    block.ColorRGB = 0x4A4A50; // Industrial gray
+                    station.Structure.AddBlock(block);
+                }
+            }
+            
+            // Add connecting pipe to main station
+            Vector3 pipeDir = Vector3.Normalize(-siloPos);
+            for (float d = siloRadius; d < siloDistance - 20; d += 3)
+            {
+                Vector3 pipePos = siloPos + pipeDir * d + new Vector3(0, siloHeight * 0.3f, 0);
+                var pipe = CreateStationBlock(
+                    pipePos,
+                    new Vector3(2f, 2f, 3f),
+                    config.Material,
+                    BlockType.Hull,
+                    0f
+                );
+                pipe.ColorRGB = 0x4A3F30; // Dark brown pipe
+                station.Structure.AddBlock(pipe);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Generate asteroids around a station (for Resource Depot mining areas)
+    /// Returns list of asteroid positions for spawning in the world
+    /// </summary>
+    public List<(Vector3 Position, float Size, string Material)> GenerateStationAsteroids(
+        Vector3 stationPosition, 
+        int asteroidCount = 20,
+        float minDistance = 80f,
+        float maxDistance = 200f)
+    {
+        var asteroids = new List<(Vector3, float, string)>();
+        var materials = new[] { "Iron", "Titanium", "Naonite" };
+        
+        for (int i = 0; i < asteroidCount; i++)
+        {
+            // Random position in sphere around station
+            float distance = minDistance + (float)_random.NextDouble() * (maxDistance - minDistance);
+            float theta = (float)(_random.NextDouble() * Math.PI * 2);
+            float phi = (float)(_random.NextDouble() * Math.PI);
+            
+            Vector3 offset = new Vector3(
+                distance * MathF.Sin(phi) * MathF.Cos(theta),
+                distance * MathF.Sin(phi) * MathF.Sin(theta),
+                distance * MathF.Cos(phi)
+            );
+            
+            Vector3 asteroidPos = stationPosition + offset;
+            float asteroidSize = 12f + (float)_random.NextDouble() * 18f; // 12-30 units
+            string material = materials[_random.Next(materials.Length)];
+            
+            asteroids.Add((asteroidPos, asteroidSize, material));
+        }
+        
+        return asteroids;
     }
 }
