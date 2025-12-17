@@ -464,9 +464,10 @@ public class ProceduralShipGenerator
         // Apply volume scaling
         dimensions *= config.VolumeScaling;
         
-        // FIXED: Blocks should touch or slightly overlap for cohesive appearance
+        // FIXED: Blocks should slightly overlap for cohesive appearance
         // Original formula created 0.5-unit gaps making ships look disconnected
-        // New: spacing = blockSize (touching) with slight reduction for high complexity
+        // New: spacing < blockSize creates overlap (1.7-2.0 for blockSize 2.0)
+        // Result: No gaps, blocks appear connected and unified
         float blockSpacing = blockSize * (1.0f - config.BlockComplexity * 0.15f);
         
         // AVORION STYLE: Generate modular sections
