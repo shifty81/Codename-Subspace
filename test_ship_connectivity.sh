@@ -61,7 +61,7 @@ class TestShips
 CSHARP
 
 echo "Compiling test..."
-dotnet build > /dev/null 2>&1
+dotnet build 2>&1 | grep -E "(error|Error|ERROR)" || echo "  Build successful"
 
 echo "Running connectivity test..."
 # Note: Game requires graphics environment which may not be available in CI

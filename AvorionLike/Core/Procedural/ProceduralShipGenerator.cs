@@ -539,20 +539,21 @@ public class ProceduralShipGenerator
                     }
                 }
                 
-                // Add beveled transition using wedges for smooth taper
+                // Add beveled transition using wedges for smooth taper between sections
+                // Wedges slope in Z direction to create smooth forward transition
                 for (float x = -connectWidth / 2; x < connectWidth / 2; x += blockSize * 2)
                 {
-                    // Top bevel
+                    // Top bevel - wedge slopes forward (PosZ) and downward
                     ship.Structure.AddBlock(new VoxelBlock(
                         new Vector3(x, connectHeight / 2, sectionEnd),
                         new Vector3(blockSize, blockSize, blockSize),
                         config.Material, BlockType.Hull, BlockShape.Wedge, BlockOrientation.PosZ));
                     
-                    // Bottom bevel
+                    // Bottom bevel - wedge slopes forward (PosZ) and upward
                     ship.Structure.AddBlock(new VoxelBlock(
                         new Vector3(x, -connectHeight / 2, sectionEnd),
                         new Vector3(blockSize, blockSize, blockSize),
-                        config.Material, BlockType.Hull, BlockShape.Wedge, BlockOrientation.NegY));
+                        config.Material, BlockType.Hull, BlockShape.Wedge, BlockOrientation.PosZ));
                 }
             }
         }
