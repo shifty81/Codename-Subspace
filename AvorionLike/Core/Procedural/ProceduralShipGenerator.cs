@@ -464,8 +464,11 @@ public class ProceduralShipGenerator
         // Apply volume scaling
         dimensions *= config.VolumeScaling;
         
-        // Determine block density based on complexity
-        float blockSpacing = blockSize * (1.0f + (1.0f - config.BlockComplexity) * 0.5f);
+        // FIXED: Blocks should slightly overlap for cohesive appearance
+        // Original formula created 0.5-unit gaps making ships look disconnected
+        // New: spacing < blockSize creates overlap (1.7-2.0 for blockSize 2.0)
+        // Result: No gaps, blocks appear connected and unified
+        float blockSpacing = blockSize * (1.0f - config.BlockComplexity * 0.15f);
         
         // AVORION STYLE: Generate modular sections
         if (config.UseModularSections && config.ModularSectionCount >= 2)
@@ -501,29 +504,56 @@ public class ProceduralShipGenerator
             float sectionWidth = dimensions.X * widthFactor;
             float sectionHeight = dimensions.Y * heightFactor;
             
-            // Generate solid box for each section
+            // IMPROVED: Slight overlap between sections (0.95 instead of 0.9) for better cohesion
+            // This reduces visible gaps and creates a more unified ship appearance
             GenerateBoxSection(ship, 
                 new Vector3(0, 0, sectionCenter), 
-                new Vector3(sectionWidth, sectionHeight, sectionLength * 0.9f),
+                new Vector3(sectionWidth, sectionHeight, sectionLength * 0.95f),
                 config, blockSize, blockSpacing);
             
-            // Add connecting blocks between sections
+            // IMPROVED: Add smooth transition blocks between sections
+            // Creates cohesive appearance instead of disconnected "bricks"
             if (section < sectionCount - 1)
             {
                 float nextWidthFactor = 1.0f - (section + 1f) / (sectionCount - 1) * 0.3f;
                 float connectWidth = Math.Min(sectionWidth, dimensions.X * nextWidthFactor);
                 float connectHeight = Math.Min(sectionHeight, dimensions.Y * (1.0f - (section + 1f) / (sectionCount - 1) * 0.2f));
                 
-                // Connector blocks
-                for (float x = -connectWidth / 2 + blockSize; x < connectWidth / 2 - blockSize; x += blockSize * 2)
+                // FIXED: Dense connector blocks for smooth transitions (was blockSize * 2, now blockSize)
+                // This prevents the "brick wall" appearance between sections
+                for (float x = -connectWidth / 2; x < connectWidth / 2; x += blockSize)
                 {
-                    for (float y = -connectHeight / 2 + blockSize; y < connectHeight / 2 - blockSize; y += blockSize * 2)
+                    for (float y = -connectHeight / 2; y < connectHeight / 2; y += blockSize)
                     {
-                        ship.Structure.AddBlock(new VoxelBlock(
-                            new Vector3(x, y, sectionEnd - blockSize / 2),
-                            new Vector3(blockSize, blockSize, blockSize),
-                            config.Material, BlockType.Hull));
+                        // Create edge blocks for transition
+                        bool isEdge = Math.Abs(x) > connectWidth / 2 - blockSize * 2 ||
+                                      Math.Abs(y) > connectHeight / 2 - blockSize * 2;
+                        
+                        if (isEdge)
+                        {
+                            ship.Structure.AddBlock(new VoxelBlock(
+                                new Vector3(x, y, sectionEnd - blockSize / 2),
+                                new Vector3(blockSize, blockSize, blockSize),
+                                config.Material, BlockType.Hull));
+                        }
                     }
+                }
+                
+                // Add beveled transition using wedges for smooth taper between sections
+                // Wedges slope in Z direction to create smooth forward transition
+                for (float x = -connectWidth / 2; x < connectWidth / 2; x += blockSize * 2)
+                {
+                    // Top bevel - wedge slopes forward (PosZ) and downward
+                    ship.Structure.AddBlock(new VoxelBlock(
+                        new Vector3(x, connectHeight / 2, sectionEnd),
+                        new Vector3(blockSize, blockSize, blockSize),
+                        config.Material, BlockType.Hull, BlockShape.Wedge, BlockOrientation.PosZ));
+                    
+                    // Bottom bevel - wedge slopes forward (PosZ) and upward
+                    ship.Structure.AddBlock(new VoxelBlock(
+                        new Vector3(x, -connectHeight / 2, sectionEnd),
+                        new Vector3(blockSize, blockSize, blockSize),
+                        config.Material, BlockType.Hull, BlockShape.Wedge, BlockOrientation.PosZ));
                 }
             }
         }
@@ -603,8 +633,9 @@ public class ProceduralShipGenerator
         float halfY = size.Y / 2;
         float halfZ = size.Z / 2;
         
+        // IMPROVED: Denser wedge blocks for smoother appearance (was blockSize * 2, now blockSize * 1.5)
         // Add wedge blocks at front edges - actual sloped geometry
-        for (float x = -halfX + blockSize; x < halfX - blockSize; x += blockSize * 2)
+        for (float x = -halfX + blockSize; x < halfX - blockSize; x += blockSize * 1.5f)
         {
             // Top front edge wedges - slope facing forward (+Z)
             ship.Structure.AddBlock(new VoxelBlock(
@@ -619,8 +650,8 @@ public class ProceduralShipGenerator
                 config.Material, BlockType.Hull, BlockShape.Wedge, BlockOrientation.NegY));
         }
         
-        // Add wedge blocks at rear edges
-        for (float x = -halfX + blockSize; x < halfX - blockSize; x += blockSize * 2)
+        // Add wedge blocks at rear edges for smoother tapering
+        for (float x = -halfX + blockSize; x < halfX - blockSize; x += blockSize * 1.5f)
         {
             // Top rear edge wedges - slope facing backward
             ship.Structure.AddBlock(new VoxelBlock(
@@ -629,8 +660,8 @@ public class ProceduralShipGenerator
                 config.Material, BlockType.Hull, BlockShape.Wedge, BlockOrientation.NegZ));
         }
         
-        // Add side wedges for beveled edges
-        for (float z = -halfZ + blockSize; z < halfZ - blockSize; z += blockSize * 2)
+        // IMPROVED: Denser side wedges for smoother beveled edges (was blockSize * 2, now blockSize * 1.5)
+        for (float z = -halfZ + blockSize; z < halfZ - blockSize; z += blockSize * 1.5f)
         {
             // Right side wedges
             ship.Structure.AddBlock(new VoxelBlock(
