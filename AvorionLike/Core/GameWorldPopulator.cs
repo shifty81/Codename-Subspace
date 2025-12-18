@@ -66,39 +66,44 @@ public class GameWorldPopulator
         Console.WriteLine($"  Enemy spawn rate: {spawnRate:F1}x");
         
         // OPTIMIZED: Show progress during generation
-        var startTime = System.Diagnostics.Stopwatch.StartNew();
+        var totalTime = System.Diagnostics.Stopwatch.StartNew();
+        var stepTime = System.Diagnostics.Stopwatch.StartNew();
         
         // OPTIMIZED: Reduce asteroid count from 15 to 8 for faster generation
         Console.Write("  [1/5] Creating asteroids... ");
         CreateZoneAsteroidField(playerPosition, radius, 8, availableTier);
-        Console.WriteLine($"✓ ({startTime.ElapsedMilliseconds}ms)");
+        Console.WriteLine($"✓ ({stepTime.ElapsedMilliseconds}ms)");
         
         // Scale ship counts by zone (reduced for performance)
         int traderCount = Math.Max(1, (int)(2 * (1.0f / difficulty))); // Reduced from 3
         int minerCount = Math.Max(1, (int)(2 * (1.0f / difficulty)));  // Reduced from 4
         int pirateCount = Math.Max(1, (int)(1 * spawnRate * difficulty)); // Reduced from 2
         
+        stepTime.Restart();
         Console.Write("  [2/5] Creating trader ships... ");
         CreateTraderShips(playerPosition, radius, traderCount);
-        Console.WriteLine($"✓ ({startTime.ElapsedMilliseconds}ms)");
+        Console.WriteLine($"✓ ({stepTime.ElapsedMilliseconds}ms)");
         
+        stepTime.Restart();
         Console.Write("  [3/5] Creating miner ships... ");
         CreateMinerShips(playerPosition, radius, minerCount);
-        Console.WriteLine($"✓ ({startTime.ElapsedMilliseconds}ms)");
+        Console.WriteLine($"✓ ({stepTime.ElapsedMilliseconds}ms)");
         
+        stepTime.Restart();
         Console.Write("  [4/5] Creating pirate ships... ");
         CreatePirateShips(playerPosition, radius * 0.8f, pirateCount);
-        Console.WriteLine($"✓ ({startTime.ElapsedMilliseconds}ms)");
+        Console.WriteLine($"✓ ({stepTime.ElapsedMilliseconds}ms)");
         
         // Create zone-appropriate station
+        stepTime.Restart();
         Console.Write("  [5/5] Creating station... ");
         var stationType = DetermineStationType(availableTier, distanceFromCenter);
         var stationName = GenerateStationName(stationType, zoneName);
         CreateStation(playerPosition + new Vector3(radius * 0.5f, 0, 0), stationType, stationName);
-        Console.WriteLine($"✓ ({startTime.ElapsedMilliseconds}ms)");
+        Console.WriteLine($"✓ ({stepTime.ElapsedMilliseconds}ms)");
         
-        startTime.Stop();
-        Console.WriteLine($"Zone population complete! Total time: {startTime.ElapsedMilliseconds}ms");
+        totalTime.Stop();
+        Console.WriteLine($"Zone population complete! Total time: {totalTime.ElapsedMilliseconds}ms");
     }
     
     /// <summary>
@@ -235,7 +240,8 @@ public class GameWorldPopulator
             _ => "Iron"
         };
         
-        // OPTIMIZED: Use fewer blocks (4-8 blocks) for faster generation
+        // OPTIMIZED: Use fewer blocks (4-9 blocks) for faster generation
+        // size ranges from 5-15, so size/3 = 1-5, plus random 2-4 = total 3-9, clamped to min 4
         int blockCount = Math.Max(4, (int)(size / 3) + _random.Next(2, 5));
         
         // Create a core cluster
@@ -264,6 +270,7 @@ public class GameWorldPopulator
         }
         
         // OPTIMIZED: Add fewer outlying chunks (1-2 extra blocks instead of 3-6)
+        // Random.Next(1, 3) generates 1 or 2 (upper bound is exclusive)
         int outlierCount = _random.Next(1, 3);
         for (int i = 0; i < outlierCount; i++)
         {
