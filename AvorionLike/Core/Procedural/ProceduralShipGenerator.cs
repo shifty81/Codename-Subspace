@@ -203,19 +203,20 @@ public class ProceduralShipGenerator
     /// <summary>
     /// Get dimensions for a ship based on size category
     /// Enhanced with 1.5-2x block count increase for better aesthetics and detail
+    /// Note: All dimensions are guaranteed to be >= 15 to prevent division by zero in hull generation
     /// </summary>
     private Vector3 GetShipDimensions(ShipSize size)
     {
         return size switch
         {
-            ShipSize.Fighter => new Vector3(9, 6, 15),      // 1.5x increase
+            ShipSize.Fighter => new Vector3(9, 6, 15),      // 1.5x increase (min Z ensures safe division)
             ShipSize.Corvette => new Vector3(12, 8, 21),    // 1.5x increase
             ShipSize.Frigate => new Vector3(18, 9, 30),     // 1.5x increase
             ShipSize.Destroyer => new Vector3(24, 12, 42),  // 1.5x increase
             ShipSize.Cruiser => new Vector3(33, 18, 57),    // 1.5x increase
             ShipSize.Battleship => new Vector3(45, 24, 75), // 1.5x increase
             ShipSize.Carrier => new Vector3(60, 33, 98),    // 1.5x increase
-            _ => new Vector3(18, 9, 30)
+            _ => new Vector3(18, 9, 30)                     // Safe default
         };
     }
     
@@ -2755,6 +2756,11 @@ public class ProceduralShipGenerator
         uint blueStripe = 0x0099FF;     // Bright blue
         uint yellowStripe = 0xFFCC00;   // Gold/yellow
         
+        // Striping pattern constants
+        const float HEIGHT_BAND_SIZE = 2f;        // Group blocks in 2-unit height bands for continuous stripes
+        const int STRIPE_LENGTH = 4;              // Number of blocks per stripe segment
+        const int STRIPE_PATTERN_COUNT = 6;       // Total stripe pattern count (base, red, base, blue, base, yellow)
+        
         // Add longitudinal stripes along the hull (like reference image)
         var hullBlocks = ship.Structure.Blocks
             .Where(b => b.BlockType == BlockType.Hull || b.BlockType == BlockType.Armor)
@@ -2763,7 +2769,7 @@ public class ProceduralShipGenerator
         
         // Group blocks by approximate X and Y positions to create continuous stripes
         var blocksByHeight = hullBlocks
-            .GroupBy(b => Math.Round(b.Position.Y / 2) * 2) // Group by height bands
+            .GroupBy(b => Math.Round(b.Position.Y / HEIGHT_BAND_SIZE) * HEIGHT_BAND_SIZE) // Group by height bands
             .ToList();
         
         foreach (var heightGroup in blocksByHeight)
@@ -2771,11 +2777,10 @@ public class ProceduralShipGenerator
             var blocksInBand = heightGroup.OrderBy(b => b.Position.Z).ToList();
             
             // Create alternating color stripes along length
-            // Pattern: base color -> red -> base -> blue -> base -> yellow
-            int stripeLength = 4; // Blocks per stripe segment
+            // Pattern: base color -> red -> base -> blue -> base -> yellow (repeating)
             for (int i = 0; i < blocksInBand.Count; i++)
             {
-                int stripeIndex = (i / stripeLength) % 6;
+                int stripeIndex = (i / STRIPE_LENGTH) % STRIPE_PATTERN_COUNT;
                 
                 switch (stripeIndex)
                 {
