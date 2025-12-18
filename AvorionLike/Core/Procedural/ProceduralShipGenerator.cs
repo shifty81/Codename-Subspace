@@ -757,25 +757,44 @@ public class ProceduralShipGenerator
     private void GenerateAngularHull(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config)
     {
         // Create aggressive military wedge hull - sharp and angular
-        // IMPROVED: Denser block placement for more solid appearance
+        // ENHANCED: Match reference image 1234.PNG with elongated, angular design
         float blockSize = 2f;  // Standard block size
         
-        // Main wedge body - SOLID core with tapered shell
-        for (float z = -dimensions.Z / 2; z < dimensions.Z / 2; z += blockSize)
+        // REFERENCE-INSPIRED: More elongated proportions like 1234.PNG
+        // Front section (nose) - sharp taper
+        for (float z = dimensions.Z / 4; z < dimensions.Z / 2; z += blockSize)
         {
-            float normalizedZ = (z + dimensions.Z / 2) / dimensions.Z;
-            float taperFactor = 1.0f - normalizedZ * 0.7f;  // Aggressive taper
-            float currentWidth = Math.Max(blockSize * 2, dimensions.X * taperFactor);
-            float currentHeight = Math.Max(blockSize * 2, dimensions.Y * taperFactor * 0.6f);  // Flatter profile
+            float normalizedZ = (z - dimensions.Z / 4) / (dimensions.Z / 4);
+            float taperFactor = 1.0f - normalizedZ * 0.85f;  // Sharp nose taper
+            float currentWidth = Math.Max(blockSize, dimensions.X * taperFactor * 0.6f);
+            float currentHeight = Math.Max(blockSize, dimensions.Y * taperFactor * 0.5f);
             
-            // Create solid cross-section for denser hull
+            // Sleek nose profile
+            for (float x = -currentWidth / 2; x < currentWidth / 2; x += blockSize)
+            {
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(x, 0, z), 
+                    new Vector3(blockSize, currentHeight, blockSize), 
+                    config.Material, BlockType.Hull,
+                    BlockShape.Wedge, BlockOrientation.PosZ));
+            }
+        }
+        
+        // Middle section (main body) - full width with angular profile
+        for (float z = -dimensions.Z / 4; z < dimensions.Z / 4; z += blockSize)
+        {
+            float currentWidth = dimensions.X * 0.7f;  // Narrower body for sleek look
+            float currentHeight = dimensions.Y * 0.6f; // Flatter profile
+            
+            // Create angular cross-section with wedge shapes
             // Top surface
             for (float x = -currentWidth / 2; x < currentWidth / 2; x += blockSize)
             {
                 ship.Structure.AddBlock(new VoxelBlock(
                     new Vector3(x, currentHeight / 2, z), 
                     new Vector3(blockSize, blockSize, blockSize), 
-                    config.Material, BlockType.Hull));
+                    config.Material, BlockType.Hull,
+                    BlockShape.Wedge, BlockOrientation.PosY));
             }
             
             // Bottom surface
@@ -784,23 +803,58 @@ public class ProceduralShipGenerator
                 ship.Structure.AddBlock(new VoxelBlock(
                     new Vector3(x, -currentHeight / 2, z), 
                     new Vector3(blockSize, blockSize, blockSize), 
+                    config.Material, BlockType.Hull,
+                    BlockShape.Wedge, BlockOrientation.NegY));
+            }
+            
+            // Side edges with angular shape
+            for (float y = -currentHeight / 2; y <= currentHeight / 2; y += blockSize)
+            {
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(-currentWidth / 2, y, z), 
+                    new Vector3(blockSize, blockSize, blockSize), 
+                    config.Material, BlockType.Hull));
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(currentWidth / 2 - blockSize, y, z), 
+                    new Vector3(blockSize, blockSize, blockSize), 
                     config.Material, BlockType.Hull));
             }
             
-            // Side edges (left and right)
+            // Center spine for structural integrity
+            ship.Structure.AddBlock(new VoxelBlock(
+                new Vector3(0, 0, z), 
+                new Vector3(blockSize, currentHeight, blockSize), 
+                config.Material, BlockType.Hull));
+        }
+        
+        // Rear section (engine mount) - slightly wider for stability
+        for (float z = -dimensions.Z / 2; z < -dimensions.Z / 4; z += blockSize)
+        {
+            float normalizedZ = Math.Abs(z + dimensions.Z / 4) / (dimensions.Z / 4);
+            float currentWidth = dimensions.X * (0.7f + normalizedZ * 0.15f);
+            float currentHeight = dimensions.Y * 0.6f;
+            
+            // Top and bottom surfaces
+            for (float x = -currentWidth / 2; x < currentWidth / 2; x += blockSize)
+            {
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(x, currentHeight / 2, z), 
+                    new Vector3(blockSize, blockSize, blockSize), 
+                    config.Material, BlockType.Hull));
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(x, -currentHeight / 2, z), 
+                    new Vector3(blockSize, blockSize, blockSize), 
+                    config.Material, BlockType.Hull));
+            }
+            
+            // Sides
             ship.Structure.AddBlock(new VoxelBlock(
                 new Vector3(-currentWidth / 2, 0, z), 
-                new Vector3(blockSize, blockSize, blockSize), 
+                new Vector3(blockSize, currentHeight, blockSize), 
                 config.Material, BlockType.Hull));
             ship.Structure.AddBlock(new VoxelBlock(
                 new Vector3(currentWidth / 2 - blockSize, 0, z), 
-                new Vector3(blockSize, blockSize, blockSize), 
-                config.Material, BlockType.Hull));
-            
-            // Center spine for structural integrity - always present
-            ship.Structure.AddBlock(new VoxelBlock(
-                new Vector3(0, 0, z), 
-                new Vector3(blockSize, blockSize, blockSize), 
+                new Vector3(blockSize, currentHeight, blockSize), 
                 config.Material, BlockType.Hull));
         }
         
@@ -2239,12 +2293,12 @@ public class ProceduralShipGenerator
         {
             // Wings extend from the sides
             float side = i % 2 == 0 ? 1 : -1; // Alternate left/right
-            float zPosition = dimensions.Z * (0.2f - 0.4f * (i / 2)); // Stagger along length
+            float zPosition = dimensions.Z * (0.1f - 0.35f * (i / 2)); // Stagger along length, positioned more forward
             
-            // Wing dimensions - SIGNIFICANTLY LARGER and more pronounced
-            float wingSpan = dimensions.X * 0.6f + (float)config.Size * 0.8f; // INCREASED from 0.4 and 0.5
-            float wingLength = dimensions.Z * 0.45f; // INCREASED from 0.3
-            float baseThickness = 7.0f; // INCREASED from 5.0f for even more substantial wings
+            // Wing dimensions - REFERENCE IMAGE INSPIRED: Much larger, more dramatic wings
+            float wingSpan = dimensions.X * 0.8f + (float)config.Size * 1.2f; // FURTHER INCREASED for dramatic effect like reference
+            float wingLength = dimensions.Z * 0.55f; // INCREASED to match reference proportions
+            float baseThickness = 8.0f; // INCREASED for more substantial, visible wings
             
             // Wing root position (where it connects to hull)
             float rootX = side * (dimensions.X / 2);
@@ -2619,25 +2673,83 @@ public class ProceduralShipGenerator
     /// </summary>
     private void AddHullPatterns(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config)
     {
-        // Add racing stripes or faction markings
-        if (config.Style.Philosophy == DesignPhilosophy.SpeedFocused ||
-            config.Style.Philosophy == DesignPhilosophy.CombatFocused)
+        // ENHANCED: Add prominent colored accent stripes inspired by 1234.PNG
+        // Reference image shows distinct red, blue, and yellow striping patterns
+        
+        // Define accent colors for striping (red, blue, yellow/gold like in reference)
+        uint redStripe = 0xFF0000;      // Bright red
+        uint blueStripe = 0x0099FF;     // Bright blue
+        uint yellowStripe = 0xFFCC00;   // Gold/yellow
+        
+        // Add longitudinal stripes along the hull (like reference image)
+        var hullBlocks = ship.Structure.Blocks
+            .Where(b => b.BlockType == BlockType.Hull || b.BlockType == BlockType.Armor)
+            .OrderBy(b => b.Position.Z)
+            .ToList();
+        
+        // Group blocks by approximate X and Y positions to create continuous stripes
+        var blocksByHeight = hullBlocks
+            .GroupBy(b => Math.Round(b.Position.Y / 2) * 2) // Group by height bands
+            .ToList();
+        
+        foreach (var heightGroup in blocksByHeight)
         {
-            // Add stripes along the length
-            var sideBlocks = ship.Structure.Blocks
-                .Where(b => b.BlockType == BlockType.Hull || b.BlockType == BlockType.Armor)
-                .Where(b => Math.Abs(b.Position.Y) < dimensions.Y / 4) // Middle height
-                .OrderBy(b => b.Position.Z)
-                .ToList();
+            var blocksInBand = heightGroup.OrderBy(b => b.Position.Z).ToList();
             
-            // Color every 3rd block with accent color for stripe effect
-            for (int i = 0; i < sideBlocks.Count; i += 3)
+            // Create alternating color stripes along length
+            // Pattern: base color -> red -> base -> blue -> base -> yellow
+            int stripeLength = 4; // Blocks per stripe segment
+            for (int i = 0; i < blocksInBand.Count; i++)
             {
-                if (_random.NextDouble() < 0.3) // 30% chance per stripe segment
+                int stripeIndex = (i / stripeLength) % 6;
+                
+                switch (stripeIndex)
                 {
-                    sideBlocks[i].ColorRGB = config.Style.AccentColor;
+                    case 1: // Red stripe
+                        blocksInBand[i].ColorRGB = redStripe;
+                        break;
+                    case 3: // Blue stripe
+                        blocksInBand[i].ColorRGB = blueStripe;
+                        break;
+                    case 5: // Yellow/gold stripe
+                        blocksInBand[i].ColorRGB = yellowStripe;
+                        break;
+                    // Cases 0, 2, 4 keep original color (base color)
                 }
             }
+        }
+        
+        // Add lateral stripes on wings (reference image shows striped wings)
+        var wingBlocks = ship.Structure.Blocks
+            .Where(b => b.BlockType == BlockType.Hull)
+            .Where(b => Math.Abs(b.Position.X) > dimensions.X * 0.4f) // Outer blocks (wings)
+            .OrderBy(b => b.Position.X)
+            .ThenBy(b => b.Position.Z)
+            .ToList();
+        
+        // Apply hazard-style stripes to wings
+        for (int i = 0; i < wingBlocks.Count; i++)
+        {
+            // Create diagonal stripe pattern on wings
+            int stripePattern = (i / 2) % 3;
+            if (stripePattern == 0)
+            {
+                wingBlocks[i].ColorRGB = yellowStripe; // Yellow hazard stripes
+            }
+            else if (stripePattern == 1 && _random.NextDouble() < 0.4)
+            {
+                wingBlocks[i].ColorRGB = redStripe; // Occasional red accents
+            }
+        }
+        
+        // Add engine accent stripes (blue glow effect like reference)
+        var engineBlocks = ship.Structure.Blocks
+            .Where(b => b.BlockType == BlockType.Engine || b.BlockType == BlockType.Thruster)
+            .ToList();
+        
+        foreach (var engine in engineBlocks)
+        {
+            engine.ColorRGB = blueStripe; // Blue engine accents
         }
     }
     
