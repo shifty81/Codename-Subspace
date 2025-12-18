@@ -65,24 +65,40 @@ public class GameWorldPopulator
         Console.WriteLine($"  Difficulty: {difficulty:F1}x");
         Console.WriteLine($"  Enemy spawn rate: {spawnRate:F1}x");
         
+        // OPTIMIZED: Show progress during generation
+        var startTime = System.Diagnostics.Stopwatch.StartNew();
+        
         // OPTIMIZED: Reduce asteroid count from 15 to 8 for faster generation
+        Console.Write("  [1/5] Creating asteroids... ");
         CreateZoneAsteroidField(playerPosition, radius, 8, availableTier);
+        Console.WriteLine($"✓ ({startTime.ElapsedMilliseconds}ms)");
         
         // Scale ship counts by zone (reduced for performance)
         int traderCount = Math.Max(1, (int)(2 * (1.0f / difficulty))); // Reduced from 3
         int minerCount = Math.Max(1, (int)(2 * (1.0f / difficulty)));  // Reduced from 4
         int pirateCount = Math.Max(1, (int)(1 * spawnRate * difficulty)); // Reduced from 2
         
+        Console.Write("  [2/5] Creating trader ships... ");
         CreateTraderShips(playerPosition, radius, traderCount);
+        Console.WriteLine($"✓ ({startTime.ElapsedMilliseconds}ms)");
+        
+        Console.Write("  [3/5] Creating miner ships... ");
         CreateMinerShips(playerPosition, radius, minerCount);
+        Console.WriteLine($"✓ ({startTime.ElapsedMilliseconds}ms)");
+        
+        Console.Write("  [4/5] Creating pirate ships... ");
         CreatePirateShips(playerPosition, radius * 0.8f, pirateCount);
+        Console.WriteLine($"✓ ({startTime.ElapsedMilliseconds}ms)");
         
         // Create zone-appropriate station
+        Console.Write("  [5/5] Creating station... ");
         var stationType = DetermineStationType(availableTier, distanceFromCenter);
         var stationName = GenerateStationName(stationType, zoneName);
         CreateStation(playerPosition + new Vector3(radius * 0.5f, 0, 0), stationType, stationName);
+        Console.WriteLine($"✓ ({startTime.ElapsedMilliseconds}ms)");
         
-        Console.WriteLine("Zone population complete!");
+        startTime.Stop();
+        Console.WriteLine($"Zone population complete! Total time: {startTime.ElapsedMilliseconds}ms");
     }
     
     /// <summary>
@@ -123,8 +139,6 @@ public class GameWorldPopulator
     /// </summary>
     private void CreateZoneAsteroidField(Vector3 center, float radius, int count, MaterialTier maxTier)
     {
-        Console.WriteLine($"  Creating {count} asteroids (up to {maxTier} materials)...");
-        
         // Determine which resource types are available in this zone
         var availableResources = new List<ResourceType>();
         
@@ -178,8 +192,6 @@ public class GameWorldPopulator
     /// </summary>
     private void CreateAsteroidField(Vector3 center, float radius, int count)
     {
-        Console.WriteLine($"  Creating {count} asteroids...");
-        
         for (int i = 0; i < count; i++)
         {
             // Random position within radius
@@ -300,8 +312,6 @@ public class GameWorldPopulator
     /// </summary>
     private void CreateTraderShips(Vector3 center, float radius, int count)
     {
-        Console.WriteLine($"  Creating {count} trader ships...");
-        
         for (int i = 0; i < count; i++)
         {
             var position = center + new Vector3(
@@ -319,8 +329,6 @@ public class GameWorldPopulator
     /// </summary>
     private void CreateMinerShips(Vector3 center, float radius, int count)
     {
-        Console.WriteLine($"  Creating {count} miner ships...");
-        
         for (int i = 0; i < count; i++)
         {
             var position = center + new Vector3(
@@ -338,8 +346,6 @@ public class GameWorldPopulator
     /// </summary>
     private void CreatePirateShips(Vector3 center, float radius, int count)
     {
-        Console.WriteLine($"  Creating {count} pirate ships...");
-        
         for (int i = 0; i < count; i++)
         {
             var position = center + new Vector3(
@@ -513,8 +519,6 @@ public class GameWorldPopulator
     /// </summary>
     private Guid CreateStation(Vector3 position, StationType stationType, string name)
     {
-        Console.WriteLine($"  Creating {stationType} station: {name}...");
-        
         var station = _gameEngine.EntityManager.CreateEntity(name);
         
         // OPTIMIZED: Create simpler station structure for faster generation
