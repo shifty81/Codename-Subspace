@@ -1126,76 +1126,150 @@ public class ProceduralShipGenerator
     /// </summary>
     private void GenerateSleekHull(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config)
     {
+        // REFERENCE-INSPIRED: Create elongated, sleek design like 1234.PNG
         float blockSize = 2f;
         
-        // Main spine - central structural beam (continuous)
+        // Main spine - reinforced central beam with angular profile
         for (float z = -dimensions.Z / 2; z < dimensions.Z / 2; z += blockSize)
         {
+            float normalizedZ = Math.Abs(z) / (dimensions.Z / 2);
+            float spineHeight = blockSize * (1.0f + normalizedZ * 0.5f); // Varies along length
+            
             ship.Structure.AddBlock(new VoxelBlock(
                 new Vector3(0, 0, z), 
-                new Vector3(blockSize, blockSize, blockSize), 
-                config.Material, BlockType.Hull));
+                new Vector3(blockSize * 1.5f, spineHeight, blockSize), 
+                config.Material, BlockType.Hull,
+                BlockShape.Cube, BlockOrientation.PosY));
         }
         
-        // Streamlined body - flat, wide profile with smooth taper
-        for (float z = -dimensions.Z / 3; z < dimensions.Z / 3; z += blockSize)
+        // Front section (nose) - very sharp, elongated taper like reference
+        for (float z = dimensions.Z / 3; z < dimensions.Z / 2; z += blockSize)
         {
-            float normalizedZ = Math.Abs(z) / (dimensions.Z / 3);
-            float widthFactor = 1.0f - normalizedZ * 0.7f;
-            float currentWidth = Math.Max(blockSize * 2, dimensions.X * widthFactor * 0.7f);
-            float currentHeight = Math.Max(blockSize, dimensions.Y * widthFactor * 0.35f);
+            float normalizedZ = (z - dimensions.Z / 3) / (dimensions.Z / 6);
+            float taperFactor = 1.0f - normalizedZ * 0.9f; // Sharp 90% taper
+            float currentWidth = Math.Max(blockSize, dimensions.X * taperFactor * 0.5f);
+            float currentHeight = Math.Max(blockSize * 0.5f, dimensions.Y * taperFactor * 0.4f);
             
-            // Create continuous hull surface (filled, not just edges)
+            // Sharp nose with wedge blocks
+            for (float x = -currentWidth / 2; x < currentWidth / 2; x += blockSize)
+            {
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(x, 0, z),
+                    new Vector3(blockSize, currentHeight, blockSize), 
+                    config.Material, BlockType.Hull,
+                    BlockShape.Wedge, BlockOrientation.PosZ));
+            }
+        }
+        
+        // Mid section (cockpit/bridge area) - wider with angular top
+        for (float z = 0; z < dimensions.Z / 3; z += blockSize)
+        {
+            float normalizedZ = z / (dimensions.Z / 3);
+            float currentWidth = dimensions.X * (0.6f + normalizedZ * 0.1f);
+            float currentHeight = dimensions.Y * 0.45f;
+            
+            // Top surface with angular wedges
+            for (float x = -currentWidth / 2; x < currentWidth / 2; x += blockSize)
+            {
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(x, currentHeight / 2, z),
+                    new Vector3(blockSize, blockSize * 0.6f, blockSize), 
+                    config.Material, BlockType.Hull,
+                    BlockShape.Wedge, BlockOrientation.PosY));
+            }
+            
+            // Bottom surface - flatter
+            for (float x = -currentWidth / 2; x < currentWidth / 2; x += blockSize)
+            {
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(x, -currentHeight / 2, z),
+                    new Vector3(blockSize, blockSize * 0.4f, blockSize), 
+                    config.Material, BlockType.Hull,
+                    BlockShape.HalfBlock, BlockOrientation.NegY));
+            }
+            
+            // Side panels
+            for (float y = -currentHeight / 2; y <= currentHeight / 2; y += blockSize)
+            {
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(-currentWidth / 2, y, z),
+                    new Vector3(blockSize * 0.6f, blockSize, blockSize), 
+                    config.Material, BlockType.Hull));
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(currentWidth / 2 - blockSize * 0.6f, y, z),
+                    new Vector3(blockSize * 0.6f, blockSize, blockSize), 
+                    config.Material, BlockType.Hull));
+            }
+        }
+        
+        // Main body section - full width, streamlined
+        for (float z = -dimensions.Z / 4; z < 0; z += blockSize)
+        {
+            float currentWidth = dimensions.X * 0.75f;
+            float currentHeight = dimensions.Y * 0.5f;
+            
+            // Create filled body for solid appearance
             for (float x = -currentWidth / 2; x < currentWidth / 2; x += blockSize)
             {
                 // Top surface
                 ship.Structure.AddBlock(new VoxelBlock(
                     new Vector3(x, currentHeight / 2, z),
-                    new Vector3(blockSize, blockSize * 0.5f, blockSize), 
+                    new Vector3(blockSize, blockSize, blockSize), 
                     config.Material, BlockType.Hull));
                 
                 // Bottom surface
                 ship.Structure.AddBlock(new VoxelBlock(
                     new Vector3(x, -currentHeight / 2, z),
-                    new Vector3(blockSize, blockSize * 0.5f, blockSize), 
+                    new Vector3(blockSize, blockSize, blockSize), 
                     config.Material, BlockType.Hull));
             }
             
             // Side edges
-            ship.Structure.AddBlock(new VoxelBlock(
-                new Vector3(-currentWidth / 2, 0, z),
-                new Vector3(blockSize * 0.5f, blockSize, blockSize), 
-                config.Material, BlockType.Hull));
-            ship.Structure.AddBlock(new VoxelBlock(
-                new Vector3(currentWidth / 2 - blockSize * 0.5f, 0, z),
-                new Vector3(blockSize * 0.5f, blockSize, blockSize), 
-                config.Material, BlockType.Hull));
+            for (float y = -currentHeight / 2; y <= currentHeight / 2; y += blockSize)
+            {
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(-currentWidth / 2, y, z),
+                    new Vector3(blockSize, blockSize, blockSize), 
+                    config.Material, BlockType.Hull));
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(currentWidth / 2 - blockSize, y, z),
+                    new Vector3(blockSize, blockSize, blockSize), 
+                    config.Material, BlockType.Hull));
+            }
         }
         
-        // Sharp pointed nose - continuous taper with wedge tip
-        for (float z = dimensions.Z / 3; z < dimensions.Z / 2; z += blockSize)
+        // Rear section (engine mount) - slightly wider, angular rear
+        for (float z = -dimensions.Z / 2; z < -dimensions.Z / 4; z += blockSize)
         {
-            float progress = (z - dimensions.Z / 3) / (dimensions.Z / 2 - dimensions.Z / 3);
-            float noseWidth = Math.Max(blockSize, (1.0f - progress * 0.8f) * dimensions.X * 0.3f);
-            bool isNoseTip = z >= dimensions.Z / 2 - blockSize;
+            float normalizedZ = Math.Abs(z + dimensions.Z / 4) / (dimensions.Z / 4);
+            float currentWidth = dimensions.X * (0.75f + normalizedZ * 0.1f); // Slightly wider at rear
+            float currentHeight = dimensions.Y * 0.5f;
             
-            for (float x = -noseWidth / 2; x < noseWidth / 2; x += blockSize)
+            // Top and bottom surfaces
+            for (float x = -currentWidth / 2; x < currentWidth / 2; x += blockSize)
             {
-                if (isNoseTip)
-                {
-                    // Sharp wedge at the very tip
-                    ship.Structure.AddBlock(new VoxelBlock(
-                        new Vector3(x, 0, z), 
-                        new Vector3(blockSize, blockSize, blockSize), 
-                        config.Material, BlockType.Hull, BlockShape.Wedge, BlockOrientation.PosZ));
-                }
-                else
-                {
-                    ship.Structure.AddBlock(new VoxelBlock(
-                        new Vector3(x, 0, z), 
-                        new Vector3(blockSize, blockSize, blockSize), 
-                        config.Material, BlockType.Hull));
-                }
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(x, currentHeight / 2, z),
+                    new Vector3(blockSize, blockSize, blockSize), 
+                    config.Material, BlockType.Hull));
+                    
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(x, -currentHeight / 2, z),
+                    new Vector3(blockSize, blockSize, blockSize), 
+                    config.Material, BlockType.Hull));
+            }
+            
+            // Side edges
+            for (float y = -currentHeight / 2; y <= currentHeight / 2; y += blockSize)
+            {
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(-currentWidth / 2, y, z),
+                    new Vector3(blockSize, blockSize, blockSize), 
+                    config.Material, BlockType.Hull));
+                ship.Structure.AddBlock(new VoxelBlock(
+                    new Vector3(currentWidth / 2 - blockSize, y, z),
+                    new Vector3(blockSize, blockSize, blockSize), 
+                    config.Material, BlockType.Hull));
             }
         }
         
