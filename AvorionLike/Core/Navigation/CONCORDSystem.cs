@@ -113,7 +113,13 @@ public class CONCORDSystem : SystemBase
             {
                 // Shields down, destroy ship
                 Logger.Instance.Warning("CONCORDSystem", $"CONCORD destroyed entity {status.EntityId}");
-                _entityManager.DestroyEntity(status.EntityId);
+                
+                // Check if entity still exists before destroying
+                var entity = _entityManager.GetEntity(status.EntityId);
+                if (entity != null)
+                {
+                    _entityManager.DestroyEntity(status.EntityId);
+                }
             }
         }
     }

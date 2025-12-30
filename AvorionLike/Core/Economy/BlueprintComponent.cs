@@ -74,7 +74,8 @@ public class BlueprintComponent : IComponent
         
         foreach (var req in MaterialRequirements)
         {
-            requirements[req.Key] = (int)(req.Value * efficiency);
+            // Ensure at least 1 unit is always required
+            requirements[req.Key] = Math.Max(1, (int)(req.Value * efficiency));
         }
         
         return requirements;

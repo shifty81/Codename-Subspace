@@ -86,7 +86,11 @@ public class AIScanningBehavior
             // Explorer NPCs will investigate wormholes
             if (ai.Personality == AIPersonality.Explorer)
             {
-                InvestigateWormhole(ai, signatures.First(s => s.Type == SignatureType.Wormhole));
+                var firstWormhole = signatures.FirstOrDefault(s => s.Type == SignatureType.Wormhole);
+                if (firstWormhole != null)
+                {
+                    InvestigateWormhole(ai, firstWormhole);
+                }
             }
         }
     }

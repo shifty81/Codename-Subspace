@@ -277,7 +277,7 @@ public class ScanningSystem : SystemBase
         if (signature.ScanProgress < 0.25f)
             return null;
             
-        // Add noise based on scan progress
+        // Add noise based on scan progress (use signature ID as seed for consistency)
         float noise = (1f - signature.ScanProgress) * 5000f;
         var random = new Random(signature.SignatureId.GetHashCode());
         
