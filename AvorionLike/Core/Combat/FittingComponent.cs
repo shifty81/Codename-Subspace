@@ -95,7 +95,7 @@ public class Module
 {
     public Guid ModuleId { get; set; } = Guid.NewGuid();
     public string Name { get; set; } = "Unknown Module";
-    public ModuleType Type { get; set; }
+    public FittingModuleType Type { get; set; }
     public ModuleSlot SlotType { get; set; }
     
     /// <summary>
@@ -154,9 +154,9 @@ public class Module
 }
 
 /// <summary>
-/// Type of module
+/// Type of fitting module
 /// </summary>
-public enum ModuleType
+public enum FittingModuleType
 {
     // Weapons
     Turret,

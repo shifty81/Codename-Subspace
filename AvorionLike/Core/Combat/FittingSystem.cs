@@ -152,7 +152,7 @@ public class FittingSystem : SystemBase
     {
         switch (module.Type)
         {
-            case ModuleType.ShieldBooster:
+            case FittingModuleType.ShieldBooster:
                 // Boost shields (would integrate with combat system)
                 if (module.Attributes.TryGetValue("shieldBoostAmount", out float boostAmount))
                 {
@@ -167,7 +167,7 @@ public class FittingSystem : SystemBase
                 }
                 break;
                 
-            case ModuleType.ArmorRepairer:
+            case FittingModuleType.ArmorRepairer:
                 // Repair armor
                 if (module.Attributes.TryGetValue("armorRepairAmount", out float repairAmount))
                 {
@@ -175,12 +175,12 @@ public class FittingSystem : SystemBase
                 }
                 break;
                 
-            case ModuleType.Afterburner:
-            case ModuleType.MicroWarpDrive:
+            case FittingModuleType.Afterburner:
+            case FittingModuleType.MicroWarpDrive:
                 // Increase speed (would integrate with physics)
                 break;
                 
-            case ModuleType.CapacitorBooster:
+            case FittingModuleType.CapacitorBooster:
                 // Inject capacitor
                 if (module.Attributes.TryGetValue("capacitorBonus", out float capBonus))
                 {
@@ -194,7 +194,7 @@ public class FittingSystem : SystemBase
     /// <summary>
     /// Get all modules of a specific type
     /// </summary>
-    public IEnumerable<Module> GetModulesByType(Guid shipEntityId, ModuleType type)
+    public IEnumerable<Module> GetModulesByType(Guid shipEntityId, FittingModuleType type)
     {
         var fitting = _entityManager.GetComponent<FittingComponent>(shipEntityId);
         if (fitting == null)
@@ -218,7 +218,7 @@ public class FittingSystem : SystemBase
     /// <summary>
     /// Create a standard module
     /// </summary>
-    public Module CreateModule(string name, ModuleType type, ModuleSlot slot, 
+    public Module CreateModule(string name, FittingModuleType type, ModuleSlot slot, 
         float powerGrid, float cpu, float capCost = 0f)
     {
         return new Module

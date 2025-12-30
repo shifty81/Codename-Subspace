@@ -53,7 +53,17 @@ public enum AIState
     /// <summary>
     /// Repairing at station
     /// </summary>
-    Repairing
+    Repairing,
+    
+    /// <summary>
+    /// Scanning for wormholes and anomalies
+    /// </summary>
+    Scanning,
+    
+    /// <summary>
+    /// Exploring wormhole space
+    /// </summary>
+    Exploring
 }
 
 /// <summary>
@@ -90,6 +100,11 @@ public enum AIPersonality
     /// Focuses on salvaging
     /// </summary>
     Salvager,
+    
+    /// <summary>
+    /// Focuses on exploration and scanning
+    /// </summary>
+    Explorer,
     
     /// <summary>
     /// Cowardly, flees easily

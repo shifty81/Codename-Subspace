@@ -1,6 +1,7 @@
 using System.Numerics;
 using AvorionLike.Core.Voxel;
 using AvorionLike.Core.ECS;
+using AvorionLike.Core.Navigation;
 
 namespace AvorionLike.Core.Procedural;
 
@@ -161,6 +162,56 @@ public class GalaxyGenerator
                 sector.Station.EntityId = stationEntity.Id;
             }
         }
+        
+        // Generate wormholes (5% chance for wandering, static wormholes in specific sectors)
+        if (sectorRandom.NextDouble() < 0.05)
+        {
+            // Wandering wormhole
+            var wormholeClass = (WormholeClass)sectorRandom.Next(1, 7);
+            var destX = sectorRandom.Next(-500, 500);
+            var destY = sectorRandom.Next(-500, 500);
+            var destZ = sectorRandom.Next(-500, 500);
+            
+            var wormholeData = new WormholeData
+            {
+                Position = new Vector3(
+                    (float)sectorRandom.NextDouble() * 10000 - 5000,
+                    (float)sectorRandom.NextDouble() * 10000 - 5000,
+                    (float)sectorRandom.NextDouble() * 10000 - 5000
+                ),
+                Designation = GenerateWormholeDesignation(sectorRandom),
+                WormholeClass = wormholeClass.ToString(),
+                Type = "Wandering",
+                DestinationSector = new Vector3(destX, destY, destZ)
+            };
+            
+            sector.Wormholes.Add(wormholeData);
+            
+            // If EntityManager is provided, create the actual wormhole entity
+            if (entityManager != null)
+            {
+                var wormholeEntity = entityManager.CreateEntity($"Wormhole {wormholeData.Designation}");
+                
+                var wormhole = new WormholeComponent
+                {
+                    EntityId = wormholeEntity.Id,
+                    Class = wormholeClass,
+                    Type = WormholeType.Wandering,
+                    SourceSector = new Vector3(x, y, z),
+                    DestinationSector = wormholeData.DestinationSector,
+                    Position = wormholeData.Position,
+                    Designation = wormholeData.Designation,
+                    RemainingLifetime = GetWormholeLifetime(wormholeClass),
+                    MaxLifetime = GetWormholeLifetime(wormholeClass),
+                    RemainingMass = GetWormholeMass(wormholeClass),
+                    MaxTotalMass = GetWormholeMass(wormholeClass),
+                    MaxShipMass = GetWormholeMaxShipMass(wormholeClass)
+                };
+                
+                entityManager.AddComponent(wormholeEntity.Id, wormhole);
+                wormholeData.EntityId = wormholeEntity.Id;
+            }
+        }
 
         return sector;
     }
@@ -202,6 +253,55 @@ public class GalaxyGenerator
         
         return $"{prefixes[random.Next(prefixes.Length)]} {suffixes[random.Next(suffixes.Length)]}";
     }
+    
+    private string GenerateWormholeDesignation(Random random)
+    {
+        char letter = (char)('A' + random.Next(26));
+        int number = random.Next(100, 999);
+        return $"{letter}{number}";
+    }
+    
+    private float GetWormholeLifetime(WormholeClass whClass)
+    {
+        return whClass switch
+        {
+            WormholeClass.Class1 => 86400f,   // 24 hours
+            WormholeClass.Class2 => 129600f,  // 36 hours
+            WormholeClass.Class3 => 172800f,  // 48 hours
+            WormholeClass.Class4 => 172800f,  // 48 hours
+            WormholeClass.Class5 => 86400f,   // 24 hours
+            WormholeClass.Class6 => 64800f,   // 18 hours
+            _ => 172800f
+        };
+    }
+    
+    private float GetWormholeMass(WormholeClass whClass)
+    {
+        return whClass switch
+        {
+            WormholeClass.Class1 => 5000000000f,
+            WormholeClass.Class2 => 3000000000f,
+            WormholeClass.Class3 => 2000000000f,
+            WormholeClass.Class4 => 1500000000f,
+            WormholeClass.Class5 => 1000000000f,
+            WormholeClass.Class6 => 750000000f,
+            _ => 2000000000f
+        };
+    }
+    
+    private float GetWormholeMaxShipMass(WormholeClass whClass)
+    {
+        return whClass switch
+        {
+            WormholeClass.Class1 => 200000000f,
+            WormholeClass.Class2 => 300000000f,
+            WormholeClass.Class3 => 300000000f,
+            WormholeClass.Class4 => 180000000f,
+            WormholeClass.Class5 => 180000000f,
+            WormholeClass.Class6 => 135000000f,
+            _ => 300000000f
+        };
+    }
 }
 
 /// <summary>
@@ -216,6 +316,7 @@ public class GalaxySector
     public StationData? Station { get; set; }
     public MassiveAsteroidData? MassiveAsteroid { get; set; }  // NEW: Rare claimable asteroid
     public List<ShipData> Ships { get; set; } = new();
+    public List<WormholeData> Wormholes { get; set; } = new();  // NEW: Wormhole connections
 
     public GalaxySector(int x, int y, int z)
     {
@@ -261,4 +362,17 @@ public class ShipData
     public Vector3 Position { get; set; }
     public string ShipType { get; set; } = "Fighter";
     public string Faction { get; set; } = "Neutral";
+}
+
+/// <summary>
+/// Data for wormhole connections in a sector
+/// </summary>
+public class WormholeData
+{
+    public Vector3 Position { get; set; }
+    public string Designation { get; set; } = "Unknown";
+    public string WormholeClass { get; set; } = "Class1";
+    public string Type { get; set; } = "Wandering";
+    public Vector3 DestinationSector { get; set; }
+    public Guid EntityId { get; set; }
 }
