@@ -17,6 +17,7 @@ using AvorionLike.Core.Economy;
 using AvorionLike.Core.Persistence;
 using AvorionLike.Core.Power;
 using AvorionLike.Core.AI;
+using AvorionLike.Core.Quest;
 
 namespace AvorionLike.Core;
 
@@ -50,6 +51,7 @@ public class GameEngine
     public CollisionSystem CollisionSystem { get; private set; } = null!;
     public PowerSystem PowerSystem { get; private set; } = null!;
     public AISystem AISystem { get; private set; } = null!;
+    public QuestSystem QuestSystem { get; private set; } = null!;
     
     // Networking
     public GameServer? GameServer { get; private set; }
@@ -117,6 +119,7 @@ public class GameEngine
         EconomySystem = new EconomySystem(EntityManager);
         PowerSystem = new PowerSystem(EntityManager, EventSystem.Instance, Logger.Instance);
         AISystem = new AISystem(EntityManager, MiningSystem, CombatSystem);
+        QuestSystem = new QuestSystem(EntityManager, EventSystem.Instance);
         Logger.Instance.Info("GameEngine", "All systems initialized");
 
         // Register systems with entity manager
