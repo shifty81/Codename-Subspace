@@ -10,6 +10,7 @@ using AvorionLike.Core.Input;
 using AvorionLike.Core.DevTools;
 using AvorionLike.Core.Config;
 using AvorionLike.Core.Procedural;
+using AvorionLike.Core.Modular;
 using Silk.NET.OpenGL.Extensions.ImGui;
 
 namespace AvorionLike.Core.Graphics;
@@ -23,6 +24,7 @@ public class GraphicsWindow : IDisposable
     private IWindow? _window;
     private GL? _gl;
     private EnhancedVoxelRenderer? _voxelRenderer;
+    private MeshRenderer? _meshRenderer;  // NEW: For rendering 3D models
     private StarfieldRenderer? _starfieldRenderer;
     private DebugRenderer? _debugRenderer;
     private Camera? _camera;
@@ -155,6 +157,7 @@ public class GraphicsWindow : IDisposable
 
         // Initialize renderers
         _voxelRenderer = new EnhancedVoxelRenderer(_gl);
+        _meshRenderer = new MeshRenderer(_gl);  // NEW: Initialize mesh renderer
         _starfieldRenderer = new StarfieldRenderer(_gl);
         _debugRenderer = new DebugRenderer(_gl);
 
@@ -451,6 +454,13 @@ public class GraphicsWindow : IDisposable
                 }
 
                 _voxelRenderer.RenderVoxelStructure(voxelComponent, _camera, position, aspectRatio);
+            }
+            
+            // NEW: Render modular ships with 3D models
+            var modularShipComponent = _gameEngine.EntityManager.GetComponent<ModularShipComponent>(entity.Id);
+            if (modularShipComponent != null && _meshRenderer != null)
+            {
+                RenderModularShip(modularShipComponent, entity.Id, aspectRatio);
             }
         }
         
@@ -921,8 +931,8 @@ public class GraphicsWindow : IDisposable
             // Generate a medium-sized combat ship with interesting details
             var shipConfig = new ShipGenerationConfig
             {
-                Size = ShipSize.Frigate,
-                Role = ShipRole.Combat,
+                Size = Procedural.ShipSize.Frigate,
+                Role = Procedural.ShipRole.Combat,
                 Material = "Titanium",
                 Style = FactionShipStyle.GetDefaultStyle("Military"),
                 Seed = 12345 // Fixed seed for consistent title screen ship
@@ -958,6 +968,129 @@ public class GraphicsWindow : IDisposable
             // Not critical, continue without background ship
         }
     }
+    
+    /// <summary>
+    /// Renders a modular ship using 3D models from its modules
+    /// </summary>
+    private void RenderModularShip(ModularShipComponent ship, Guid entityId, float aspectRatio)
+    {
+        if (_meshRenderer == null || _camera == null || _gl == null)
+            return;
+        
+        // Get ship position from physics component
+        Vector3 shipPosition = Vector3.Zero;
+        var physicsComponent = _gameEngine.EntityManager.GetComponent<PhysicsComponent>(entityId);
+        if (physicsComponent != null)
+        {
+            shipPosition = physicsComponent.InterpolatedPosition;
+        }
+        
+        var viewMatrix = _camera.GetViewMatrix();
+        var projectionMatrix = _camera.GetProjectionMatrix(aspectRatio);
+        
+        // Get module library to resolve definitions
+        var moduleLibrary = new ModuleLibrary();
+        moduleLibrary.InitializeBuiltInModules();
+        
+        // Render each module
+        foreach (var module in ship.Modules)
+        {
+            try
+            {
+                // Get module definition
+                var definition = moduleLibrary.GetDefinition(module.ModuleDefinitionId);
+                
+                // Try to load the 3D model from AssetManager
+                List<MeshData> meshes;
+                
+                // If model path is empty or null, use placeholder cube
+                if (definition == null || string.IsNullOrEmpty(definition.ModelPath))
+                {
+                    // Use placeholder cube
+                    var cube = AssetManager.Instance.CreatePlaceholderCube(2.0f);
+                    meshes = new List<MeshData> { cube };
+                }
+                else
+                {
+                    // Try to load actual model
+                    try
+                    {
+                        meshes = AssetManager.Instance.LoadModel(definition.ModelPath);
+                    }
+                    catch
+                    {
+                        // Fall back to placeholder if model not found
+                        var cube = AssetManager.Instance.CreatePlaceholderCube(2.0f);
+                        meshes = new List<MeshData> { cube };
+                    }
+                }
+                
+                // Create transform matrix for this module
+                var transform = CreateModuleTransformMatrix(module, shipPosition);
+                
+                // Determine module color (could be from material type or ship color)
+                var color = GetModuleColor(module);
+                
+                // Render all meshes in this module
+                foreach (var mesh in meshes)
+                {
+                    _meshRenderer.RenderMesh(
+                        mesh,
+                        transform,
+                        color,
+                        viewMatrix,
+                        projectionMatrix,
+                        _camera.Position
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error but continue rendering other modules
+                Console.WriteLine($"Error rendering module {module.Id}: {ex.Message}");
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Creates a transformation matrix for a module
+    /// </summary>
+    private Matrix4x4 CreateModuleTransformMatrix(ShipModulePart module, Vector3 shipPosition)
+    {
+        // Create scale matrix (modules can have different sizes)
+        var scale = Matrix4x4.CreateScale(1.0f); // Default scale
+        
+        // Create rotation matrix from module rotation (Euler angles in degrees)
+        var rotationX = Matrix4x4.CreateRotationX(module.Rotation.X * (float)Math.PI / 180.0f);
+        var rotationY = Matrix4x4.CreateRotationY(module.Rotation.Y * (float)Math.PI / 180.0f);
+        var rotationZ = Matrix4x4.CreateRotationZ(module.Rotation.Z * (float)Math.PI / 180.0f);
+        var rotation = rotationZ * rotationY * rotationX; // ZYX order
+        
+        // Create translation matrix (module position + ship position)
+        var translation = Matrix4x4.CreateTranslation(module.Position + shipPosition);
+        
+        // Combine: Scale * Rotation * Translation
+        return scale * rotation * translation;
+    }
+    
+    /// <summary>
+    /// Gets the color for a module based on its material or properties
+    /// </summary>
+    private Vector3 GetModuleColor(ShipModulePart module)
+    {
+        // Default colors based on material type
+        return module.MaterialType?.ToLower() switch
+        {
+            "iron" => new Vector3(0.7f, 0.7f, 0.7f),      // Gray
+            "titanium" => new Vector3(0.8f, 0.8f, 0.9f),  // Light blue-gray
+            "naonite" => new Vector3(0.3f, 0.6f, 0.8f),   // Blue
+            "trinium" => new Vector3(0.5f, 0.8f, 0.5f),   // Green
+            "xanion" => new Vector3(0.9f, 0.7f, 0.3f),    // Gold
+            "ogonite" => new Vector3(0.8f, 0.4f, 0.2f),   // Orange
+            "avorion" => new Vector3(0.9f, 0.3f, 0.9f),   // Purple
+            _ => new Vector3(0.6f, 0.6f, 0.6f)            // Default gray
+        };
+    }
 
     public void Dispose()
     {
@@ -966,6 +1099,7 @@ public class GraphicsWindow : IDisposable
             _customUIRenderer?.Dispose();
             _imguiController?.Dispose();
             _voxelRenderer?.Dispose();
+            _meshRenderer?.Dispose();  // NEW: Dispose mesh renderer
             _starfieldRenderer?.Dispose();
             _inputContext?.Dispose();
             _gl?.Dispose();
