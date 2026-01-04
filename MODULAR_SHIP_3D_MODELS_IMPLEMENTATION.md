@@ -6,8 +6,18 @@ This document describes the implementation of 3D model support for the modular s
 
 ## What Was Implemented
 
+## Directory Structure
+
+Models are stored in two locations:
+1. **Assets/Models/ships/modules/** - Used at runtime (AssetManager loads from here)
+2. **GameData/Assets/Models/ships/modules/** - Source files for development
+
+The AssetManager looks for models relative to the executable directory in `Assets/Models/`.
+
 ### 1. Directory Structure
-Created `GameData/Assets/Models/ships/modules/` directory to store 3D model files.
+Created model directories:
+- `Assets/Models/ships/modules/` - Runtime model location
+- `GameData/Assets/Models/ships/modules/` - Source model location
 
 ### 2. Placeholder 3D Models
 Added 10 placeholder OBJ files for different module types:
