@@ -39,17 +39,29 @@ public enum ShipClass
 }
 
 /// <summary>
+/// Ship size category classification
+/// S = Small, M = Medium, L = Large, XL = Capital
+/// This is separate from ShipClass (Fighter, Corvette, etc.)
+/// </summary>
+public enum ShipSizeCategory
+{
+    S,      // Small ships (Fighters, Scouts, small Corvettes)
+    M,      // Medium ships (Large Corvettes, Frigates, Destroyers, Miners)
+    L,      // Large ships (Cruisers, Large Industrial, Science vessels)
+    XL      // Capital ships (Battleships, Carriers, Capital Industrial)
+}
+
+/// <summary>
 /// Module size classification
 /// Affects compatibility, power requirements, and visual scale
+/// Aligned with ship size system
 /// </summary>
 public enum ModuleSize
 {
-    Tiny,       // Smallest modules (fighter-only components)
-    Small,      // Fighter/Corvette modules
-    Medium,     // Frigate/Destroyer modules
-    Large,      // Cruiser/Battleship modules
-    Huge,       // Capital-only modules
-    Massive     // Station/super-capital only
+    S,      // Small modules - for S-class ships
+    M,      // Medium modules - for M-class ships
+    L,      // Large modules - for L-class ships
+    XL      // Capital modules - for XL-class ships only
 }
 
 /// <summary>
@@ -76,7 +88,7 @@ public class ModuleClassificationInfo
     /// <summary>
     /// Size classification of this module
     /// </summary>
-    public ModuleSize Size { get; set; } = ModuleSize.Medium;
+    public ModuleSize Size { get; set; } = ModuleSize.M;
     
     /// <summary>
     /// Where this module appears in the ship editor
@@ -126,16 +138,7 @@ public class ModuleClassificationInfo
     /// </summary>
     public string GetSizeDisplayName()
     {
-        return Size switch
-        {
-            ModuleSize.Tiny => "Tiny",
-            ModuleSize.Small => "Small",
-            ModuleSize.Medium => "Medium",
-            ModuleSize.Large => "Large",
-            ModuleSize.Huge => "Huge",
-            ModuleSize.Massive => "Massive",
-            _ => "Unknown"
-        };
+        return ModuleClassificationHelper.GetModuleSizeDisplayName(Size);
     }
     
     /// <summary>
@@ -233,21 +236,124 @@ public static class ModuleClassificationHelper
     
     /// <summary>
     /// Get recommended module size for a ship class
+    /// Maps ship classes to S/M/L/XL sizing system
     /// </summary>
     public static ModuleSize GetRecommendedSizeForClass(ShipClass shipClass)
     {
         return shipClass switch
         {
-            ShipClass.Fighter => ModuleSize.Tiny,
-            ShipClass.Corvette => ModuleSize.Small,
-            ShipClass.Frigate => ModuleSize.Medium,
-            ShipClass.Destroyer => ModuleSize.Medium,
-            ShipClass.Cruiser => ModuleSize.Large,
-            ShipClass.Battleship => ModuleSize.Huge,
-            ShipClass.Carrier => ModuleSize.Huge,
-            ShipClass.Miner => ModuleSize.Medium,
-            ShipClass.Hauler => ModuleSize.Large,
-            _ => ModuleSize.Medium
+            // Small (S) - Fighters, Scouts
+            ShipClass.Fighter => ModuleSize.S,
+            ShipClass.Scout => ModuleSize.S,
+            
+            // Medium (M) - Corvettes, Frigates, Destroyers, basic Industrial
+            ShipClass.Corvette => ModuleSize.M,
+            ShipClass.Frigate => ModuleSize.M,
+            ShipClass.Destroyer => ModuleSize.M,
+            ShipClass.Miner => ModuleSize.M,
+            ShipClass.Salvager => ModuleSize.M,
+            
+            // Large (L) - Cruisers, large Industrial, Science
+            ShipClass.Cruiser => ModuleSize.L,
+            ShipClass.Hauler => ModuleSize.L,
+            ShipClass.Refinery => ModuleSize.L,
+            ShipClass.Science => ModuleSize.L,
+            ShipClass.Support => ModuleSize.L,
+            
+            // Capital (XL) - Battleships, Carriers, Constructor
+            ShipClass.Battleship => ModuleSize.XL,
+            ShipClass.Carrier => ModuleSize.XL,
+            ShipClass.Constructor => ModuleSize.XL,
+            
+            _ => ModuleSize.M  // Default to medium
+        };
+    }
+    
+    /// <summary>
+    /// Get ship size classification from ship class
+    /// </summary>
+    public static ShipSizeCategory GetShipSizeFromClass(ShipClass shipClass)
+    {
+        return shipClass switch
+        {
+            ShipClass.Fighter => ShipSizeCategory.S,
+            ShipClass.Scout => ShipSizeCategory.S,
+            
+            ShipClass.Corvette => ShipSizeCategory.M,
+            ShipClass.Frigate => ShipSizeCategory.M,
+            ShipClass.Destroyer => ShipSizeCategory.M,
+            ShipClass.Miner => ShipSizeCategory.M,
+            ShipClass.Salvager => ShipSizeCategory.M,
+            
+            ShipClass.Cruiser => ShipSizeCategory.L,
+            ShipClass.Hauler => ShipSizeCategory.L,
+            ShipClass.Refinery => ShipSizeCategory.L,
+            ShipClass.Science => ShipSizeCategory.L,
+            ShipClass.Support => ShipSizeCategory.L,
+            
+            ShipClass.Battleship => ShipSizeCategory.XL,
+            ShipClass.Carrier => ShipSizeCategory.XL,
+            ShipClass.Constructor => ShipSizeCategory.XL,
+            
+            _ => ShipSizeCategory.M
+        };
+    }
+    
+    /// <summary>
+    /// Check if a module size is compatible with a ship size
+    /// </summary>
+    public static bool IsModuleSizeCompatible(ModuleSize moduleSize, ShipSizeCategory shipSize)
+    {
+        // Exact match is always compatible
+        if ((int)moduleSize == (int)shipSize)
+            return true;
+            
+        // S modules can be used on any ship (universal small components)
+        if (moduleSize == ModuleSize.S)
+            return true;
+            
+        // M modules can be used on M, L, and XL ships
+        if (moduleSize == ModuleSize.M && shipSize >= ShipSizeCategory.M)
+            return true;
+            
+        // L modules can be used on L and XL ships
+        if (moduleSize == ModuleSize.L && shipSize >= ShipSizeCategory.L)
+            return true;
+            
+        // XL modules only on XL ships
+        if (moduleSize == ModuleSize.XL && shipSize == ShipSizeCategory.XL)
+            return true;
+            
+        return false;
+    }
+    
+    /// <summary>
+    /// Get display name for ship size
+    /// </summary>
+    public static string GetShipSizeDisplayName(ShipSizeCategory size)
+    {
+        return size switch
+        {
+            ShipSizeCategory.S => "Small (S)",
+            ShipSizeCategory.M => "Medium (M)",
+            ShipSizeCategory.L => "Large (L)",
+            ShipSizeCategory.XL => "Capital (XL)",
+            _ => size.ToString()
+        };
+    }
+    
+    /// <summary>
+    /// Get display name for module size
+    /// </summary>
+    public static string GetModuleSizeDisplayName(ModuleSize size)
+    {
+        return size switch
+        {
+            ModuleSize.S => "Small (S)",
+            ModuleSize.M => "Medium (M)",
+            ModuleSize.L => "Large (L)",
+            ModuleSize.XL => "Capital (XL)",
+            _ => size.ToString()
         };
     }
     
