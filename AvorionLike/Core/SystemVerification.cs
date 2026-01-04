@@ -7,6 +7,7 @@ using AvorionLike.Core.RPG;
 using AvorionLike.Core.Combat;
 using AvorionLike.Core.Navigation;
 using AvorionLike.Core.Logging;
+using AvorionLike.Core.Modular;
 
 namespace AvorionLike.Core;
 
@@ -71,6 +72,10 @@ public class SystemVerification
         // Building & Power
         TestBuildSystem();
         TestPowerSystem();
+        
+        // Modular Ship Systems
+        TestModularShipSyncSystem();
+        TestVoxelDamageSystem();
 
         // Procedural
         TestGalaxyGenerator();
@@ -519,6 +524,132 @@ public class SystemVerification
         {
             throw new Exception(message);
         }
+    }
+    
+    private void TestModularShipSyncSystem()
+    {
+        RunTest("ModularShipSync: System Exists", () =>
+        {
+            Assert(_engine.ModularShipSyncSystem != null, "ModularShipSyncSystem should be initialized");
+        });
+        
+        RunTest("ModularShipSync: Physics Auto-Creation", () =>
+        {
+            var library = new ModuleLibrary();
+            library.InitializeBuiltInModules();
+            var generator = new ModularProceduralShipGenerator(library, 12345);
+            var config = new ModularShipConfig
+            {
+                ShipName = "Test Ship",
+                Size = ShipSize.Corvette,
+                Role = ShipRole.Combat,
+                Material = "Iron",
+                Seed = 100
+            };
+            
+            var result = generator.GenerateShip(config);
+            var ship = result.Ship;
+            var entity = _engine.EntityManager.CreateEntity("Test Ship");
+            _engine.EntityManager.AddComponent(entity.Id, ship);
+            
+            // Run sync system
+            _engine.ModularShipSyncSystem.Update(0.016f);
+            
+            // Check physics was created
+            var physics = _engine.EntityManager.GetComponent<PhysicsComponent>(entity.Id);
+            Assert(physics != null, "Physics component should be auto-created");
+            Assert(Math.Abs(physics!.Mass - ship.TotalMass) < 0.1f, "Physics mass should match ship mass");
+            Assert(physics.CollisionRadius > 0, "Collision radius should be set");
+            
+            _engine.EntityManager.DestroyEntity(entity.Id);
+        });
+        
+        RunTest("ModularShipSync: Ship Destruction Handling", () =>
+        {
+            var library = new ModuleLibrary();
+            library.InitializeBuiltInModules();
+            var generator = new ModularProceduralShipGenerator(library, 12345);
+            var config = new ModularShipConfig
+            {
+                ShipName = "Doomed Ship",
+                Size = ShipSize.Corvette,
+                Role = ShipRole.Combat,
+                Material = "Iron",
+                Seed = 200
+            };
+            
+            var result = generator.GenerateShip(config);
+            var ship = result.Ship;
+            var entity = _engine.EntityManager.CreateEntity("Doomed Ship");
+            _engine.EntityManager.AddComponent(entity.Id, ship);
+            
+            // Create physics
+            _engine.ModularShipSyncSystem.Update(0.016f);
+            var physics = _engine.EntityManager.GetComponent<PhysicsComponent>(entity.Id);
+            Assert(physics != null, "Physics should exist");
+            
+            // Destroy core module
+            if (ship.CoreModuleId.HasValue)
+            {
+                var core = ship.GetModule(ship.CoreModuleId.Value);
+                if (core != null)
+                {
+                    core.Health = 0;
+                    ship.RecalculateStats();
+                    
+                    // Sync should set physics to static
+                    _engine.ModularShipSyncSystem.Update(0.016f);
+                    Assert(physics!.IsStatic, "Physics should be static after ship destruction");
+                }
+            }
+            
+            _engine.EntityManager.DestroyEntity(entity.Id);
+        });
+    }
+    
+    private void TestVoxelDamageSystem()
+    {
+        RunTest("VoxelDamage: System Exists", () =>
+        {
+            Assert(_engine.VoxelDamageSystem != null, "VoxelDamageSystem should be initialized");
+        });
+        
+        RunTest("VoxelDamage: Damage Visualization", () =>
+        {
+            var library = new ModuleLibrary();
+            library.InitializeBuiltInModules();
+            var generator = new ModularProceduralShipGenerator(library, 12345);
+            var config = new ModularShipConfig
+            {
+                ShipName = "Damaged Ship",
+                Size = ShipSize.Frigate,
+                Role = ShipRole.Combat,
+                Material = "Titanium",
+                Seed = 300
+            };
+            
+            var result = generator.GenerateShip(config);
+            var ship = result.Ship;
+            var entity = _engine.EntityManager.CreateEntity("Damaged Ship");
+            _engine.EntityManager.AddComponent(entity.Id, ship);
+            
+            // Damage some modules
+            int modulesToDamage = Math.Min(3, ship.Modules.Count);
+            for (int i = 0; i < modulesToDamage; i++)
+            {
+                ship.Modules[i].Health -= ship.Modules[i].MaxHealth * 0.5f;
+            }
+            ship.RecalculateStats();
+            
+            // Run damage system
+            _engine.VoxelDamageSystem.Update(0.016f);
+            
+            // Check damage component was created
+            var damageComp = _engine.EntityManager.GetComponent<VoxelDamageComponent>(entity.Id);
+            Assert(damageComp != null, "VoxelDamageComponent should be created");
+            
+            _engine.EntityManager.DestroyEntity(entity.Id);
+        });
     }
 
     private VerificationReport GenerateReport()
