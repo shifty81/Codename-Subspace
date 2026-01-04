@@ -1,7 +1,7 @@
-# Power core module - cube shape
+# Detailed power core module - reactor with cooling coils
 # Wavefront OBJ file
 
-# Vertices
+# Core housing (main reactor chamber)
 v -2.0 -2.0 -2.0
 v 2.0 -2.0 -2.0
 v 2.0 2.0 -2.0
@@ -11,7 +11,48 @@ v 2.0 -2.0 2.0
 v 2.0 2.0 2.0
 v -2.0 2.0 2.0
 
-# Faces
+# Inner reactor core (spherical approximation with octagon)
+v 0.0 -1.2 0.0
+v 0.85 -0.85 0.0
+v 1.2 0.0 0.0
+v 0.85 0.85 0.0
+v 0.0 1.2 0.0
+v -0.85 0.85 0.0
+v -1.2 0.0 0.0
+v -0.85 -0.85 0.0
+
+# Cooling coil vertices (8 coils wrapping around core)
+# Top coils
+v -1.5 1.5 -2.2
+v 1.5 1.5 -2.2
+v 1.5 1.5 2.2
+v -1.5 1.5 2.2
+
+# Bottom coils
+v -1.5 -1.5 -2.2
+v 1.5 -1.5 -2.2
+v 1.5 -1.5 2.2
+v -1.5 -1.5 2.2
+
+# Side coils (left)
+v -2.2 -1.5 -1.5
+v -2.2 -1.5 1.5
+v -2.2 1.5 1.5
+v -2.2 1.5 -1.5
+
+# Side coils (right)
+v 2.2 -1.5 -1.5
+v 2.2 -1.5 1.5
+v 2.2 1.5 1.5
+v 2.2 1.5 -1.5
+
+# Energy port connectors (4 ports)
+v 0.0 0.0 -2.5
+v 0.0 0.0 2.5
+v -2.5 0.0 0.0
+v 2.5 0.0 0.0
+
+# Core housing faces
 f 1 2 3
 f 1 3 4
 f 5 6 7
@@ -24,3 +65,53 @@ f 3 4 8
 f 3 8 7
 f 4 1 5
 f 4 5 8
+
+# Inner reactor core (octagonal sphere)
+f 9 10 11
+f 9 11 16
+f 10 11 12
+f 11 12 13
+f 12 13 14
+f 13 14 15
+f 14 15 16
+f 15 16 9
+
+# Cooling coils (top)
+f 17 18 19
+f 17 19 20
+f 3 17 18
+f 3 18 7
+
+# Cooling coils (bottom)
+f 21 22 23
+f 21 23 24
+f 1 21 22
+f 1 22 5
+
+# Cooling coils (left side)
+f 25 26 27
+f 25 27 28
+f 4 25 28
+f 4 28 8
+
+# Cooling coils (right side)
+f 29 30 31
+f 29 31 32
+f 2 29 32
+f 2 32 6
+
+# Energy port connections
+f 1 33 4
+f 3 33 2
+f 5 34 6
+f 7 34 8
+f 4 35 8
+f 1 35 5
+f 2 36 6
+f 3 36 7
+
+# Reactor core to cooling system connections
+f 9 21 22
+f 13 17 18
+f 15 25 26
+f 11 29 30

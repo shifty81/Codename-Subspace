@@ -1,7 +1,7 @@
-# Cargo bay module - large box
+# Detailed cargo bay module - container with access doors
 # Wavefront OBJ file
 
-# Vertices
+# Main container structure
 v -4.0 -3.0 -3.0
 v 4.0 -3.0 -3.0
 v 4.0 3.0 -3.0
@@ -11,16 +11,91 @@ v 4.0 -3.0 3.0
 v 4.0 3.0 3.0
 v -4.0 3.0 3.0
 
-# Faces
+# Inner cargo space (slightly smaller)
+v -3.5 -2.5 -2.5
+v 3.5 -2.5 -2.5
+v 3.5 2.5 -2.5
+v -3.5 2.5 -2.5
+v -3.5 -2.5 2.5
+v 3.5 -2.5 2.5
+v 3.5 2.5 2.5
+v -3.5 2.5 2.5
+
+# Access door panels (front)
+v -1.5 -2.0 -3.2
+v 1.5 -2.0 -3.2
+v 1.5 2.0 -3.2
+v -1.5 2.0 -3.2
+
+# Door frame details
+v -1.7 -2.2 -3.1
+v 1.7 -2.2 -3.1
+v 1.7 2.2 -3.1
+v -1.7 2.2 -3.1
+
+# Side reinforcement bars (structural details)
+v -4.2 -2.5 -2.0
+v -4.2 -2.5 2.0
+v -4.2 2.5 -2.0
+v -4.2 2.5 2.0
+
+v 4.2 -2.5 -2.0
+v 4.2 -2.5 2.0
+v 4.2 2.5 -2.0
+v 4.2 2.5 2.0
+
+# Top access hatch
+v -2.0 3.2 -1.0
+v 2.0 3.2 -1.0
+v 2.0 3.2 1.0
+v -2.0 3.2 1.0
+
+# Container walls
+# Front
 f 1 2 3
 f 1 3 4
+# Back
 f 5 6 7
 f 5 7 8
+# Bottom
 f 1 2 6
 f 1 6 5
-f 2 3 7
-f 2 7 6
+# Top
 f 3 4 8
 f 3 8 7
+# Left side
 f 4 1 5
 f 4 5 8
+# Right side
+f 2 3 7
+f 2 7 6
+
+# Inner cargo space walls
+f 9 10 11
+f 9 11 12
+f 13 14 15
+f 13 15 16
+
+# Access doors (front)
+f 17 18 19
+f 17 19 20
+
+# Door frames
+f 21 22 23
+f 21 23 24
+
+# Structural reinforcement bars
+f 25 26 28
+f 25 28 27
+f 29 30 32
+f 29 32 31
+
+# Top access hatch
+f 33 34 35
+f 33 35 36
+
+# Additional panel details (raised sections)
+f 10 14 15
+f 10 15 11
+f 9 13 16
+f 9 16 12
