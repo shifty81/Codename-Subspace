@@ -11,6 +11,7 @@ using AvorionLike.Core.DevTools;
 using AvorionLike.Core.Config;
 using AvorionLike.Core.Procedural;
 using AvorionLike.Core.Modular;
+using AvorionLike.Core.Logging;
 using Silk.NET.OpenGL.Extensions.ImGui;
 
 namespace AvorionLike.Core.Graphics;
@@ -21,6 +22,7 @@ namespace AvorionLike.Core.Graphics;
 /// </summary>
 public class GraphicsWindow : IDisposable
 {
+    private readonly Logger _logger = Logger.Instance;
     private IWindow? _window;
     private GL? _gl;
     private EnhancedVoxelRenderer? _voxelRenderer;
@@ -1047,7 +1049,7 @@ public class GraphicsWindow : IDisposable
             catch (Exception ex)
             {
                 // Log error but continue rendering other modules
-                Console.WriteLine($"Error rendering module {module.Id}: {ex.Message}");
+                _logger.Error("GraphicsWindow", $"Error rendering module {module.Id}: {ex.Message}", ex);
             }
         }
     }
