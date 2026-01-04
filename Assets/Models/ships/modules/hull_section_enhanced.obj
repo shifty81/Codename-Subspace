@@ -1,0 +1,139 @@
+# Enhanced Hull Section - Modular Starship Design
+# Features: Beveled edges, panel lines, connection hardpoints
+# Wavefront OBJ file
+
+# Front mounting face (connection point forward)
+v -2.5 -2.5 3.0
+v 2.5 -2.5 3.0
+v 2.5 2.5 3.0
+v -2.5 2.5 3.0
+
+# Front bevel (octagonal transition)
+v -2.8 -2.0 2.5
+v -2.0 -2.8 2.5
+v 2.0 -2.8 2.5
+v 2.8 -2.0 2.5
+v 2.8 2.0 2.5
+v 2.0 2.8 2.5
+v -2.0 2.8 2.5
+v -2.8 2.0 2.5
+
+# Mid section (main hull body - wider)
+v -3.0 -2.2 1.0
+v -2.2 -3.0 1.0
+v 2.2 -3.0 1.0
+v 3.0 -2.2 1.0
+v 3.0 2.2 1.0
+v 2.2 3.0 1.0
+v -2.2 3.0 1.0
+v -3.0 2.2 1.0
+
+# Mid section lower (main body)
+v -3.0 -2.2 -1.0
+v -2.2 -3.0 -1.0
+v 2.2 -3.0 -1.0
+v 3.0 -2.2 -1.0
+v 3.0 2.2 -1.0
+v 2.2 3.0 -1.0
+v -2.2 3.0 -1.0
+v -3.0 2.2 -1.0
+
+# Rear bevel (octagonal transition)
+v -2.8 -2.0 -2.5
+v -2.0 -2.8 -2.5
+v 2.0 -2.8 -2.5
+v 2.8 -2.0 -2.5
+v 2.8 2.0 -2.5
+v 2.0 2.8 -2.5
+v -2.0 2.8 -2.5
+v -2.8 2.0 -2.5
+
+# Rear mounting face (connection point aft)
+v -2.5 -2.5 -3.0
+v 2.5 -2.5 -3.0
+v 2.5 2.5 -3.0
+v -2.5 2.5 -3.0
+
+# Panel detail vertices (surface greebling)
+v -2.5 -2.5 0.0
+v 2.5 -2.5 0.0
+v 2.5 2.5 0.0
+v -2.5 2.5 0.0
+
+# Hardpoint mounts (top and bottom)
+v 0.0 3.5 0.5
+v 0.0 3.5 -0.5
+v 0.0 -3.5 0.5
+v 0.0 -3.5 -0.5
+
+# Front mounting face
+f 1 2 3
+f 1 3 4
+
+# Front face to front bevel
+f 1 2 7 6
+f 2 3 9 8
+f 3 4 11 10
+f 4 1 5 12
+
+# Front bevel octagonal ring
+f 5 6 14 13
+f 6 7 15 14
+f 7 8 16 15
+f 8 9 17 16
+f 9 10 18 17
+f 10 11 19 18
+f 11 12 20 19
+f 12 5 13 20
+
+# Mid section upper
+f 13 14 22 21
+f 14 15 23 22
+f 15 16 24 23
+f 16 17 25 24
+f 17 18 26 25
+f 18 19 27 26
+f 19 20 28 27
+f 20 13 21 28
+
+# Mid section lower
+f 21 22 30 29
+f 22 23 31 30
+f 23 24 32 31
+f 24 25 33 32
+f 25 26 34 33
+f 26 27 35 34
+f 27 28 36 35
+f 28 21 29 36
+
+# Rear bevel
+f 29 30 38 37
+f 30 31 39 38
+f 31 32 40 39
+f 32 33 41 40
+f 33 34 42 41
+f 34 35 43 42
+f 35 36 44 43
+f 36 29 37 44
+
+# Rear bevel to rear face
+f 37 38 46 45
+f 38 39 47 46
+f 39 40 48 47
+f 40 41 49 48
+
+# Rear mounting face
+f 45 46 47
+f 45 47 48
+
+# Panel lines (decorative)
+f 41 42 44
+f 42 43 44
+
+# Top hardpoint
+f 18 26 46
+f 26 34 46
+
+# Bottom hardpoint
+f 15 23 48
+f 23 31 48
