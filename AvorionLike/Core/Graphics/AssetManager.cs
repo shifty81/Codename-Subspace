@@ -69,6 +69,19 @@ public class AssetManager
     }
     
     /// <summary>
+    /// Normalizes path separators in a relative path to ensure cross-platform compatibility
+    /// Converts all forward slashes and backslashes to the platform-specific directory separator
+    /// </summary>
+    private string NormalizePathSeparators(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+            return path;
+        
+        return path.Replace('/', Path.DirectorySeparatorChar)
+                   .Replace('\\', Path.DirectorySeparatorChar);
+    }
+    
+    /// <summary>
     /// Loads a 3D model from the Assets/Models directory
     /// Uses caching - subsequent requests for the same model will return cached data
     /// </summary>
@@ -83,8 +96,9 @@ public class AssetManager
             return cachedModel;
         }
         
-        // Build full path
-        var fullPath = Path.Combine(_assetBasePath, "Models", modelPath);
+        // Normalize path separators and build full path
+        var normalizedPath = NormalizePathSeparators(modelPath);
+        var fullPath = Path.Combine(_assetBasePath, "Models", normalizedPath);
         
         if (!File.Exists(fullPath))
         {
@@ -194,7 +208,8 @@ public class AssetManager
     /// </summary>
     public bool ModelExists(string modelPath)
     {
-        var fullPath = Path.Combine(_assetBasePath, "Models", modelPath);
+        var normalizedPath = NormalizePathSeparators(modelPath);
+        var fullPath = Path.Combine(_assetBasePath, "Models", normalizedPath);
         return File.Exists(fullPath);
     }
     
