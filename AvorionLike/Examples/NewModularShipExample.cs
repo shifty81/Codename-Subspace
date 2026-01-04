@@ -206,8 +206,9 @@ public class NewModularShipExample
         var result = generator.GenerateShip(config);
         var ship = result.Ship;
         
-        // Register ship with entity manager
-        entityManager.AddEntity(ship.EntityId);
+        // Register ship with entity manager (create entity first)
+        var entity = entityManager.CreateEntity(ship.Name);
+        ship.EntityId = entity.Id;
         entityManager.AddComponent(ship.EntityId, ship);
         
         Console.WriteLine($"Ship: {ship.Name}");

@@ -47,11 +47,11 @@ public class VoxelDamageSystem : SystemBase
     public override void Update(float deltaTime)
     {
         // Update damage visualization for all modular ships
-        var ships = _entityManager.GetEntitiesWithComponents(typeof(ModularShipComponent));
+        var ships = _entityManager.GetAllComponents<ModularShipComponent>();
         
-        foreach (var shipId in ships)
+        foreach (var ship in ships)
         {
-            UpdateShipDamageVisualization(shipId);
+            UpdateShipDamageVisualization(ship.EntityId);
         }
     }
     
