@@ -14,15 +14,31 @@ public class ModularShipSyncSystem : SystemBase
     private readonly EntityManager _entityManager;
     private readonly Logger _logger = Logger.Instance;
     
-    // Synchronization thresholds
+    /// <summary>
+    /// Minimum mass change (in kg) required to trigger physics synchronization.
+    /// Prevents unnecessary calculations when mass changes are negligible.
+    /// </summary>
     private const float MassSyncThreshold = 0.1f;
+    
+    /// <summary>
+    /// Minimum collision radius change (in units) required to trigger update.
+    /// Prevents unnecessary calculations when size changes are negligible.
+    /// </summary>
     private const float RadiusSyncThreshold = 0.1f;
     
     // Physics constants
     // Note: Using sphere approximation for moment of inertia. Real ships are complex structures,
     // but 0.4 (solid sphere) provides a reasonable approximation. For hollow spheres it would be
     // ~0.67, but ships have distributed mass that falls somewhere in between.
-    private const float SphereInertiaConstant = 0.4f; // I = 0.4 * m * r^2
+    /// <summary>
+    /// Moment of inertia constant for sphere approximation: I = k * m * r^2
+    /// where k = 0.4 for solid sphere. Ships are modeled as solid spheres for physics calculations.
+    /// </summary>
+    private const float SphereInertiaConstant = 0.4f;
+    
+    /// <summary>
+    /// Minimum collision radius to prevent physics edge cases with very small ships.
+    /// </summary>
     private const float DefaultMinimumRadius = 1.0f;
     
     public ModularShipSyncSystem(EntityManager entityManager) : base("ModularShipSyncSystem")
@@ -90,17 +106,26 @@ public class ModularShipSyncSystem : SystemBase
         // Calculate collision radius once and reuse (performance optimization)
         float newRadius = CalculateCollisionRadius(ship);
         
-        // Update mass and moment of inertia (only if significantly changed)
-        if (Math.Abs(physics.Mass - ship.TotalMass) > MassSyncThreshold)
+        // Check if mass or radius changed significantly
+        bool massChanged = Math.Abs(physics.Mass - ship.TotalMass) > MassSyncThreshold;
+        bool radiusChanged = Math.Abs(physics.CollisionRadius - newRadius) > RadiusSyncThreshold;
+        
+        // Update mass if changed
+        if (massChanged)
         {
             physics.Mass = ship.TotalMass;
-            physics.MomentOfInertia = SphereInertiaConstant * physics.Mass * newRadius * newRadius;
         }
         
-        // Update collision radius (only if significantly changed)
-        if (Math.Abs(physics.CollisionRadius - newRadius) > RadiusSyncThreshold)
+        // Update collision radius if changed
+        if (radiusChanged)
         {
             physics.CollisionRadius = newRadius;
+        }
+        
+        // Update moment of inertia if either mass OR radius changed (since I = k * m * r^2)
+        if (massChanged || radiusChanged)
+        {
+            physics.MomentOfInertia = SphereInertiaConstant * physics.Mass * newRadius * newRadius;
         }
     }
     
