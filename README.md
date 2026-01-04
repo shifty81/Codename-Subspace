@@ -1,6 +1,6 @@
 # Codename:Subspace - Advanced Space Game Engine
 
-A cutting-edge game engine for voxel-based space exploration and combat, featuring real-time 3D graphics rendering with OpenGL. Built with C# and .NET 9.0, cross-platform compatible (Windows, Linux, macOS).
+A cutting-edge game engine for space exploration and combat, featuring real-time 3D graphics rendering with OpenGL. Built with C# and .NET 9.0, cross-platform compatible (Windows, Linux, macOS).
 
 > **🎮 Project Status:** Early Development - Core systems operational & **NOW PLAYABLE!**
 > **🌌 Inspired by:** Avorion's gameplay mechanics
@@ -9,14 +9,15 @@ A cutting-edge game engine for voxel-based space exploration and combat, featuri
 > **🚀 New to Codename:Subspace?** Check out our [Quick Start Guide](QUICKSTART.md) for one-click setup!
 > 
 > **✨ LATEST FEATURES:** 
-> - 🎨 **ENHANCED VISUALS** - Fixed hollow-looking blocks, improved textures with panel lines and patterns! ✨ **NEW!**
+> - 🚀 **MODULAR SHIP SYSTEM** - New Star Sparrow-inspired modular ship design! Ships now built from pre-defined parts instead of voxels! ✨ **NEW!**
+> - 🔨 **VOXEL DAMAGE VISUALIZATION** - Voxels now used for damage/destruction effects on modular ships! ✨ **NEW!**
+> - 🎨 **ENHANCED VISUALS** - Fixed hollow-looking blocks, improved textures with panel lines and patterns!
 > - 🎮 **INTEGRATED PLAYER UI** - Full gameplay experience with player-controlled ships!
 > - 🕹️ **6DOF Ship Controls** - Realistic space flight with thrust, rotation, and braking
 > - 📊 **Player Status HUD** - Real-time ship stats, inventory, and mission tracking
 > - 🎭 **Stellaris-Style Faction System** - Dynamic faction politics with pops, policies, and influence
 > - 🎮 **Enhanced Lua Modding** - Comprehensive API, mod manager, and auto-discovery
 > - ⚡ **Power Management System** - Dynamic power distribution with priority controls
-> - 🔨 **Block Stretching** - Create elaborate ship designs with size-based stat scaling  
 > - 🌐 **Strategy Grid** - RTS-style fleet management with Octree spatial partitioning
 > - 🎨 **3D Graphics** - Real-time OpenGL rendering with PBR materials and starfield
 > - 🛡️ **Futuristic HUD** - Holographic-style interface with radar and ship status
@@ -43,7 +44,18 @@ dotnet run
 
 ## 🌟 Overview
 
-Codename:Subspace is a powerful game engine designed for creating voxel-based space games. It features a modular architecture with support for dynamic ship building, Newtonian physics, procedural generation, multiplayer networking, extensive modding capabilities through Lua scripting, and **real-time 3D graphics visualization with integrated player UI**.
+Codename:Subspace is a powerful game engine designed for creating space games with **modular ship construction**. It features a modular architecture with support for dynamic ship building from pre-defined parts, Newtonian physics, procedural generation, multiplayer networking, extensive modding capabilities through Lua scripting, and **real-time 3D graphics visualization with integrated player UI**.
+
+### Ship Design System
+
+**Modular Ship Construction** (NEW): Ships are now built from pre-defined modular parts (cockpits, engines, wings, weapons, etc.) inspired by Unity Asset Store assets like Star Sparrow Modular Spaceship.
+
+**Voxel Usage**: Voxels are NOW ONLY used for:
+- 🔥 Damage visualization on ships (showing holes and destroyed sections)
+- ⛏️ Asteroid mining and deformation
+- 💥 Destruction effects
+
+For more information, see [MODULAR_SHIP_SYSTEM_GUIDE.md](MODULAR_SHIP_SYSTEM_GUIDE.md)
 
 ## Core Systems
 
@@ -153,16 +165,45 @@ Real-time OpenGL rendering with enhanced visual quality:
 - Material differentiation through procedural textures and colors
 - Integrated with ECS for seamless entity rendering
 
-### 8. Voxel-Based Architecture
-- Arbitrary-sized blocks for flexible ship and station construction
-- Automatic center of mass and total mass calculation
-- Collision detection between voxel blocks
+### 8. Modular Ship Design System **NEW** 🚀
+- **Pre-defined Modules**: Ships built from modular parts (cockpits, engines, wings, weapons, etc.)
+- **Attachment System**: Modules connect via attachment points with validation
+- **Material Scaling**: Stats scale with material tier (Iron through Avorion)
+- **Procedural Generation**: Automatic ship generation from module library
+- **Voxel Damage Overlay**: Voxels used ONLY for damage visualization on modules
 
 **Key Classes:**
-- `VoxelBlock` - Represents a single voxel with position, size, and material properties
-- `VoxelStructureComponent` - Component containing voxel structure data for entities
+- `ModularShipComponent` - Ship built from modules (replaces VoxelStructureComponent for ships)
+- `ShipModulePart` - Individual module instance with position, health, stats
+- `ShipModuleDefinition` - Module type definition with attachment points
+- `ModuleLibrary` - Registry of available modules (17 built-in types)
+- `ModularProceduralShipGenerator` - Generates ships from modules
+- `VoxelDamageSystem` - Creates voxel damage overlays on damaged modules
 
-### 9. Newtonian Physics System
+**Module Categories:**
+- Hull (cockpit, sections, corners)
+- Engines (main engines, nacelles, thrusters)
+- Wings (wings, stabilizers)
+- Weapons (mounts, turrets)
+- Utility (power, shields, cargo, crew quarters, hyperdrive, sensors, mining)
+- Decorative (antennas, details)
+
+**See [MODULAR_SHIP_SYSTEM_GUIDE.md](MODULAR_SHIP_SYSTEM_GUIDE.md) for complete documentation**
+
+### 9. Voxel Architecture (Limited Use)
+**Voxels NOW ONLY used for:**
+- 🔥 **Damage Visualization**: Shows destroyed sections on modular ships
+- ⛏️ **Asteroid Mining**: Asteroids use voxels for mining/deformation
+- 💥 **Destruction Effects**: Visual debris and damage
+
+**NOT used for ship construction** (now modular)
+
+**Key Classes:**
+- `VoxelBlock` - Individual voxel with position, size, material
+- `VoxelStructureComponent` - Used for asteroids only (NOT ships)
+- `VoxelDamageComponent` - Damage voxel overlay for modular ships
+
+### 10. Newtonian Physics System
 - Realistic physics simulation with forces, acceleration, velocity
 - Linear and rotational motion support
 - Drag and collision detection
