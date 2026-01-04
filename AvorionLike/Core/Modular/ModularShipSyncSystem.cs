@@ -125,7 +125,8 @@ public class ModularShipSyncSystem : SystemBase
         // Update moment of inertia if either mass OR radius changed (since I = k * m * r^2)
         if (massChanged || radiusChanged)
         {
-            physics.MomentOfInertia = SphereInertiaConstant * physics.Mass * newRadius * newRadius;
+            float radiusSquared = newRadius * newRadius;
+            physics.MomentOfInertia = SphereInertiaConstant * physics.Mass * radiusSquared;
         }
     }
     
