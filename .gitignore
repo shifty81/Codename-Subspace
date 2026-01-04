@@ -81,6 +81,8 @@ StyleCopReport.xml
 *.ilk
 *.meta
 *.obj
+# Exception: Allow 3D model files in Assets
+!**/Assets/**/*.obj
 *.iobj
 *.pch
 *.pdb
