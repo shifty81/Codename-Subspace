@@ -74,6 +74,12 @@ public class ShipModuleDefinition
     public List<string> Tags { get; set; } = new();
     
     /// <summary>
+    /// Classification information for ship class compatibility
+    /// NEW: Added for class-specific modular system
+    /// </summary>
+    public ModuleClassificationInfo Classification { get; set; } = new();
+    
+    /// <summary>
     /// Calculate actual stats based on material
     /// </summary>
     public ModuleFunctionalStats GetStatsForMaterial(string materialType)
