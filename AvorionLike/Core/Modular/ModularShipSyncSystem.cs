@@ -77,30 +77,30 @@ public class ModularShipSyncSystem : SystemBase
     /// </summary>
     private void UpdatePhysicsFromShip(PhysicsComponent physics, ModularShipComponent ship)
     {
-        // Update mass (only if significantly changed to avoid constant recalculation)
-        if (Math.Abs(physics.Mass - ship.TotalMass) > MassSyncThreshold)
-        {
-            physics.Mass = ship.TotalMass;
-            
-            // Recalculate moment of inertia based on mass and bounding box
-            float radius = CalculateCollisionRadius(ship);
-            physics.MomentOfInertia = SphereInertiaConstant * physics.Mass * radius * radius;
-        }
-        
-        // Update collision radius based on ship bounds
-        float newRadius = CalculateCollisionRadius(ship);
-        if (Math.Abs(physics.CollisionRadius - newRadius) > RadiusSyncThreshold)
-        {
-            physics.CollisionRadius = newRadius;
-        }
-        
-        // If ship is destroyed, mark physics as static (no more movement)
+        // Early exit if ship is destroyed - no need to update physics properties
         if (ship.IsDestroyed && !physics.IsStatic)
         {
             physics.IsStatic = true;
             physics.Velocity = Vector3.Zero;
             physics.AngularVelocity = Vector3.Zero;
             _logger.Info("ModularShipSync", $"Ship {ship.Name} destroyed - physics set to static");
+            return;
+        }
+        
+        // Calculate collision radius once and reuse (performance optimization)
+        float newRadius = CalculateCollisionRadius(ship);
+        
+        // Update mass and moment of inertia (only if significantly changed)
+        if (Math.Abs(physics.Mass - ship.TotalMass) > MassSyncThreshold)
+        {
+            physics.Mass = ship.TotalMass;
+            physics.MomentOfInertia = SphereInertiaConstant * physics.Mass * newRadius * newRadius;
+        }
+        
+        // Update collision radius (only if significantly changed)
+        if (Math.Abs(physics.CollisionRadius - newRadius) > RadiusSyncThreshold)
+        {
+            physics.CollisionRadius = newRadius;
         }
     }
     
