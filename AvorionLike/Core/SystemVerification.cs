@@ -528,6 +528,8 @@ public class SystemVerification
     
     private void TestModularShipSyncSystem()
     {
+        const float MassToleranceTolerance = 0.1f; // Match ModularShipSyncSystem.MassSyncThreshold
+        
         RunTest("ModularShipSync: System Exists", () =>
         {
             Assert(_engine.ModularShipSyncSystem != null, "ModularShipSyncSystem should be initialized");
@@ -558,7 +560,7 @@ public class SystemVerification
             // Check physics was created
             var physics = _engine.EntityManager.GetComponent<PhysicsComponent>(entity.Id);
             Assert(physics != null, "Physics component should be auto-created");
-            Assert(Math.Abs(physics!.Mass - ship.TotalMass) < 0.1f, "Physics mass should match ship mass");
+            Assert(Math.Abs(physics!.Mass - ship.TotalMass) < MassToleranceTolerance, "Physics mass should match ship mass");
             Assert(physics.CollisionRadius > 0, "Collision radius should be set");
             
             _engine.EntityManager.DestroyEntity(entity.Id);

@@ -14,6 +14,12 @@ public class ModularShipSyncSystem : SystemBase
     private readonly EntityManager _entityManager;
     private readonly Logger _logger = Logger.Instance;
     
+    // Synchronization thresholds
+    private const float MassSyncThreshold = 0.1f;
+    private const float RadiusSyncThreshold = 0.1f;
+    private const float SphereInertiaConstant = 0.4f; // For sphere approximation: I = 0.4 * m * r^2
+    private const float DefaultMinimumRadius = 1.0f;
+    
     public ModularShipSyncSystem(EntityManager entityManager) : base("ModularShipSyncSystem")
     {
         _entityManager = entityManager;
@@ -67,18 +73,18 @@ public class ModularShipSyncSystem : SystemBase
     private void UpdatePhysicsFromShip(PhysicsComponent physics, ModularShipComponent ship)
     {
         // Update mass (only if significantly changed to avoid constant recalculation)
-        if (Math.Abs(physics.Mass - ship.TotalMass) > 0.1f)
+        if (Math.Abs(physics.Mass - ship.TotalMass) > MassSyncThreshold)
         {
             physics.Mass = ship.TotalMass;
             
             // Recalculate moment of inertia based on mass and bounding box
             float radius = CalculateCollisionRadius(ship);
-            physics.MomentOfInertia = 0.4f * physics.Mass * radius * radius; // Sphere approximation
+            physics.MomentOfInertia = SphereInertiaConstant * physics.Mass * radius * radius;
         }
         
         // Update collision radius based on ship bounds
         float newRadius = CalculateCollisionRadius(ship);
-        if (Math.Abs(physics.CollisionRadius - newRadius) > 0.1f)
+        if (Math.Abs(physics.CollisionRadius - newRadius) > RadiusSyncThreshold)
         {
             physics.CollisionRadius = newRadius;
         }
@@ -99,7 +105,7 @@ public class ModularShipSyncSystem : SystemBase
     private float CalculateCollisionRadius(ModularShipComponent ship)
     {
         if (ship.Modules.Count == 0)
-            return 1.0f; // Default minimum radius
+            return DefaultMinimumRadius;
         
         // Calculate radius from bounding box diagonal
         var bounds = ship.Bounds;
@@ -107,6 +113,6 @@ public class ModularShipSyncSystem : SystemBase
         float radius = size.Length() * 0.5f;
         
         // Minimum radius to prevent issues
-        return Math.Max(radius, 1.0f);
+        return Math.Max(radius, DefaultMinimumRadius);
     }
 }
