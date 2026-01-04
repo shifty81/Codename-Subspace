@@ -83,8 +83,11 @@ public class AssetManager
             return cachedModel;
         }
         
+        // Normalize path separators to ensure cross-platform compatibility
+        var normalizedPath = modelPath.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
+        
         // Build full path
-        var fullPath = Path.Combine(_assetBasePath, "Models", modelPath);
+        var fullPath = Path.Combine(_assetBasePath, "Models", normalizedPath);
         
         if (!File.Exists(fullPath))
         {
@@ -194,7 +197,9 @@ public class AssetManager
     /// </summary>
     public bool ModelExists(string modelPath)
     {
-        var fullPath = Path.Combine(_assetBasePath, "Models", modelPath);
+        // Normalize path separators to ensure cross-platform compatibility
+        var normalizedPath = modelPath.Replace('/', Path.DirectorySeparatorChar).Replace('\\', Path.DirectorySeparatorChar);
+        var fullPath = Path.Combine(_assetBasePath, "Models", normalizedPath);
         return File.Exists(fullPath);
     }
     
