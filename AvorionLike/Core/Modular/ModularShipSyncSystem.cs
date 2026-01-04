@@ -17,7 +17,12 @@ public class ModularShipSyncSystem : SystemBase
     // Synchronization thresholds
     private const float MassSyncThreshold = 0.1f;
     private const float RadiusSyncThreshold = 0.1f;
-    private const float SphereInertiaConstant = 0.4f; // For sphere approximation: I = 0.4 * m * r^2
+    
+    // Physics constants
+    // Note: Using sphere approximation for moment of inertia. Real ships are complex structures,
+    // but 0.4 (solid sphere) provides a reasonable approximation. For hollow spheres it would be
+    // ~0.67, but ships have distributed mass that falls somewhere in between.
+    private const float SphereInertiaConstant = 0.4f; // I = 0.4 * m * r^2
     private const float DefaultMinimumRadius = 1.0f;
     
     public ModularShipSyncSystem(EntityManager entityManager) : base("ModularShipSyncSystem")
@@ -108,6 +113,10 @@ public class ModularShipSyncSystem : SystemBase
             return DefaultMinimumRadius;
         
         // Calculate radius from bounding box diagonal
+        // Note: This is slightly conservative for elongated ships, but ensures
+        // collision detection works in all orientations. Alternative would be
+        // using max(width, height, depth) but that could miss collisions for
+        // diagonal approaches.
         var bounds = ship.Bounds;
         var size = bounds.Max - bounds.Min;
         float radius = size.Length() * 0.5f;

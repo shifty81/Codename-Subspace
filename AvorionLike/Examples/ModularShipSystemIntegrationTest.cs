@@ -61,6 +61,9 @@ public class ModularShipSystemIntegrationTest
         Console.WriteLine("TEST 2: Physics Synchronization");
         Console.WriteLine("--------------------------------");
         
+        // Use same tolerance as ModularShipSyncSystem for consistency
+        const float MassSyncTolerance = 0.1f; // Matches ModularShipSyncSystem.MassSyncThreshold
+        
         var engine = new GameEngine(12345);
         var library = new ModuleLibrary();
         library.InitializeBuiltInModules();
@@ -98,7 +101,7 @@ public class ModularShipSystemIntegrationTest
         
         if (physics != null)
         {
-            var massMatches = Math.Abs(physics.Mass - ship.TotalMass) < 0.01f;
+            var massMatches = Math.Abs(physics.Mass - ship.TotalMass) < MassSyncTolerance;
             var hasCollisionRadius = physics.CollisionRadius > 0;
             
             Console.WriteLine($"  Physics mass matches ship mass: {(massMatches ? "✓ PASS" : "✗ FAIL")}");
