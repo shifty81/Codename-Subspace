@@ -1,21 +1,62 @@
-# Hull section module - elongated box
+# Detailed hull section - modular connector with panels
 # Wavefront OBJ file
 
-# Vertices
-v -3.0 -2.0 -4.0
-v 3.0 -2.0 -4.0
-v 3.0 2.0 -4.0
-v -3.0 2.0 -4.0
+# Main hull structure (slightly tapered)
+v -2.8 -1.8 -4.0
+v 2.8 -1.8 -4.0
+v 2.8 1.8 -4.0
+v -2.8 1.8 -4.0
 v -3.0 -2.0 4.0
 v 3.0 -2.0 4.0
 v 3.0 2.0 4.0
 v -3.0 2.0 4.0
 
-# Faces
+# Inner hull detail (recessed panels)
+v -2.4 -1.4 -3.0
+v 2.4 -1.4 -3.0
+v 2.4 1.4 -3.0
+v -2.4 1.4 -3.0
+v -2.6 -1.6 3.0
+v 2.6 -1.6 3.0
+v 2.6 1.6 3.0
+v -2.6 1.6 3.0
+
+# Panel line vertices (raised details)
+v -2.5 -1.7 -2.0
+v 2.5 -1.7 -2.0
+v 2.5 1.7 -2.0
+v -2.5 1.7 -2.0
+
+v -2.5 -1.7 0.0
+v 2.5 -1.7 0.0
+v 2.5 1.7 0.0
+v -2.5 1.7 0.0
+
+v -2.5 -1.7 2.0
+v 2.5 -1.7 2.0
+v 2.5 1.7 2.0
+v -2.5 1.7 2.0
+
+# Connection ports (front and back)
+v -1.0 -1.0 -4.2
+v 1.0 -1.0 -4.2
+v 1.0 1.0 -4.2
+v -1.0 1.0 -4.2
+
+v -1.0 -1.0 4.2
+v 1.0 -1.0 4.2
+v 1.0 1.0 4.2
+v -1.0 1.0 4.2
+
+# Main hull faces
+# Front face
 f 1 2 3
 f 1 3 4
+# Back face
 f 5 6 7
 f 5 7 8
+
+# Side faces (outer hull)
 f 1 2 6
 f 1 6 5
 f 2 3 7
@@ -24,3 +65,23 @@ f 3 4 8
 f 3 8 7
 f 4 1 5
 f 4 5 8
+
+# Recessed panel faces
+f 9 10 11
+f 9 11 12
+f 13 14 15
+f 13 15 16
+
+# Panel line details
+f 17 18 22
+f 17 22 21
+f 21 22 26
+f 21 26 25
+f 25 26 27
+f 25 27 28
+
+# Connection ports (mounting points)
+f 29 30 31
+f 29 31 32
+f 33 34 35
+f 33 35 36
