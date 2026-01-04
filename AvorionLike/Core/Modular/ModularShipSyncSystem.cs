@@ -1,0 +1,112 @@
+using System.Numerics;
+using AvorionLike.Core.ECS;
+using AvorionLike.Core.Physics;
+using AvorionLike.Core.Logging;
+
+namespace AvorionLike.Core.Modular;
+
+/// <summary>
+/// System that synchronizes ModularShipComponent stats with PhysicsComponent
+/// Ensures physics properties (mass, collision radius) stay up-to-date with ship configuration
+/// </summary>
+public class ModularShipSyncSystem : SystemBase
+{
+    private readonly EntityManager _entityManager;
+    private readonly Logger _logger = Logger.Instance;
+    
+    public ModularShipSyncSystem(EntityManager entityManager) : base("ModularShipSyncSystem")
+    {
+        _entityManager = entityManager;
+    }
+    
+    public override void Update(float deltaTime)
+    {
+        // Get all modular ships
+        var modularShips = _entityManager.GetAllComponents<ModularShipComponent>();
+        
+        foreach (var ship in modularShips)
+        {
+            SyncShipWithPhysics(ship);
+        }
+    }
+    
+    /// <summary>
+    /// Synchronize a ship's physics component with its modular configuration
+    /// </summary>
+    private void SyncShipWithPhysics(ModularShipComponent ship)
+    {
+        var physics = _entityManager.GetComponent<PhysicsComponent>(ship.EntityId);
+        
+        if (physics == null)
+        {
+            // Create physics component if it doesn't exist
+            physics = new PhysicsComponent
+            {
+                EntityId = ship.EntityId,
+                Position = Vector3.Zero,
+                Velocity = Vector3.Zero,
+                Mass = ship.TotalMass,
+                CollisionRadius = CalculateCollisionRadius(ship),
+                Drag = 0.1f,
+                AngularDrag = 0.1f
+            };
+            
+            _entityManager.AddComponent(ship.EntityId, physics);
+            _logger.Debug("ModularShipSync", $"Created physics component for ship {ship.Name}");
+        }
+        else
+        {
+            // Update physics properties from ship stats
+            UpdatePhysicsFromShip(physics, ship);
+        }
+    }
+    
+    /// <summary>
+    /// Update physics component properties based on ship configuration
+    /// </summary>
+    private void UpdatePhysicsFromShip(PhysicsComponent physics, ModularShipComponent ship)
+    {
+        // Update mass (only if significantly changed to avoid constant recalculation)
+        if (Math.Abs(physics.Mass - ship.TotalMass) > 0.1f)
+        {
+            physics.Mass = ship.TotalMass;
+            
+            // Recalculate moment of inertia based on mass and bounding box
+            float radius = CalculateCollisionRadius(ship);
+            physics.MomentOfInertia = 0.4f * physics.Mass * radius * radius; // Sphere approximation
+        }
+        
+        // Update collision radius based on ship bounds
+        float newRadius = CalculateCollisionRadius(ship);
+        if (Math.Abs(physics.CollisionRadius - newRadius) > 0.1f)
+        {
+            physics.CollisionRadius = newRadius;
+        }
+        
+        // If ship is destroyed, mark physics as static (no more movement)
+        if (ship.IsDestroyed && !physics.IsStatic)
+        {
+            physics.IsStatic = true;
+            physics.Velocity = Vector3.Zero;
+            physics.AngularVelocity = Vector3.Zero;
+            _logger.Info("ModularShipSync", $"Ship {ship.Name} destroyed - physics set to static");
+        }
+    }
+    
+    /// <summary>
+    /// Calculate collision radius from ship bounding box
+    /// </summary>
+    private float CalculateCollisionRadius(ModularShipComponent ship)
+    {
+        if (ship.Modules.Count == 0)
+            return 1.0f; // Default minimum radius
+        
+        // Calculate radius from bounding box diagonal
+        var bounds = ship.Bounds;
+        var size = bounds.Max - bounds.Min;
+        float radius = size.Length() * 0.5f;
+        
+        // Minimum radius to prevent issues
+        return Math.Max(radius, 1.0f);
+    }
+}

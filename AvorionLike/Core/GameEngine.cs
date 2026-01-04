@@ -18,6 +18,7 @@ using AvorionLike.Core.Persistence;
 using AvorionLike.Core.Power;
 using AvorionLike.Core.AI;
 using AvorionLike.Core.Quest;
+using AvorionLike.Core.Modular;
 
 namespace AvorionLike.Core;
 
@@ -52,6 +53,10 @@ public class GameEngine
     public PowerSystem PowerSystem { get; private set; } = null!;
     public AISystem AISystem { get; private set; } = null!;
     public QuestSystem QuestSystem { get; private set; } = null!;
+    
+    // Modular ship systems
+    public ModularShipSyncSystem ModularShipSyncSystem { get; private set; } = null!;
+    public VoxelDamageSystem VoxelDamageSystem { get; private set; } = null!;
     
     // Networking
     public GameServer? GameServer { get; private set; }
@@ -120,6 +125,11 @@ public class GameEngine
         PowerSystem = new PowerSystem(EntityManager, EventSystem.Instance, Logger.Instance);
         AISystem = new AISystem(EntityManager, MiningSystem, CombatSystem);
         QuestSystem = new QuestSystem(EntityManager, EventSystem.Instance);
+        
+        // Initialize modular ship systems
+        ModularShipSyncSystem = new ModularShipSyncSystem(EntityManager);
+        VoxelDamageSystem = new VoxelDamageSystem(EntityManager);
+        
         Logger.Instance.Info("GameEngine", "All systems initialized");
 
         // Register systems with entity manager
@@ -134,6 +144,10 @@ public class GameEngine
         EntityManager.RegisterSystem(EconomySystem);
         EntityManager.RegisterSystem(PowerSystem);
         EntityManager.RegisterSystem(AISystem);
+        
+        // Register modular ship systems
+        EntityManager.RegisterSystem(ModularShipSyncSystem);
+        EntityManager.RegisterSystem(VoxelDamageSystem);
 
         // Register engine API for scripting
         ScriptingEngine.InitializeAPI(this);
