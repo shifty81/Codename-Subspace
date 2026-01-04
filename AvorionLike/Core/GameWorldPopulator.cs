@@ -9,6 +9,7 @@ using AvorionLike.Core.AI;
 using AvorionLike.Core.RPG;
 using AvorionLike.Core.Progression;
 using AvorionLike.Core.Procedural;
+using AvorionLike.Core.Modular;
 
 namespace AvorionLike.Core;
 
@@ -20,11 +21,18 @@ public class GameWorldPopulator
 {
     private readonly GameEngine _gameEngine;
     private readonly Random _random;
+    private readonly ModularShipFactory _shipFactory;
+    private readonly ModuleLibrary _moduleLibrary;
     
     public GameWorldPopulator(GameEngine gameEngine, int? seed = null)
     {
         _gameEngine = gameEngine;
         _random = seed.HasValue ? new Random(seed.Value) : new Random();
+        
+        // Initialize modular ship system
+        _moduleLibrary = new ModuleLibrary();
+        _moduleLibrary.InitializeBuiltInModules();
+        _shipFactory = new ModularShipFactory(_moduleLibrary, seed);
     }
     
     /// <summary>
@@ -366,95 +374,36 @@ public class GameWorldPopulator
     }
     
     /// <summary>
-    /// Creates an AI-controlled ship
+    /// Creates an AI-controlled ship using the modular ship system
     /// </summary>
     private Guid CreateAIShip(Vector3 position, AIPersonality personality, string typePrefix, int number)
     {
-        var ship = _gameEngine.EntityManager.CreateEntity($"{typePrefix} Ship {number}");
-        
-        // Create ship structure based on personality with MORE blocks for better appearance
-        var voxelComponent = new VoxelStructureComponent();
-        
-        switch (personality)
+        // Determine material based on personality
+        string material = personality switch
         {
-            case AIPersonality.Trader:
-                // OPTIMIZED: Simplified cargo-heavy ship (7 blocks instead of 15)
-                // Central hull spine (2 blocks)
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 0), new Vector3(4, 3, 3), "Titanium", BlockType.Hull));
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(4, 0, 0), new Vector3(3, 3, 3), "Titanium", BlockType.Hull));
-                
-                // Cargo containers (2 blocks)
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(8, 0, 0), new Vector3(4, 4, 4), "Iron", BlockType.Cargo));
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 4, 0), new Vector3(3, 3, 3), "Iron", BlockType.Cargo));
-                
-                // Engine (1 block)
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-8, 0, 0), new Vector3(2.5f, 2.5f, 2.5f), "Naonite", BlockType.Engine));
-                
-                // Shield generator (1 block)
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 4), new Vector3(2, 2, 2), "Titanium", BlockType.ShieldGenerator));
-                
-                // Generator (1 block)
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, -4), new Vector3(2, 2, 2), "Xanion", BlockType.Generator));
-                break;
-                
-            case AIPersonality.Miner:
-                // OPTIMIZED: Simplified mining ship (6 blocks instead of 13)
-                // Core hull (2 blocks)
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 0), new Vector3(4, 3, 3), "Titanium", BlockType.Hull));
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(4, 0, 0), new Vector3(3, 3, 3), "Titanium", BlockType.Hull));
-                
-                // Cargo hold (1 block)
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(8, 0, 0), new Vector3(3, 3, 3), "Iron", BlockType.Cargo));
-                
-                // Engine (1 block)
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-8, 0, 0), new Vector3(2.5f, 2, 2.5f), "Naonite", BlockType.Engine));
-                
-                // Generator (1 block)
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(11, 0, 0), new Vector3(2, 2, 2), "Xanion", BlockType.Generator));
-                
-                // Shield (1 block)
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, -4), new Vector3(2, 2, 2), "Naonite", BlockType.ShieldGenerator));
-                break;
-                
-            case AIPersonality.Aggressive:
-                // OPTIMIZED: Simplified combat pirate ship (6 blocks instead of 19)
-                // Central combat hull (2 blocks)
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 0), new Vector3(4, 2.5f, 2.5f), "Ogonite", BlockType.Hull));
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(4, 0, 0), new Vector3(3, 2.5f, 2.5f), "Ogonite", BlockType.Hull));
-                
-                // Armor (1 block)
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(7, 0, 0), new Vector3(2.5f, 2, 2), "Ogonite", BlockType.Armor));
-                
-                // Engine (1 block)
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-7, 0, 0), new Vector3(2.5f, 2, 2.5f), "Trinium", BlockType.Engine));
-                
-                // Shield (1 block)
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 3), new Vector3(2, 2, 2), "Naonite", BlockType.ShieldGenerator));
-                
-                // Generator (1 block)
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, -3), new Vector3(2, 2, 2), "Xanion", BlockType.Generator));
-                break;
-                
-            default:
-                // Generic ship with reasonable size
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 0, 0), new Vector3(3, 3, 3), "Titanium", BlockType.Hull));
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(3, 0, 0), new Vector3(3, 3, 3), "Titanium", BlockType.Hull));
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-3, 0, 0), new Vector3(2, 2, 2), "Iron", BlockType.Engine));
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(-3, 0, 2), new Vector3(2, 2, 2), "Iron", BlockType.Engine));
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, 3, 0), new Vector3(2, 2, 2), "Naonite", BlockType.ShieldGenerator));
-                voxelComponent.AddBlock(new VoxelBlock(new Vector3(0, -3, 0), new Vector3(2, 2, 2), "Xanion", BlockType.Generator));
-                break;
-        }
+            AIPersonality.Aggressive => "Titanium", // Pirates use stronger materials
+            AIPersonality.Trader => "Iron",
+            AIPersonality.Miner => "Iron",
+            _ => "Iron"
+        };
         
-        _gameEngine.EntityManager.AddComponent(ship.Id, voxelComponent);
+        // Generate modular ship
+        string shipName = $"{typePrefix} Ship {number}";
+        var generatedShip = _shipFactory.CreateShipForAI(personality, shipName, material);
+        var modularShip = generatedShip.Ship;
         
-        // Add physics
+        // Create entity and add modular ship component
+        var ship = _gameEngine.EntityManager.CreateEntity(shipName);
+        modularShip.EntityId = ship.Id;
+        _gameEngine.EntityManager.AddComponent(ship.Id, modularShip);
+        
+        // Add physics based on aggregated stats
         var physicsComponent = new PhysicsComponent
         {
             Position = position,
-            Mass = voxelComponent.TotalMass,
-            MaxThrust = voxelComponent.TotalThrust,
-            MaxTorque = voxelComponent.TotalTorque,
+            Mass = modularShip.TotalMass,
+            MaxThrust = modularShip.AggregatedStats.ThrustPower,
+            MaxTorque = modularShip.TotalMass * 10f, // Simplified torque calculation
             Velocity = new Vector3(
                 (float)(_random.NextDouble() * 2 - 1) * 10f,
                 (float)(_random.NextDouble() * 2 - 1) * 5f,
@@ -464,7 +413,7 @@ public class GameWorldPopulator
         _gameEngine.EntityManager.AddComponent(ship.Id, physicsComponent);
         
         // Add inventory
-        var inventoryComponent = new InventoryComponent(500);
+        var inventoryComponent = new InventoryComponent((int)modularShip.AggregatedStats.CargoCapacity);
         inventoryComponent.Inventory.AddResource(ResourceType.Credits, _random.Next(1000, 5000));
         if (personality == AIPersonality.Trader)
         {
@@ -474,14 +423,14 @@ public class GameWorldPopulator
         }
         _gameEngine.EntityManager.AddComponent(ship.Id, inventoryComponent);
         
-        // Add combat component
+        // Add combat component using aggregated stats
         var combatComponent = new CombatComponent
         {
             EntityId = ship.Id,
-            MaxShields = voxelComponent.ShieldCapacity,
-            CurrentShields = voxelComponent.ShieldCapacity,
-            MaxEnergy = voxelComponent.PowerGeneration,
-            CurrentEnergy = voxelComponent.PowerGeneration
+            MaxShields = modularShip.AggregatedStats.ShieldCapacity,
+            CurrentShields = modularShip.AggregatedStats.ShieldCapacity,
+            MaxEnergy = modularShip.AggregatedStats.PowerGeneration,
+            CurrentEnergy = modularShip.AggregatedStats.PowerGeneration
         };
         _gameEngine.EntityManager.AddComponent(ship.Id, combatComponent);
         
@@ -502,13 +451,16 @@ public class GameWorldPopulator
         };
         _gameEngine.EntityManager.AddComponent(ship.Id, factionComponent);
         
-        // Add hyperdrive
-        var hyperdriveComponent = new HyperdriveComponent
+        // Add hyperdrive if ship has one
+        if (modularShip.AggregatedStats.HasHyperdrive)
         {
-            EntityId = ship.Id,
-            JumpRange = 5f
-        };
-        _gameEngine.EntityManager.AddComponent(ship.Id, hyperdriveComponent);
+            var hyperdriveComponent = new HyperdriveComponent
+            {
+                EntityId = ship.Id,
+                JumpRange = modularShip.AggregatedStats.HyperdriveRange
+            };
+            _gameEngine.EntityManager.AddComponent(ship.Id, hyperdriveComponent);
+        }
         
         // Add sector location
         var locationComponent = new SectorLocationComponent
