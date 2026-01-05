@@ -120,11 +120,11 @@ f 36 29 37 44
 f 37 38 46 45
 f 38 39 47 46
 f 39 40 48 47
-f 40 41 49 48
+f 40 37 45 48
 
 # Rear mounting face
-f 45 46 47
-f 45 47 48
+f 37 38 39
+f 37 39 40
 
 # Panel lines (decorative)
 f 41 42 44
