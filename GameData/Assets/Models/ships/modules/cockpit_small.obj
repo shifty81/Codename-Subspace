@@ -1,0 +1,201 @@
+# Small Fighter Cockpit - Enhanced Detail
+# Inspired by GameDev.tv modular starships and Star Sparrow designs
+# Features: Compact profile, detailed canopy, sensor arrays, panel details
+# Wavefront OBJ file - Optimized for small fighter craft
+
+# Rear mounting plate (connection point to hull)
+v -1.5 -1.2 -2.5
+v 1.5 -1.2 -2.5
+v 1.5 1.2 -2.5
+v -1.5 1.2 -2.5
+
+# Rear transition (slight taper)
+v -1.6 -1.3 -2.0
+v 1.6 -1.3 -2.0
+v 1.6 1.3 -2.0
+v -1.6 1.3 -2.0
+
+# Lower body section
+v -1.7 -1.4 -1.2
+v 1.7 -1.4 -1.2
+v 1.7 -0.2 -1.2
+v -1.7 -0.2 -1.2
+
+# Mid body (widest point)
+v -1.8 -1.5 -0.3
+v 1.8 -1.5 -0.3
+v 1.8 -0.1 -0.3
+v -1.8 -0.1 -0.3
+
+# Upper cockpit transition
+v -1.6 -0.8 0.5
+v 1.6 -0.8 0.5
+v 1.6 0.8 0.5
+v -1.6 0.8 0.5
+
+# Canopy base (glass section start)
+v -1.2 -0.6 1.0
+v 1.2 -0.6 1.0
+v 1.2 0.6 1.0
+v -1.2 0.6 1.0
+
+# Canopy mid section (curved glass)
+v -1.0 -0.5 1.6
+v 1.0 -0.5 1.6
+v 1.0 0.5 1.6
+v -1.0 0.5 1.6
+
+# Canopy top ridge
+v -0.8 -0.4 2.0
+v 0.8 -0.4 2.0
+v 0.8 0.4 2.0
+v -0.8 0.4 2.0
+
+# Forward nose section (tapered)
+v -0.6 -0.3 2.5
+v 0.6 -0.3 2.5
+v 0.6 0.3 2.5
+v -0.6 0.3 2.5
+
+# Nose tip (streamlined point)
+v -0.3 -0.2 3.0
+v 0.3 -0.2 3.0
+v 0.3 0.2 3.0
+v -0.3 0.2 3.0
+
+# Nose apex
+v 0.0 0.0 3.4
+
+# Side sensor arrays (left)
+v -2.0 -0.8 0.0
+v -2.0 -0.8 0.8
+v -1.9 -0.6 0.4
+
+# Side sensor arrays (right)
+v 2.0 -0.8 0.0
+v 2.0 -0.8 0.8
+v 1.9 -0.6 0.4
+
+# Top sensor dome (left side)
+v -1.3 0.9 0.3
+v -1.1 1.1 0.5
+
+# Top sensor dome (right side)
+v 1.3 0.9 0.3
+v 1.1 1.1 0.5
+
+# Bottom vents (left)
+v -1.4 -1.6 -0.8
+v -1.2 -1.7 -0.6
+
+# Bottom vents (right)
+v 1.4 -1.6 -0.8
+v 1.2 -1.7 -0.6
+
+# Panel detail lines (left side)
+v -1.8 -1.0 -1.5
+v -1.8 -1.0 -0.5
+
+# Panel detail lines (right side)
+v 1.8 -1.0 -1.5
+v 1.8 -1.0 -0.5
+
+# Rear mounting face
+f 1 2 3
+f 1 3 4
+
+# Rear to transition
+f 1 2 6 5
+f 2 3 7 6
+f 3 4 8 7
+f 4 1 5 8
+
+# Transition to lower body
+f 5 6 10 9
+f 6 7 11 10
+f 7 8 12 11
+f 8 5 9 12
+
+# Lower to mid body
+f 9 10 14 13
+f 10 11 15 14
+f 11 12 16 15
+f 12 9 13 16
+
+# Mid body to upper cockpit
+f 13 14 18 17
+f 14 15 19 18
+f 15 16 20 19
+f 16 13 17 20
+
+# Upper to canopy base
+f 17 18 22 21
+f 18 19 23 22
+f 19 20 24 23
+f 20 17 21 24
+
+# Canopy base to mid
+f 21 22 26 25
+f 22 23 27 26
+f 23 24 28 27
+f 24 21 25 28
+
+# Canopy mid to ridge
+f 25 26 30 29
+f 26 27 31 30
+f 27 28 32 31
+f 28 25 29 32
+
+# Ridge to forward nose
+f 29 30 34 33
+f 30 31 35 34
+f 31 32 36 35
+f 32 29 33 36
+
+# Forward nose to tip
+f 33 34 38 37
+f 34 35 39 38
+f 35 36 40 39
+f 36 33 37 40
+
+# Nose tip to apex
+f 37 38 41
+f 38 39 41
+f 39 40 41
+f 40 37 41
+
+# Side sensors left
+f 42 43 44
+f 13 42 44
+f 14 42 13
+
+# Side sensors right
+f 45 46 47
+f 14 45 47
+f 15 45 14
+
+# Top sensor domes
+f 20 48 49
+f 19 48 20
+f 19 50 51
+f 19 51 48
+
+# Bottom vents left
+f 13 52 53
+f 9 52 13
+
+# Bottom vents right
+f 14 54 55
+f 10 54 14
+
+# Panel detail faces (left side)
+f 56 13 16
+f 56 57 13
+
+# Panel detail faces (right side)
+f 58 14 15
+f 58 59 14
+
+# Close bottom section
+f 9 10 14 13
+f 1 2 6 5

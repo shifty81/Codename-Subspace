@@ -53,6 +53,14 @@ public class ModuleLibrary
         // Decorative modules
         AddDefinition(CreateAntennaModule());
         
+        // Small ship module variants (enhanced detail for fighters/small craft)
+        AddDefinition(CreateSmallCockpitModule());
+        AddDefinition(CreateSmallHullSectionModule());
+        AddDefinition(CreateSmallEngineModule());
+        AddDefinition(CreateSmallThrusterModule());
+        AddDefinition(CreateSmallWingLeftModule());
+        AddDefinition(CreateSmallWingRightModule());
+        
         _logger.Info("ModuleLibrary", $"Loaded {_definitions.Count} built-in modules");
     }
     
@@ -742,6 +750,242 @@ public class ModuleLibrary
             Direction = new Vector3(0, -1, 0),
             Size = AttachmentSize.Small
         };
+        
+        return module;
+    }
+    
+    // ========== SMALL SHIP MODULE VARIANTS (Enhanced Detail) ==========
+    
+    private ShipModuleDefinition CreateSmallCockpitModule()
+    {
+        var module = new ShipModuleDefinition
+        {
+            Id = "cockpit_small",
+            Name = "Small Fighter Cockpit",
+            Description = "Compact cockpit module for small fighter craft with enhanced detail",
+            Category = ModuleCategory.Hull,
+            SubCategory = "Cockpit",
+            ModelPath = "ships/modules/cockpit_small.obj",
+            Size = new Vector3(2, 1.5f, 3.5f),
+            BaseMass = 10f,
+            BaseHealth = 120f,
+            BaseCost = 400,
+            TechLevel = 1,
+            Tags = new List<string> { "core", "cockpit", "small", "fighter" }
+        };
+        
+        // Rear attachment to hull
+        module.AttachmentPoints["rear"] = new AttachmentPoint
+        {
+            Name = "rear",
+            Position = new Vector3(0, 0, -2.5f),
+            Direction = new Vector3(0, 0, -1),
+            Size = AttachmentSize.Small
+        };
+        
+        module.BaseStats.CrewCapacity = 1;
+        module.BaseStats.CrewRequired = 1;
+        module.BaseStats.SensorRange = 800f;
+        
+        return module;
+    }
+    
+    private ShipModuleDefinition CreateSmallHullSectionModule()
+    {
+        var module = new ShipModuleDefinition
+        {
+            Id = "hull_section_small",
+            Name = "Small Hull Section",
+            Description = "Compact hull connector with detailed panels for small ship construction",
+            Category = ModuleCategory.Hull,
+            SubCategory = "Section",
+            ModelPath = "ships/modules/hull_section_small.obj",
+            Size = new Vector3(2, 2, 3),
+            BaseMass = 15f,
+            BaseHealth = 150f,
+            BaseCost = 150,
+            TechLevel = 1,
+            Tags = new List<string> { "hull", "structural", "small" }
+        };
+        
+        // Front/rear connections
+        module.AttachmentPoints["front"] = new AttachmentPoint
+        {
+            Name = "front",
+            Position = new Vector3(0, 0, 3.0f),
+            Direction = new Vector3(0, 0, 1),
+            Size = AttachmentSize.Small
+        };
+        module.AttachmentPoints["rear"] = new AttachmentPoint
+        {
+            Name = "rear",
+            Position = new Vector3(0, 0, -3.0f),
+            Direction = new Vector3(0, 0, -1),
+            Size = AttachmentSize.Small
+        };
+        
+        // Side connections for wings/weapons
+        module.AttachmentPoints["left"] = new AttachmentPoint
+        {
+            Name = "left",
+            Position = new Vector3(-2.0f, 0, 0),
+            Direction = new Vector3(-1, 0, 0),
+            Size = AttachmentSize.Small
+        };
+        module.AttachmentPoints["right"] = new AttachmentPoint
+        {
+            Name = "right",
+            Position = new Vector3(2.0f, 0, 0),
+            Direction = new Vector3(1, 0, 0),
+            Size = AttachmentSize.Small
+        };
+        
+        return module;
+    }
+    
+    private ShipModuleDefinition CreateSmallEngineModule()
+    {
+        var module = new ShipModuleDefinition
+        {
+            Id = "engine_small",
+            Name = "Small Fighter Engine",
+            Description = "Compact main engine with detailed nozzle and cooling fins for small craft",
+            Category = ModuleCategory.Engine,
+            SubCategory = "Main",
+            ModelPath = "ships/modules/engine_small.obj",
+            Size = new Vector3(1.5f, 1.5f, 2.5f),
+            BaseMass = 18f,
+            BaseHealth = 80f,
+            BaseCost = 600,
+            TechLevel = 1,
+            Tags = new List<string> { "engine", "propulsion", "small" }
+        };
+        
+        module.AttachmentPoints["mount"] = new AttachmentPoint
+        {
+            Name = "mount",
+            Position = new Vector3(0, 0, 3.0f),
+            Direction = new Vector3(0, 0, 1),
+            Size = AttachmentSize.Small
+        };
+        
+        module.BaseStats.ThrustPower = 400f;
+        module.BaseStats.PowerConsumption = 40f;
+        module.BaseStats.MaxSpeed = 200f;
+        
+        return module;
+    }
+    
+    private ShipModuleDefinition CreateSmallThrusterModule()
+    {
+        var module = new ShipModuleDefinition
+        {
+            Id = "thruster_small",
+            Name = "Small Maneuvering Thruster",
+            Description = "Compact thruster with vectoring vanes for precise maneuvering",
+            Category = ModuleCategory.Thruster,
+            SubCategory = "Maneuvering",
+            ModelPath = "ships/modules/thruster_small.obj",
+            Size = new Vector3(1.2f, 1.2f, 1.8f),
+            BaseMass = 8f,
+            BaseHealth = 50f,
+            BaseCost = 250,
+            TechLevel = 1,
+            Tags = new List<string> { "thruster", "maneuvering", "small" }
+        };
+        
+        module.AttachmentPoints["mount"] = new AttachmentPoint
+        {
+            Name = "mount",
+            Position = new Vector3(0, 0, 1.5f),
+            Direction = new Vector3(0, 0, 1),
+            Size = AttachmentSize.Small
+        };
+        
+        module.BaseStats.ThrustPower = 80f;
+        module.BaseStats.PowerConsumption = 10f;
+        
+        return module;
+    }
+    
+    private ShipModuleDefinition CreateSmallWingLeftModule()
+    {
+        var module = new ShipModuleDefinition
+        {
+            Id = "wing_small_left",
+            Name = "Small Left Wing",
+            Description = "Aerodynamic wing section with weapon hardpoint for small fighters",
+            Category = ModuleCategory.Wing,
+            SubCategory = "Left",
+            ModelPath = "ships/modules/wing_small_left.obj",
+            Size = new Vector3(4, 1, 2.5f),
+            BaseMass = 12f,
+            BaseHealth = 100f,
+            BaseCost = 350,
+            TechLevel = 1,
+            Tags = new List<string> { "wing", "left", "small" }
+        };
+        
+        module.AttachmentPoints["mount"] = new AttachmentPoint
+        {
+            Name = "mount",
+            Position = new Vector3(0, 0, 0),
+            Direction = new Vector3(1, 0, 0),
+            Size = AttachmentSize.Small
+        };
+        
+        // Weapon hardpoint under wing
+        module.AttachmentPoints["hardpoint"] = new AttachmentPoint
+        {
+            Name = "hardpoint",
+            Position = new Vector3(-3.5f, -0.9f, 0.4f),
+            Direction = new Vector3(0, -1, 0),
+            Size = AttachmentSize.Small,
+            AllowedCategories = new List<ModuleCategory> { ModuleCategory.Weapon, ModuleCategory.WeaponMount }
+        };
+        
+        module.BaseStats.WeaponMountPoints = 1;
+        
+        return module;
+    }
+    
+    private ShipModuleDefinition CreateSmallWingRightModule()
+    {
+        var module = new ShipModuleDefinition
+        {
+            Id = "wing_small_right",
+            Name = "Small Right Wing",
+            Description = "Aerodynamic wing section with weapon hardpoint for small fighters",
+            Category = ModuleCategory.Wing,
+            SubCategory = "Right",
+            ModelPath = "ships/modules/wing_small_right.obj",
+            Size = new Vector3(4, 1, 2.5f),
+            BaseMass = 12f,
+            BaseHealth = 100f,
+            BaseCost = 350,
+            TechLevel = 1,
+            Tags = new List<string> { "wing", "right", "small" }
+        };
+        
+        module.AttachmentPoints["mount"] = new AttachmentPoint
+        {
+            Name = "mount",
+            Position = new Vector3(0, 0, 0),
+            Direction = new Vector3(-1, 0, 0),
+            Size = AttachmentSize.Small
+        };
+        
+        // Weapon hardpoint under wing
+        module.AttachmentPoints["hardpoint"] = new AttachmentPoint
+        {
+            Name = "hardpoint",
+            Position = new Vector3(3.5f, -0.9f, 0.4f),
+            Direction = new Vector3(0, -1, 0),
+            Size = AttachmentSize.Small,
+            AllowedCategories = new List<ModuleCategory> { ModuleCategory.Weapon, ModuleCategory.WeaponMount }
+        };
+        
+        module.BaseStats.WeaponMountPoints = 1;
         
         return module;
     }

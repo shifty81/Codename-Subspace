@@ -1,0 +1,183 @@
+# Small Hull Section - Enhanced Modular Connector
+# Inspired by GameDev.tv dropship and fighter hull designs
+# Features: Panel details, structural ribs, connection ports, surface detail
+# Wavefront OBJ file - Optimized for small ship construction
+
+# Main outer hull (slightly tapered from rear to front)
+v -1.8 -1.5 -3.0
+v 1.8 -1.5 -3.0
+v 1.8 1.5 -3.0
+v -1.8 1.5 -3.0
+v -2.0 -1.6 3.0
+v 2.0 -1.6 3.0
+v 2.0 1.6 3.0
+v -2.0 1.6 3.0
+
+# Inner recessed panels (depth variation)
+v -1.4 -1.2 -2.5
+v 1.4 -1.2 -2.5
+v 1.4 1.2 -2.5
+v -1.4 1.2 -2.5
+v -1.6 -1.3 2.5
+v 1.6 -1.3 2.5
+v 1.6 1.3 2.5
+v -1.6 1.3 2.5
+
+# Structural ribs (raised details at -2, 0, 2)
+# Rib at z=-2.0
+v -1.9 -1.6 -2.0
+v 1.9 -1.6 -2.0
+v 1.9 1.6 -2.0
+v -1.9 1.6 -2.0
+
+# Rib at z=0.0
+v -2.0 -1.6 0.0
+v 2.0 -1.6 0.0
+v 2.0 1.6 0.0
+v -2.0 1.6 0.0
+
+# Rib at z=2.0
+v -1.9 -1.6 2.0
+v 1.9 -1.6 2.0
+v 1.9 1.6 2.0
+v -1.9 1.6 2.0
+
+# Rear connection port (mounting ring)
+v -1.0 -1.0 -3.2
+v 1.0 -1.0 -3.2
+v 1.0 1.0 -3.2
+v -1.0 1.0 -3.2
+
+# Front connection port (mounting ring)
+v -1.1 -1.1 3.2
+v 1.1 -1.1 3.2
+v 1.1 1.1 3.2
+v -1.1 1.1 3.2
+
+# Side detail panels (left side)
+v -2.1 -1.0 -1.5
+v -2.1 -1.0 -0.5
+v -2.1 -0.5 -1.5
+v -2.1 -0.5 -0.5
+
+# Side detail panels (right side)
+v 2.1 -1.0 -1.5
+v 2.1 -1.0 -0.5
+v 2.1 -0.5 -1.5
+v 2.1 -0.5 -0.5
+
+# Top access hatch
+v -0.8 1.7 0.0
+v 0.8 1.7 0.0
+v 0.8 1.7 0.8
+v -0.8 1.7 0.8
+
+# Bottom vent grilles (left)
+v -1.6 -1.7 0.5
+v -1.2 -1.7 0.5
+v -1.6 -1.7 1.0
+v -1.2 -1.7 1.0
+
+# Bottom vent grilles (right)
+v 1.2 -1.7 0.5
+v 1.6 -1.7 0.5
+v 1.2 -1.7 1.0
+v 1.6 -1.7 1.0
+
+# Panel line details (horizontal bevels)
+v -1.7 -1.4 -1.0
+v 1.7 -1.4 -1.0
+v -1.8 -1.5 1.0
+v 1.8 -1.5 1.0
+
+# Main hull faces
+# Rear face
+f 1 2 3
+f 1 3 4
+
+# Front face
+f 5 6 7
+f 5 7 8
+
+# Bottom face
+f 1 2 6 5
+f 2 6 22 21
+f 21 22 6 2
+
+# Top face
+f 3 4 8 7
+f 4 8 24 23
+f 23 24 8 4
+
+# Left face
+f 1 4 8 5
+f 4 8 24 21
+f 21 24 5 8
+
+# Right face
+f 2 3 7 6
+f 3 7 23 22
+f 22 23 6 7
+
+# Recessed panel faces
+f 9 10 11
+f 9 11 12
+f 13 14 15
+f 13 15 16
+
+# Panel recesses (connecting inner to outer)
+f 1 9 10 2
+f 2 10 11 3
+f 3 11 12 4
+f 4 12 9 1
+
+f 5 13 14 6
+f 6 14 15 7
+f 7 15 16 8
+f 8 16 13 5
+
+# Structural ribs at z=-2
+f 17 18 10 9
+f 18 19 11 10
+f 19 20 12 11
+f 20 17 9 12
+
+# Structural ribs at z=0
+f 21 22 14 13
+f 22 23 15 14
+f 23 24 16 15
+f 24 21 13 16
+
+# Structural ribs at z=2
+f 25 26 14 13
+f 26 27 15 14
+f 27 28 16 15
+f 28 25 13 16
+
+# Rear connection port
+f 29 30 31
+f 29 31 32
+
+# Front connection port
+f 33 34 35
+f 33 35 36
+
+# Side detail panels (left)
+f 37 38 40 39
+
+# Side detail panels (right)
+f 41 42 44 43
+
+# Top access hatch
+f 45 46 47
+f 45 47 48
+
+# Bottom vents left
+f 49 50 52 51
+
+# Bottom vents right
+f 53 54 56 55
+
+# Panel line details (create beveled edges)
+f 57 58 22 21
+f 59 60 6 5
