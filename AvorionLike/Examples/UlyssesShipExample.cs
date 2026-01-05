@@ -80,10 +80,10 @@ public class UlyssesShipExample
         // Try to load the model (will check for .blend first, then fallbacks)
         var modelPaths = new[]
         {
-            "Models/ships/hulls/ulysses.blend",
-            "Models/ships/hulls/ulysses.obj",
-            "Models/ships/hulls/ulysses.fbx",
-            "Models/ships/hulls/ulysses.gltf"
+            "ships/hulls/ulysses.blend",
+            "ships/hulls/ulysses.obj",
+            "ships/hulls/ulysses.fbx",
+            "ships/hulls/ulysses.gltf"
         };
         
         List<MeshData>? meshes = null;
@@ -93,9 +93,11 @@ public class UlyssesShipExample
         {
             try
             {
-                var fullPath = assetManager.GetAssetPath(path);
+                // Check if file exists - need to prepend "Models/" for GetAssetPath
+                var fullPath = assetManager.GetAssetPath("Models/" + path);
                 if (File.Exists(fullPath))
                 {
+                    // LoadModel expects path relative to Assets/Models/, so use path without "Models/"
                     meshes = assetManager.LoadModel(path);
                     loadedPath = path;
                     break;
