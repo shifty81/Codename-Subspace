@@ -1,0 +1,41 @@
+{
+  "Id": "quest_build_ship",
+  "Title": "Ship Builder",
+  "Description": "Learn the art of ship construction by building blocks onto your vessel. Add 20 blocks to your ship to upgrade and customize it.",
+  "Difficulty": "Easy",
+  "CanAbandon": true,
+  "IsRepeatable": false,
+  "TimeLimit": 0,
+  "Tags": ["tutorial", "building"],
+  "Objectives": [
+    {
+      "Type": "Build",
+      "Description": "Build 20 blocks on your ship",
+      "Target": "block",
+      "RequiredQuantity": 20,
+      "IsOptional": false,
+      "IsHidden": false,
+      "Prerequisites": []
+    }
+  ],
+  "Rewards": [
+    {
+      "Type": "Credits",
+      "RewardId": "credits",
+      "Amount": 1500,
+      "Description": "1,500 Credits"
+    },
+    {
+      "Type": "Resource",
+      "RewardId": "Titanium",
+      "Amount": 100,
+      "Description": "100 Titanium"
+    },
+    {
+      "Type": "Experience",
+      "RewardId": "xp",
+      "Amount": 75,
+      "Description": "75 Experience Points"
+    }
+  ]
+}

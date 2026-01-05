@@ -9,6 +9,7 @@ using AvorionLike.Core.Navigation;
 using AvorionLike.Core.AI;
 using AvorionLike.Core.Procedural;
 using AvorionLike.Core.Mining;
+using AvorionLike.Core.Quest;
 
 namespace AvorionLike.Core.DevTools;
 
@@ -559,6 +560,106 @@ public class InGameTestingConsole : DebugConsole
             WriteLine("✓ Quick setup complete!");
             WriteLine("  2 asteroids, 1 friendly, 1 enemy");
             WriteLine("  Ready for testing!");
+        });
+        
+        // Quest Commands
+        RegisterCommand("quest_list", "List all available quest templates", args =>
+        {
+            var templates = _gameEngine.QuestSystem.GetQuestTemplates();
+            WriteLine($"=== AVAILABLE QUEST TEMPLATES ({templates.Count}) ===");
+            foreach (var quest in templates.Values)
+            {
+                WriteLine($"  [{quest.Id}] {quest.Title}");
+                WriteLine($"    Difficulty: {quest.Difficulty}, Objectives: {quest.Objectives.Count}");
+            }
+        });
+        
+        RegisterCommand("quest_give", "Give a quest to player (args: questId)", args =>
+        {
+            if (args.Length < 1)
+            {
+                WriteLine("Usage: quest_give <questId>");
+                WriteLine("Use 'quest_list' to see available quests");
+                return;
+            }
+            
+            string questId = args[0];
+            bool success = _gameEngine.QuestSystem.GiveQuest(_playerShipId, questId);
+            if (success)
+            {
+                WriteLine($"✓ Quest '{questId}' given to player");
+            }
+            else
+            {
+                WriteLine($"✗ Failed to give quest '{questId}'");
+            }
+        });
+        
+        RegisterCommand("quest_progress", "Show player's quest progress", args =>
+        {
+            var questComponent = _gameEngine.EntityManager.GetComponent<QuestComponent>(_playerShipId);
+            if (questComponent == null)
+            {
+                WriteLine("Error: Player has no QuestComponent");
+                return;
+            }
+            
+            WriteLine("=== PLAYER QUESTS ===");
+            WriteLine($"Active: {questComponent.ActiveQuestCount}/{questComponent.MaxActiveQuests}");
+            WriteLine($"Available: {questComponent.AvailableQuests.Count()}");
+            WriteLine($"Completed: {questComponent.CompletedQuests.Count()}");
+            
+            foreach (var quest in questComponent.ActiveQuests)
+            {
+                WriteLine($"\n[{quest.Title}] - {quest.CompletionPercentage:F0}%");
+                foreach (var obj in quest.Objectives.Where(o => o.Status == ObjectiveStatus.Active))
+                {
+                    WriteLine($"  • {obj.Description}: {obj.CurrentProgress}/{obj.RequiredQuantity}");
+                }
+            }
+        });
+        
+        RegisterCommand("quest_complete", "Instantly complete active quest objectives (args: [questId])", args =>
+        {
+            var questComponent = _gameEngine.EntityManager.GetComponent<QuestComponent>(_playerShipId);
+            if (questComponent == null)
+            {
+                WriteLine("Error: Player has no QuestComponent");
+                return;
+            }
+            
+            var activeQuests = questComponent.ActiveQuests.ToList();
+            if (activeQuests.Count == 0)
+            {
+                WriteLine("No active quests");
+                return;
+            }
+            
+            AvorionLike.Core.Quest.Quest? targetQuest = null;
+            if (args.Length > 0)
+            {
+                targetQuest = activeQuests.FirstOrDefault(q => q.Id == args[0]);
+                if (targetQuest == null)
+                {
+                    WriteLine($"Quest '{args[0]}' not found in active quests");
+                    return;
+                }
+            }
+            else
+            {
+                targetQuest = activeQuests[0];
+            }
+            
+            // Complete all objectives
+            foreach (var obj in targetQuest.Objectives)
+            {
+                if (!obj.IsComplete)
+                {
+                    obj.Progress(obj.RequiredQuantity);
+                }
+            }
+            
+            WriteLine($"✓ Completed all objectives for '{targetQuest.Title}'");
         });
     }
 
