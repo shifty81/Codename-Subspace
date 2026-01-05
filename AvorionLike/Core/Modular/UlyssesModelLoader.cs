@@ -119,7 +119,17 @@ public static class UlyssesModelLoader
         try
         {
             var assetManager = AssetManager.Instance;
-            var meshes = assetManager.LoadModel(path);
+            
+            // LoadModel expects paths relative to Assets/Models/, but our paths are relative to Assets/
+            // So we need to strip the "Models/" prefix if present
+            var modelPath = path;
+            if (modelPath.StartsWith("Models/", StringComparison.OrdinalIgnoreCase) || 
+                modelPath.StartsWith("Models\\", StringComparison.OrdinalIgnoreCase))
+            {
+                modelPath = modelPath.Substring(7); // Remove "Models/" or "Models\"
+            }
+            
+            var meshes = assetManager.LoadModel(modelPath);
             
             _logger.Info("UlyssesLoader", $"Successfully loaded Ulysses model from {path}");
             _logger.Info("UlyssesLoader", $"Model contains {meshes.Count} mesh(es):");
