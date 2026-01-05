@@ -18,25 +18,47 @@ public static class UlyssesModelLoader
     /// </summary>
     private static readonly string[] ModelSearchPaths = new[]
     {
-        // Primary locations (prefer Assets folder)
+        // Primary location - actual user location
+        "Models/ships/Ulysses/source/ulysses.blend",
+        "Models/ships/Ulysses/source/Ulysses.blend",
+        "Models/ships/Ulysses/ulysses.blend",
+        "Models/ships/Ulysses/Ulysses.blend",
+        
+        // Alternative formats in Ulysses folder
+        "Models/ships/Ulysses/source/ulysses.obj",
+        "Models/ships/Ulysses/source/ulysses.fbx",
+        "Models/ships/Ulysses/source/ulysses.gltf",
+        "Models/ships/Ulysses/source/ulysses.glb",
+        "Models/ships/Ulysses/ulysses.obj",
+        "Models/ships/Ulysses/ulysses.fbx",
+        "Models/ships/Ulysses/ulysses.gltf",
+        "Models/ships/Ulysses/ulysses.glb",
+        
+        // Alternative locations (prefer Assets folder)
         "Models/ships/hulls/ulysses.blend",
         "Models/ships/hulls/Ulysses.blend",
         "Models/ships/ulysses.blend",
         "Models/ulysses.blend",
         
-        // Alternative formats
+        // Alternative formats in hulls
         "Models/ships/hulls/ulysses.obj",
         "Models/ships/hulls/ulysses.fbx",
         "Models/ships/hulls/ulysses.gltf",
         "Models/ships/hulls/ulysses.glb",
         
         // GameData locations (legacy support)
+        "../GameData/Assets/Models/ships/Ulysses/source/ulysses.blend",
+        "../GameData/Assets/Models/ships/Ulysses/ulysses.blend",
         "../GameData/Assets/Models/ships/hulls/ulysses.blend",
         "../GameData/Assets/Models/ships/ulysses.blend",
         
         // Root Assets locations
+        "../Assets/Models/ships/Ulysses/source/ulysses.blend",
+        "../Assets/Models/ships/Ulysses/ulysses.blend",
         "../Assets/Models/ships/hulls/ulysses.blend",
         "../Assets/Models/ships/ulysses.blend",
+        "Assets/Models/ships/Ulysses/source/ulysses.blend",
+        "Assets/Models/ships/Ulysses/ulysses.blend",
         "Assets/Models/ships/hulls/ulysses.blend",
         "Assets/Models/ships/ulysses.blend"
     };
@@ -165,13 +187,16 @@ public static class UlyssesModelLoader
     private static void LogExpectedLocations()
     {
         _logger.Info("UlyssesLoader", "Expected Ulysses model locations (in order of preference):");
-        _logger.Info("UlyssesLoader", "  1. Assets/Models/ships/hulls/ulysses.blend (Blender file)");
-        _logger.Info("UlyssesLoader", "  2. Assets/Models/ships/hulls/ulysses.obj (Wavefront OBJ)");
-        _logger.Info("UlyssesLoader", "  3. Assets/Models/ships/hulls/ulysses.fbx (Autodesk FBX)");
-        _logger.Info("UlyssesLoader", "  4. Assets/Models/ships/hulls/ulysses.gltf (glTF)");
+        _logger.Info("UlyssesLoader", "  1. Assets/Models/ships/Ulysses/source/ulysses.blend (Blender file)");
+        _logger.Info("UlyssesLoader", "  2. Assets/Models/ships/Ulysses/ulysses.blend");
+        _logger.Info("UlyssesLoader", "  3. Assets/Models/ships/hulls/ulysses.blend");
+        _logger.Info("UlyssesLoader", "  4. Assets/Models/ships/Ulysses/source/ulysses.obj (Wavefront OBJ)");
+        _logger.Info("UlyssesLoader", "  5. Assets/Models/ships/hulls/ulysses.obj");
+        _logger.Info("UlyssesLoader", "  6. Assets/Models/ships/Ulysses/source/ulysses.fbx (Autodesk FBX)");
+        _logger.Info("UlyssesLoader", "  7. Assets/Models/ships/Ulysses/source/ulysses.gltf (glTF)");
         _logger.Info("UlyssesLoader", "");
         _logger.Info("UlyssesLoader", "To use a custom Ulysses model:");
-        _logger.Info("UlyssesLoader", "  1. Place your model file in Assets/Models/ships/hulls/");
+        _logger.Info("UlyssesLoader", "  1. Place your model file in Assets/Models/ships/Ulysses/source/");
         _logger.Info("UlyssesLoader", "  2. Name it 'ulysses' with appropriate extension");
         _logger.Info("UlyssesLoader", "  3. Restart the game to load the model");
         _logger.Info("UlyssesLoader", "");
@@ -188,8 +213,10 @@ public static class UlyssesModelLoader
 ## Where to Place the File
 
 Place your Ulysses model in one of these locations:
-- **Preferred**: `Assets/Models/ships/hulls/ulysses.blend`
-- Alternative: `GameData/Assets/Models/ships/hulls/ulysses.blend`
+- **Preferred**: `Assets/Models/ships/Ulysses/source/ulysses.blend`
+- Alternative: `Assets/Models/ships/Ulysses/ulysses.blend`
+- Alternative: `Assets/Models/ships/hulls/ulysses.blend`
+- Legacy: `GameData/Assets/Models/ships/Ulysses/source/ulysses.blend`
 
 ## Supported Formats
 

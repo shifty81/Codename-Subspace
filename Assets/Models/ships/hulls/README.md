@@ -1,6 +1,8 @@
 # Ulysses Starter Ship
 
-This directory contains the Ulysses starter ship 3D model.
+This directory contains documentation for the Ulysses starter ship 3D model.
+
+**Note**: The actual Ulysses model is located at: `Assets/Models/ships/Ulysses/source/ulysses.blend`
 
 ## About the Ulysses
 
@@ -13,7 +15,7 @@ The Ulysses is the default starter ship for new players. It's a reliable, multip
 
 ## Model Files
 
-Expected files:
+Expected files (actual location: `Assets/Models/ships/Ulysses/source/`):
 - `ulysses.blend` - Blender source file (primary)
 - `ulysses.obj` - Exported OBJ format (for compatibility)
 - `ulysses.fbx` - Exported FBX format (alternative)
