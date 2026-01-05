@@ -432,19 +432,30 @@ public class MeshRenderer : IDisposable
             }
             
             // Load image using SixLabors.ImageSharp
-            using var image = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgba32>(fullPath);
+            var image = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgba32>(fullPath);
             
-            // Flip image vertically (OpenGL expects bottom-left origin)
-            image.Mutate(x => x.Flip(SixLabors.ImageSharp.Processing.FlipMode.Vertical));
+            // Get pixel data and flip vertically (OpenGL expects bottom-left origin)
+            var pixels = new byte[image.Width * image.Height * 4];
+            
+            // Manual vertical flip while copying pixels
+            int destOffset = 0;
+            for (int y = image.Height - 1; y >= 0; y--)
+            {
+                for (int x = 0; x < image.Width; x++)
+                {
+                    var pixel = image[x, y];
+                    pixels[destOffset++] = pixel.R;
+                    pixels[destOffset++] = pixel.G;
+                    pixels[destOffset++] = pixel.B;
+                    pixels[destOffset++] = pixel.A;
+                }
+            }
             
             // Create OpenGL texture
             uint textureId = _gl.GenTexture();
             _gl.BindTexture(TextureTarget.Texture2D, textureId);
             
             // Copy image data to GPU
-            var pixels = new byte[image.Width * image.Height * 4];
-            image.CopyPixelDataTo(pixels);
-            
             unsafe
             {
                 fixed (byte* ptr = pixels)
@@ -478,6 +489,8 @@ public class MeshRenderer : IDisposable
             _textureCache[texturePath] = textureId;
             
             _logger.Info("MeshRenderer", $"Loaded texture: {texturePath} ({image.Width}x{image.Height})");
+            
+            image.Dispose();
             
             return textureId;
         }
