@@ -32,7 +32,8 @@ public static class UlyssesStarterFactory
         gameEngine.EntityManager.AddComponent(shipEntity.Id, ulyssesShip.Ship);
         
         // Note: ShipEquipmentComponent is not an IComponent, it's managed separately
-        // Equipment is already part of the X4GeneratedShip structure
+        // Equipment data is stored in ulyssesShip.Equipment and accessed via the X4GeneratedShip structure
+        // Game systems should retrieve equipment through the ship's equipment property when needed
         
         // Create ship interior
         var interior = GenerateUlyssesInterior(ulyssesShip.Ship);

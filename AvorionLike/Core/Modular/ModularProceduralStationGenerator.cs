@@ -253,8 +253,10 @@ public class ModularProceduralStationGenerator
             var midpoint = (module1.Position + module2.Position) / 2f;
             var direction = Vector3.Normalize(module2.Position - module1.Position);
             
-            // Calculate rotation to face from module1 to module2
-            var rotation = new Vector3(0, 0, 0); // Simplified, should calculate proper rotation
+            // Calculate rotation to align connector from module1 to module2
+            // Using atan2 to get angle in XZ plane (horizontal rotation)
+            var angleY = MathF.Atan2(direction.X, direction.Z) * (180f / MathF.PI);
+            var rotation = new Vector3(0, angleY, 0);
             
             var connector = CreateModuleFromDefinition(connectorDef, midpoint, rotation, materialType);
             station.AddModule(connector);
