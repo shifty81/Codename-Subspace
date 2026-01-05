@@ -432,7 +432,7 @@ public class MeshRenderer : IDisposable
             }
             
             // Load image using SixLabors.ImageSharp
-            var image = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgba32>(fullPath);
+            using var image = SixLabors.ImageSharp.Image.Load<SixLabors.ImageSharp.PixelFormats.Rgba32>(fullPath);
             
             // Get pixel data and flip vertically (OpenGL expects bottom-left origin)
             var pixels = new byte[image.Width * image.Height * 4];
@@ -489,8 +489,6 @@ public class MeshRenderer : IDisposable
             _textureCache[texturePath] = textureId;
             
             _logger.Info("MeshRenderer", $"Loaded texture: {texturePath} ({image.Width}x{image.Height})");
-            
-            image.Dispose();
             
             return textureId;
         }
