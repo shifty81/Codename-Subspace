@@ -123,10 +123,16 @@ public static class UlyssesModelLoader
             // LoadModel expects paths relative to Assets/Models/, but our paths are relative to Assets/
             // So we need to strip the "Models/" prefix if present
             var modelPath = path;
-            if (modelPath.StartsWith("Models/", StringComparison.OrdinalIgnoreCase) || 
-                modelPath.StartsWith("Models\\", StringComparison.OrdinalIgnoreCase))
+            const string modelsPrefix = "Models/";
+            const string modelsPrefixAlt = "Models\\";
+            
+            if (modelPath.StartsWith(modelsPrefix, StringComparison.OrdinalIgnoreCase))
             {
-                modelPath = modelPath.Substring(7); // Remove "Models/" or "Models\"
+                modelPath = modelPath.Substring(modelsPrefix.Length);
+            }
+            else if (modelPath.StartsWith(modelsPrefixAlt, StringComparison.OrdinalIgnoreCase))
+            {
+                modelPath = modelPath.Substring(modelsPrefixAlt.Length);
             }
             
             var meshes = assetManager.LoadModel(modelPath);
