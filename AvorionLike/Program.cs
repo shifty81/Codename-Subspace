@@ -95,7 +95,7 @@ class Program
     /// </summary>
     static void StartNewGameInWindow(GraphicsWindow window)
     {
-        Console.WriteLine("Creating your player pod (character) and game world...\n");
+        Console.WriteLine("Creating your Ulysses starter ship and game world...\n");
         
         // Register Galaxy Progression System and Fleet Automation System
         var galaxyProgressionSystem = new GalaxyProgressionSystem(_gameEngine!.EntityManager);
@@ -104,9 +104,9 @@ class Program
         _gameEngine.EntityManager.RegisterSystem(galaxyProgressionSystem);
         _gameEngine.EntityManager.RegisterSystem(fleetAutomationSystem);
         
-        // Create player pod (the actual player character)
-        Console.WriteLine("=== Creating Your Player Character ===");
-        var playerPodId = CreatePlayerPod(new Vector3(0, 0, 0));
+        // Create Ulysses starter ship with interior
+        Console.WriteLine("=== Creating Your Ulysses Starter Ship ===");
+        var playerPodId = UlyssesStarterFactory.CreateUlyssesWithInterior(_gameEngine, new Vector3(0, 0, 0), "Commander");
         
         // Get the physics component to use for world population
         var podPhysics = _gameEngine.EntityManager.GetComponent<PhysicsComponent>(playerPodId);
