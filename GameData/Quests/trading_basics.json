@@ -1,0 +1,35 @@
+{
+  "Id": "quest_trading_basics",
+  "Title": "Trading 101",
+  "Description": "Learn the basics of galactic commerce. Trade resources at a station to understand the buy and sell mechanics of the economy.",
+  "Difficulty": "Easy",
+  "CanAbandon": true,
+  "IsRepeatable": false,
+  "TimeLimit": 0,
+  "Tags": ["tutorial", "trading", "economy"],
+  "Objectives": [
+    {
+      "Type": "Trade",
+      "Description": "Trade resources at any station",
+      "Target": "station",
+      "RequiredQuantity": 1,
+      "IsOptional": false,
+      "IsHidden": false,
+      "Prerequisites": []
+    }
+  ],
+  "Rewards": [
+    {
+      "Type": "Credits",
+      "RewardId": "credits",
+      "Amount": 2500,
+      "Description": "2,500 Credits"
+    },
+    {
+      "Type": "Experience",
+      "RewardId": "xp",
+      "Amount": 80,
+      "Description": "80 Experience Points"
+    }
+  ]
+}

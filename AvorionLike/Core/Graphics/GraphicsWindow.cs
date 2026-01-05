@@ -50,6 +50,9 @@ public class GraphicsWindow : IDisposable
     private string _consoleInput = "";
     private bool _consoleShiftPressed = false;
     
+    // Quest UI
+    private QuestLogUI? _questLogUI;
+    
     private readonly GameEngine _gameEngine;
     private bool _disposed = false;
     private bool _playerControlMode = true; // Start in ship control mode (third-person) by default
@@ -105,6 +108,10 @@ public class GraphicsWindow : IDisposable
         if (_testingConsole != null)
         {
             _testingConsole.SetPlayerShip(shipId);
+        }
+        if (_questLogUI != null)
+        {
+            _questLogUI.SetPlayerEntity(shipId);
         }
         if (_galaxyMapUI != null)
         {
@@ -181,6 +188,9 @@ public class GraphicsWindow : IDisposable
         
         // Initialize In-Game Testing Console
         _testingConsole = new InGameTestingConsole(_gameEngine);
+        
+        // Initialize Quest Log UI
+        _questLogUI = new QuestLogUI(_gameEngine.EntityManager);
         
         // Initialize Player Control System
         _playerControlSystem = new PlayerControlSystem(_gameEngine.EntityManager);
@@ -532,6 +542,9 @@ public class GraphicsWindow : IDisposable
             _galaxyMapUI.Render();
         }
         
+        // Render Quest Log UI
+        _questLogUI?.Render();
+        
         // Always render ImGui (needed for GameHUD text and debug UI when enabled)
         _imguiController.Render();
     }
@@ -700,6 +713,13 @@ public class GraphicsWindow : IDisposable
         {
             _playerControlMode = !_playerControlMode;
             Console.WriteLine($"Control Mode: {(_playerControlMode ? "Ship Control (Third-Person)" : "Free Camera")}");
+        }
+        
+        // Toggle Quest Log with J
+        if (key == Key.J)
+        {
+            _questLogUI?.ToggleQuestLog();
+            Console.WriteLine($"Quest Log: {(_questLogUI != null ? "Toggled" : "Not available")}");
         }
         
         // Toggle debug UI with F1

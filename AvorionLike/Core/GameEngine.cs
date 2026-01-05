@@ -154,6 +154,9 @@ public class GameEngine
         ScriptingEngine.RegisterObject("Engine", this);
         ScriptingEngine.RegisterObject("EntityManager", EntityManager);
         Logger.Instance.Info("GameEngine", "Scripting API registered");
+        
+        // Load quest templates from GameData/Quests directory
+        LoadQuestTemplates();
 
         _lastUpdateTime = DateTime.UtcNow;
 
@@ -606,6 +609,36 @@ public class GameEngine
         catch (Exception ex)
         {
             Logger.Instance.Error("GameEngine", $"Error deserializing component {componentData.ComponentType}: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Load quest templates from GameData/Quests directory
+    /// </summary>
+    private void LoadQuestTemplates()
+    {
+        try
+        {
+            string questsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "GameData", "Quests");
+            
+            if (!Directory.Exists(questsPath))
+            {
+                Logger.Instance.Warning("GameEngine", $"Quests directory not found: {questsPath}");
+                return;
+            }
+            
+            var quests = QuestLoader.LoadQuestsFromDirectory(questsPath);
+            
+            foreach (var quest in quests)
+            {
+                QuestSystem.AddQuestTemplate(quest);
+            }
+            
+            Logger.Instance.Info("GameEngine", $"Loaded {quests.Count} quest templates");
+        }
+        catch (Exception ex)
+        {
+            Logger.Instance.Error("GameEngine", $"Failed to load quest templates: {ex.Message}", ex);
         }
     }
 }

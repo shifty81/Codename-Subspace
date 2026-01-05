@@ -13,6 +13,7 @@ using AvorionLike.Core.Fleet;
 using AvorionLike.Core.UI;
 using AvorionLike.Core.Configuration;
 using AvorionLike.Core.AI;
+using AvorionLike.Core.Quest;
 using AvorionLike.Core.Modular;
 using AvorionLike.Examples;
 using System.Numerics;
@@ -4087,6 +4088,17 @@ class Program
             SkillPoints = 0
         };
         _gameEngine.EntityManager.AddComponent(pod.Id, progressionComponent);
+        
+        // Add quest component for tracking player quests
+        var questComponent = new QuestComponent
+        {
+            EntityId = pod.Id,
+            MaxActiveQuests = 10
+        };
+        _gameEngine.EntityManager.AddComponent(pod.Id, questComponent);
+        
+        // Give player the tutorial quest
+        _gameEngine.QuestSystem.GiveQuest(pod.Id, "quest_tutorial_mining");
         
         // Add inventory
         var inventoryComponent = new InventoryComponent(1000);
