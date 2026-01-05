@@ -96,15 +96,15 @@ f 11 15 25 23
 
 # Outer to tip section (top)
 f 14 16 20 18
-f 16 20 26 25
+f 16 20 19 18
 
 # Outer to tip section (bottom)
 f 13 15 19 17
-f 15 19 25 26
+f 15 19 17 13
 
 # Wing tip closure
 f 17 18 20 19
-f 18 20 45 44
+f 18 20 44 45
 
 # Leading edge (front edge reinforcement)
 f 4 8 22 21
