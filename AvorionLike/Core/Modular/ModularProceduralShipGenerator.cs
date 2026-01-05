@@ -234,10 +234,20 @@ public class ModularProceduralShipGenerator
         var def = _library.GetDefinition("hull_section_basic");
         if (def == null) return sections;
         
-        // Create hull sections behind cockpit
+        // Get cockpit size for proper spacing
+        var cockpitDef = _library.GetDefinition("cockpit_basic");
+        float cockpitLength = cockpitDef?.Size.Z ?? 4f;
+        float hullLength = def.Size.Z;
+        
+        // Small gap between modules for visual separation (0.5 units)
+        const float moduleGap = 0.5f;
+        
+        // Create hull sections behind cockpit with proper spacing
+        float currentZOffset = -(cockpitLength / 2f + hullLength / 2f + moduleGap);
+        
         for (int i = 0; i < hullCount; i++)
         {
-            Vector3 position = new Vector3(0, 0, -(i + 1) * 4); // 4 units apart
+            Vector3 position = new Vector3(0, 0, currentZOffset);
             
             var hull = new ShipModulePart("hull_section_basic", position, config.Material)
             {
@@ -248,6 +258,9 @@ public class ModularProceduralShipGenerator
             hull.Health = hull.MaxHealth;
             
             sections.Add(hull);
+            
+            // Move to next position (current length + gap + next module's half length)
+            currentZOffset -= (hullLength + moduleGap);
         }
         
         return sections;
@@ -290,6 +303,13 @@ public class ModularProceduralShipGenerator
             var def = _library.GetDefinition(moduleId);
             if (def == null) continue;
             
+            // Get hull section size for proper spacing
+            var hullDef = _library.GetDefinition("hull_section_basic");
+            float hullLength = hullDef?.Size.Z ?? 4f;
+            float engineLength = def.Size.Z;
+            
+            const float moduleGap = 0.5f;
+            
             // Position engines at the rear
             Vector3 position = Vector3.Zero;
             if (hullSections.Count > 0)
@@ -298,14 +318,17 @@ public class ModularProceduralShipGenerator
                 
                 if (engineCount == 1)
                 {
-                    position = lastHull.Position + new Vector3(0, 0, -4);
+                    // Single centered engine
+                    float zOffset = -(hullLength / 2f + engineLength / 2f + moduleGap);
+                    position = lastHull.Position + new Vector3(0, 0, zOffset);
                 }
                 else
                 {
-                    // Spread engines across the width
+                    // Multiple engines spread across the width
                     float spacing = 3f;
                     float offset = (i - (engineCount - 1) / 2f) * spacing;
-                    position = lastHull.Position + new Vector3(offset, 0, -4);
+                    float zOffset = -(hullLength / 2f + engineLength / 2f + moduleGap);
+                    position = lastHull.Position + new Vector3(offset, 0, zOffset);
                 }
             }
             
@@ -345,12 +368,20 @@ public class ModularProceduralShipGenerator
         var def = _library.GetDefinition("wing_basic");
         if (def == null) return wings;
         
+        // Get hull width for proper wing placement
+        var hullDef = _library.GetDefinition("hull_section_basic");
+        float hullWidth = hullDef?.Size.X ?? 3f;
+        float wingWidth = def.Size.X;
+        
+        const float moduleGap = 0.3f;
+        
         // Attach wings to middle hull section
         var middleHull = hullSections[hullSections.Count / 2];
         
-        // Left wing
+        // Left wing - position based on hull width and wing width
+        float xOffset = -(hullWidth / 2f + wingWidth / 2f + moduleGap);
         var leftWing = new ShipModulePart("wing_basic", 
-            middleHull.Position + new Vector3(-3, 0, 0), 
+            middleHull.Position + new Vector3(xOffset, 0, 0), 
             config.Material)
         {
             MaxHealth = def.GetHealthForMaterial(config.Material),
@@ -361,8 +392,9 @@ public class ModularProceduralShipGenerator
         wings.Add(leftWing);
         
         // Right wing
+        xOffset = (hullWidth / 2f + wingWidth / 2f + moduleGap);
         var rightWing = new ShipModulePart("wing_basic", 
-            middleHull.Position + new Vector3(3, 0, 0), 
+            middleHull.Position + new Vector3(xOffset, 0, 0), 
             config.Material)
         {
             MaxHealth = def.GetHealthForMaterial(config.Material),
@@ -426,8 +458,16 @@ public class ModularProceduralShipGenerator
             int hullIndex = i % hullSections.Count;
             var hull = hullSections[hullIndex];
             
-            float side = (i % 2 == 0) ? -1.5f : 1.5f;
-            Vector3 position = hull.Position + new Vector3(side, 1, 0);
+            // Get hull size for proper weapon mount positioning
+            var hullDef = _library.GetDefinition("hull_section_basic");
+            float hullWidth = hullDef?.Size.X ?? 3f;
+            float hullHeight = hullDef?.Size.Y ?? 3f;
+            
+            const float moduleGap = 0.2f;
+            
+            float side = (i % 2 == 0) ? -(hullWidth / 2f + moduleGap) : (hullWidth / 2f + moduleGap);
+            float yOffset = hullHeight / 4f; // Mount slightly above center
+            Vector3 position = hull.Position + new Vector3(side, yOffset, 0);
             
             var mount = new ShipModulePart("weapon_mount_basic", position, config.Material)
             {

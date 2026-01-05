@@ -994,7 +994,72 @@ public class GraphicsWindow : IDisposable
         var moduleLibrary = new ModuleLibrary();
         moduleLibrary.InitializeBuiltInModules();
         
-        // Render each module
+        // Check if this is a Ulysses ship and load textures
+        MeshRenderer.ShipTextures? ulyssesTextures = null;
+        bool isUlyssesShip = ship.Name?.Contains("Ulysses", StringComparison.OrdinalIgnoreCase) ?? false;
+        
+        if (isUlyssesShip)
+        {
+            // Try to load Ulysses textures
+            try
+            {
+                ulyssesTextures = _meshRenderer.LoadShipTextures(
+                    "Models/ships/Ulysses/textures/p_116_Spaceship_001_Spaceship_BaseColor-p_116_Spaceship_001_.png",
+                    "Models/ships/Ulysses/textures/p_116_Spaceship_001_Spaceship_Normal.png",
+                    "Models/ships/Ulysses/textures/p_116_Spaceship_001_Spaceship_Metallic-p_116_Spaceship_001_S.png",
+                    "Models/ships/Ulysses/textures/p_116_Spaceship_001_Spaceship_Emissive.png"
+                );
+                
+                if (ulyssesTextures != null)
+                {
+                    _logger.Debug("GraphicsWindow", "Loaded Ulysses ship textures");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning("GraphicsWindow", $"Failed to load Ulysses textures: {ex.Message}");
+            }
+        }
+        
+        // Check if ship has the Ulysses model loaded
+        var (ulyssesExists, ulyssesPath, _) = UlyssesModelLoader.CheckForUlyssesModel();
+        List<MeshData>? ulyssesModel = null;
+        
+        if (ulyssesExists && isUlyssesShip)
+        {
+            try
+            {
+                ulyssesModel = UlyssesModelLoader.LoadUlyssesModel();
+                
+                if (ulyssesModel != null && ulyssesModel.Count > 0)
+                {
+                    // Render the Ulysses model as a single unit
+                    var transform = Matrix4x4.CreateTranslation(shipPosition);
+                    var color = GetModuleColor(ship.Modules.FirstOrDefault() ?? new ShipModulePart("", Vector3.Zero));
+                    
+                    foreach (var mesh in ulyssesModel)
+                    {
+                        _meshRenderer.RenderMesh(
+                            mesh,
+                            transform,
+                            color,
+                            viewMatrix,
+                            projectionMatrix,
+                            _camera.Position,
+                            ulyssesTextures
+                        );
+                    }
+                    
+                    return; // Don't render individual modules if we rendered the full model
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Warning("GraphicsWindow", $"Failed to load Ulysses model: {ex.Message}");
+            }
+        }
+        
+        // Render each module (fallback if no Ulysses model or for non-Ulysses ships)
         foreach (var module in ship.Modules)
         {
             try
@@ -1042,7 +1107,8 @@ public class GraphicsWindow : IDisposable
                         color,
                         viewMatrix,
                         projectionMatrix,
-                        _camera.Position
+                        _camera.Position,
+                        ulyssesTextures
                     );
                 }
             }
