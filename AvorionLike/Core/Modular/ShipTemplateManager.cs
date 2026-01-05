@@ -155,9 +155,37 @@ public class ShipTemplateManager
             ApplyDefaultEquipment(ship.Equipment, template.DefaultEquipment);
         }
         
-        // Override base stats if specified
-        if (template.BaseHull > 0) ship.Ship.MaxTotalHealth = template.BaseHull;
-        if (template.BaseMass > 0) ship.Ship.TotalMass = template.BaseMass;
+        // Override base stats if specified by modifying modules
+        if (template.BaseHull > 0)
+        {
+            // Adjust module health to reach target total hull
+            var currentHull = ship.Ship.MaxTotalHealth;
+            if (currentHull > 0)
+            {
+                var multiplier = template.BaseHull / currentHull;
+                foreach (var module in ship.Ship.Modules)
+                {
+                    module.MaxHealth *= multiplier;
+                    module.Health = module.MaxHealth;
+                }
+            }
+        }
+        
+        if (template.BaseMass > 0)
+        {
+            // Adjust module mass to reach target total mass
+            var currentMass = ship.Ship.TotalMass;
+            if (currentMass > 0)
+            {
+                var multiplier = template.BaseMass / currentMass;
+                foreach (var module in ship.Ship.Modules)
+                {
+                    module.Mass *= multiplier;
+                }
+            }
+        }
+        
+        // Override aggregated stats directly
         if (template.BaseSpeed > 0) ship.Ship.AggregatedStats.MaxSpeed = template.BaseSpeed;
         if (template.BaseThrust > 0) ship.Ship.AggregatedStats.ThrustPower = template.BaseThrust;
         if (template.BaseCargo > 0) ship.Ship.AggregatedStats.CargoCapacity = template.BaseCargo;

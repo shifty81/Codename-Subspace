@@ -259,7 +259,8 @@ public class X4ShipGenerator
             return EquipmentType.MiningLaser;
         }
         
-        return slotIndex % 3 switch
+        var mod = slotIndex % 3;
+        return mod switch
         {
             0 => EquipmentType.Scanner,
             1 => EquipmentType.Shield,
