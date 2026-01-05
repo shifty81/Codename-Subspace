@@ -13,6 +13,7 @@ using AvorionLike.Core.Fleet;
 using AvorionLike.Core.UI;
 using AvorionLike.Core.Configuration;
 using AvorionLike.Core.AI;
+using AvorionLike.Core.Modular;
 using AvorionLike.Examples;
 using System.Numerics;
 
@@ -416,7 +417,11 @@ class Program
     /// </summary>
     static void CreateCompleteSolarSystem(Guid playerShipId, Vector3 centerPosition)
     {
-        var shipGenerator = new ProceduralShipGenerator(Environment.TickCount);
+        // Initialize modular ship generation system
+        var moduleLibrary = new ModuleLibrary();
+        moduleLibrary.InitializeBuiltInModules();
+        var shipGenerator = new ModularProceduralShipGenerator(moduleLibrary, Environment.TickCount);
+        
         var stationGenerator = new ProceduralStationGenerator(Environment.TickCount);
         int entityCount = 0;
         
@@ -465,40 +470,38 @@ class Program
         {
             try
             {
-                // Vary ship styles based on role for more visual diversity
-                // Allow explicit style override, otherwise determine from role
-                string styleName = config.Style ?? (config.Role switch
+                // Create modular ship config
+                var shipConfig = new ModularShipConfig
                 {
-                    ShipRole.Combat => "Military",
-                    ShipRole.Trading => "Trader",
-                    ShipRole.Mining => "Industrial",
-                    ShipRole.Exploration => "Explorer",
-                    ShipRole.Salvage => "Industrial", // Salvagers use industrial style
-                    _ => "Default"
-                });
-                
-                var shipConfig = new ShipGenerationConfig
-                {
+                    ShipName = $"{config.Size} - {config.Role}",
                     Size = config.Size,
                     Role = config.Role,
                     Material = config.Material,
-                    Style = FactionShipStyle.GetDefaultStyle(styleName),
-                    Seed = config.Position.GetHashCode()
+                    Seed = config.Position.GetHashCode(),
+                    AddWings = config.Size <= ShipSize.Destroyer,
+                    AddWeapons = true,
+                    AddCargo = config.Role == ShipRole.Trading || config.Role == ShipRole.Mining,
+                    AddHyperdrive = config.Size >= ShipSize.Corvette
                 };
                 
                 var generatedShip = shipGenerator.GenerateShip(shipConfig);
-                var ship = _gameEngine!.EntityManager.CreateEntity($"{config.Size} - {config.Role}");
+                var ship = _gameEngine!.EntityManager.CreateEntity(shipConfig.ShipName);
                 
-                _gameEngine.EntityManager.AddComponent(ship.Id, generatedShip.Structure);
+                // Add the modular ship component
+                _gameEngine.EntityManager.AddComponent(ship.Id, generatedShip.Ship);
+                
+                // Calculate simplified physics properties
+                float momentOfInertia = generatedShip.Ship.TotalMass * 10f; // Simplified calculation
+                float totalTorque = generatedShip.Ship.AggregatedStats.ThrustPower * 0.5f; // Simplified calculation
                 
                 var shipPhysics = new PhysicsComponent
                 {
                     Position = centerPosition + config.Position,
                     Velocity = Vector3.Zero,
-                    Mass = generatedShip.Structure.TotalMass,
-                    MomentOfInertia = generatedShip.Structure.MomentOfInertia,
-                    MaxThrust = generatedShip.Structure.TotalThrust,
-                    MaxTorque = generatedShip.Structure.TotalTorque
+                    Mass = generatedShip.Ship.TotalMass,
+                    MomentOfInertia = momentOfInertia,
+                    MaxThrust = generatedShip.Ship.AggregatedStats.ThrustPower,
+                    MaxTorque = totalTorque
                 };
                 _gameEngine.EntityManager.AddComponent(ship.Id, shipPhysics);
                 
@@ -508,10 +511,10 @@ class Program
                     var shipCombat = new CombatComponent
                     {
                         EntityId = ship.Id,
-                        MaxShields = generatedShip.Structure.ShieldCapacity,
-                        CurrentShields = generatedShip.Structure.ShieldCapacity,
-                        MaxEnergy = generatedShip.Structure.PowerGeneration,
-                        CurrentEnergy = generatedShip.Structure.PowerGeneration
+                        MaxShields = generatedShip.Ship.AggregatedStats.ShieldCapacity,
+                        CurrentShields = generatedShip.Ship.AggregatedStats.ShieldCapacity,
+                        MaxEnergy = generatedShip.Ship.AggregatedStats.PowerGeneration,
+                        CurrentEnergy = generatedShip.Ship.AggregatedStats.PowerGeneration
                     };
                     _gameEngine.EntityManager.AddComponent(ship.Id, shipCombat);
                 }
@@ -3380,7 +3383,11 @@ class Program
     {
         Console.WriteLine("Generating test showcase with multiple ship types...");
         
-        var shipGenerator = new ProceduralShipGenerator(Environment.TickCount);
+        // Initialize modular ship generation system
+        var moduleLibrary = new ModuleLibrary();
+        moduleLibrary.InitializeBuiltInModules();
+        var shipGenerator = new ModularProceduralShipGenerator(moduleLibrary, Environment.TickCount);
+        
         int shipCount = 0;
         
         // Use varied seeds for more variety each time you play
@@ -3430,34 +3437,39 @@ class Program
             var config = testConfigurations[i];
             try
             {
-                // Create faction style with specified hull shape
-                var style = FactionShipStyle.GetDefaultStyle(config.Style);
-                style.PreferredHullShape = config.Hull;
-                
-                var shipConfig = new ShipGenerationConfig
+                // Create modular ship config
+                var shipConfig = new ModularShipConfig
                 {
+                    ShipName = config.Name,
                     Size = config.Size,
                     Role = config.Role,
                     Material = config.Material,
-                    Style = style,
-                    Seed = baseSeed + i * 1000 + config.Name.GetHashCode() // Varied seed for different results each time
+                    Seed = baseSeed + i * 1000 + config.Name.GetHashCode(), // Varied seed for different results each time
+                    AddWings = config.Size <= ShipSize.Destroyer,
+                    AddWeapons = true,
+                    AddCargo = config.Role == ShipRole.Trading || config.Role == ShipRole.Mining,
+                    AddHyperdrive = config.Size >= ShipSize.Corvette
                 };
                 
                 var generatedShip = shipGenerator.GenerateShip(shipConfig);
                 var ship = _gameEngine!.EntityManager.CreateEntity(config.Name);
                 
-                // Add voxel structure
-                _gameEngine.EntityManager.AddComponent(ship.Id, generatedShip.Structure);
+                // Add modular ship component
+                _gameEngine.EntityManager.AddComponent(ship.Id, generatedShip.Ship);
+                
+                // Calculate simplified physics properties
+                float momentOfInertia = generatedShip.Ship.TotalMass * 10f; // Simplified calculation
+                float totalTorque = generatedShip.Ship.AggregatedStats.ThrustPower * 0.5f; // Simplified calculation
                 
                 // Add physics at specified position
                 var physicsComponent = new PhysicsComponent
                 {
                     Position = playerPosition + config.Position,
                     Velocity = Vector3.Zero,
-                    Mass = generatedShip.Structure.TotalMass,
-                    MomentOfInertia = generatedShip.Structure.MomentOfInertia,
-                    MaxThrust = generatedShip.Structure.TotalThrust,
-                    MaxTorque = generatedShip.Structure.TotalTorque
+                    Mass = generatedShip.Ship.TotalMass,
+                    MomentOfInertia = momentOfInertia,
+                    MaxThrust = generatedShip.Ship.AggregatedStats.ThrustPower,
+                    MaxTorque = totalTorque
                 };
                 _gameEngine.EntityManager.AddComponent(ship.Id, physicsComponent);
                 
@@ -3465,10 +3477,10 @@ class Program
                 var combatComponent = new CombatComponent
                 {
                     EntityId = ship.Id,
-                    MaxShields = generatedShip.Structure.ShieldCapacity,
-                    CurrentShields = generatedShip.Structure.ShieldCapacity,
-                    MaxEnergy = generatedShip.Structure.PowerGeneration,
-                    CurrentEnergy = generatedShip.Structure.PowerGeneration
+                    MaxShields = generatedShip.Ship.AggregatedStats.ShieldCapacity,
+                    CurrentShields = generatedShip.Ship.AggregatedStats.ShieldCapacity,
+                    MaxEnergy = generatedShip.Ship.AggregatedStats.PowerGeneration,
+                    CurrentEnergy = generatedShip.Ship.AggregatedStats.PowerGeneration
                 };
                 _gameEngine.EntityManager.AddComponent(ship.Id, combatComponent);
                 
