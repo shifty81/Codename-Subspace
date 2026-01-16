@@ -10,12 +10,10 @@ namespace AvorionLike.Core.Graphics;
 public class X4AsteroidRenderer
 {
     private readonly Random _random;
-    private readonly NoiseGenerator _noise;
     
     public X4AsteroidRenderer(int seed = 0)
     {
         _random = seed == 0 ? new Random() : new Random(seed);
-        _noise = new NoiseGenerator(seed);
     }
     
     /// <summary>
@@ -44,7 +42,7 @@ public class X4AsteroidRenderer
         asteroid.MaterialData = GenerateMaterialData(asteroidData.ResourceType);
         
         // Add optional resource veins visible on surface
-        if (asteroidData.ResourceAmount > 0.3f)
+        if (!string.IsNullOrEmpty(asteroidData.ResourceType))
         {
             asteroid.ResourceVeins = GenerateResourceVeins(asteroidData.ResourceType);
         }
@@ -98,7 +96,7 @@ public class X4AsteroidRenderer
                 
                 for (int octave = 0; octave < 4; octave++)
                 {
-                    noiseValue += _noise.Get3DNoise(
+                    noiseValue += NoiseGenerator.PerlinNoise3D(
                         point.X * frequency,
                         point.Y * frequency,
                         point.Z * frequency

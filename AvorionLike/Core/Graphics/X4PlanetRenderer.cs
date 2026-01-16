@@ -69,23 +69,24 @@ public class X4PlanetRenderer
         var mesh = new SphereMesh();
         
         // Start with icosahedron (20 faces, 12 vertices)
-        const float t = (1.0f + (float)Math.Sqrt(5.0f)) / 2.0f;
+        // Golden ratio
+        float goldenRatio = (1.0f + (float)Math.Sqrt(5.0f)) / 2.0f;
         
         // Initial vertices
         var vertices = new List<Vector3>
         {
-            new Vector3(-1, t, 0).Normalized() * radius,
-            new Vector3(1, t, 0).Normalized() * radius,
-            new Vector3(-1, -t, 0).Normalized() * radius,
-            new Vector3(1, -t, 0).Normalized() * radius,
-            new Vector3(0, -1, t).Normalized() * radius,
-            new Vector3(0, 1, t).Normalized() * radius,
-            new Vector3(0, -1, -t).Normalized() * radius,
-            new Vector3(0, 1, -t).Normalized() * radius,
-            new Vector3(t, 0, -1).Normalized() * radius,
-            new Vector3(t, 0, 1).Normalized() * radius,
-            new Vector3(-t, 0, -1).Normalized() * radius,
-            new Vector3(-t, 0, 1).Normalized() * radius
+            new Vector3(-1, goldenRatio, 0).Normalized() * radius,
+            new Vector3(1, goldenRatio, 0).Normalized() * radius,
+            new Vector3(-1, -goldenRatio, 0).Normalized() * radius,
+            new Vector3(1, -goldenRatio, 0).Normalized() * radius,
+            new Vector3(0, -1, goldenRatio).Normalized() * radius,
+            new Vector3(0, 1, goldenRatio).Normalized() * radius,
+            new Vector3(0, -1, -goldenRatio).Normalized() * radius,
+            new Vector3(0, 1, -goldenRatio).Normalized() * radius,
+            new Vector3(goldenRatio, 0, -1).Normalized() * radius,
+            new Vector3(goldenRatio, 0, 1).Normalized() * radius,
+            new Vector3(-goldenRatio, 0, -1).Normalized() * radius,
+            new Vector3(-goldenRatio, 0, 1).Normalized() * radius
         };
         
         // Initial faces (20 triangles)
@@ -103,11 +104,11 @@ public class X4PlanetRenderer
             var newTriangles = new List<int>();
             var midpointCache = new Dictionary<long, int>();
             
-            for (int t = 0; t < triangles.Count; t += 3)
+            for (int triIndex = 0; triIndex < triangles.Count; triIndex += 3)
             {
-                int v1 = triangles[t];
-                int v2 = triangles[t + 1];
-                int v3 = triangles[t + 2];
+                int v1 = triangles[triIndex];
+                int v2 = triangles[triIndex + 1];
+                int v3 = triangles[triIndex + 2];
                 
                 // Get midpoints (or create if new)
                 int m1 = GetMidpoint(v1, v2, vertices, midpointCache, radius);
@@ -225,7 +226,7 @@ public class X4PlanetRenderer
                 details.BaseColor = new Vector3(0.3f, 0.5f, 0.7f);
                 break;
                 
-            case PlanetType.GasGiant:
+            case PlanetType.Gas:
                 details.BandCount = 8 + _random.Next(12);
                 details.StormSystems = 2 + _random.Next(6);
                 details.ColorVariation = 0.4f;
@@ -235,13 +236,6 @@ public class X4PlanetRenderer
                     1 => new Vector3(0.3f, 0.5f, 0.9f), // Neptune-like
                     _ => new Vector3(0.9f, 0.85f, 0.6f)  // Saturn-like
                 };
-                break;
-                
-            case PlanetType.Toxic:
-                details.ToxicClouds = 30 + _random.Next(50);
-                details.AcidLakes = 10 + _random.Next(20);
-                details.ColorVariation = 0.3f;
-                details.BaseColor = new Vector3(0.5f, 0.7f, 0.3f);
                 break;
         }
         
@@ -267,13 +261,7 @@ public class X4PlanetRenderer
                 atmosphere.ScatteringStrength = 0.8f;
                 break;
                 
-            case PlanetType.Toxic:
-                atmosphere.Color = new Vector3(0.7f, 0.9f, 0.4f); // Yellow-green
-                atmosphere.Density = 1.3f;
-                atmosphere.ScatteringStrength = 0.6f;
-                break;
-                
-            case PlanetType.GasGiant:
+            case PlanetType.Gas:
                 atmosphere.Color = new Vector3(0.8f, 0.8f, 0.7f); // Pale
                 atmosphere.Density = 2.0f;
                 atmosphere.ScatteringStrength = 1.0f;
@@ -302,7 +290,7 @@ public class X4PlanetRenderer
         };
         
         // Ring appearance based on planet type
-        if (planetData.Type == PlanetType.GasGiant)
+        if (planetData.Type == PlanetType.Gas)
         {
             rings.RingCount = 3 + _random.Next(4);
             rings.Color = new Vector3(0.8f, 0.75f, 0.7f); // Ice/rock
@@ -348,7 +336,7 @@ public class X4PlanetRenderer
             {
                 PlanetType.Ocean => 0.8f,
                 PlanetType.Ice => 0.9f,
-                PlanetType.GasGiant => 0.3f,
+                PlanetType.Gas => 0.3f,
                 _ => 0.2f
             },
             Roughness = planetData.Type switch
@@ -357,7 +345,7 @@ public class X4PlanetRenderer
                 PlanetType.Desert => 0.8f,
                 PlanetType.Ice => 0.1f,
                 PlanetType.Ocean => 0.2f,
-                PlanetType.GasGiant => 0.6f,
+                PlanetType.Gas => 0.6f,
                 _ => 0.7f
             }
         };
@@ -381,8 +369,7 @@ public class X4PlanetRenderer
         {
             PlanetType.Habitable => true,
             PlanetType.Ocean => true,
-            PlanetType.Toxic => true,
-            PlanetType.GasGiant => true,
+            PlanetType.Gas => true,
             _ => false
         };
     }
@@ -392,7 +379,7 @@ public class X4PlanetRenderer
     /// </summary>
     private bool ShouldHaveRings(PlanetType type)
     {
-        if (type == PlanetType.GasGiant)
+        if (type == PlanetType.Gas)
             return _random.NextDouble() > 0.3; // 70% chance for gas giants
         
         return _random.NextDouble() > 0.9; // 10% chance for others

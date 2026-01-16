@@ -1,7 +1,21 @@
 using System.Numerics;
-using AvorionLike.Core.Modular;
 
 namespace AvorionLike.Core.Graphics;
+
+// Note: Using local enum to avoid conflict with multiple X4StationType enums in different namespaces
+// This mirrors AvorionLike.Core.Modular.X4StationType
+public enum X4StationType
+{
+    TradingPost,
+    Shipyard,
+    Factory,
+    MiningStation,
+    ResearchStation,
+    DefensePlatform,
+    RefuelingDepot,
+    CommandCenter,
+    Habitat
+}
 
 /// <summary>
 /// X4-inspired station renderer with detailed modular architecture
@@ -19,7 +33,7 @@ public class X4StationRenderer
     /// <summary>
     /// Generate detailed station model with X4-style modular design
     /// </summary>
-    public DetailedStation GenerateDetailedStation(StationType stationType, string material, int complexity = 3)
+    public DetailedStation GenerateDetailedStation(X4StationType stationType, string material, int complexity = 3)
     {
         var station = new DetailedStation
         {
@@ -58,17 +72,17 @@ public class X4StationRenderer
     /// <summary>
     /// Generate central core hub module
     /// </summary>
-    private StationModule GenerateCoreHub(StationType stationType)
+    private StationModule GenerateCoreHub(X4StationType stationType)
     {
         var coreSize = stationType switch
         {
-            StationType.TradingPost => new Vector3(40f, 40f, 40f),
-            StationType.Shipyard => new Vector3(60f, 50f, 60f),
-            StationType.Factory => new Vector3(80f, 40f, 80f),
-            StationType.MiningStation => new Vector3(50f, 50f, 50f),
-            StationType.ResearchStation => new Vector3(45f, 60f, 45f),
-            StationType.DefensePlatform => new Vector3(50f, 30f, 50f),
-            StationType.CommandCenter => new Vector3(70f, 70f, 70f),
+            X4StationType.TradingPost => new Vector3(40f, 40f, 40f),
+            X4StationType.Shipyard => new Vector3(60f, 50f, 60f),
+            X4StationType.Factory => new Vector3(80f, 40f, 80f),
+            X4StationType.MiningStation => new Vector3(50f, 50f, 50f),
+            X4StationType.ResearchStation => new Vector3(45f, 60f, 45f),
+            X4StationType.DefensePlatform => new Vector3(50f, 30f, 50f),
+            X4StationType.CommandCenter => new Vector3(70f, 70f, 70f),
             _ => new Vector3(40f, 40f, 40f)
         };
         
@@ -80,11 +94,11 @@ public class X4StationRenderer
             Rotation = Vector3.Zero,
             ModelType = stationType switch
             {
-                StationType.TradingPost => StationModelType.RingHub,
-                StationType.Shipyard => StationModelType.TowerHub,
-                StationType.Factory => StationModelType.IndustrialHub,
-                StationType.ResearchStation => StationModelType.SphericalHub,
-                StationType.CommandCenter => StationModelType.CommandHub,
+                X4StationType.TradingPost => StationModelType.RingHub,
+                X4StationType.Shipyard => StationModelType.TowerHub,
+                X4StationType.Factory => StationModelType.IndustrialHub,
+                X4StationType.ResearchStation => StationModelType.SphericalHub,
+                X4StationType.CommandCenter => StationModelType.CommandHub,
                 _ => StationModelType.CylindricalHub
             },
             MaterialProperties = new ModuleMaterialProperties
@@ -100,41 +114,41 @@ public class X4StationRenderer
     /// <summary>
     /// Generate type-specific station modules
     /// </summary>
-    private List<StationModule> GenerateStationModules(StationType stationType, int complexity)
+    private List<StationModule> GenerateStationModules(X4StationType stationType, int complexity)
     {
         var modules = new List<StationModule>();
         
         switch (stationType)
         {
-            case StationType.TradingPost:
+            case X4StationType.TradingPost:
                 modules.AddRange(GenerateTradingModules(complexity));
                 break;
                 
-            case StationType.Shipyard:
+            case X4StationType.Shipyard:
                 modules.AddRange(GenerateShipyardModules(complexity));
                 break;
                 
-            case StationType.Factory:
+            case X4StationType.Factory:
                 modules.AddRange(GenerateFactoryModules(complexity));
                 break;
                 
-            case StationType.MiningStation:
+            case X4StationType.MiningStation:
                 modules.AddRange(GenerateMiningModules(complexity));
                 break;
                 
-            case StationType.ResearchStation:
+            case X4StationType.ResearchStation:
                 modules.AddRange(GenerateResearchModules(complexity));
                 break;
                 
-            case StationType.DefensePlatform:
+            case X4StationType.DefensePlatform:
                 modules.AddRange(GenerateDefenseModules(complexity));
                 break;
                 
-            case StationType.RefuelingDepot:
+            case X4StationType.RefuelingDepot:
                 modules.AddRange(GenerateRefuelingModules(complexity));
                 break;
                 
-            case StationType.CommandCenter:
+            case X4StationType.CommandCenter:
                 modules.AddRange(GenerateCommandModules(complexity));
                 break;
         }
@@ -485,15 +499,15 @@ public class X4StationRenderer
     /// <summary>
     /// Generate docking bays for ships
     /// </summary>
-    private List<DockingBay> GenerateDockingBays(StationType stationType, int complexity)
+    private List<DockingBay> GenerateDockingBays(X4StationType stationType, int complexity)
     {
         var bays = new List<DockingBay>();
         
         int bayCount = stationType switch
         {
-            StationType.TradingPost => 8 + complexity * 2,
-            StationType.Shipyard => 6 + complexity * 2,
-            StationType.CommandCenter => 10 + complexity * 3,
+            X4StationType.TradingPost => 8 + complexity * 2,
+            X4StationType.Shipyard => 6 + complexity * 2,
+            X4StationType.CommandCenter => 10 + complexity * 3,
             _ => 4 + complexity
         };
         
@@ -522,7 +536,7 @@ public class X4StationRenderer
     /// <summary>
     /// Generate external station details
     /// </summary>
-    private List<ExternalDetail> GenerateExternalDetails(StationType stationType, int complexity)
+    private List<ExternalDetail> GenerateExternalDetails(X4StationType stationType, int complexity)
     {
         var details = new List<ExternalDetail>();
         int detailCount = 20 + complexity * 10;
@@ -589,7 +603,7 @@ public class X4StationRenderer
     /// <summary>
     /// Generate station lighting systems
     /// </summary>
-    private List<StationLight> GenerateStationLighting(StationType stationType, int complexity)
+    private List<StationLight> GenerateStationLighting(X4StationType stationType, int complexity)
     {
         var lights = new List<StationLight>();
         int lightCount = 30 + complexity * 15;
@@ -635,13 +649,13 @@ public class X4StationRenderer
     /// <summary>
     /// Check if station type should have defensive systems
     /// </summary>
-    private bool ShouldHaveDefenses(StationType type)
+    private bool ShouldHaveDefenses(X4StationType type)
     {
         return type switch
         {
-            StationType.DefensePlatform => true,
-            StationType.CommandCenter => true,
-            StationType.MiningStation => true,
+            X4StationType.DefensePlatform => true,
+            X4StationType.CommandCenter => true,
+            X4StationType.MiningStation => true,
             _ => false
         };
     }
@@ -652,7 +666,7 @@ public class X4StationRenderer
 /// </summary>
 public class DetailedStation
 {
-    public StationType Type { get; set; }
+    public X4StationType Type { get; set; }
     public string Material { get; set; } = "";
     public int Complexity { get; set; }
     public StationModule CoreHub { get; set; } = null!;
