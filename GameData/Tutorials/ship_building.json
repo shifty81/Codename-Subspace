@@ -1,0 +1,45 @@
+{
+  "Id": "tutorial_ship_building",
+  "Title": "Ship Building",
+  "Description": "Learn how to build and customize your ship using voxel blocks.",
+  "AutoStart": false,
+  "Prerequisites": ["tutorial_basic_controls", "tutorial_mining_basics"],
+  "Steps": [
+    {
+      "Type": "Message",
+      "Title": "Introduction to Ship Building",
+      "Message": "Your ship is built from voxel blocks. You can add, remove, and customize blocks to create your perfect vessel!",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Entering Build Mode",
+      "Message": "Press [B] to open the Ship Builder. This is where you can add new blocks, choose materials, and modify your ship's structure.",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Block Types",
+      "Message": "There are several block types:\n• Hull - Basic structure\n• Armor - Protection\n• Engine - Propulsion\n• Thruster - Maneuvering\n• Generator - Power\n• Shield - Defense\n• Cargo - Storage\n• Cockpit - Control center\n• Turret - Weapons mounting",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Materials Matter",
+      "Message": "Different materials provide different stats:\n• Iron - Basic, cheap\n• Titanium - Stronger\n• Naonite - Energy efficient\n• Trinium - Lightweight\n• Xanion - Advanced\n• Ogonite - Powerful\n• Avorion - Ultimate\n\nBetter materials unlock as you explore deeper into the galaxy!",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Building Tips",
+      "Message": "Tips for building:\n• Add more engines for speed\n• Balance your ship's mass\n• Add shields for protection\n• Don't forget power generators!\n• Cargo blocks let you carry more resources\n\nExperiment and have fun!",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Ship Building Complete!",
+      "Message": "You now know the basics of ship building! Open the Ship Builder [B] anytime to customize your vessel.",
+      "CanSkip": false
+    }
+  ]
+}

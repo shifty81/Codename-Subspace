@@ -1,0 +1,40 @@
+{
+  "Id": "tutorial_mining_basics",
+  "Title": "Mining Basics",
+  "Description": "Learn how to mine resources from asteroids to build and upgrade your ship.",
+  "AutoStart": false,
+  "Prerequisites": ["tutorial_basic_controls"],
+  "Steps": [
+    {
+      "Type": "Message",
+      "Title": "Introduction to Mining",
+      "Message": "Mining is essential for gathering resources. You'll need resources to build and upgrade your ship.",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Finding Asteroids",
+      "Message": "Look for asteroids in your sector. They appear as floating rocks and contain valuable resources like Iron, Titanium, and more.",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Mining Lasers",
+      "Message": "To mine, you need mining lasers equipped on your ship. Approach an asteroid and fire your mining laser to extract resources.",
+      "CanSkip": true
+    },
+    {
+      "Type": "WaitForAction",
+      "Title": "Mine Your First Resource",
+      "Message": "Now try mining some resources! Find an asteroid and use your mining laser. Resources will automatically be added to your inventory.",
+      "RequiredAction": "collect_resource",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Mining Complete!",
+      "Message": "Great job! You've learned how to mine resources. Continue mining to gather materials for building and trading.",
+      "CanSkip": false
+    }
+  ]
+}
