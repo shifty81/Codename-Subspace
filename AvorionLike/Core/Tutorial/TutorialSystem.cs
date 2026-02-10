@@ -380,6 +380,62 @@ public class TutorialSystem : SystemBase
     {
         return _tutorialTemplates;
     }
+
+    /// <summary>
+    /// Snapshot the system state into a TutorialComponent for persistence.
+    /// Call this before saving the game.
+    /// </summary>
+    /// <param name="entityId">Entity whose tutorial state to capture</param>
+    /// <returns>A populated TutorialComponent, or null if no state exists</returns>
+    public TutorialComponent? CaptureState(Guid entityId)
+    {
+        var hasActive = _activeTutorials.TryGetValue(entityId, out var active);
+        var hasCompleted = _completedTutorials.TryGetValue(entityId, out var completed);
+
+        if (!hasActive && !hasCompleted)
+            return null;
+
+        var component = new TutorialComponent
+        {
+            EntityId = entityId,
+            ActiveTutorials = hasActive ? new List<Tutorial>(active!) : new List<Tutorial>(),
+            CompletedTutorialIds = hasCompleted ? new HashSet<string>(completed!) : new HashSet<string>()
+        };
+
+        return component;
+    }
+
+    /// <summary>
+    /// Restore tutorial state from a previously saved TutorialComponent.
+    /// Call this after loading a game.
+    /// </summary>
+    /// <param name="component">The deserialized TutorialComponent</param>
+    public void RestoreState(TutorialComponent component)
+    {
+        var entityId = component.EntityId;
+
+        if (component.ActiveTutorials.Count > 0)
+        {
+            _activeTutorials[entityId] = new List<Tutorial>(component.ActiveTutorials);
+        }
+
+        if (component.CompletedTutorialIds.Count > 0)
+        {
+            _completedTutorials[entityId] = new HashSet<string>(component.CompletedTutorialIds);
+        }
+    }
+
+    /// <summary>
+    /// Get completed tutorial IDs for an entity
+    /// </summary>
+    /// <param name="entityId">Entity ID</param>
+    /// <returns>Set of completed tutorial IDs</returns>
+    public IReadOnlySet<string> GetCompletedTutorialIds(Guid entityId)
+    {
+        return _completedTutorials.TryGetValue(entityId, out var completed)
+            ? completed
+            : new HashSet<string>();
+    }
 }
 
 /// <summary>

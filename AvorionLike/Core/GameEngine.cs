@@ -364,6 +364,28 @@ public class GameEngine
                 }
             };
 
+            // Capture tutorial system state into TutorialComponents before serialization
+            foreach (var entity in EntityManager.GetAllEntities())
+            {
+                var captured = TutorialSystem.CaptureState(entity.Id);
+                if (captured != null)
+                {
+                    if (!EntityManager.HasComponent<TutorialComponent>(entity.Id))
+                    {
+                        EntityManager.AddComponent(entity.Id, captured);
+                    }
+                    else
+                    {
+                        var existing = EntityManager.GetComponent<TutorialComponent>(entity.Id);
+                        if (existing != null)
+                        {
+                            existing.ActiveTutorials = captured.ActiveTutorials;
+                            existing.CompletedTutorialIds = captured.CompletedTutorialIds;
+                        }
+                    }
+                }
+            }
+
             // Serialize all entities
             foreach (var entity in EntityManager.GetAllEntities())
             {
@@ -391,6 +413,7 @@ public class GameEngine
                 SerializeComponent<CrewComponent>(entity, entityData);
                 SerializeComponent<SubsystemInventoryComponent>(entity, entityData);
                 SerializeComponent<QuestComponent>(entity, entityData);
+                SerializeComponent<TutorialComponent>(entity, entityData);
 
                 saveData.Entities.Add(entityData);
             }
@@ -452,6 +475,16 @@ public class GameEngine
                 foreach (var componentData in entityData.Components)
                 {
                     DeserializeComponent(entity.Id, componentData);
+                }
+            }
+
+            // Restore tutorial system state from TutorialComponents
+            foreach (var entity in EntityManager.GetAllEntities())
+            {
+                var tutComp = EntityManager.GetComponent<TutorialComponent>(entity.Id);
+                if (tutComp != null)
+                {
+                    TutorialSystem.RestoreState(tutComp);
                 }
             }
 
@@ -623,6 +656,12 @@ public class GameEngine
                     var questComponent = new Quest.QuestComponent();
                     questComponent.Deserialize(componentData.Data);
                     EntityManager.AddComponent(entityId, questComponent);
+                    break;
+
+                case "AvorionLike.Core.Tutorial.TutorialComponent":
+                    var tutorialComponent = new Tutorial.TutorialComponent();
+                    tutorialComponent.Deserialize(componentData.Data);
+                    EntityManager.AddComponent(entityId, tutorialComponent);
                     break;
 
                 default:
