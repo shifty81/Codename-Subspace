@@ -1,6 +1,8 @@
 using AvorionLike.Core.ECS;
 using AvorionLike.Core.Events;
 using AvorionLike.Core.Logging;
+using AvorionLike.Core.Resources;
+using AvorionLike.Core.RPG;
 
 namespace AvorionLike.Core.Quest;
 
@@ -121,8 +123,52 @@ public class QuestSystem : SystemBase
     /// </summary>
     private void GiveQuestRewards(Guid entityId, Quest quest)
     {
+        var inventoryComponent = _entityManager.GetComponent<InventoryComponent>(entityId);
+        var progressionComponent = _entityManager.GetComponent<ProgressionComponent>(entityId);
+        var factionComponent = _entityManager.GetComponent<FactionComponent>(entityId);
+        
         foreach (var reward in quest.Rewards)
         {
+            switch (reward.Type)
+            {
+                case RewardType.Credits:
+                    if (inventoryComponent != null)
+                    {
+                        inventoryComponent.Inventory.AddResource(ResourceType.Credits, reward.Amount);
+                        Logger.Instance.Info("QuestSystem", $"Gave {reward.Amount} credits to entity {entityId}");
+                    }
+                    break;
+                    
+                case RewardType.Resource:
+                    if (inventoryComponent != null && Enum.TryParse<ResourceType>(reward.RewardId, out var resourceType))
+                    {
+                        inventoryComponent.Inventory.AddResource(resourceType, reward.Amount);
+                        Logger.Instance.Info("QuestSystem", $"Gave {reward.Amount} {reward.RewardId} to entity {entityId}");
+                    }
+                    break;
+                    
+                case RewardType.Experience:
+                    if (progressionComponent != null)
+                    {
+                        bool leveledUp = progressionComponent.AddExperience(reward.Amount);
+                        Logger.Instance.Info("QuestSystem", $"Gave {reward.Amount} XP to entity {entityId}{(leveledUp ? " (LEVEL UP!)" : "")}");
+                    }
+                    break;
+                    
+                case RewardType.Reputation:
+                    if (factionComponent != null)
+                    {
+                        factionComponent.ModifyReputation(reward.RewardId, reward.Amount);
+                        Logger.Instance.Info("QuestSystem", $"Changed reputation with {reward.RewardId} by {reward.Amount} for entity {entityId}");
+                    }
+                    break;
+                    
+                default:
+                    Logger.Instance.Info("QuestSystem", $"Gave reward: {reward.Description} ({reward.Amount}) to entity {entityId}");
+                    break;
+            }
+            
+            // Also publish event for other systems to react
             _eventSystem.Publish("QuestRewardGiven", new QuestRewardEvent
             {
                 EntityId = entityId,
@@ -131,8 +177,6 @@ public class QuestSystem : SystemBase
                 RewardId = reward.RewardId,
                 Amount = reward.Amount
             });
-            
-            Logger.Instance.Info("QuestSystem", $"Gave reward: {reward.Description} ({reward.Amount}) to entity {entityId}");
         }
     }
     

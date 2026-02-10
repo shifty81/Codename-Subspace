@@ -147,6 +147,8 @@ public class GameEngine
         EntityManager.RegisterSystem(EconomySystem);
         EntityManager.RegisterSystem(PowerSystem);
         EntityManager.RegisterSystem(AISystem);
+        EntityManager.RegisterSystem(QuestSystem);
+        EntityManager.RegisterSystem(TutorialSystem);
         
         // Register modular ship systems
         EntityManager.RegisterSystem(ModularShipSyncSystem);
@@ -379,6 +381,7 @@ public class GameEngine
                 SerializeComponent<ShipClassComponent>(entity, entityData);
                 SerializeComponent<CrewComponent>(entity, entityData);
                 SerializeComponent<SubsystemInventoryComponent>(entity, entityData);
+                SerializeComponent<QuestComponent>(entity, entityData);
 
                 saveData.Entities.Add(entityData);
             }
@@ -605,6 +608,12 @@ public class GameEngine
                     var subsystemInventoryComponent = new SubsystemInventoryComponent();
                     subsystemInventoryComponent.Deserialize(componentData.Data);
                     EntityManager.AddComponent(entityId, subsystemInventoryComponent);
+                    break;
+
+                case "AvorionLike.Core.Quest.QuestComponent":
+                    var questComponent = new Quest.QuestComponent();
+                    questComponent.Deserialize(componentData.Data);
+                    EntityManager.AddComponent(entityId, questComponent);
                     break;
 
                 default:
