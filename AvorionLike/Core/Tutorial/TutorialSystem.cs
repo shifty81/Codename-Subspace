@@ -11,6 +11,7 @@ public class TutorialSystem : SystemBase
 {
     private readonly EntityManager _entityManager;
     private readonly EventSystem _eventSystem;
+    private static readonly HashSet<string> EmptyCompletedSet = new();
     
     /// <summary>
     /// All tutorial templates available in the game
@@ -434,7 +435,7 @@ public class TutorialSystem : SystemBase
     {
         return _completedTutorials.TryGetValue(entityId, out var completed)
             ? completed
-            : new HashSet<string>();
+            : EmptyCompletedSet;
     }
 }
 
