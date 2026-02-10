@@ -616,13 +616,14 @@ public class GameHUD
             {
                 // Compact layout for smaller screens
                 ImGui.Text("C: Toggle Mode  •  WASD: Move");
-                ImGui.Text("Arrows+Q/E: Rotate  •  ESC: Exit");
+                ImGui.Text("J: Quests  •  H: Tutorials  •  ESC: Exit");
             }
             else
             {
                 // Full layout for larger screens
                 ImGui.Text("C: Toggle Ship/Camera  •  WASD + Space/Shift: Move/Thrust");
-                ImGui.Text("Arrow Keys + Q/E: Rotate  •  Mouse: Look  •  ESC: Exit");
+                ImGui.Text("Arrow Keys + Q/E: Rotate  •  Mouse: Look  •  B: Build");
+                ImGui.Text("J: Quest Log  •  H: Tutorials  •  M: Galaxy Map  •  ESC: Menu");
             }
             
             ImGui.PopStyleColor();
