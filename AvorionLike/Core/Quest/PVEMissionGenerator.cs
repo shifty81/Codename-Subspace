@@ -253,7 +253,7 @@ public class PVEMissionGenerator
             EVEFactionId.CoreNexus => EVEFactionId.VanguardRepublic,
             EVEFactionId.VanguardRepublic => EVEFactionId.CoreNexus,
             EVEFactionId.RustScrapCoalition => EVEFactionId.SanctumHegemony,
-            _ => (EVEFactionId)_random.Next(4)
+            _ => Enum.GetValues<EVEFactionId>()[_random.Next(Enum.GetValues<EVEFactionId>().Length)]
         };
     }
 

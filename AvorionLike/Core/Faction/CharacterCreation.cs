@@ -51,7 +51,7 @@ public class Character
                $"  Education: {EducationPath}\n" +
                $"  Skill Points: {SkillPoints:N0}\n" +
                $"  Station: {CurrentStation}\n" +
-               $"  Ship: {(CurrentShipEntityId.HasValue ? CurrentShipEntityId.Value.ToString()[..8] : "None")}";
+               $"  Ship: {(CurrentShipEntityId.HasValue ? CurrentShipEntityId.Value.ToString("N")[..8] : "None")}";
     }
 }
 
