@@ -164,6 +164,9 @@ public class GreedyMeshBuilder
             case BlockShape.HalfBlock:
                 AddHalfBlockFaces(mesh, pos, size, block.Orientation, color, blockType);
                 break;
+            case BlockShape.SlopedPlate:
+                AddSlopedPlateFaces(mesh, pos, size, block.Orientation, color, blockType);
+                break;
             default:
                 // Fallback to cube
                 for (int i = 0; i < 6; i++)
@@ -671,6 +674,19 @@ public class GreedyMeshBuilder
     }
     
     /// <summary>
+    /// Add sloped plate faces - a thin angled surface similar to a wedge but thinner
+    /// </summary>
+    private static void AddSlopedPlateFaces(OptimizedMesh mesh, Vector3 pos, Vector3 size, BlockOrientation orientation, uint color, float blockType)
+    {
+        // Sloped plate is essentially a thin wedge (30% of full height)
+        float plateThickness = size.Y * 0.3f;
+        Vector3 plateSize = new Vector3(size.X, plateThickness, size.Z);
+        
+        // Reuse wedge geometry with reduced height
+        AddWedgeFaces(mesh, pos - new Vector3(0, (size.Y - plateThickness) / 2, 0), plateSize, orientation, color, blockType);
+    }
+    
+    /// <summary>
     /// Add a single face to the mesh
     /// </summary>
     private static void AddFace(OptimizedMesh mesh, Vector3 pos, Vector3 size, int faceIndex, uint color, float blockType)
@@ -1144,6 +1160,63 @@ public class OptimizedMesh
     public int VertexCount => Vertices.Count;
     public int IndexCount => Indices.Count;
     public int FaceCount => Indices.Count / 3;
+}
+
+/// <summary>
+/// Key for grouping mesh instances by shape and material for instanced rendering
+/// </summary>
+public readonly struct MeshBatchKey : IEquatable<MeshBatchKey>
+{
+    public BlockShape Shape { get; }
+    public string Material { get; }
+    
+    public MeshBatchKey(BlockShape shape, string material)
+    {
+        Shape = shape;
+        Material = material;
+    }
+    
+    public bool Equals(MeshBatchKey other) => Shape == other.Shape && Material == other.Material;
+    public override bool Equals(object? obj) => obj is MeshBatchKey other && Equals(other);
+    public override int GetHashCode() => HashCode.Combine(Shape, Material);
+    public override string ToString() => $"{Shape}_{Material ?? "Unknown"}";
+}
+
+/// <summary>
+/// Group of block instances sharing the same shape and material for instanced rendering
+/// </summary>
+public class MeshBatchGroup
+{
+    public MeshBatchKey Key { get; }
+    public List<VoxelBlock> Blocks { get; } = new();
+    
+    public MeshBatchGroup(MeshBatchKey key)
+    {
+        Key = key;
+    }
+    
+    /// <summary>
+    /// Group blocks by (Shape, Material) for instanced rendering
+    /// </summary>
+    public static Dictionary<MeshBatchKey, MeshBatchGroup> GroupBlocks(IEnumerable<VoxelBlock> blocks)
+    {
+        var groups = new Dictionary<MeshBatchKey, MeshBatchGroup>();
+        
+        foreach (var block in blocks)
+        {
+            if (block.IsDestroyed) continue;
+            
+            var key = new MeshBatchKey(block.Shape, block.MaterialType);
+            if (!groups.TryGetValue(key, out var group))
+            {
+                group = new MeshBatchGroup(key);
+                groups[key] = group;
+            }
+            group.Blocks.Add(block);
+        }
+        
+        return groups;
+    }
 }
 
 /// <summary>

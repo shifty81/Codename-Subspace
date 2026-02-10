@@ -50,6 +50,8 @@ public class VoxelBlock
             volume *= 0.25f;
         else if (shape == BlockShape.InnerCorner)
             volume *= 0.75f;
+        else if (shape == BlockShape.SlopedPlate)
+            volume *= 0.3f;
         
         // Calculate properties based on material and block type
         Mass = volume * material.MassMultiplier;

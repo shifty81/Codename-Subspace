@@ -1,4 +1,5 @@
 using System.Numerics;
+using AvorionLike.Core.Building;
 using AvorionLike.Core.ECS;
 using AvorionLike.Core.Resources;
 
@@ -13,6 +14,10 @@ public class BuildSession
     public bool IsActive { get; set; }
     public string SelectedMaterial { get; set; } = "Iron";
     public BlockType SelectedBlockType { get; set; } = BlockType.Hull;
+    public BlockShape SelectedShape { get; set; } = BlockShape.Cube;
+    public BlockOrientation SelectedOrientation { get; set; } = BlockOrientation.PosY;
+    public MirrorAxis MirrorMode { get; set; } = MirrorAxis.None;
+    public Vector3 MirrorOrigin { get; set; } = Vector3.Zero;
     public Vector3 SelectedSize { get; set; } = new(2, 2, 2);
     public List<VoxelBlock> UndoStack { get; set; } = new();
     public int MaxUndoSteps { get; set; } = 50;
@@ -138,6 +143,9 @@ public class BuildSystem : SystemBase
         
         var session = buildMode.CurrentSession;
         
+        // Snap position to integer grid
+        position = SnapToGrid(position);
+        
         // Calculate cost using new system
         int materialCost = CalculateBlockCost(session.SelectedSize, session.SelectedMaterial, session.SelectedBlockType);
         
@@ -154,21 +162,33 @@ public class BuildSystem : SystemBase
             return result;
         }
         
-        // Check for overlaps
-        var newBlock = new VoxelBlock(position, session.SelectedSize, session.SelectedMaterial, session.SelectedBlockType);
+        // Create block with selected shape and orientation
+        var newBlock = new VoxelBlock(position, session.SelectedSize, session.SelectedMaterial, 
+            session.SelectedBlockType, session.SelectedShape, session.SelectedOrientation);
         
-        foreach (var existingBlock in structure.Blocks)
+        // Check for overlaps
+        if (OverlapsExistingBlocks(newBlock, structure))
         {
-            if (newBlock.Intersects(existingBlock))
-            {
-                result.Message = "Block overlaps with existing block";
-                return result;
-            }
+            result.Message = "Block overlaps with existing block";
+            return result;
+        }
+        
+        // Check adjacency: block must touch at least one existing block (unless it's the first block)
+        if (structure.Blocks.Count > 0 && !TouchesAtLeastOneBlock(newBlock, structure))
+        {
+            result.Message = "Block must be adjacent to an existing block";
+            return result;
         }
         
         // Place the block
         structure.AddBlock(newBlock);
         inventory.RemoveResource(materialType, materialCost);
+        
+        // Place mirrored blocks if mirror mode is active
+        if (session.MirrorMode != MirrorAxis.None)
+        {
+            PlaceMirroredBlocks(structure, newBlock, session.MirrorMode, session.MirrorOrigin);
+        }
         
         // Add to undo stack
         if (session.UndoStack.Count >= session.MaxUndoSteps)
@@ -535,6 +555,131 @@ public class BuildSystem : SystemBase
         }
         
         return stats;
+    }
+    
+    /// <summary>
+    /// Snap a position to the integer grid
+    /// </summary>
+    public static Vector3 SnapToGrid(Vector3 position)
+    {
+        return new Vector3(
+            MathF.Round(position.X),
+            MathF.Round(position.Y),
+            MathF.Round(position.Z)
+        );
+    }
+    
+    /// <summary>
+    /// Check if a block overlaps any existing blocks in the structure
+    /// </summary>
+    public static bool OverlapsExistingBlocks(VoxelBlock block, VoxelStructureComponent structure)
+    {
+        foreach (var existingBlock in structure.Blocks)
+        {
+            if (block.Intersects(existingBlock))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /// <summary>
+    /// Check if a block touches at least one existing block (adjacency validation)
+    /// </summary>
+    public static bool TouchesAtLeastOneBlock(VoxelBlock block, VoxelStructureComponent structure)
+    {
+        foreach (var existingBlock in structure.Blocks)
+        {
+            if (BlocksAreAdjacent(block, existingBlock))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    /// <summary>
+    /// Check if two blocks are adjacent (share a face or edge within tolerance)
+    /// </summary>
+    private static bool BlocksAreAdjacent(VoxelBlock a, VoxelBlock b)
+    {
+        const float tolerance = 0.01f;
+        
+        float dx = Math.Max(0, Math.Max(
+            a.Position.X - (b.Position.X + b.Size.X),
+            b.Position.X - (a.Position.X + a.Size.X)));
+        float dy = Math.Max(0, Math.Max(
+            a.Position.Y - (b.Position.Y + b.Size.Y),
+            b.Position.Y - (a.Position.Y + a.Size.Y)));
+        float dz = Math.Max(0, Math.Max(
+            a.Position.Z - (b.Position.Z + b.Size.Z),
+            b.Position.Z - (a.Position.Z + a.Size.Z)));
+        
+        float distance = MathF.Sqrt(dx * dx + dy * dy + dz * dz);
+        return distance <= tolerance;
+    }
+    
+    /// <summary>
+    /// Create a mirrored copy of a block across the specified axes
+    /// </summary>
+    public static VoxelBlock MirrorBlock(VoxelBlock original, MirrorAxis axis, Vector3 origin)
+    {
+        var mirroredPosition = original.Position;
+        var mirroredOrientation = original.Orientation;
+        
+        if (axis.HasFlag(MirrorAxis.X))
+        {
+            mirroredPosition.X = 2 * origin.X - original.Position.X;
+            mirroredOrientation = MirrorOrientation(mirroredOrientation, MirrorAxis.X);
+        }
+        if (axis.HasFlag(MirrorAxis.Y))
+        {
+            mirroredPosition.Y = 2 * origin.Y - original.Position.Y;
+            mirroredOrientation = MirrorOrientation(mirroredOrientation, MirrorAxis.Y);
+        }
+        if (axis.HasFlag(MirrorAxis.Z))
+        {
+            mirroredPosition.Z = 2 * origin.Z - original.Position.Z;
+            mirroredOrientation = MirrorOrientation(mirroredOrientation, MirrorAxis.Z);
+        }
+        
+        return new VoxelBlock(mirroredPosition, original.Size, original.MaterialType, 
+            original.BlockType, original.Shape, mirroredOrientation);
+    }
+    
+    /// <summary>
+    /// Mirror a block orientation across a single axis
+    /// </summary>
+    private static BlockOrientation MirrorOrientation(BlockOrientation orientation, MirrorAxis axis)
+    {
+        return (orientation, axis) switch
+        {
+            (BlockOrientation.PosX, MirrorAxis.X) => BlockOrientation.NegX,
+            (BlockOrientation.NegX, MirrorAxis.X) => BlockOrientation.PosX,
+            (BlockOrientation.PosY, MirrorAxis.Y) => BlockOrientation.NegY,
+            (BlockOrientation.NegY, MirrorAxis.Y) => BlockOrientation.PosY,
+            (BlockOrientation.PosZ, MirrorAxis.Z) => BlockOrientation.NegZ,
+            (BlockOrientation.NegZ, MirrorAxis.Z) => BlockOrientation.PosZ,
+            _ => orientation
+        };
+    }
+    
+    /// <summary>
+    /// Place mirrored blocks for active mirror mode
+    /// </summary>
+    private void PlaceMirroredBlocks(VoxelStructureComponent structure, VoxelBlock original, MirrorAxis axis, Vector3 origin)
+    {
+        // Generate mirrored block for each active axis combination
+        var mirroredBlock = MirrorBlock(original, axis, origin);
+        
+        // Only place if position is different, not overlapping, and adjacent to existing blocks
+        if (mirroredBlock.Position != original.Position 
+            && !OverlapsExistingBlocks(mirroredBlock, structure)
+            && TouchesAtLeastOneBlock(mirroredBlock, structure))
+        {
+            structure.AddBlock(mirroredBlock);
+        }
     }
 }
 
