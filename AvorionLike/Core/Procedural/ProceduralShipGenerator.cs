@@ -781,51 +781,52 @@ public class ProceduralShipGenerator
             }
         }
         
-        // Middle section (main body) - full width with angular profile
+        // Middle section (main body) - full width with angular profile and solid fill
         for (float z = -dimensions.Z / 4; z < dimensions.Z / 4; z += blockSize)
         {
             float currentWidth = dimensions.X * 0.7f;  // Narrower body for sleek look
             float currentHeight = dimensions.Y * 0.6f; // Flatter profile
             
-            // Create angular cross-section with wedge shapes
-            // Top surface
+            // Solid fill - create actual body not just surfaces
             for (float x = -currentWidth / 2; x < currentWidth / 2; x += blockSize)
             {
-                ship.Structure.AddBlock(new VoxelBlock(
-                    new Vector3(x, currentHeight / 2, z), 
-                    new Vector3(blockSize, blockSize, blockSize), 
-                    config.Material, BlockType.Hull,
-                    BlockShape.Wedge, BlockOrientation.PosY));
+                for (float y = -currentHeight / 2; y <= currentHeight / 2; y += blockSize)
+                {
+                    bool isEdge = Math.Abs(x) > currentWidth / 2 - blockSize * 1.5f ||
+                                  Math.Abs(y) > currentHeight / 2 - blockSize * 1.5f;
+                    
+                    if (isEdge)
+                    {
+                        // Edge blocks use appropriate shapes
+                        BlockShape shape = BlockShape.Cube;
+                        BlockOrientation orient = BlockOrientation.PosY;
+                        
+                        if (y >= currentHeight / 2 - blockSize * 0.5f)
+                        {
+                            shape = BlockShape.Wedge;
+                            orient = BlockOrientation.PosY;
+                        }
+                        else if (y <= -currentHeight / 2 + blockSize * 0.5f)
+                        {
+                            shape = BlockShape.Wedge;
+                            orient = BlockOrientation.NegY;
+                        }
+                        
+                        ship.Structure.AddBlock(new VoxelBlock(
+                            new Vector3(x, y, z), 
+                            new Vector3(blockSize, blockSize, blockSize), 
+                            config.Material, BlockType.Hull, shape, orient));
+                    }
+                    else if (_random.NextDouble() < 0.3f)
+                    {
+                        // Some internal structure for mass
+                        ship.Structure.AddBlock(new VoxelBlock(
+                            new Vector3(x, y, z), 
+                            new Vector3(blockSize, blockSize, blockSize), 
+                            config.Material, BlockType.Hull));
+                    }
+                }
             }
-            
-            // Bottom surface
-            for (float x = -currentWidth / 2; x < currentWidth / 2; x += blockSize)
-            {
-                ship.Structure.AddBlock(new VoxelBlock(
-                    new Vector3(x, -currentHeight / 2, z), 
-                    new Vector3(blockSize, blockSize, blockSize), 
-                    config.Material, BlockType.Hull,
-                    BlockShape.Wedge, BlockOrientation.NegY));
-            }
-            
-            // Side edges with angular shape
-            for (float y = -currentHeight / 2; y <= currentHeight / 2; y += blockSize)
-            {
-                ship.Structure.AddBlock(new VoxelBlock(
-                    new Vector3(-currentWidth / 2, y, z), 
-                    new Vector3(blockSize, blockSize, blockSize), 
-                    config.Material, BlockType.Hull));
-                ship.Structure.AddBlock(new VoxelBlock(
-                    new Vector3(currentWidth / 2 - blockSize, y, z), 
-                    new Vector3(blockSize, blockSize, blockSize), 
-                    config.Material, BlockType.Hull));
-            }
-            
-            // Center spine for structural integrity
-            ship.Structure.AddBlock(new VoxelBlock(
-                new Vector3(0, 0, z), 
-                new Vector3(blockSize, currentHeight, blockSize), 
-                config.Material, BlockType.Hull));
         }
         
         // Rear section (engine mount) - slightly wider for stability
@@ -1203,7 +1204,7 @@ public class ProceduralShipGenerator
             }
         }
         
-        // Main body section - full width, streamlined
+        // Main body section - full width, streamlined with solid fill
         for (float z = -dimensions.Z / 4; z < 0; z += blockSize)
         {
             float currentWidth = dimensions.X * 0.75f;
@@ -1212,30 +1213,19 @@ public class ProceduralShipGenerator
             // Create filled body for solid appearance
             for (float x = -currentWidth / 2; x < currentWidth / 2; x += blockSize)
             {
-                // Top surface
-                ship.Structure.AddBlock(new VoxelBlock(
-                    new Vector3(x, currentHeight / 2, z),
-                    new Vector3(blockSize, blockSize, blockSize), 
-                    config.Material, BlockType.Hull));
-                
-                // Bottom surface
-                ship.Structure.AddBlock(new VoxelBlock(
-                    new Vector3(x, -currentHeight / 2, z),
-                    new Vector3(blockSize, blockSize, blockSize), 
-                    config.Material, BlockType.Hull));
-            }
-            
-            // Side edges
-            for (float y = -currentHeight / 2; y <= currentHeight / 2; y += blockSize)
-            {
-                ship.Structure.AddBlock(new VoxelBlock(
-                    new Vector3(-currentWidth / 2, y, z),
-                    new Vector3(blockSize, blockSize, blockSize), 
-                    config.Material, BlockType.Hull));
-                ship.Structure.AddBlock(new VoxelBlock(
-                    new Vector3(currentWidth / 2 - blockSize, y, z),
-                    new Vector3(blockSize, blockSize, blockSize), 
-                    config.Material, BlockType.Hull));
+                for (float y = -currentHeight / 2; y <= currentHeight / 2; y += blockSize)
+                {
+                    bool isEdge = Math.Abs(x) > currentWidth / 2 - blockSize * 1.5f ||
+                                  Math.Abs(y) > currentHeight / 2 - blockSize * 1.5f;
+                    
+                    if (isEdge || _random.NextDouble() < 0.25f)
+                    {
+                        ship.Structure.AddBlock(new VoxelBlock(
+                            new Vector3(x, y, z),
+                            new Vector3(blockSize, blockSize, blockSize), 
+                            config.Material, BlockType.Hull));
+                    }
+                }
             }
         }
         
@@ -2235,15 +2225,16 @@ public class ProceduralShipGenerator
     {
         var style = config.Style;
         int armorBlocksToAdd = (int)(ship.Structure.Blocks.Count * style.ArmorToHullRatio);
+        float blockSize = 2f;
         
         // Get all hull blocks
         var hullBlocks = ship.Structure.Blocks.Where(b => b.BlockType == BlockType.Hull).ToList();
         
-        // Convert some hull to armor (outer layers priority)
+        // Phase 1: Convert outermost hull blocks to armor (Avorion's layered armor approach)
         int converted = 0;
         foreach (var block in hullBlocks.OrderByDescending(b => Math.Abs(b.Position.X) + Math.Abs(b.Position.Y)))
         {
-            if (converted >= armorBlocksToAdd) break;
+            if (converted >= armorBlocksToAdd / 2) break;
             
             // Replace with armor block
             ship.Structure.RemoveBlock(block);
@@ -2255,6 +2246,35 @@ public class ProceduralShipGenerator
             );
             ship.Structure.AddBlock(armorBlock);
             converted++;
+        }
+        
+        // Phase 2: Add additional thin armor shell on exterior faces (Avorion's layered armor)
+        // This creates the "build from inside out" look with visible armor plates
+        int additionalArmor = armorBlocksToAdd / 2;
+        int added = 0;
+        var extremeBlocks = hullBlocks
+            .OrderByDescending(b => Math.Abs(b.Position.X) + Math.Abs(b.Position.Y) + Math.Abs(b.Position.Z))
+            .Take(additionalArmor * 2)
+            .ToList();
+        
+        foreach (var block in extremeBlocks)
+        {
+            if (added >= additionalArmor) break;
+            
+            // Add thin armor plate on the outward-facing side
+            Vector3 outwardDir = Vector3.Normalize(block.Position);
+            if (outwardDir.Length() < 0.1f) continue;
+            
+            Vector3 armorPos = block.Position + outwardDir * blockSize * 0.8f;
+            
+            var armorPlate = new VoxelBlock(
+                armorPos,
+                new Vector3(blockSize, blockSize * 0.5f, blockSize),
+                config.Material,
+                BlockType.Armor
+            );
+            ship.Structure.AddBlock(armorPlate);
+            added++;
         }
     }
     
