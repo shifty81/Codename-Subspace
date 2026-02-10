@@ -75,7 +75,10 @@ public enum BlockType
     // Avorion-style upgrade/computer systems
     Computer,         // Increases upgrade slots based on volume
     Battery,          // Energy storage
-    IntegrityField    // Structural integrity field generator
+    IntegrityField,   // Structural integrity field generator
+    
+    // Avorion-style shaping
+    Framework         // Lightweight shaping blocks (low HP, low mass)
 }
 
 /// <summary>
