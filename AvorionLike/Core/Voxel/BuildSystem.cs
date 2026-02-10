@@ -630,17 +630,17 @@ public class BuildSystem : SystemBase
         
         if (axis.HasFlag(MirrorAxis.X))
         {
-            mirroredPosition.X = -(original.Position.X - origin.X) + origin.X;
+            mirroredPosition.X = 2 * origin.X - original.Position.X;
             mirroredOrientation = MirrorOrientation(mirroredOrientation, MirrorAxis.X);
         }
         if (axis.HasFlag(MirrorAxis.Y))
         {
-            mirroredPosition.Y = -(original.Position.Y - origin.Y) + origin.Y;
+            mirroredPosition.Y = 2 * origin.Y - original.Position.Y;
             mirroredOrientation = MirrorOrientation(mirroredOrientation, MirrorAxis.Y);
         }
         if (axis.HasFlag(MirrorAxis.Z))
         {
-            mirroredPosition.Z = -(original.Position.Z - origin.Z) + origin.Z;
+            mirroredPosition.Z = 2 * origin.Z - original.Position.Z;
             mirroredOrientation = MirrorOrientation(mirroredOrientation, MirrorAxis.Z);
         }
         
@@ -673,8 +673,10 @@ public class BuildSystem : SystemBase
         // Generate mirrored block for each active axis combination
         var mirroredBlock = MirrorBlock(original, axis, origin);
         
-        // Only place if not overlapping and position is different from original
-        if (mirroredBlock.Position != original.Position && !OverlapsExistingBlocks(mirroredBlock, structure))
+        // Only place if position is different, not overlapping, and adjacent to existing blocks
+        if (mirroredBlock.Position != original.Position 
+            && !OverlapsExistingBlocks(mirroredBlock, structure)
+            && TouchesAtLeastOneBlock(mirroredBlock, structure))
         {
             structure.AddBlock(mirroredBlock);
         }

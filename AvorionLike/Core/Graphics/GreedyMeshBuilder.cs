@@ -1179,7 +1179,7 @@ public readonly struct MeshBatchKey : IEquatable<MeshBatchKey>
     public bool Equals(MeshBatchKey other) => Shape == other.Shape && Material == other.Material;
     public override bool Equals(object? obj) => obj is MeshBatchKey other && Equals(other);
     public override int GetHashCode() => HashCode.Combine(Shape, Material);
-    public override string ToString() => $"{Shape}_{Material}";
+    public override string ToString() => $"{Shape}_{Material ?? "Unknown"}";
 }
 
 /// <summary>

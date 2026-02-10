@@ -57,6 +57,8 @@ public class ShipBuilderState
     // Current tool and mode
     public BuildTool CurrentTool { get; set; } = BuildTool.Add;
     public BlockType SelectedBlockType { get; set; } = BlockType.Hull;
+    public BlockShape SelectedShape { get; set; } = BlockShape.Cube;
+    public BlockOrientation SelectedOrientation { get; set; } = BlockOrientation.PosY;
     public string SelectedMaterial { get; set; } = "Iron";
     public Vector3 SelectedColor { get; set; } = new Vector3(0.5f, 0.5f, 0.5f); // RGB
     
@@ -209,7 +211,8 @@ public class EnhancedBuildSystem : SystemBase
         position = BuildSystem.SnapToGrid(position);
         
         // Check overlap
-        var newBlock = new VoxelBlock(position, size, material, blockType);
+        var newBlock = new VoxelBlock(position, size, material, blockType, 
+            _currentBuildState.SelectedShape, _currentBuildState.SelectedOrientation);
         if (BuildSystem.OverlapsExistingBlocks(newBlock, voxelComponent))
             return false;
         
