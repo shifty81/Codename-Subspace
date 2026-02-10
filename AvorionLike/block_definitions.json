@@ -293,5 +293,29 @@
     "suitableForExterior": true,
     "minTechLevel": 1,
     "defaultColor": "#00CED1"
+  },
+  {
+    "id": "framework_block",
+    "displayName": "Framework Block",
+    "blockType": 15,
+    "description": "Lightweight structural framework for shaping ships without adding mass",
+    "resourceCosts": {
+      "Iron": 3
+    },
+    "hitPointsPerVolume": 20,
+    "massPerUnitVolume": 0.1,
+    "scalable": true,
+    "function": "shaping",
+    "powerGenerationPerVolume": 0,
+    "powerConsumptionPerVolume": 0,
+    "thrustPowerPerVolume": 0,
+    "shieldCapacityPerVolume": 0,
+    "cargoCapacityPerVolume": 0,
+    "crewCapacityPerVolume": 0,
+    "aiPlacementPriority": 3,
+    "requiresInternalPlacement": false,
+    "suitableForExterior": true,
+    "minTechLevel": 1,
+    "defaultColor": "#606060"
   }
 ]

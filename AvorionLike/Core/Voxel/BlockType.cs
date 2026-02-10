@@ -55,7 +55,6 @@ public enum BlockType
     // Structural
     Hull,
     Armor,
-    Framework,        // Lightweight shaping blocks (low HP, low mass) - Avorion style
     
     // Functional
     Engine,           // Linear thrust (placed facing backward)
@@ -76,7 +75,10 @@ public enum BlockType
     // Avorion-style upgrade/computer systems
     Computer,         // Increases upgrade slots based on volume
     Battery,          // Energy storage
-    IntegrityField    // Structural integrity field generator
+    IntegrityField,   // Structural integrity field generator
+    
+    // Avorion-style shaping
+    Framework         // Lightweight shaping blocks (low HP, low mass)
 }
 
 /// <summary>

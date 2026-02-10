@@ -128,6 +128,26 @@ public class ProceduralShipGenerator
     }
     
     /// <summary>
+    /// Get the appropriate material name for a given tech level (distance from galaxy center).
+    /// Avorion progression: Iron(1) → Titanium(2) → Naonite(3) → Trinium(4) → Xanion(5) → Ogonite(6) → Avorion(7)
+    /// Use this when generating NPC ships for a specific sector.
+    /// </summary>
+    public static string GetMaterialForTechLevel(int techLevel)
+    {
+        return techLevel switch
+        {
+            1 => "Iron",
+            2 => "Titanium",
+            3 => "Naonite",
+            4 => "Trinium",
+            5 => "Xanion",
+            6 => "Ogonite",
+            7 => "Avorion",
+            _ => techLevel <= 0 ? "Iron" : "Avorion"
+        };
+    }
+    
+    /// <summary>
     /// Generate a complete ship based on configuration
     /// Uses Avorion-style block-based design with modular sections
     /// </summary>
@@ -178,6 +198,10 @@ public class ProceduralShipGenerator
         // Step 9.6: Apply decorative decals (hazard stripes, faction markings, etc.)
         // Decals can be edited later during ship customization
         ApplyDecalsToShip(result, config);
+        
+        // Step 9.7: Enforce X-axis symmetry (Avorion-style mirroring for NPC ships)
+        // High symmetry level = more blocks mirrored
+        EnforceHullSymmetry(result, config);
         
         // Step 10: Calculate final statistics including upgrade slots
         CalculateShipStats(result);
@@ -787,64 +811,80 @@ public class ProceduralShipGenerator
     
     /// <summary>
     /// Generate angular/wedge-shaped hull (military style fighter/interceptor)
-    /// Creates aggressive wedge with pronounced wings and engine nacelles
-    /// IMPROVED: Denser block placement with proper connectivity
+    /// Enhanced with Avorion-style progressive nose tapering using contextual wedge/corner blocks,
+    /// solid body fill, and proper structural connectivity
     /// </summary>
     private void GenerateAngularHull(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config)
     {
-        // Create aggressive military wedge hull - sharp and angular
-        // ENHANCED: Match reference image 1234.PNG with elongated, angular design
-        float blockSize = 2f;  // Standard block size
+        float blockSize = 2f;
         
-        // REFERENCE-INSPIRED: More elongated proportions like 1234.PNG
-        // Front section (nose) - sharp taper
+        // Front section (nose) - progressive taper with contextual shapes
+        // Avorion-style: outer blocks use wedges, tip uses corners/tetrahedrons
         for (float z = dimensions.Z / 4; z < dimensions.Z / 2; z += blockSize)
         {
             float normalizedZ = (z - dimensions.Z / 4) / (dimensions.Z / 4);
-            float taperFactor = 1.0f - normalizedZ * 0.85f;  // Sharp nose taper
+            float taperFactor = 1.0f - normalizedZ * 0.85f;
             float currentWidth = Math.Max(blockSize, dimensions.X * taperFactor * 0.6f);
             float currentHeight = Math.Max(blockSize, dimensions.Y * taperFactor * 0.5f);
             
-            // Sleek nose profile
             for (float x = -currentWidth / 2; x < currentWidth / 2; x += blockSize)
             {
+                // Contextual shape selection based on position in taper
+                BlockShape shape = BlockShape.Wedge;
+                BlockOrientation orient = BlockOrientation.PosZ;
+                
+                // At the very tip, use corner/tetrahedron for sharper point
+                if (normalizedZ > 0.85f)
+                {
+                    shape = BlockShape.Corner;
+                }
+                // At edges of the taper, use wedges oriented outward
+                else if (Math.Abs(x) > currentWidth / 2 - blockSize)
+                {
+                    orient = x > 0 ? BlockOrientation.PosX : BlockOrientation.NegX;
+                }
+                
                 ship.Structure.AddBlock(new VoxelBlock(
                     new Vector3(x, 0, z), 
                     new Vector3(blockSize, currentHeight, blockSize), 
-                    config.Material, BlockType.Hull,
-                    BlockShape.Wedge, BlockOrientation.PosZ));
+                    config.Material, BlockType.Hull, shape, orient));
             }
         }
         
-        // Middle section (main body) - full width with angular profile and solid fill
+        // Middle section (main body) - full width with contextual edge shapes
         for (float z = -dimensions.Z / 4; z < dimensions.Z / 4; z += blockSize)
         {
-            float currentWidth = dimensions.X * 0.7f;  // Narrower body for sleek look
-            float currentHeight = dimensions.Y * 0.6f; // Flatter profile
+            float currentWidth = dimensions.X * 0.7f;
+            float currentHeight = dimensions.Y * 0.6f;
             
-            // Solid fill - create actual body not just surfaces
             for (float x = -currentWidth / 2; x < currentWidth / 2; x += blockSize)
             {
                 for (float y = -currentHeight / 2; y <= currentHeight / 2; y += blockSize)
                 {
-                    bool isEdge = Math.Abs(x) > currentWidth / 2 - blockSize * 1.5f ||
-                                  Math.Abs(y) > currentHeight / 2 - blockSize * 1.5f;
+                    bool isEdgeX = Math.Abs(x) > currentWidth / 2 - blockSize * 1.5f;
+                    bool isEdgeY = Math.Abs(y) > currentHeight / 2 - blockSize * 1.5f;
+                    bool isEdge = isEdgeX || isEdgeY;
                     
                     if (isEdge)
                     {
-                        // Edge blocks use appropriate shapes
+                        // Contextual edge shapes for angular look
                         BlockShape shape = BlockShape.Cube;
                         BlockOrientation orient = BlockOrientation.PosY;
                         
-                        if (y >= currentHeight / 2 - blockSize * 0.5f)
+                        if (isEdgeY && y > 0 && !isEdgeX)
                         {
                             shape = BlockShape.Wedge;
                             orient = BlockOrientation.PosY;
                         }
-                        else if (y <= -currentHeight / 2 + blockSize * 0.5f)
+                        else if (isEdgeY && y < 0 && !isEdgeX)
                         {
                             shape = BlockShape.Wedge;
                             orient = BlockOrientation.NegY;
+                        }
+                        else if (isEdgeX && isEdgeY)
+                        {
+                            shape = BlockShape.Corner;
+                            orient = x > 0 ? BlockOrientation.PosX : BlockOrientation.NegX;
                         }
                         
                         ship.Structure.AddBlock(new VoxelBlock(
@@ -854,11 +894,11 @@ public class ProceduralShipGenerator
                     }
                     else if (_random.NextDouble() < 0.3f)
                     {
-                        // Some internal structure for mass
+                        // Interior framework for structural support
                         ship.Structure.AddBlock(new VoxelBlock(
                             new Vector3(x, y, z), 
                             new Vector3(blockSize, blockSize, blockSize), 
-                            config.Material, BlockType.Hull));
+                            config.Material, BlockType.Framework));
                     }
                 }
             }
@@ -1668,6 +1708,7 @@ public class ProceduralShipGenerator
         }
         
         // 2. Place Integrity Field Generator (if required)
+        // Avorion: protects ship's structure from breaking apart
         // Positioned near power core for protection
         if (config.RequireIntegrityField)
         {
@@ -1676,7 +1717,7 @@ public class ProceduralShipGenerator
                 new Vector3(0, dimensions.Y * 0.2f, dimensions.Z * 0.1f),
                 new Vector3(fieldSize, fieldSize, fieldSize),
                 config.Material,
-                BlockType.ShieldGenerator
+                BlockType.IntegrityField
             );
             ship.Structure.AddBlock(integrityField);
         }
@@ -1740,7 +1781,7 @@ public class ProceduralShipGenerator
                 new Vector3(xOffset, -dimensions.Y * 0.1f, zOffset),
                 new Vector3(blockSize * 1.5f, blockSize, blockSize * 1.5f),
                 config.Material,
-                BlockType.Generator // Batteries are power storage
+                BlockType.Battery // Avorion-style energy storage
             );
             ship.Structure.AddBlock(battery);
         }
@@ -2015,17 +2056,19 @@ public class ProceduralShipGenerator
     
     private void PlaceThrusters(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config, int count)
     {
-        // Place thrusters on all sides for omnidirectional movement, ensuring connectivity
-        int thrustersPerSide = count / 4;
+        // Avorion-style: Place thrusters on EDGES of the ship for maximum turning efficiency
+        // Thrusters at extremities provide better rotational leverage
+        int thrustersPerSide = Math.Max(1, count / 4);
         Vector3 thrusterSize = new Vector3(2, 2, 2);
         
-        // Top thrusters
+        // Top thrusters - placed at edges (corners between top and sides)
         for (int i = 0; i < thrustersPerSide; i++)
         {
             float z = -dimensions.Z / 3 + (dimensions.Z * 0.66f / thrustersPerSide) * i;
-            Vector3 targetPosition = new Vector3(0, dimensions.Y / 2 - 2, z);
+            // Avorion optimization: place at outer edge for maximum rotational effect
+            float xEdge = (i % 2 == 0 ? -1 : 1) * (dimensions.X / 2 - 2);
+            Vector3 targetPosition = new Vector3(xEdge, dimensions.Y / 2 - 2, z);
             
-            // Snap to nearest hull with upward preference
             Vector3 placementPosition = SnapToNearestHull(ship, targetPosition, new Vector3(0, 1, 0), thrusterSize);
             
             var thruster = new VoxelBlock(
@@ -2037,13 +2080,13 @@ public class ProceduralShipGenerator
             ship.Structure.AddBlock(thruster);
         }
         
-        // Bottom thrusters
+        // Bottom thrusters - placed at edges
         for (int i = 0; i < thrustersPerSide; i++)
         {
             float z = -dimensions.Z / 3 + (dimensions.Z * 0.66f / thrustersPerSide) * i;
-            Vector3 targetPosition = new Vector3(0, -dimensions.Y / 2, z);
+            float xEdge = (i % 2 == 0 ? 1 : -1) * (dimensions.X / 2 - 2);
+            Vector3 targetPosition = new Vector3(xEdge, -dimensions.Y / 2, z);
             
-            // Snap to nearest hull with downward preference
             Vector3 placementPosition = SnapToNearestHull(ship, targetPosition, new Vector3(0, -1, 0), thrusterSize);
             
             var thruster = new VoxelBlock(
@@ -2055,13 +2098,13 @@ public class ProceduralShipGenerator
             ship.Structure.AddBlock(thruster);
         }
         
-        // Left thrusters
+        // Left thrusters - placed at fore/aft edges for yaw control
         for (int i = 0; i < thrustersPerSide; i++)
         {
-            float z = -dimensions.Z / 3 + (dimensions.Z * 0.66f / thrustersPerSide) * i;
+            // Avorion optimization: place at front and rear extremes for maximum yaw leverage
+            float z = i % 2 == 0 ? dimensions.Z / 3 : -dimensions.Z / 3;
             Vector3 targetPosition = new Vector3(-dimensions.X / 2, 0, z);
             
-            // Snap to nearest hull with left preference
             Vector3 placementPosition = SnapToNearestHull(ship, targetPosition, new Vector3(-1, 0, 0), thrusterSize);
             
             var thruster = new VoxelBlock(
@@ -2073,13 +2116,12 @@ public class ProceduralShipGenerator
             ship.Structure.AddBlock(thruster);
         }
         
-        // Right thrusters
+        // Right thrusters - placed at fore/aft edges for yaw control
         for (int i = 0; i < thrustersPerSide; i++)
         {
-            float z = -dimensions.Z / 3 + (dimensions.Z * 0.66f / thrustersPerSide) * i;
+            float z = i % 2 == 0 ? dimensions.Z / 3 : -dimensions.Z / 3;
             Vector3 targetPosition = new Vector3(dimensions.X / 2 - 2, 0, z);
             
-            // Snap to nearest hull with right preference
             Vector3 placementPosition = SnapToNearestHull(ship, targetPosition, new Vector3(1, 0, 0), thrusterSize);
             
             var thruster = new VoxelBlock(
@@ -2094,18 +2136,37 @@ public class ProceduralShipGenerator
     
     private void PlaceGyros(GeneratedShip ship, Vector3 dimensions, ShipGenerationConfig config, int count)
     {
-        // Place gyro arrays for rotation control, ensuring connectivity
+        // Avorion-style: Gyro arrays placed far from center of mass for maximum rotational leverage
+        // Better placement at extremities increases turning speed significantly
         Vector3 gyroSize = new Vector3(2, 2, 2);
         
         for (int i = 0; i < count; i++)
         {
-            float z = -dimensions.Z / 4 + (dimensions.Z / 2 / count) * i;
-            float x = i % 2 == 0 ? dimensions.X / 4 : -dimensions.X / 4;
+            // Distribute at extremities: front/rear and port/starboard edges
+            float z, x;
+            switch (i % 4)
+            {
+                case 0: // Front-right
+                    z = dimensions.Z / 3;
+                    x = dimensions.X / 3;
+                    break;
+                case 1: // Front-left
+                    z = dimensions.Z / 3;
+                    x = -dimensions.X / 3;
+                    break;
+                case 2: // Rear-right
+                    z = -dimensions.Z / 3;
+                    x = dimensions.X / 3;
+                    break;
+                default: // Rear-left
+                    z = -dimensions.Z / 3;
+                    x = -dimensions.X / 3;
+                    break;
+            }
             
             Vector3 targetPosition = new Vector3(x, 0, z);
             Vector3 preferredDirection = new Vector3(x > 0 ? 1 : -1, 0, 0);
             
-            // Snap to nearest hull with horizontal preference
             Vector3 placementPosition = SnapToNearestHull(ship, targetPosition, preferredDirection, gyroSize);
             
             var gyro = new VoxelBlock(
@@ -3159,6 +3220,55 @@ public class ProceduralShipGenerator
         foreach (var warning in ship.Warnings)
         {
             _logger.Warning("ShipGenerator", warning);
+        }
+    }
+    
+    /// <summary>
+    /// Enforce X-axis symmetry on the hull (Avorion-style mirroring).
+    /// Mirrors blocks from positive X to negative X side, using the faction's
+    /// symmetry level to determine how many blocks to mirror.
+    /// </summary>
+    private void EnforceHullSymmetry(GeneratedShip ship, ShipGenerationConfig config)
+    {
+        float symmetryLevel = config.Style?.SymmetryLevel ?? 0.75f;
+        if (symmetryLevel < 0.3f) return; // Very low symmetry (e.g., pirates) - skip
+        
+        var blocksToMirror = ship.Structure.Blocks
+            .Where(b => b.Position.X > 0.5f)
+            .ToList();
+        
+        int mirrored = 0;
+        foreach (var block in blocksToMirror)
+        {
+            // Skip some blocks based on symmetry level for variation
+            if (_random.NextDouble() > symmetryLevel) continue;
+            
+            Vector3 mirroredPos = new Vector3(-block.Position.X, block.Position.Y, block.Position.Z);
+            
+            // Check if a block already exists at the mirrored position
+            bool occupied = ship.Structure.Blocks.Any(b => 
+                Vector3.Distance(b.Position, mirroredPos) < 1f);
+            
+            if (!occupied)
+            {
+                // Mirror orientation for shaped blocks
+                BlockOrientation mirroredOrient = block.Orientation;
+                if (block.Orientation == BlockOrientation.PosX)
+                    mirroredOrient = BlockOrientation.NegX;
+                else if (block.Orientation == BlockOrientation.NegX)
+                    mirroredOrient = BlockOrientation.PosX;
+                
+                var mirroredBlock = new VoxelBlock(mirroredPos, block.Size, block.MaterialType,
+                    block.BlockType, block.Shape, mirroredOrient);
+                mirroredBlock.ColorRGB = block.ColorRGB;
+                ship.Structure.AddBlock(mirroredBlock);
+                mirrored++;
+            }
+        }
+        
+        if (mirrored > 0)
+        {
+            _logger.Info("ShipGenerator", $"Enforced symmetry: mirrored {mirrored} blocks (level: {symmetryLevel:F2})");
         }
     }
     
