@@ -238,8 +238,15 @@ public class FleetMissionSystem
             inventory.Inventory.AddResource(ResourceType.Credits, mission.CreditsReward);
         }
         
-        // TODO: Store subsystems and blueprints in a dedicated storage system
-        // For now, they're stored in the mission object for retrieval
+        // Store subsystems in dedicated inventory
+        var subsystemInventory = _entityManager.GetComponent<SubsystemInventoryComponent>(playerEntity.Id);
+        if (subsystemInventory != null)
+        {
+            foreach (var subsystem in mission.RewardSubsystems)
+            {
+                subsystemInventory.AddSubsystem(subsystem);
+            }
+        }
     }
     
     /// <summary>
