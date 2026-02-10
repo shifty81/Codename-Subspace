@@ -43,7 +43,7 @@ public class GraphicsWindow : IDisposable
     
     // ImGui-based UI systems (for debug/console ONLY)
     private HUDSystem? _debugHUD;  // Renamed to clarify it's for debug
-    private bool _showDebugUI = true;  // Toggle for debug UI - enabled by default for better UX
+    private bool _showDebugUI = false;  // Toggle for debug UI - disabled by default for clean visuals
     
     // In-game testing console
     private InGameTestingConsole? _testingConsole;
@@ -486,8 +486,8 @@ public class GraphicsWindow : IDisposable
             }
         }
         
-        // Render debug visualizations if enabled
-        if (_debugRenderer != null && DebugConfig.ShowAABBs)
+        // Render debug visualizations only when debug layer is active
+        if (_debugRenderer != null && DebugConfig.DebugRenderLayer && DebugConfig.ShowAABBs)
         {
             // Clear previous frame's debug lines
             _debugRenderer.Clear();
@@ -742,10 +742,11 @@ public class GraphicsWindow : IDisposable
             Console.WriteLine($"Tutorial List: {(_tutorialUI != null ? "Toggled" : "Not available")}");
         }
         
-        // Toggle debug UI with F1
+        // Toggle debug UI with F1 (also toggles master debug render layer)
         if (key == Key.F1)
         {
             _showDebugUI = !_showDebugUI;
+            DebugConfig.DebugRenderLayer = _showDebugUI;
             Console.WriteLine($"Debug HUD: {(_showDebugUI ? "Shown" : "Hidden")}");
         }
         

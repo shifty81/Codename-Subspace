@@ -1,11 +1,14 @@
 using AvorionLike.Core.ECS;
+using AvorionLike.Core.Logging;
+using AvorionLike.Core.Persistence;
+using System.Text.Json;
 
 namespace AvorionLike.Core.Quest;
 
 /// <summary>
 /// Component that tracks quests for an entity (typically the player)
 /// </summary>
-public class QuestComponent : IComponent
+public class QuestComponent : IComponent, ISerializable
 {
     public Guid EntityId { get; set; }
     
@@ -142,5 +145,213 @@ public class QuestComponent : IComponent
     public IEnumerable<Quest> GetQuestsByTag(string tag)
     {
         return Quests.Where(q => q.Tags.Contains(tag));
+    }
+    
+    /// <summary>
+    /// Serialize the component to a dictionary
+    /// </summary>
+    public Dictionary<string, object> Serialize()
+    {
+        var questsData = new List<Dictionary<string, object>>();
+        
+        foreach (var quest in Quests)
+        {
+            var objectivesData = new List<Dictionary<string, object>>();
+            foreach (var obj in quest.Objectives)
+            {
+                objectivesData.Add(new Dictionary<string, object>
+                {
+                    ["Id"] = obj.Id,
+                    ["Type"] = obj.Type.ToString(),
+                    ["Description"] = obj.Description,
+                    ["Target"] = obj.Target,
+                    ["RequiredQuantity"] = obj.RequiredQuantity,
+                    ["CurrentProgress"] = obj.CurrentProgress,
+                    ["Status"] = obj.Status.ToString(),
+                    ["IsOptional"] = obj.IsOptional,
+                    ["IsHidden"] = obj.IsHidden
+                });
+            }
+            
+            var rewardsData = new List<Dictionary<string, object>>();
+            foreach (var reward in quest.Rewards)
+            {
+                rewardsData.Add(new Dictionary<string, object>
+                {
+                    ["Type"] = reward.Type.ToString(),
+                    ["RewardId"] = reward.RewardId,
+                    ["Amount"] = reward.Amount,
+                    ["Description"] = reward.Description
+                });
+            }
+            
+            questsData.Add(new Dictionary<string, object>
+            {
+                ["Id"] = quest.Id,
+                ["Title"] = quest.Title,
+                ["Description"] = quest.Description,
+                ["Status"] = quest.Status.ToString(),
+                ["Difficulty"] = quest.Difficulty.ToString(),
+                ["CanAbandon"] = quest.CanAbandon,
+                ["IsRepeatable"] = quest.IsRepeatable,
+                ["TimeLimit"] = quest.TimeLimit,
+                ["AcceptedTime"] = quest.AcceptedTime?.ToString("o") ?? string.Empty,
+                ["CompletedTime"] = quest.CompletedTime?.ToString("o") ?? string.Empty,
+                ["Objectives"] = objectivesData,
+                ["Rewards"] = rewardsData,
+                ["Tags"] = quest.Tags,
+                ["Prerequisites"] = quest.Prerequisites,
+                ["UnlocksQuests"] = quest.UnlocksQuests
+            });
+        }
+        
+        return new Dictionary<string, object>
+        {
+            ["EntityId"] = EntityId.ToString(),
+            ["MaxActiveQuests"] = MaxActiveQuests,
+            ["Quests"] = questsData
+        };
+    }
+    
+    /// <summary>
+    /// Deserialize the component from a dictionary
+    /// </summary>
+    public void Deserialize(Dictionary<string, object> data)
+    {
+        EntityId = Guid.Parse(SerializationHelper.GetValue(data, "EntityId", Guid.Empty.ToString()));
+        MaxActiveQuests = SerializationHelper.GetValue(data, "MaxActiveQuests", 10);
+        
+        Quests.Clear();
+        
+        if (!data.ContainsKey("Quests"))
+            return;
+            
+        List<Dictionary<string, object>> questsData;
+        
+        if (data["Quests"] is JsonElement questsElement)
+        {
+            questsData = JsonSerializer.Deserialize<List<Dictionary<string, object>>>(questsElement.GetRawText())
+                ?? new List<Dictionary<string, object>>();
+        }
+        else
+        {
+            questsData = data["Quests"] as List<Dictionary<string, object>> ?? new List<Dictionary<string, object>>();
+        }
+        
+        foreach (var questData in questsData)
+        {
+            var quest = DeserializeQuest(questData);
+            if (quest != null)
+            {
+                Quests.Add(quest);
+            }
+        }
+    }
+    
+    private static Quest? DeserializeQuest(Dictionary<string, object> data)
+    {
+        try
+        {
+            var quest = new Quest
+            {
+                Id = SerializationHelper.GetValue(data, "Id", string.Empty),
+                Title = SerializationHelper.GetValue(data, "Title", string.Empty),
+                Description = SerializationHelper.GetValue(data, "Description", string.Empty),
+                CanAbandon = SerializationHelper.GetValue(data, "CanAbandon", true),
+                IsRepeatable = SerializationHelper.GetValue(data, "IsRepeatable", false),
+                TimeLimit = SerializationHelper.GetValue(data, "TimeLimit", 0)
+            };
+            
+            if (Enum.TryParse<QuestStatus>(SerializationHelper.GetValue(data, "Status", "Available"), out var status))
+                quest.Status = status;
+                
+            if (Enum.TryParse<QuestDifficulty>(SerializationHelper.GetValue(data, "Difficulty", "Normal"), out var difficulty))
+                quest.Difficulty = difficulty;
+                
+            var acceptedTimeStr = SerializationHelper.GetValue(data, "AcceptedTime", string.Empty);
+            if (!string.IsNullOrEmpty(acceptedTimeStr) && DateTime.TryParse(acceptedTimeStr, out var acceptedTime))
+                quest.AcceptedTime = acceptedTime;
+                
+            var completedTimeStr = SerializationHelper.GetValue(data, "CompletedTime", string.Empty);
+            if (!string.IsNullOrEmpty(completedTimeStr) && DateTime.TryParse(completedTimeStr, out var completedTime))
+                quest.CompletedTime = completedTime;
+            
+            // Deserialize objectives
+            foreach (var objData in DeserializeDictList(data, "Objectives"))
+            {
+                var objective = new QuestObjective
+                {
+                    Id = SerializationHelper.GetValue(objData, "Id", string.Empty),
+                    Description = SerializationHelper.GetValue(objData, "Description", string.Empty),
+                    Target = SerializationHelper.GetValue(objData, "Target", string.Empty),
+                    RequiredQuantity = SerializationHelper.GetValue(objData, "RequiredQuantity", 1),
+                    CurrentProgress = SerializationHelper.GetValue(objData, "CurrentProgress", 0),
+                    IsOptional = SerializationHelper.GetValue(objData, "IsOptional", false),
+                    IsHidden = SerializationHelper.GetValue(objData, "IsHidden", false)
+                };
+                
+                if (Enum.TryParse<ObjectiveType>(SerializationHelper.GetValue(objData, "Type", "Collect"), out var objType))
+                    objective.Type = objType;
+                    
+                if (Enum.TryParse<ObjectiveStatus>(SerializationHelper.GetValue(objData, "Status", "NotStarted"), out var objStatus))
+                    objective.Status = objStatus;
+                
+                quest.Objectives.Add(objective);
+            }
+            
+            // Deserialize rewards
+            foreach (var rwdData in DeserializeDictList(data, "Rewards"))
+            {
+                var reward = new QuestReward
+                {
+                    RewardId = SerializationHelper.GetValue(rwdData, "RewardId", string.Empty),
+                    Amount = SerializationHelper.GetValue(rwdData, "Amount", 0),
+                    Description = SerializationHelper.GetValue(rwdData, "Description", string.Empty)
+                };
+                
+                if (Enum.TryParse<RewardType>(SerializationHelper.GetValue(rwdData, "Type", "Credits"), out var rwdType))
+                    reward.Type = rwdType;
+                
+                quest.Rewards.Add(reward);
+            }
+            
+            quest.Tags = DeserializeStringList(data, "Tags");
+            quest.Prerequisites = DeserializeStringList(data, "Prerequisites");
+            quest.UnlocksQuests = DeserializeStringList(data, "UnlocksQuests");
+            
+            return quest;
+        }
+        catch (Exception ex)
+        {
+            Logger.Instance.Warning("QuestComponent", $"Failed to deserialize quest: {ex.Message}");
+            return null;
+        }
+    }
+    
+    private static List<Dictionary<string, object>> DeserializeDictList(Dictionary<string, object> data, string key)
+    {
+        if (!data.ContainsKey(key))
+            return new List<Dictionary<string, object>>();
+            
+        if (data[key] is JsonElement element)
+        {
+            return JsonSerializer.Deserialize<List<Dictionary<string, object>>>(element.GetRawText())
+                ?? new List<Dictionary<string, object>>();
+        }
+        
+        return data[key] as List<Dictionary<string, object>> ?? new List<Dictionary<string, object>>();
+    }
+    
+    private static List<string> DeserializeStringList(Dictionary<string, object> data, string key)
+    {
+        if (!data.ContainsKey(key))
+            return new List<string>();
+            
+        if (data[key] is JsonElement element)
+        {
+            return JsonSerializer.Deserialize<List<string>>(element.GetRawText()) ?? new List<string>();
+        }
+        
+        return data[key] as List<string> ?? new List<string>();
     }
 }
