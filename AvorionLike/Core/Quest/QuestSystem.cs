@@ -145,6 +145,10 @@ public class QuestSystem : SystemBase
                         inventoryComponent.Inventory.AddResource(resourceType, reward.Amount);
                         Logger.Instance.Info("QuestSystem", $"Gave {reward.Amount} {reward.RewardId} to entity {entityId}");
                     }
+                    else if (inventoryComponent != null)
+                    {
+                        Logger.Instance.Warning("QuestSystem", $"Unknown resource type '{reward.RewardId}' for quest reward");
+                    }
                     break;
                     
                 case RewardType.Experience:
