@@ -19,6 +19,7 @@ using AvorionLike.Core.Power;
 using AvorionLike.Core.AI;
 using AvorionLike.Core.Quest;
 using AvorionLike.Core.Modular;
+using AvorionLike.Core.Tutorial;
 
 namespace AvorionLike.Core;
 
@@ -53,6 +54,7 @@ public class GameEngine
     public PowerSystem PowerSystem { get; private set; } = null!;
     public AISystem AISystem { get; private set; } = null!;
     public QuestSystem QuestSystem { get; private set; } = null!;
+    public TutorialSystem TutorialSystem { get; private set; } = null!;
     
     // Modular ship systems
     public ModularShipSyncSystem ModularShipSyncSystem { get; private set; } = null!;
@@ -125,6 +127,7 @@ public class GameEngine
         PowerSystem = new PowerSystem(EntityManager, EventSystem.Instance, Logger.Instance);
         AISystem = new AISystem(EntityManager, MiningSystem, CombatSystem);
         QuestSystem = new QuestSystem(EntityManager, EventSystem.Instance);
+        TutorialSystem = new TutorialSystem(EntityManager, EventSystem.Instance);
         
         // Initialize modular ship systems
         ModularShipSyncSystem = new ModularShipSyncSystem(EntityManager);
@@ -157,6 +160,9 @@ public class GameEngine
         
         // Load quest templates from GameData/Quests directory
         LoadQuestTemplates();
+        
+        // Load tutorial templates from GameData/Tutorials directory
+        LoadTutorialTemplates();
 
         _lastUpdateTime = DateTime.UtcNow;
 
@@ -639,6 +645,36 @@ public class GameEngine
         catch (Exception ex)
         {
             Logger.Instance.Error("GameEngine", $"Failed to load quest templates: {ex.Message}", ex);
+        }
+    }
+    
+    /// <summary>
+    /// Load tutorial templates from GameData/Tutorials directory
+    /// </summary>
+    private void LoadTutorialTemplates()
+    {
+        try
+        {
+            string tutorialsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "GameData", "Tutorials");
+            
+            if (!Directory.Exists(tutorialsPath))
+            {
+                Logger.Instance.Warning("GameEngine", $"Tutorials directory not found: {tutorialsPath}");
+                return;
+            }
+            
+            var tutorials = TutorialLoader.LoadTutorialsFromDirectory(tutorialsPath);
+            
+            foreach (var tutorial in tutorials)
+            {
+                TutorialSystem.AddTutorialTemplate(tutorial);
+            }
+            
+            Logger.Instance.Info("GameEngine", $"Loaded {tutorials.Count} tutorial templates");
+        }
+        catch (Exception ex)
+        {
+            Logger.Instance.Error("GameEngine", $"Failed to load tutorial templates: {ex.Message}", ex);
         }
     }
 }

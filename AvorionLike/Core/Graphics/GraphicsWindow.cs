@@ -53,6 +53,9 @@ public class GraphicsWindow : IDisposable
     // Quest UI
     private QuestLogUI? _questLogUI;
     
+    // Tutorial UI
+    private TutorialUI? _tutorialUI;
+    
     private readonly GameEngine _gameEngine;
     private bool _disposed = false;
     private bool _playerControlMode = true; // Start in ship control mode (third-person) by default
@@ -112,6 +115,10 @@ public class GraphicsWindow : IDisposable
         if (_questLogUI != null)
         {
             _questLogUI.SetPlayerEntity(shipId);
+        }
+        if (_tutorialUI != null)
+        {
+            _tutorialUI.SetPlayerEntity(shipId);
         }
         if (_galaxyMapUI != null)
         {
@@ -191,6 +198,9 @@ public class GraphicsWindow : IDisposable
         
         // Initialize Quest Log UI
         _questLogUI = new QuestLogUI(_gameEngine.EntityManager);
+        
+        // Initialize Tutorial UI
+        _tutorialUI = new TutorialUI(_gameEngine.TutorialSystem);
         
         // Initialize Player Control System
         _playerControlSystem = new PlayerControlSystem(_gameEngine.EntityManager);
@@ -545,6 +555,9 @@ public class GraphicsWindow : IDisposable
         // Render Quest Log UI
         _questLogUI?.Render();
         
+        // Render Tutorial UI
+        _tutorialUI?.Render();
+        
         // Always render ImGui (needed for GameHUD text and debug UI when enabled)
         _imguiController.Render();
     }
@@ -720,6 +733,13 @@ public class GraphicsWindow : IDisposable
         {
             _questLogUI?.ToggleQuestLog();
             Console.WriteLine($"Quest Log: {(_questLogUI != null ? "Toggled" : "Not available")}");
+        }
+        
+        // Toggle Tutorial overlay with H
+        if (key == Key.H)
+        {
+            _tutorialUI?.ToggleTutorialList();
+            Console.WriteLine($"Tutorial List: {(_tutorialUI != null ? "Toggled" : "Not available")}");
         }
         
         // Toggle debug UI with F1
