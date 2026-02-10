@@ -609,10 +609,11 @@ public class ShipBuilderUI
                     ImGui.SameLine(valueCol);
                     ImGui.Text($"{structure.ShieldCapacity:F0}");
                     
-                    // Shield recharge estimate
+                    // Shield recharge estimate (power-to-shield conversion at 10% efficiency)
                     if (structure.ShieldCapacity > 0)
                     {
-                        float rechargeTime = structure.ShieldCapacity / Math.Max(1f, structure.PowerGeneration * 0.1f);
+                        const float shieldPowerConversionFactor = 0.1f;
+                        float rechargeTime = structure.ShieldCapacity / Math.Max(1f, structure.PowerGeneration * shieldPowerConversionFactor);
                         ImGui.Text("Shield Recharge:");
                         ImGui.SameLine(valueCol);
                         ImGui.Text($"~{rechargeTime:F0}s");

@@ -325,7 +325,7 @@ public class GameHUD
             }
             else
             {
-                ImGui.Text($"{physics.Position.X:F0},{physics.Position.Z:F0}");
+                ImGui.Text($"{physics.Position.X:F0}:{physics.Position.Z:F0}");
             }
             ImGui.PopStyleColor();
             

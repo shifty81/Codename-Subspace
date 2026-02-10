@@ -2263,6 +2263,7 @@ public class ProceduralShipGenerator
             
             // Add thin armor plate on the outward-facing side
             Vector3 outwardDir = Vector3.Normalize(block.Position);
+            // Minimum valid direction length to avoid near-zero normalization artifacts
             if (outwardDir.Length() < 0.1f) continue;
             
             Vector3 armorPos = block.Position + outwardDir * blockSize * 0.8f;
