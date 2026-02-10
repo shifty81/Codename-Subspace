@@ -7,14 +7,17 @@ namespace AvorionLike.Core.Graphics;
 /// Material properties for rendering
 /// Supports both color-based and texture-based materials
 /// 
-/// Enhanced Material Colors with Vibrant Appearance and Shiny Finish:
-/// - Iron: Polished Steel Grey (0.72, 0.72, 0.75) - High Metallic, Mirror-like
-/// - Titanium: Brilliant Silver-Blue (0.82, 0.87, 0.95) - Very High Metallic, Highly Reflective
-/// - Naonite: Vivid Emerald Green (0.15, 0.92, 0.35) with Bright Green Glow - Metallic Sheen
-/// - Trinium: Brilliant Sapphire Blue (0.25, 0.65, 1.0) with Cyan Glow - Metallic with Glow
-/// - Xanion: Brilliant Gold (1.0, 0.82, 0.15) with Golden Glow - Mirror Gold Finish
-/// - Ogonite: Fiery Orange-Red (1.0, 0.4, 0.15) with Fire Glow - Metallic with Intense Glow
-/// - Avorion: Royal Purple (0.85, 0.2, 1.0) with Purple Aura - Mirror Finish with Intense Glow
+/// Visual Reference: Dark industrial aesthetic inspired by reference concept art.
+/// Ships use dark gunmetal hulls with weathered metallic finish and orange/amber emissive accents.
+/// 
+/// Material Colors (dark industrial base with emissive accents per tier):
+/// - Iron: Dark Gunmetal (0.25, 0.24, 0.23) - Weathered industrial metal
+/// - Titanium: Dark Steel Grey (0.35, 0.36, 0.38) - Slightly lighter industrial metal
+/// - Naonite: Dark Hull (0.22, 0.26, 0.24) with Subtle Green Glow
+/// - Trinium: Dark Hull (0.24, 0.27, 0.30) with Subtle Blue Glow
+/// - Xanion: Dark Hull (0.28, 0.26, 0.22) with Warm Golden Glow
+/// - Ogonite: Dark Hull (0.30, 0.24, 0.20) with Orange-Amber Glow (engine/weapon accents)
+/// - Avorion: Dark Hull (0.28, 0.22, 0.30) with Purple Aura
 /// </summary>
 public class Material
 {
@@ -49,7 +52,8 @@ public class Material
     
     /// <summary>
     /// Create material from voxel material type
-    /// Enhanced for vibrant colors and shiny, mirror-like finishes
+    /// Dark industrial aesthetic: weathered gunmetal hulls with emissive accents per material tier
+    /// See VISUAL_REFERENCE_GUIDE.md for target look
     /// </summary>
     public static Material FromMaterialType(string materialType)
     {
@@ -58,68 +62,68 @@ public class Material
             "iron" => new Material
             {
                 Name = "Iron",
-                BaseColor = new Vector3(0.72f, 0.72f, 0.75f), // Polished steel grey
-                Metallic = 0.95f,  // Highly metallic for shiny look
-                Roughness = 0.15f  // Low roughness for mirror-like finish
+                BaseColor = new Vector3(0.25f, 0.24f, 0.23f), // Dark gunmetal grey
+                Metallic = 0.88f,  // Clearly metallic
+                Roughness = 0.50f  // Weathered industrial finish
             },
             "titanium" => new Material
             {
                 Name = "Titanium",
-                BaseColor = new Vector3(0.82f, 0.87f, 0.95f), // Brilliant silver-blue
-                Metallic = 0.98f,  // Near-mirror metallic
-                Roughness = 0.08f  // Very low roughness for highly reflective surface
+                BaseColor = new Vector3(0.35f, 0.36f, 0.38f), // Dark steel grey
+                Metallic = 0.90f,
+                Roughness = 0.40f  // Slightly smoother than iron
             },
             "naonite" => new Material
             {
                 Name = "Naonite",
-                BaseColor = new Vector3(0.15f, 0.92f, 0.35f), // Vivid emerald green
-                Metallic = 0.75f,
-                Roughness = 0.2f,
-                EmissiveColor = new Vector3(0.1f, 0.6f, 0.2f), // Brighter green glow
-                EmissiveStrength = 0.5f
+                BaseColor = new Vector3(0.22f, 0.26f, 0.24f), // Dark hull with green tint
+                Metallic = 0.85f,
+                Roughness = 0.45f,
+                EmissiveColor = new Vector3(0.08f, 0.35f, 0.15f), // Subtle green glow
+                EmissiveStrength = 0.3f
             },
             "trinium" => new Material
             {
                 Name = "Trinium",
-                BaseColor = new Vector3(0.25f, 0.65f, 1.0f), // Brilliant sapphire blue
-                Metallic = 0.85f,
-                Roughness = 0.15f,
-                EmissiveColor = new Vector3(0.2f, 0.5f, 0.8f), // Cyan glow
-                EmissiveStrength = 0.45f
+                BaseColor = new Vector3(0.24f, 0.27f, 0.30f), // Dark hull with blue tint
+                Metallic = 0.87f,
+                Roughness = 0.42f,
+                EmissiveColor = new Vector3(0.12f, 0.30f, 0.50f), // Subtle blue glow
+                EmissiveStrength = 0.3f
             },
             "xanion" => new Material
             {
                 Name = "Xanion",
-                BaseColor = new Vector3(1.0f, 0.82f, 0.15f), // Brilliant gold
-                Metallic = 0.99f,  // Mirror gold finish
-                Roughness = 0.05f, // Near-perfect mirror
-                EmissiveColor = new Vector3(0.6f, 0.5f, 0.1f), // Golden glow
-                EmissiveStrength = 0.55f
+                BaseColor = new Vector3(0.28f, 0.26f, 0.22f), // Dark hull with warm tint
+                Metallic = 0.90f,
+                Roughness = 0.38f,
+                EmissiveColor = new Vector3(0.50f, 0.38f, 0.08f), // Golden glow
+                EmissiveStrength = 0.35f
             },
             "ogonite" => new Material
             {
                 Name = "Ogonite",
-                BaseColor = new Vector3(1.0f, 0.4f, 0.15f), // Fiery orange-red
+                BaseColor = new Vector3(0.30f, 0.24f, 0.20f), // Dark hull with warm tint
                 Metallic = 0.88f,
-                Roughness = 0.12f,
-                EmissiveColor = new Vector3(0.7f, 0.25f, 0.1f), // Fire glow
-                EmissiveStrength = 0.6f
+                Roughness = 0.40f,
+                EmissiveColor = new Vector3(1.0f, 0.6f, 0.15f), // Orange-amber glow (engine/weapon accents)
+                EmissiveStrength = 0.5f
             },
             "avorion" => new Material
             {
                 Name = "Avorion",
-                BaseColor = new Vector3(0.85f, 0.2f, 1.0f), // Royal purple
-                Metallic = 0.97f,  // Mirror finish
-                Roughness = 0.05f, // Near-perfect mirror
-                EmissiveColor = new Vector3(0.5f, 0.15f, 0.7f), // Purple aura
-                EmissiveStrength = 0.8f // Intense glow for the rare material
+                BaseColor = new Vector3(0.28f, 0.22f, 0.30f), // Dark hull with purple tint
+                Metallic = 0.92f,
+                Roughness = 0.35f,
+                EmissiveColor = new Vector3(0.40f, 0.12f, 0.55f), // Purple aura
+                EmissiveStrength = 0.5f
             },
             _ => new Material
             {
                 Name = "Default",
-                BaseColor = new Vector3(0.6f, 0.6f, 0.6f),
-                Metallic = 0.7f,
-                Roughness = 0.3f
+                BaseColor = new Vector3(0.25f, 0.25f, 0.25f), // Dark neutral
+                Metallic = 0.80f,
+                Roughness = 0.50f
             }
         };
     }

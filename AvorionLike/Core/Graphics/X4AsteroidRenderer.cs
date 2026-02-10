@@ -270,64 +270,64 @@ public class X4AsteroidRenderer
         switch (resourceType?.ToLower())
         {
             case "iron":
-                material.BaseColor = new Vector3(0.4f, 0.35f, 0.3f);
-                material.Metallic = 0.6f;
-                material.Roughness = 0.8f;
-                material.SpecularColor = new Vector3(0.5f, 0.45f, 0.4f);
+                material.BaseColor = new Vector3(0.20f, 0.18f, 0.16f); // Dark rocky brown
+                material.Metallic = 0.15f;
+                material.Roughness = 0.90f;
+                material.SpecularColor = new Vector3(0.25f, 0.22f, 0.20f);
                 break;
                 
             case "titanium":
-                material.BaseColor = new Vector3(0.5f, 0.5f, 0.55f);
-                material.Metallic = 0.7f;
-                material.Roughness = 0.6f;
-                material.SpecularColor = new Vector3(0.6f, 0.6f, 0.65f);
+                material.BaseColor = new Vector3(0.28f, 0.28f, 0.30f); // Dark grey rock
+                material.Metallic = 0.25f;
+                material.Roughness = 0.85f;
+                material.SpecularColor = new Vector3(0.35f, 0.35f, 0.38f);
                 break;
                 
             case "naonite":
-                material.BaseColor = new Vector3(0.3f, 0.5f, 0.4f);
-                material.Metallic = 0.5f;
-                material.Roughness = 0.7f;
-                material.SpecularColor = new Vector3(0.4f, 0.6f, 0.5f);
-                material.EmissiveStrength = 0.1f;
+                material.BaseColor = new Vector3(0.18f, 0.25f, 0.20f); // Dark greenish rock
+                material.Metallic = 0.15f;
+                material.Roughness = 0.88f;
+                material.SpecularColor = new Vector3(0.25f, 0.35f, 0.28f);
+                material.EmissiveStrength = 0.08f;
                 break;
                 
             case "trinium":
-                material.BaseColor = new Vector3(0.4f, 0.5f, 0.6f);
-                material.Metallic = 0.8f;
-                material.Roughness = 0.5f;
-                material.SpecularColor = new Vector3(0.5f, 0.6f, 0.7f);
-                material.EmissiveStrength = 0.15f;
+                material.BaseColor = new Vector3(0.22f, 0.26f, 0.32f); // Dark bluish rock
+                material.Metallic = 0.20f;
+                material.Roughness = 0.85f;
+                material.SpecularColor = new Vector3(0.30f, 0.35f, 0.42f);
+                material.EmissiveStrength = 0.10f;
                 break;
                 
             case "xanion":
-                material.BaseColor = new Vector3(0.6f, 0.4f, 0.5f);
-                material.Metallic = 0.7f;
-                material.Roughness = 0.4f;
-                material.SpecularColor = new Vector3(0.7f, 0.5f, 0.6f);
-                material.EmissiveStrength = 0.2f;
+                material.BaseColor = new Vector3(0.28f, 0.22f, 0.25f); // Dark brownish-purple rock
+                material.Metallic = 0.20f;
+                material.Roughness = 0.82f;
+                material.SpecularColor = new Vector3(0.38f, 0.30f, 0.35f);
+                material.EmissiveStrength = 0.12f;
                 break;
                 
             case "ogonite":
-                material.BaseColor = new Vector3(0.5f, 0.6f, 0.3f);
-                material.Metallic = 0.9f;
-                material.Roughness = 0.3f;
-                material.SpecularColor = new Vector3(0.6f, 0.7f, 0.4f);
-                material.EmissiveStrength = 0.25f;
+                material.BaseColor = new Vector3(0.25f, 0.28f, 0.18f); // Dark olive rock
+                material.Metallic = 0.25f;
+                material.Roughness = 0.80f;
+                material.SpecularColor = new Vector3(0.35f, 0.38f, 0.25f);
+                material.EmissiveStrength = 0.15f;
                 break;
                 
             case "avorion":
-                material.BaseColor = new Vector3(0.7f, 0.3f, 0.3f);
-                material.Metallic = 0.95f;
-                material.Roughness = 0.2f;
-                material.SpecularColor = new Vector3(0.8f, 0.4f, 0.4f);
-                material.EmissiveStrength = 0.3f;
+                material.BaseColor = new Vector3(0.30f, 0.18f, 0.18f); // Dark reddish rock
+                material.Metallic = 0.30f;
+                material.Roughness = 0.78f;
+                material.SpecularColor = new Vector3(0.42f, 0.25f, 0.25f);
+                material.EmissiveStrength = 0.18f;
                 break;
                 
             default: // Generic rock
-                material.BaseColor = new Vector3(0.5f, 0.45f, 0.4f);
-                material.Metallic = 0.1f;
-                material.Roughness = 0.9f;
-                material.SpecularColor = new Vector3(0.3f, 0.3f, 0.3f);
+                material.BaseColor = new Vector3(0.18f, 0.16f, 0.14f); // Very dark rock
+                material.Metallic = 0.05f;
+                material.Roughness = 0.92f;
+                material.SpecularColor = new Vector3(0.22f, 0.20f, 0.18f);
                 break;
         }
         
@@ -342,17 +342,17 @@ public class X4AsteroidRenderer
         var veins = new List<ResourceVein>();
         int veinCount = 3 + _random.Next(5);
         
-        // Vein color based on resource
+        // Vein color based on resource (muted against dark rock)
         Vector3 veinColor = resourceType?.ToLower() switch
         {
-            "iron" => new Vector3(0.6f, 0.5f, 0.4f),
-            "titanium" => new Vector3(0.7f, 0.7f, 0.75f),
-            "naonite" => new Vector3(0.4f, 0.7f, 0.5f),
-            "trinium" => new Vector3(0.5f, 0.7f, 0.8f),
-            "xanion" => new Vector3(0.8f, 0.5f, 0.7f),
-            "ogonite" => new Vector3(0.7f, 0.8f, 0.4f),
-            "avorion" => new Vector3(0.9f, 0.4f, 0.4f),
-            _ => new Vector3(0.6f, 0.6f, 0.6f)
+            "iron" => new Vector3(0.35f, 0.30f, 0.25f),
+            "titanium" => new Vector3(0.40f, 0.40f, 0.45f),
+            "naonite" => new Vector3(0.25f, 0.45f, 0.32f),
+            "trinium" => new Vector3(0.30f, 0.42f, 0.52f),
+            "xanion" => new Vector3(0.50f, 0.35f, 0.45f),
+            "ogonite" => new Vector3(0.48f, 0.52f, 0.28f),
+            "avorion" => new Vector3(0.55f, 0.25f, 0.25f),
+            _ => new Vector3(0.30f, 0.28f, 0.26f)
         };
         
         for (int i = 0; i < veinCount; i++)
