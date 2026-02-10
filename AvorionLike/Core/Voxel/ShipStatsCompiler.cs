@@ -17,7 +17,7 @@ public static class ShipStatsCompiler
 {
     /// <summary>
     /// Compile ship stats from a voxel structure's blocks.
-    /// Two-pass algorithm: first pass computes mass &amp; center-of-mass,
+    /// Two-pass algorithm: first pass computes mass and center-of-mass,
     /// second pass computes functional stats relative to center-of-mass.
     /// </summary>
     public static CompiledShipStats Compile(VoxelStructureComponent structure)

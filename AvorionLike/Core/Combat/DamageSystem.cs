@@ -64,6 +64,13 @@ public class DamageSystem : SystemBase
 {
     private readonly EntityManager _entityManager;
     private readonly Random _random = new();
+    
+    /// <summary>
+    /// Damage threshold per block used to determine how many blocks
+    /// receive visual hull damage in a single hit. Lower values =
+    /// more blocks affected per hit, giving a wider destruction feel.
+    /// </summary>
+    private const float DamagePerBlockThreshold = 50f;
 
     public DamageSystem(EntityManager entityManager) : base("DamageSystem")
     {
@@ -212,11 +219,11 @@ public class DamageSystem : SystemBase
             }
 
             // Distribute remaining damage across a small random set of blocks
-            int blocksToHit = Math.Min(candidates.Count, Math.Max(1, (int)(effectiveDamage / 50f) + 1));
-            // Shuffle to pick random blocks
-            for (int i = candidates.Count - 1; i > 0; i--)
+            int blocksToHit = Math.Min(candidates.Count, Math.Max(1, (int)(effectiveDamage / DamagePerBlockThreshold) + 1));
+            // Partial Fisher-Yates shuffle: only randomize the first blocksToHit positions
+            for (int i = 0; i < blocksToHit && i < candidates.Count; i++)
             {
-                int j = _random.Next(i + 1);
+                int j = _random.Next(i, candidates.Count);
                 (candidates[i], candidates[j]) = (candidates[j], candidates[i]);
             }
 

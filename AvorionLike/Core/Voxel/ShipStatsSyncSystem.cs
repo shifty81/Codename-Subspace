@@ -25,7 +25,7 @@ public class ShipStatsSyncSystem : SystemBase
 
     // Threshold to avoid syncing tiny floating-point changes
     private const float MassSyncThreshold = 0.1f;
-    private const float ThrustSyncThreshold = 0.1f;
+    private const float PropulsionSyncThreshold = 0.1f;
 
     // Minimum moment of inertia to avoid division-by-zero edge cases
     private const float MinMomentOfInertia = 1.0f;
@@ -104,12 +104,12 @@ public class ShipStatsSyncSystem : SystemBase
 
         physics.MomentOfInertia = Math.Max(stats.MomentOfInertia, MinMomentOfInertia);
 
-        if (Math.Abs(physics.MaxThrust - stats.EffectiveThrust) > ThrustSyncThreshold)
+        if (Math.Abs(physics.MaxThrust - stats.EffectiveThrust) > PropulsionSyncThreshold)
         {
             physics.MaxThrust = stats.EffectiveThrust;
         }
 
-        if (Math.Abs(physics.MaxTorque - stats.EffectiveTorque) > ThrustSyncThreshold)
+        if (Math.Abs(physics.MaxTorque - stats.EffectiveTorque) > PropulsionSyncThreshold)
         {
             physics.MaxTorque = stats.EffectiveTorque;
         }
