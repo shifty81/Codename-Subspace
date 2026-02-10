@@ -6,6 +6,14 @@ namespace AvorionLike.Core.Config;
 public static class DebugConfig
 {
     /// <summary>
+    /// Master toggle for all debug rendering overlays.
+    /// When OFF (default), debug lines, AABBs, gen-stats, and the debug HUD
+    /// are hidden so the game shows clean visuals.
+    /// Toggle with F1.
+    /// </summary>
+    public static bool DebugRenderLayer { get; set; } = false;
+
+    /// <summary>
     /// Enable two-sided rendering (disable backface culling) for voxel meshes
     /// Renders both front and back faces by disabling OpenGL backface culling
     /// Helps diagnose face culling issues while preserving hollow structure visibility

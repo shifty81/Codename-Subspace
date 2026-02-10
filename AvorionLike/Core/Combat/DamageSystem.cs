@@ -151,7 +151,17 @@ public class DamageSystem : SystemBase
     }
 
     /// <summary>
-    /// Apply damage to voxel blocks with damage falloff
+    /// Apply damage to voxel blocks using a ship-level pipeline.
+    ///
+    /// Design rationale (from architecture review):
+    ///   Hit → Ship Shield → Ship Armor → Ship Hull
+    ///         ↓
+    ///   Choose random block(s) in hit region
+    ///   Apply visual damage
+    ///
+    /// This keeps combat fast and scalable — we resolve damage at the ship
+    /// level first, then map the result onto a small number of blocks for
+    /// visual destruction.
     /// </summary>
     private List<VoxelBlock> ApplyBlockDamage(VoxelStructureComponent structure, DamageInfo damageInfo, float damage)
     {
@@ -161,19 +171,61 @@ public class DamageSystem : SystemBase
         float damageMultiplier = GetDamageMultiplier(damageInfo.DamageType);
         float effectiveDamage = damage * damageMultiplier;
 
-        // Find blocks within damage radius
-        foreach (var block in structure.Blocks.ToList())
-        {
-            float distance = Vector3.Distance(block.Position, damageInfo.HitPosition);
-            
-            if (distance <= damageInfo.Radius)
-            {
-                // Calculate damage with falloff (linear falloff from center)
-                float falloff = 1f - (distance / damageInfo.Radius);
-                float blockDamage = effectiveDamage * falloff;
+        // ── Ship-level armor absorption ──
+        // Armor blocks near the hit absorb a portion of damage before hull blocks.
+        var armorBlocks = structure.Blocks
+            .Where(b => b.BlockType == BlockType.Armor && !b.IsDestroyed)
+            .OrderBy(b => Vector3.Distance(b.Position, damageInfo.HitPosition))
+            .Take(3) // Cap the number of armor blocks checked per hit
+            .ToList();
 
-                // Apply damage
-                block.TakeDamage(blockDamage);
+        foreach (var armor in armorBlocks)
+        {
+            if (effectiveDamage <= 0) break;
+
+            float absorbed = Math.Min(armor.Durability, effectiveDamage * 0.5f);
+            armor.TakeDamage(absorbed);
+            effectiveDamage -= absorbed;
+
+            if (armor.IsDestroyed)
+            {
+                destroyedBlocks.Add(armor);
+            }
+        }
+
+        // ── Select random blocks in hit region for visual hull damage ──
+        if (effectiveDamage > 0)
+        {
+            var candidates = structure.Blocks
+                .Where(b => !b.IsDestroyed && b.BlockType != BlockType.Armor)
+                .Where(b => Vector3.Distance(b.Position, damageInfo.HitPosition) <= damageInfo.Radius)
+                .ToList();
+
+            if (candidates.Count == 0)
+            {
+                // Fallback: pick nearest blocks if nothing is in the radius
+                candidates = structure.Blocks
+                    .Where(b => !b.IsDestroyed)
+                    .OrderBy(b => Vector3.Distance(b.Position, damageInfo.HitPosition))
+                    .Take(3)
+                    .ToList();
+            }
+
+            // Distribute remaining damage across a small random set of blocks
+            int blocksToHit = Math.Min(candidates.Count, Math.Max(1, (int)(effectiveDamage / 50f) + 1));
+            // Shuffle to pick random blocks
+            for (int i = candidates.Count - 1; i > 0; i--)
+            {
+                int j = _random.Next(i + 1);
+                (candidates[i], candidates[j]) = (candidates[j], candidates[i]);
+            }
+
+            float damagePerBlock = effectiveDamage / blocksToHit;
+
+            for (int i = 0; i < blocksToHit && i < candidates.Count; i++)
+            {
+                var block = candidates[i];
+                block.TakeDamage(damagePerBlock);
 
                 if (block.IsDestroyed)
                 {

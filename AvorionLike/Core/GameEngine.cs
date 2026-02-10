@@ -56,6 +56,9 @@ public class GameEngine
     public QuestSystem QuestSystem { get; private set; } = null!;
     public TutorialSystem TutorialSystem { get; private set; } = null!;
     
+    // Ship stats compilation
+    public ShipStatsSyncSystem ShipStatsSyncSystem { get; private set; } = null!;
+    
     // Modular ship systems
     public ModularShipSyncSystem ModularShipSyncSystem { get; private set; } = null!;
     public VoxelDamageSystem VoxelDamageSystem { get; private set; } = null!;
@@ -129,6 +132,9 @@ public class GameEngine
         QuestSystem = new QuestSystem(EntityManager, EventSystem.Instance);
         TutorialSystem = new TutorialSystem(EntityManager, EventSystem.Instance);
         
+        // Initialize ship stats compilation system
+        ShipStatsSyncSystem = new ShipStatsSyncSystem(EntityManager);
+        
         // Initialize modular ship systems
         ModularShipSyncSystem = new ModularShipSyncSystem(EntityManager);
         VoxelDamageSystem = new VoxelDamageSystem(EntityManager);
@@ -149,6 +155,9 @@ public class GameEngine
         EntityManager.RegisterSystem(AISystem);
         EntityManager.RegisterSystem(QuestSystem);
         EntityManager.RegisterSystem(TutorialSystem);
+        
+        // Register ship stats sync (runs before modular sync and physics)
+        EntityManager.RegisterSystem(ShipStatsSyncSystem);
         
         // Register modular ship systems
         EntityManager.RegisterSystem(ModularShipSyncSystem);
