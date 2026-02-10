@@ -4,6 +4,8 @@ using AvorionLike.Core.Physics;
 using AvorionLike.Core.Voxel;
 using AvorionLike.Core.Resources;
 using AvorionLike.Core.Combat;
+using AvorionLike.Core.Navigation;
+using AvorionLike.Core.Power;
 using ImGuiNET;
 
 namespace AvorionLike.Core.UI;
@@ -284,7 +286,7 @@ public class GameHUD
         {
             ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.0f, 1.0f, 1.0f, 1.0f));
             ImGui.SetWindowFontScale(1.15f * fontScale);
-            ImGui.Text("⬡ VELOCITY");
+            ImGui.Text("⬡ NAVIGATION");
             ImGui.SetWindowFontScale(1.0f * fontScale);
             ImGui.PopStyleColor();
             
@@ -310,7 +312,62 @@ public class GameHUD
             ImGui.Text($"{physics.Mass:F0} kg");
             ImGui.PopStyleColor();
             
-            // Add FPS counter with color coding
+            // Sector coordinates
+            var sectorLoc = _gameEngine.EntityManager.GetComponent<SectorLocationComponent>(_playerShipId.Value);
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.8f, 0.8f, 0.9f, 1.0f));
+            ImGui.Text("Sector:");
+            ImGui.PopStyleColor();
+            ImGui.SameLine(velValueColumn);
+            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.6f, 0.9f, 1.0f, 1.0f));
+            if (sectorLoc != null)
+            {
+                ImGui.Text($"{sectorLoc.CurrentSector.X}:{sectorLoc.CurrentSector.Y}");
+            }
+            else
+            {
+                ImGui.Text($"{physics.Position.X:F0},{physics.Position.Z:F0}");
+            }
+            ImGui.PopStyleColor();
+            
+            // Power generation/consumption (Avorion-style)
+            var powerComponent = _gameEngine.EntityManager.GetComponent<PowerComponent>(_playerShipId.Value);
+            if (powerComponent != null)
+            {
+                ImGui.Spacing();
+                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.8f, 0.8f, 0.9f, 1.0f));
+                ImGui.Text("Power:");
+                ImGui.PopStyleColor();
+                ImGui.SameLine(velValueColumn);
+                float powerBalance = powerComponent.CurrentPowerGeneration - powerComponent.TotalPowerConsumption;
+                Vector4 powerColor = powerBalance >= 0 
+                    ? new Vector4(0.3f, 1.0f, 0.5f, 1.0f)  // Green = positive
+                    : new Vector4(1.0f, 0.3f, 0.3f, 1.0f);  // Red = negative
+                ImGui.PushStyleColor(ImGuiCol.Text, powerColor);
+                ImGui.Text($"{powerBalance:+0.0;-0.0} MW");
+                ImGui.PopStyleColor();
+            }
+            
+            // Thrust-to-mass ratio
+            if (voxelStructure != null && physics.Mass > 0)
+            {
+                float thrustToMass = voxelStructure.TotalThrust / physics.Mass;
+                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.8f, 0.8f, 0.9f, 1.0f));
+                ImGui.Text("T/M Ratio:");
+                ImGui.PopStyleColor();
+                ImGui.SameLine(velValueColumn);
+                Vector4 tmColor = thrustToMass > 1.0f 
+                    ? new Vector4(0.3f, 1.0f, 0.5f, 1.0f)
+                    : thrustToMass > 0.5f 
+                        ? new Vector4(1.0f, 0.9f, 0.0f, 1.0f)
+                        : new Vector4(1.0f, 0.3f, 0.3f, 1.0f);
+                ImGui.PushStyleColor(ImGuiCol.Text, tmColor);
+                ImGui.Text($"{thrustToMass:F2}");
+                ImGui.PopStyleColor();
+            }
+            
+            ImGui.Spacing();
+            
+            // FPS counter with color coding
             var io = ImGui.GetIO();
             ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.8f, 0.8f, 0.9f, 1.0f));
             ImGui.Text("FPS:");

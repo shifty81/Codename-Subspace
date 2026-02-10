@@ -45,6 +45,14 @@ public class ShipBuilderUI
     private float _totalMass = 0f;
     private int _materialCost = 0;
     
+    // Symmetry settings (Avorion-style mirroring)
+    private bool _mirrorX = false;
+    private bool _mirrorY = false;
+    private bool _mirrorZ = false;
+    
+    // Block shape selection
+    private BlockShape _selectedBlockShape = BlockShape.Cube;
+    
     // Material colors for UI - matching reference image 4456.PNG (repository root)
     private readonly Dictionary<string, Vector4> _materialColors = new()
     {
@@ -313,6 +321,34 @@ public class ShipBuilderUI
                 ImGui.SliderInt("Grid Size", ref _gridSize, 1, 10);
             }
             
+            // Symmetry tools (Avorion-style mirroring)
+            ImGui.Separator();
+            ImGui.TextColored(new Vector4(0.0f, 1.0f, 1.0f, 1.0f), "⬡ Symmetry");
+            ImGui.Checkbox("Mirror X", ref _mirrorX);
+            ImGui.SameLine();
+            ImGui.Checkbox("Mirror Y", ref _mirrorY);
+            ImGui.SameLine();
+            ImGui.Checkbox("Mirror Z", ref _mirrorZ);
+            
+            // Block shape selection
+            ImGui.Separator();
+            ImGui.TextColored(new Vector4(0.0f, 1.0f, 1.0f, 1.0f), "⬡ Block Shape");
+            var shapes = Enum.GetValues<BlockShape>();
+            for (int s = 0; s < shapes.Length; s++)
+            {
+                if (s > 0) ImGui.SameLine();
+                bool isSelected = _selectedBlockShape == shapes[s];
+                if (isSelected)
+                    ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.0f, 0.6f, 0.8f, 0.8f));
+                if (ImGui.Button($"{shapes[s]}##shape"))
+                {
+                    _selectedBlockShape = shapes[s];
+                }
+                if (isSelected)
+                    ImGui.PopStyleColor();
+            }
+            
+            ImGui.Separator();
             // Block size
             ImGui.Text("Block Size:");
             var size = new System.Numerics.Vector3(_blockSize.X, _blockSize.Y, _blockSize.Z);
@@ -461,7 +497,7 @@ public class ShipBuilderUI
     }
     
     /// <summary>
-    /// Render stats panel on right side
+    /// Render stats panel on right side - Avorion-style real-time ship performance data
     /// </summary>
     private void RenderStatsPanel()
     {
@@ -481,28 +517,106 @@ public class ShipBuilderUI
         
         if (ImGui.Begin("##StatsPanel", flags))
         {
-            ImGui.Text("Ship Statistics");
+            ImGui.TextColored(new Vector4(0.0f, 1.0f, 1.0f, 1.0f), "⬡ SHIP STATISTICS");
             ImGui.Separator();
             
-            ImGui.Text($"Total Blocks: {_totalBlocks}");
-            ImGui.Text($"Total Mass: {_totalMass:F1} tons");
-            ImGui.Text($"Next Block Cost: {_materialCost} {_selectedMaterial}");
+            float valueCol = 180f;
             
-            // Additional stats from voxel structure
+            // Build info
+            ImGui.TextColored(new Vector4(0.6f, 0.8f, 1.0f, 1.0f), "Build");
+            ImGui.Text("Total Blocks:");
+            ImGui.SameLine(valueCol);
+            ImGui.Text($"{_totalBlocks}");
+            ImGui.Text("Next Block Cost:");
+            ImGui.SameLine(valueCol);
+            ImGui.TextColored(_materialColors.GetValueOrDefault(_selectedMaterial, new Vector4(1,1,1,1)),
+                $"{_materialCost} {_selectedMaterial}");
+            
             if (_currentShipId != Guid.Empty)
             {
                 var structure = _gameEngine.EntityManager.GetComponent<VoxelStructureComponent>(_currentShipId);
+                var physics = _gameEngine.EntityManager.GetComponent<Physics.PhysicsComponent>(_currentShipId);
+                
                 if (structure != null)
                 {
                     ImGui.Separator();
-                    ImGui.Text($"Hull: {structure.StructuralIntegrity:F0}");
-                    ImGui.Text($"Volume: {_totalMass / 100f:F1} m³");
+                    
+                    // Mass & Size section (Avorion-style)
+                    ImGui.TextColored(new Vector4(0.6f, 0.8f, 1.0f, 1.0f), "Mass & Size");
+                    ImGui.Text("Total Mass:");
+                    ImGui.SameLine(valueCol);
+                    ImGui.Text($"{_totalMass:F1} t");
+                    ImGui.Text("Volume:");
+                    ImGui.SameLine(valueCol);
+                    ImGui.Text($"{_totalMass / 100f:F1} m³");
                     
                     ImGui.Separator();
-                    ImGui.Text($"Power: {structure.PowerGeneration:F1} MW");
-                    ImGui.Text($"Shields: {structure.ShieldCapacity:F0}");
-                    ImGui.Text($"Thrust: {structure.TotalThrust:F0} N");
-                    ImGui.Text($"Torque: {structure.TotalTorque:F0} Nm");
+                    
+                    // Mobility section (Avorion-style)
+                    ImGui.TextColored(new Vector4(0.6f, 0.8f, 1.0f, 1.0f), "Mobility");
+                    ImGui.Text("Thrust:");
+                    ImGui.SameLine(valueCol);
+                    ImGui.Text($"{structure.TotalThrust:F0} N");
+                    ImGui.Text("Torque:");
+                    ImGui.SameLine(valueCol);
+                    ImGui.Text($"{structure.TotalTorque:F0} Nm");
+                    
+                    // Thrust-to-mass ratio
+                    float mass = physics?.Mass ?? _totalMass;
+                    float thrustToMass = mass > 0 ? structure.TotalThrust / mass : 0;
+                    ImGui.Text("T/M Ratio:");
+                    ImGui.SameLine(valueCol);
+                    Vector4 tmColor = thrustToMass > 1.0f 
+                        ? new Vector4(0.3f, 1.0f, 0.5f, 1.0f)
+                        : thrustToMass > 0.5f 
+                            ? new Vector4(1.0f, 0.9f, 0.0f, 1.0f)
+                            : new Vector4(1.0f, 0.3f, 0.3f, 1.0f);
+                    ImGui.TextColored(tmColor, $"{thrustToMass:F2}");
+                    
+                    // Max velocity estimate
+                    float maxVelocity = mass > 0 ? structure.TotalThrust / mass * 10f : 0;
+                    ImGui.Text("Est. Max Speed:");
+                    ImGui.SameLine(valueCol);
+                    ImGui.Text($"{maxVelocity:F0} m/s");
+                    
+                    ImGui.Separator();
+                    
+                    // Energy section (Avorion-style)
+                    ImGui.TextColored(new Vector4(0.6f, 0.8f, 1.0f, 1.0f), "Energy");
+                    ImGui.Text("Generation:");
+                    ImGui.SameLine(valueCol);
+                    ImGui.TextColored(new Vector4(0.3f, 1.0f, 0.5f, 1.0f), 
+                        $"+{structure.PowerGeneration:F1} MW");
+                    
+                    // Power balance indicator
+                    float powerBalance = structure.PowerGeneration;
+                    ImGui.Text("Balance:");
+                    ImGui.SameLine(valueCol);
+                    Vector4 balanceColor = powerBalance > 0 
+                        ? new Vector4(0.3f, 1.0f, 0.5f, 1.0f)
+                        : new Vector4(1.0f, 0.3f, 0.3f, 1.0f);
+                    ImGui.TextColored(balanceColor, 
+                        powerBalance >= 0 ? "POSITIVE" : "NEGATIVE");
+                    
+                    ImGui.Separator();
+                    
+                    // Durability section (Avorion-style)
+                    ImGui.TextColored(new Vector4(0.6f, 0.8f, 1.0f, 1.0f), "Durability");
+                    ImGui.Text("Hull Integrity:");
+                    ImGui.SameLine(valueCol);
+                    ImGui.Text($"{structure.StructuralIntegrity:F0}");
+                    ImGui.Text("Shields:");
+                    ImGui.SameLine(valueCol);
+                    ImGui.Text($"{structure.ShieldCapacity:F0}");
+                    
+                    // Shield recharge estimate
+                    if (structure.ShieldCapacity > 0)
+                    {
+                        float rechargeTime = structure.ShieldCapacity / Math.Max(1f, structure.PowerGeneration * 0.1f);
+                        ImGui.Text("Shield Recharge:");
+                        ImGui.SameLine(valueCol);
+                        ImGui.Text($"~{rechargeTime:F0}s");
+                    }
                 }
             }
         }
@@ -539,7 +653,7 @@ public class ShipBuilderUI
     }
     
     /// <summary>
-    /// Place a block at the current position
+    /// Place a block at the current position, with symmetry mirroring
     /// </summary>
     private void PlaceBlock()
     {
@@ -557,12 +671,23 @@ public class ShipBuilderUI
             return;
         }
         
-        // Attempt to place block
-        var result = _buildSystem.PlaceBlock(_currentShipId, _placementPosition, inventory.Inventory);
+        // Collect all positions to place blocks (including symmetry mirrors)
+        var positions = GetSymmetryPositions(_placementPosition);
+        int placedCount = 0;
         
-        if (result.Success)
+        foreach (var pos in positions)
         {
-            SetStatusMessage($"Block placed! {result.Message}", 2f);
+            var result = _buildSystem.PlaceBlock(_currentShipId, pos, inventory.Inventory);
+            if (result.Success)
+            {
+                placedCount++;
+            }
+        }
+        
+        if (placedCount > 0)
+        {
+            string mirrorText = placedCount > 1 ? $" ({placedCount} mirrored)" : "";
+            SetStatusMessage($"Block placed!{mirrorText}", 2f);
             UpdateStatistics();
             
             // Move placement position for next block (smart positioning)
@@ -577,8 +702,41 @@ public class ShipBuilderUI
         }
         else
         {
-            SetStatusMessage($"Failed: {result.Message}", 3f);
+            SetStatusMessage("Failed to place block", 3f);
         }
+    }
+    
+    /// <summary>
+    /// Get all positions for block placement based on symmetry settings
+    /// </summary>
+    private List<Vector3> GetSymmetryPositions(Vector3 position)
+    {
+        var positions = new List<Vector3> { position };
+        
+        if (_mirrorX && position.X != 0)
+        {
+            positions.Add(new Vector3(-position.X, position.Y, position.Z));
+        }
+        if (_mirrorY && position.Y != 0)
+        {
+            var count = positions.Count;
+            for (int i = 0; i < count; i++)
+            {
+                var p = positions[i];
+                positions.Add(new Vector3(p.X, -p.Y, p.Z));
+            }
+        }
+        if (_mirrorZ && position.Z != 0)
+        {
+            var count = positions.Count;
+            for (int i = 0; i < count; i++)
+            {
+                var p = positions[i];
+                positions.Add(new Vector3(p.X, p.Y, -p.Z));
+            }
+        }
+        
+        return positions;
     }
     
     /// <summary>
