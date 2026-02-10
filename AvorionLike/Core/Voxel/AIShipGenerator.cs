@@ -81,6 +81,13 @@ public class AIShipGenerator
     private Random _random;
     private readonly Logger _logger = Logger.Instance;
     
+    // Block grid spacing used throughout generation
+    private const float BLOCK_SIZE = 2f;
+    // Blocks within this distance of X=0 are considered on the centerline (inherently symmetric)
+    private const float SYMMETRY_AXIS_THRESHOLD = 0.5f;
+    // Adjacency threshold for flood-fill connectivity check (slightly larger than block size for floating-point tolerance)
+    private const float ADJACENCY_THRESHOLD = BLOCK_SIZE * 1.5f;
+    
     public AIShipGenerator(int seed = 0)
     {
         _random = seed == 0 ? new Random() : new Random(seed);
@@ -321,32 +328,32 @@ public class AIShipGenerator
     /// <summary>
     /// Define ship outline with hull/framework blocks using Avorion-style construction.
     /// Uses contextual block shapes: wedges at nose, corners at edges, cubes for body.
-    /// Primarily places blocks on the positive-X side; symmetry is enforced later.
-    /// Blocks on the X=0 centerline are placed directly as they are inherently symmetric.
+    /// Builds blocks on the positive-X side and centerline (X=0).
+    /// Blocks at X &gt; SYMMETRY_AXIS_THRESHOLD are mirrored to -X by EnforceSymmetry.
+    /// Blocks at X ≤ SYMMETRY_AXIS_THRESHOLD (centerline) are inherently symmetric and not mirrored.
     /// </summary>
     private void DefineShipOutline(AIGeneratedShip ship, Vector3 dimensions, AIShipGenerationParameters parameters)
     {
-        float blockSize = 2f;
         float halfX = dimensions.X / 2;
         float halfY = dimensions.Y / 2;
         float halfZ = dimensions.Z / 2;
         
-        // Avorion-style layered outline: build only +X side, mirror later
+        // Avorion-style layered outline: build +X side and centerline, mirror later
         // Front nose section (tapered with wedges)
         float noseStart = halfZ * 0.6f;
-        for (float z = noseStart; z < halfZ; z += blockSize)
+        for (float z = noseStart; z < halfZ; z += BLOCK_SIZE)
         {
             float noseProgress = (z - noseStart) / (halfZ - noseStart);
             float taperFactor = 1.0f - noseProgress * 0.85f;
-            float currentWidth = Math.Max(blockSize, halfX * taperFactor);
-            float currentHeight = Math.Max(blockSize, halfY * taperFactor);
+            float currentWidth = Math.Max(BLOCK_SIZE, halfX * taperFactor);
+            float currentHeight = Math.Max(BLOCK_SIZE, halfY * taperFactor);
             
-            for (float x = 0; x < currentWidth; x += blockSize)
+            for (float x = 0; x < currentWidth; x += BLOCK_SIZE)
             {
-                for (float y = -currentHeight; y < currentHeight; y += blockSize)
+                for (float y = -currentHeight; y < currentHeight; y += BLOCK_SIZE)
                 {
-                    bool isEdge = x > currentWidth - blockSize * 1.5f ||
-                                  Math.Abs(y) > currentHeight - blockSize * 1.5f;
+                    bool isEdge = x > currentWidth - BLOCK_SIZE * 1.5f ||
+                                  Math.Abs(y) > currentHeight - BLOCK_SIZE * 1.5f;
                     
                     // Contextual shapes: wedges at nose tip, corners at edges
                     BlockShape shape = BlockShape.Cube;
@@ -366,7 +373,7 @@ public class AIShipGenerator
                     
                     if (isEdge)
                     {
-                        AddBlock(ship.Structure, new Vector3(x, y, z), new Vector3(blockSize),
+                        AddBlock(ship.Structure, new Vector3(x, y, z), new Vector3(BLOCK_SIZE),
                             parameters.Material, bType, shape, orient);
                     }
                 }
@@ -374,26 +381,26 @@ public class AIShipGenerator
         }
         
         // Main body section (solid shell with framework interior)
-        for (float z = -halfZ * 0.6f; z < noseStart; z += blockSize)
+        for (float z = -halfZ * 0.6f; z < noseStart; z += BLOCK_SIZE)
         {
-            for (float x = 0; x < halfX; x += blockSize)
+            for (float x = 0; x < halfX; x += BLOCK_SIZE)
             {
-                for (float y = -halfY; y < halfY; y += blockSize)
+                for (float y = -halfY; y < halfY; y += BLOCK_SIZE)
                 {
-                    bool isEdgeX = x > halfX - blockSize * 1.5f;
-                    bool isEdgeY = Math.Abs(y) > halfY - blockSize * 1.5f;
+                    bool isEdgeX = x > halfX - BLOCK_SIZE * 1.5f;
+                    bool isEdgeY = Math.Abs(y) > halfY - BLOCK_SIZE * 1.5f;
                     bool isEdge = isEdgeX || isEdgeY;
                     
                     if (isEdge)
                     {
                         // Shell blocks
-                        AddBlock(ship.Structure, new Vector3(x, y, z), new Vector3(blockSize),
+                        AddBlock(ship.Structure, new Vector3(x, y, z), new Vector3(BLOCK_SIZE),
                             parameters.Material, BlockType.Hull);
                     }
                     else if (_random.NextDouble() < 0.15f)
                     {
                         // Sparse framework interior for structure
-                        AddBlock(ship.Structure, new Vector3(x, y, z), new Vector3(blockSize),
+                        AddBlock(ship.Structure, new Vector3(x, y, z), new Vector3(BLOCK_SIZE),
                             parameters.Material, BlockType.Framework);
                     }
                 }
@@ -401,33 +408,33 @@ public class AIShipGenerator
         }
         
         // Rear engine section (slightly wider, flat back for engine mounts)
-        for (float z = -halfZ; z < -halfZ * 0.6f; z += blockSize)
+        for (float z = -halfZ; z < -halfZ * 0.6f; z += BLOCK_SIZE)
         {
             float rearProgress = Math.Abs(z + halfZ * 0.6f) / (halfZ * 0.4f);
             float widthFactor = 1.0f + rearProgress * 0.15f;
             float rearWidth = Math.Min(halfX * widthFactor, halfX * 1.15f);
             
-            for (float x = 0; x < rearWidth; x += blockSize)
+            for (float x = 0; x < rearWidth; x += BLOCK_SIZE)
             {
-                for (float y = -halfY; y < halfY; y += blockSize)
+                for (float y = -halfY; y < halfY; y += BLOCK_SIZE)
                 {
-                    bool isEdge = x > rearWidth - blockSize * 1.5f ||
-                                  Math.Abs(y) > halfY - blockSize * 1.5f ||
-                                  z < -halfZ + blockSize;
+                    bool isEdge = x > rearWidth - BLOCK_SIZE * 1.5f ||
+                                  Math.Abs(y) > halfY - BLOCK_SIZE * 1.5f ||
+                                  z < -halfZ + BLOCK_SIZE;
                     
                     if (isEdge)
                     {
-                        AddBlock(ship.Structure, new Vector3(x, y, z), new Vector3(blockSize),
+                        AddBlock(ship.Structure, new Vector3(x, y, z), new Vector3(BLOCK_SIZE),
                             parameters.Material, BlockType.Hull);
                     }
                 }
             }
         }
         
-        // Central spine along Z axis for structural integrity
-        for (float z = -halfZ; z < halfZ; z += blockSize)
+        // Central spine along Z axis for structural integrity (inherently on centerline)
+        for (float z = -halfZ; z < halfZ; z += BLOCK_SIZE)
         {
-            AddBlock(ship.Structure, new Vector3(0, 0, z), new Vector3(blockSize),
+            AddBlock(ship.Structure, new Vector3(0, 0, z), new Vector3(BLOCK_SIZE),
                 parameters.Material, BlockType.Hull);
         }
     }
@@ -665,7 +672,7 @@ public class AIShipGenerator
     private void EnforceSymmetry(AIGeneratedShip ship)
     {
         var blocksToMirror = ship.Structure.Blocks
-            .Where(b => b.Position.X > 0.5f) // Only blocks on positive X side
+            .Where(b => b.Position.X > SYMMETRY_AXIS_THRESHOLD)
             .ToList();
         
         foreach (var block in blocksToMirror)
@@ -725,7 +732,6 @@ public class AIShipGenerator
         if (block == centerBlock) return true;
         
         // Flood-fill from centerBlock to find all reachable blocks
-        float adjacencyThreshold = 3f; // Blocks within this distance are considered adjacent
         var visited = new HashSet<Guid>();
         var queue = new Queue<VoxelBlock>();
         queue.Enqueue(centerBlock);
@@ -742,7 +748,7 @@ public class AIShipGenerator
             foreach (var neighbor in allBlocks)
             {
                 if (!visited.Contains(neighbor.Id) && 
-                    Vector3.Distance(current.Position, neighbor.Position) < adjacencyThreshold)
+                    Vector3.Distance(current.Position, neighbor.Position) < ADJACENCY_THRESHOLD)
                 {
                     visited.Add(neighbor.Id);
                     queue.Enqueue(neighbor);
