@@ -188,6 +188,23 @@ public static class BlockDefinitionDatabase
                 DefaultColor = "#A0A0A0"
             },
             
+            [BlockType.Framework] = new BlockDefinition
+            {
+                Id = "framework_block",
+                DisplayName = "Framework Block",
+                BlockType = BlockType.Framework,
+                Description = "Lightweight structural framework for shaping ships without adding mass",
+                ResourceCosts = new Dictionary<string, int> { ["Iron"] = 3 },
+                HitPointsPerVolume = 20f,
+                MassPerUnitVolume = 0.1f,
+                Scalable = true,
+                Function = "shaping",
+                AiPlacementPriority = 3,
+                SuitableForExterior = true,
+                RequiresInternalPlacement = false,
+                DefaultColor = "#606060"
+            },
+            
             [BlockType.Engine] = new BlockDefinition
             {
                 Id = "engine_main",

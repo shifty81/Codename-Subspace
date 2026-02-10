@@ -578,13 +578,12 @@ public class ProceduralShipGenerator
     
     /// <summary>
     /// Generate a solid box section (part of modular hull)
+    /// Enhanced with Avorion-style contextual shapes: wedges at edges, corners at vertices,
+    /// framework blocks for internal support, and proper shell construction
     /// </summary>
     private void GenerateBoxSection(GeneratedShip ship, Vector3 center, Vector3 size, 
         ShipGenerationConfig config, float blockSize, float blockSpacing)
     {
-        // Create solid box with Avorion-style aesthetics
-        // Fill the box with blocks (not hollow)
-        
         float halfX = size.X / 2;
         float halfY = size.Y / 2;
         float halfZ = size.Z / 2;
@@ -596,21 +595,57 @@ public class ProceduralShipGenerator
             {
                 for (float z = -halfZ + blockSize / 2; z < halfZ; z += blockSpacing)
                 {
-                    // Skip interior blocks to save resources (create shell with some interior)
-                    bool isEdge = Math.Abs(x) > halfX - blockSize * 1.5f ||
-                                  Math.Abs(y) > halfY - blockSize * 1.5f ||
-                                  Math.Abs(z) > halfZ - blockSize * 1.5f;
+                    bool isEdgeX = Math.Abs(x) > halfX - blockSize * 1.5f;
+                    bool isEdgeY = Math.Abs(y) > halfY - blockSize * 1.5f;
+                    bool isEdgeZ = Math.Abs(z) > halfZ - blockSize * 1.5f;
+                    bool isEdge = isEdgeX || isEdgeY || isEdgeZ;
                     
                     // Include some interior structure based on complexity
                     bool isInterior = !isEdge && _random.NextDouble() < config.BlockComplexity * 0.3f;
                     
                     if (isEdge || isInterior)
                     {
-                        // Use shape variety for edges to make ships more interesting
-                        ship.Structure.AddBlock(CreateBlockWithShapeVariety(
+                        // Avorion-style contextual shapes based on position
+                        BlockShape shape = BlockShape.Cube;
+                        BlockOrientation orient = BlockOrientation.PosY;
+                        BlockType bType = isInterior ? BlockType.Framework : BlockType.Hull;
+                        
+                        // Edge blocks: use wedges for smooth transitions
+                        if (isEdge && !isInterior)
+                        {
+                            // Top edge: wedge pointing up
+                            if (isEdgeY && y > 0 && !isEdgeX)
+                            {
+                                shape = BlockShape.Wedge;
+                                orient = BlockOrientation.PosY;
+                            }
+                            // Bottom edge: wedge pointing down
+                            else if (isEdgeY && y < 0 && !isEdgeX)
+                            {
+                                shape = BlockShape.Wedge;
+                                orient = BlockOrientation.NegY;
+                            }
+                            // Front edge: wedge pointing forward
+                            else if (isEdgeZ && z > 0 && !isEdgeX && !isEdgeY)
+                            {
+                                shape = BlockShape.Wedge;
+                                orient = BlockOrientation.PosZ;
+                            }
+                            // Corner: two edges meet
+                            else if ((isEdgeX && isEdgeY) || (isEdgeX && isEdgeZ) || (isEdgeY && isEdgeZ))
+                            {
+                                if (_random.NextDouble() < 0.4f)
+                                {
+                                    shape = BlockShape.Corner;
+                                    orient = x > 0 ? BlockOrientation.PosX : BlockOrientation.NegX;
+                                }
+                            }
+                        }
+                        
+                        ship.Structure.AddBlock(new VoxelBlock(
                             center + new Vector3(x, y, z),
                             new Vector3(blockSize, blockSize, blockSize),
-                            config.Material, BlockType.Hull, isEdge ? 0.4f : 0.1f));
+                            config.Material, bType, shape, orient));
                     }
                 }
             }

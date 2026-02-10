@@ -66,6 +66,12 @@ public class VoxelBlock
                 Durability = MaxDurability;
                 Mass *= 1.5f;
                 break;
+            case BlockType.Framework:
+                // Framework: lightweight shaping blocks (Avorion style) - low HP, very low mass
+                MaxDurability *= 0.2f;
+                Durability = MaxDurability;
+                Mass *= 0.1f;
+                break;
             case BlockType.Engine:
                 ThrustPower = 50f * volume * material.EnergyEfficiency;
                 break;

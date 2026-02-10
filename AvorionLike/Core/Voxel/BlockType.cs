@@ -55,6 +55,7 @@ public enum BlockType
     // Structural
     Hull,
     Armor,
+    Framework,        // Lightweight shaping blocks (low HP, low mass) - Avorion style
     
     // Functional
     Engine,           // Linear thrust (placed facing backward)
