@@ -242,6 +242,7 @@ vec3 getEnvironmentReflection(vec3 R, float roughness)
     vec3 spaceColor = mix(vec3(0.01, 0.03, 0.04), vec3(0.0, 0.01, 0.02), height);
     
     // Add teal-green nebula coloring (matching reference skybox)
+    // Gradient: teal-green (0.03, 0.10, 0.08) -> warm amber (0.10, 0.06, 0.02)
     float nebula = sin(R.x * 3.0 + R.z * 2.0) * 0.5 + 0.5;
     nebula *= sin(R.y * 2.0 + R.x) * 0.5 + 0.5;
     vec3 nebulaColor = mix(vec3(0.03, 0.10, 0.08), vec3(0.10, 0.06, 0.02), nebula) * 0.25;
