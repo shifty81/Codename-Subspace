@@ -2058,13 +2058,20 @@ public class ProceduralShipGenerator
     {
         // Avorion-style: Place thrusters on EDGES of the ship for maximum turning efficiency
         // Thrusters at extremities provide better rotational leverage
-        int thrustersPerSide = Math.Max(1, count / 4);
+        // Distribute evenly across 4 sides, handling remainder
+        int baseThrPerSide = Math.Max(1, count / 4);
+        int remainder = count - baseThrPerSide * 4;
+        int topCount = baseThrPerSide + (remainder > 0 ? 1 : 0);
+        int bottomCount = baseThrPerSide + (remainder > 1 ? 1 : 0);
+        int leftCount = baseThrPerSide + (remainder > 2 ? 1 : 0);
+        int rightCount = baseThrPerSide;
+        
         Vector3 thrusterSize = new Vector3(2, 2, 2);
         
         // Top thrusters - placed at edges (corners between top and sides)
-        for (int i = 0; i < thrustersPerSide; i++)
+        for (int i = 0; i < topCount; i++)
         {
-            float z = -dimensions.Z / 3 + (dimensions.Z * 0.66f / thrustersPerSide) * i;
+            float z = -dimensions.Z / 3 + (dimensions.Z * 0.66f / Math.Max(1, topCount)) * i;
             // Avorion optimization: place at outer edge for maximum rotational effect
             float xEdge = (i % 2 == 0 ? -1 : 1) * (dimensions.X / 2 - 2);
             Vector3 targetPosition = new Vector3(xEdge, dimensions.Y / 2 - 2, z);
@@ -2081,9 +2088,9 @@ public class ProceduralShipGenerator
         }
         
         // Bottom thrusters - placed at edges
-        for (int i = 0; i < thrustersPerSide; i++)
+        for (int i = 0; i < bottomCount; i++)
         {
-            float z = -dimensions.Z / 3 + (dimensions.Z * 0.66f / thrustersPerSide) * i;
+            float z = -dimensions.Z / 3 + (dimensions.Z * 0.66f / Math.Max(1, bottomCount)) * i;
             float xEdge = (i % 2 == 0 ? 1 : -1) * (dimensions.X / 2 - 2);
             Vector3 targetPosition = new Vector3(xEdge, -dimensions.Y / 2, z);
             
@@ -2098,11 +2105,11 @@ public class ProceduralShipGenerator
             ship.Structure.AddBlock(thruster);
         }
         
-        // Left thrusters - placed at fore/aft edges for yaw control
-        for (int i = 0; i < thrustersPerSide; i++)
+        // Left thrusters - distributed along Z for yaw control at extremities
+        for (int i = 0; i < leftCount; i++)
         {
-            // Avorion optimization: place at front and rear extremes for maximum yaw leverage
-            float z = i % 2 == 0 ? dimensions.Z / 3 : -dimensions.Z / 3;
+            // Spread thrusters along the Z axis at outer edge for maximum yaw leverage
+            float z = -dimensions.Z / 3 + (dimensions.Z * 0.66f / Math.Max(1, leftCount)) * i;
             Vector3 targetPosition = new Vector3(-dimensions.X / 2, 0, z);
             
             Vector3 placementPosition = SnapToNearestHull(ship, targetPosition, new Vector3(-1, 0, 0), thrusterSize);
@@ -2116,10 +2123,10 @@ public class ProceduralShipGenerator
             ship.Structure.AddBlock(thruster);
         }
         
-        // Right thrusters - placed at fore/aft edges for yaw control
-        for (int i = 0; i < thrustersPerSide; i++)
+        // Right thrusters - distributed along Z for yaw control at extremities
+        for (int i = 0; i < rightCount; i++)
         {
-            float z = i % 2 == 0 ? dimensions.Z / 3 : -dimensions.Z / 3;
+            float z = -dimensions.Z / 3 + (dimensions.Z * 0.66f / Math.Max(1, rightCount)) * i;
             Vector3 targetPosition = new Vector3(dimensions.X / 2 - 2, 0, z);
             
             Vector3 placementPosition = SnapToNearestHull(ship, targetPosition, new Vector3(1, 0, 0), thrusterSize);

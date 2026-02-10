@@ -24,6 +24,18 @@ public class ShipAggregate
     public float TotalPowerConsumption { get; private set; }
     public float AvailablePower => TotalPowerGeneration - TotalPowerConsumption;
     public float PowerEfficiency => TotalPowerGeneration > 0 ? AvailablePower / TotalPowerGeneration : 0f;
+    /// <summary>
+    /// Avorion-style: True if generator produces enough power for all systems.
+    /// When false, systems may operate at reduced efficiency (brownout).
+    /// </summary>
+    public bool HasSufficientPower => TotalPowerGeneration >= TotalPowerConsumption;
+    /// <summary>
+    /// Avorion-style: Performance degradation factor (1.0 = full power, less = brownout).
+    /// Systems operate at this fraction of their rated performance when underpowered.
+    /// </summary>
+    public float PowerFactor => TotalPowerConsumption > 0 
+        ? Math.Min(1.0f, TotalPowerGeneration / TotalPowerConsumption) 
+        : 1.0f;
     
     // Propulsion
     public float TotalThrust { get; private set; }
@@ -126,10 +138,22 @@ public class ShipAggregate
             if (block.BlockType == BlockType.Engine || block.BlockType == BlockType.Thruster)
             {
                 TotalThrust += block.ThrustPower;
+                
+                // Avorion-style: Thrusters contribute more torque when placed farther from center of mass.
+                // Distance-based rotational leverage makes edge placement significantly better.
+                if (block.BlockType == BlockType.Thruster)
+                {
+                    float distFromCoM = r.Length();
+                    float leverageBonus = 1.0f + distFromCoM * 0.1f; // 10% more torque per unit distance
+                    TotalTorque += block.ThrustPower * leverageBonus * 0.5f;
+                }
             }
             else if (block.BlockType == BlockType.GyroArray)
             {
-                TotalTorque += block.ThrustPower;
+                // Avorion-style: Gyros also benefit from being farther from center of mass
+                float distFromCoM = r.Length();
+                float leverageBonus = 1.0f + distFromCoM * 0.05f;
+                TotalTorque += block.ThrustPower * leverageBonus;
             }
             
             // Defense
@@ -173,21 +197,26 @@ public class ShipAggregate
     
     /// <summary>
     /// Calculate performance metrics like max speed and acceleration
+    /// Avorion-style: Performance degrades when underpowered (brownout)
     /// </summary>
     private void CalculatePerformanceMetrics()
     {
+        // Avorion-style: Apply power factor to thrust/speed when underpowered
+        float effectiveThrust = TotalThrust * PowerFactor;
+        float effectiveTorque = TotalTorque * PowerFactor;
+        
         // Max speed calculation (simplified physics)
         // Higher thrust-to-mass ratio = higher max speed
         if (TotalMass > 0)
         {
-            Acceleration = TotalThrust / TotalMass;
+            Acceleration = effectiveThrust / TotalMass;
             MaxSpeed = Acceleration * 10f; // Simplified: assuming 10 second acceleration
         }
         
         // Max rotation speed (simplified)
         if (MomentOfInertia > 0)
         {
-            MaxRotationSpeed = TotalTorque / MomentOfInertia;
+            MaxRotationSpeed = effectiveTorque / MomentOfInertia;
         }
         
         // Available cargo space (assume some is used)
@@ -253,6 +282,7 @@ public class ShipAggregate
     /// </summary>
     public string GetStatsSummary()
     {
+        string powerStatus = HasSufficientPower ? "OK" : $"BROWNOUT ({PowerFactor * 100:F0}%)";
         return $@"=== Ship Statistics ===
 Blocks: {_structure.Blocks.Count}
 Mass: {TotalMass:F1} tons
@@ -262,6 +292,7 @@ Integrity: {StructuralIntegrity:F1}%
 Generation: {TotalPowerGeneration:F0} MW
 Consumption: {TotalPowerConsumption:F0} MW
 Available: {AvailablePower:F0} MW ({PowerEfficiency * 100:F1}% efficiency)
+Status: {powerStatus}
 
 === Propulsion ===
 Thrust: {TotalThrust:F0} kN

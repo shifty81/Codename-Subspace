@@ -321,7 +321,8 @@ public class AIShipGenerator
     /// <summary>
     /// Define ship outline with hull/framework blocks using Avorion-style construction.
     /// Uses contextual block shapes: wedges at nose, corners at edges, cubes for body.
-    /// Only places blocks on the positive-X side; symmetry is enforced later.
+    /// Primarily places blocks on the positive-X side; symmetry is enforced later.
+    /// Blocks on the X=0 centerline are placed directly as they are inherently symmetric.
     /// </summary>
     private void DefineShipOutline(AIGeneratedShip ship, Vector3 dimensions, AIShipGenerationParameters parameters)
     {
