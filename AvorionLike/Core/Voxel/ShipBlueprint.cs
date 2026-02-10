@@ -13,6 +13,8 @@ public class VoxelBlockData
     public Vector3 Size { get; set; }
     public string MaterialType { get; set; } = "Iron";
     public BlockType BlockType { get; set; } = BlockType.Hull;
+    public BlockShape Shape { get; set; } = BlockShape.Cube;
+    public BlockOrientation Orientation { get; set; } = BlockOrientation.PosY;
 }
 
 /// <summary>
@@ -43,7 +45,9 @@ public class ShipBlueprint
                 Position = block.Position,
                 Size = block.Size,
                 MaterialType = block.MaterialType,
-                BlockType = block.BlockType
+                BlockType = block.BlockType,
+                Shape = block.Shape,
+                Orientation = block.Orientation
             });
         }
         
@@ -59,7 +63,8 @@ public class ShipBlueprint
         
         foreach (var blockData in Blocks)
         {
-            var block = new VoxelBlock(blockData.Position, blockData.Size, blockData.MaterialType, blockData.BlockType);
+            var block = new VoxelBlock(blockData.Position, blockData.Size, blockData.MaterialType, 
+                blockData.BlockType, blockData.Shape, blockData.Orientation);
             structure.AddBlock(block);
         }
     }

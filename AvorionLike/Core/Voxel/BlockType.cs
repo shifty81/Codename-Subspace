@@ -22,7 +22,10 @@ public enum BlockShape
     Tetrahedron,
     
     /// <summary>Half block - sliced in half</summary>
-    HalfBlock
+    HalfBlock,
+    
+    /// <summary>Sloped plate - thin angled surface</summary>
+    SlopedPlate
 }
 
 /// <summary>
@@ -88,6 +91,7 @@ public enum BlockType
 public class MaterialProperties
 {
     public string Name { get; set; } = "";
+    public float Density { get; set; } = 1.0f;
     public float DurabilityMultiplier { get; set; } = 1.0f;
     public float MassMultiplier { get; set; } = 1.0f;
     public float EnergyEfficiency { get; set; } = 1.0f;
@@ -100,6 +104,7 @@ public class MaterialProperties
         ["Iron"] = new MaterialProperties
         {
             Name = "Iron",
+            Density = 7.87f,
             DurabilityMultiplier = 1.0f,
             MassMultiplier = 1.0f,
             EnergyEfficiency = 0.8f,
@@ -110,6 +115,7 @@ public class MaterialProperties
         ["Titanium"] = new MaterialProperties
         {
             Name = "Titanium",
+            Density = 4.51f,
             DurabilityMultiplier = 1.5f,
             MassMultiplier = 0.9f,
             EnergyEfficiency = 1.0f,
@@ -120,6 +126,7 @@ public class MaterialProperties
         ["Naonite"] = new MaterialProperties
         {
             Name = "Naonite",
+            Density = 3.80f,
             DurabilityMultiplier = 2.0f,
             MassMultiplier = 0.8f,
             EnergyEfficiency = 1.2f,
@@ -130,6 +137,7 @@ public class MaterialProperties
         ["Trinium"] = new MaterialProperties
         {
             Name = "Trinium",
+            Density = 2.70f,
             DurabilityMultiplier = 2.5f,
             MassMultiplier = 0.6f,
             EnergyEfficiency = 1.5f,
@@ -140,6 +148,7 @@ public class MaterialProperties
         ["Xanion"] = new MaterialProperties
         {
             Name = "Xanion",
+            Density = 2.20f,
             DurabilityMultiplier = 3.0f,
             MassMultiplier = 0.5f,
             EnergyEfficiency = 1.8f,
@@ -150,6 +159,7 @@ public class MaterialProperties
         ["Ogonite"] = new MaterialProperties
         {
             Name = "Ogonite",
+            Density = 1.80f,
             DurabilityMultiplier = 4.0f,
             MassMultiplier = 0.4f,
             EnergyEfficiency = 2.2f,
@@ -160,6 +170,7 @@ public class MaterialProperties
         ["Avorion"] = new MaterialProperties
         {
             Name = "Avorion",
+            Density = 1.20f,
             DurabilityMultiplier = 5.0f,
             MassMultiplier = 0.3f,
             EnergyEfficiency = 3.0f,

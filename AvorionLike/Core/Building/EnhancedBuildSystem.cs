@@ -205,6 +205,18 @@ public class EnhancedBuildSystem : SystemBase
         var voxelComponent = _entityManager.GetComponent<VoxelStructureComponent>(_entityBeingEdited.Value);
         if (voxelComponent == null) return false;
         
+        // Snap position to grid
+        position = BuildSystem.SnapToGrid(position);
+        
+        // Check overlap
+        var newBlock = new VoxelBlock(position, size, material, blockType);
+        if (BuildSystem.OverlapsExistingBlocks(newBlock, voxelComponent))
+            return false;
+        
+        // Check adjacency (must touch existing block, unless first block)
+        if (voxelComponent.Blocks.Count > 0 && !BuildSystem.TouchesAtLeastOneBlock(newBlock, voxelComponent))
+            return false;
+        
         // Check if we have resources
         var inventory = _entityManager.GetComponent<InventoryComponent>(_entityBeingEdited.Value);
         if (inventory != null)
@@ -214,14 +226,13 @@ public class EnhancedBuildSystem : SystemBase
             ConsumeResources(inventory, cost);
         }
         
-        // Create and add the block
-        var block = new VoxelBlock(position, size, material, blockType);
-        voxelComponent.AddBlock(block);
+        // Add the block
+        voxelComponent.AddBlock(newBlock);
         
         // Apply mirror mode if active
         if (_currentBuildState.MirrorMode != MirrorAxis.None)
         {
-            AddMirroredBlocks(voxelComponent, block, _currentBuildState.MirrorMode, _currentBuildState.MirrorOrigin);
+            AddMirroredBlocks(voxelComponent, newBlock, _currentBuildState.MirrorMode, _currentBuildState.MirrorOrigin);
         }
         
         return true;
