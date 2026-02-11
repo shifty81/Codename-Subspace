@@ -1,7 +1,8 @@
 # Ship Generation Rework Summary
 
 ## Problem Statement
-The generated ships were not matching the reference image **1234.PNG**, which shows:
+The generated ships were not matching the reference image **1234.PNG** (along with the
+uploaded **avorion ship.rtf** design notes), which shows:
 - Elongated, angular spaceship design
 - Extended wing structures
 - Prominent colored accent blocks (red, blue, yellow/gold stripes)
