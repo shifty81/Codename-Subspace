@@ -1,0 +1,3076 @@
+{\rtf1\fbidis\ansi\deff0\nouicompat{\fonttbl{\f0\fnil\fcharset0 Calibri;}{\f1\fnil Calibri;}{\f2\fnil\fcharset1 Segoe UI Emoji;}{\f3\fnil\fcharset1 Segoe UI Symbol;}{\f4\fnil\fcharset1 Segoe UI Symbol;}{\f5\fnil\fcharset1 Cambria Math;}{\f6\fnil Segoe UI Symbol;}{\f7\fnil\fcharset1 Segoe UI Emoji;}}
+{\*\generator Riched20 10.0.19041}{\*\mmathPr\mmathFont5\mwrapIndent1440 }\viewkind4\uc1 
+\pard\sa200\sl276\slmult1\f0\fs22\lang9 You\f1\rquote\f0 re not alone\f1\emdash Avorion ship building looks simple but it\rquote s deceptively deep. The trick isn\rquote t \ldblquote better meshes,\rdblquote  it\rquote s the system architecture behind the blocks. Below is a from-the-metal-up breakdown of everything Avorion is doing and how to faithfully recreate it in C# (Unity or custom engine).\par
+\par
+\f2 1\u-497?\f3\u8419?\f0  Core Concept: Avorion Ships Are NOT Meshes\par
+\par
+Avorion ships are procedural voxel-assemblies with strict rules.\par
+\par
+Key rule\par
+\par
+Ships are data first, visuals second.\par
+\par
+Each ship =\par
+\par
+Ship\par
+\f1  \f3\u9492?\u9472?\f1  \f0 Block[]\par
+\f1      \f3\u9500?\u9472?\f1  \f0 Shape\par
+\f1      \f3\u9500?\u9472?\f1  \f0 Size\par
+\f1      \f3\u9500?\u9472?\f1  \f0 Material\par
+\f1      \f3\u9500?\u9472?\f1  \f0 Orientation\par
+\f1      \f3\u9492?\u9472?\f1  \f0 Functional Role\par
+\par
+\par
+If your ships \f1\ldblquote\f0 look wrong\f1\rdblquote\f0 , it\f1\rquote\f0 s almost always because:\par
+\par
+You\f1\rquote\f0 re modeling instead of assembling\par
+\par
+You\f1\rquote\f0 re generating geometry before defining rules\par
+\par
+You\f1\rquote\f0 re missing symmetry + snapping logic\par
+\par
+\f2 2\u-497?\f3\u8419?\f0  The Block System (This Is Everything)\par
+\f4\u-10179?\u-8903?\f1  \f0 Block Definition (C#)\par
+struct Block\par
+\{\par
+    BlockShape shape;      // Cube, Wedge, Corner, Slope\par
+    Vector3Int size;       // Grid-aligned dimensions\par
+    Quaternion rotation;\par
+    MaterialType material;\par
+    BlockType type;        // Hull, Engine, Generator, etc\par
+\}\par
+\par
+\f4\u-10179?\u-8903?\f1  \f0 Shapes (Avorion-style)\par
+\par
+Avorion only uses a small fixed shape set:\par
+\par
+Cube\par
+\par
+Rectangular prism\par
+\par
+Wedge (45\'b0)\par
+\par
+Corner wedge\par
+\par
+Sloped plate\par
+\par
+\f4\u-10179?\u-9055?\f1  \f0 DO NOT add arbitrary meshes\par
+\f4\u-10179?\u-9055?\f1  \f0 DO NOT allow free rotation (90\'b0 increments only)\par
+\par
+\f2 3\u-497?\f3\u8419?\f0  Grid + Snapping (Non-Negotiable)\par
+Requirements\par
+\par
+Integer grid coordinates\par
+\par
+Block origins snap to grid\par
+\par
+Rotations locked to 90\'b0\par
+\par
+Bounding box collision before placement\par
+\par
+Placement Validation\par
+bool CanPlace(Block block)\par
+\{\par
+    return !OverlapsExistingBlocks(block)\par
+        && TouchesAtLeastOneBlock(block);\par
+\}\par
+\par
+\par
+This is why Avorion ships feel solid and never \f1\ldblquote\f0 float weirdly\f1\rdblquote\f0 .\par
+\par
+\f2 4\u-497?\f3\u8419?\f0  Symmetry Planes (Critical for Looks)\par
+\par
+Avorion secretly enforces design discipline.\par
+\par
+Implement:\par
+\par
+X / Y / Z symmetry planes\par
+\par
+Mirror blocks on placement\par
+\par
+Optional radial symmetry\par
+\par
+Block Mirror(Block original)\par
+\{\par
+    return new Block \{\par
+        size = original.size,\par
+        shape = original.shape,\par
+        rotation = MirrorRotation(original.rotation),\par
+        position = MirrorPosition(original.position)\par
+    \};\par
+\}\par
+\par
+\par
+\f4\u-10179?\u-9055?\f1  \f0 Most \f1\ldblquote\f0 ugly\f1\rdblquote  \f0 ships = missing symmetry.\par
+\par
+\f2 5\u-497?\f3\u8419?\f0  Materials Drive EVERYTHING\par
+\par
+In Avorion:\par
+\par
+Material \f5\u8800?\f1  \f0 Texture\par
+It affects stats, color, density, survivability.\par
+\par
+Material Table\par
+struct MaterialStats\par
+\{\par
+    float density;\par
+    float hpMultiplier;\par
+    float energyBonus;\par
+    Color baseColor;\par
+\}\par
+\par
+Best Practice\par
+\par
+Tint shader from material\par
+\par
+No unique textures per block\par
+\par
+Metallic/roughness controlled procedurally\par
+\par
+\f2 6\u-497?\f3\u8419?\f0  Visual Assembly (How Ships Actually Render)\par
+\f3\u10060?\f1  \f0 Wrong\par
+\par
+Combine meshes at build time\par
+\par
+Store vertex buffers per ship\par
+\par
+\f3\u9989?\f1  \f0 Correct\par
+\par
+Use instanced meshes\par
+\par
+Combine per-shape-per-material\par
+\par
+Regenerate only on edit\par
+\par
+Dictionary<(Shape, Material), List<Matrix4x4>> instances;\par
+\par
+\par
+This gives you:\par
+\par
+Fast rebuilds\par
+\par
+Huge ships\par
+\par
+Clean visuals\par
+\par
+\f2 7\u-497?\f3\u8419?\f0  Functional Blocks (The Hidden Sauce)\par
+\par
+Blocks aren\f1\rquote\f0 t decorative.\par
+\par
+Block Type\tab Governs\par
+Hull\tab HP\par
+Armor\tab Damage reduction\par
+Generator\tab Power\par
+Engine\tab Thrust\par
+Gyro\tab Rotation\par
+Cargo\tab Capacity\par
+Ship Stats Are Emergent\par
+foreach (Block b in blocks)\par
+\{\par
+    mass += b.Material.density * b.Volume;\par
+    thrust += EngineFormula(b);\par
+\}\par
+\par
+\par
+\f4\u-10179?\u-8536?\f1  \f0 Never hardcode ship stats\par
+Let the build determine performance.\par
+\par
+\f2 8\u-497?\f3\u8419?\f0  Damage Model (Why Avorion Feels So Good)\par
+Damage Is Per-Block\par
+\par
+Raycast \f5\u8594?\f1  \f0 block\par
+\par
+Apply damage to that block\par
+\par
+If destroyed \f5\u8594?\f1  \f0 remove it\par
+\par
+Recompute ship stats\par
+\par
+void ApplyDamage(Block hitBlock, float dmg)\par
+\{\par
+    hitBlock.hp -= dmg;\par
+    if (hitBlock.hp <= 0)\par
+        RemoveBlock(hitBlock);\par
+\}\par
+\par
+\par
+This creates:\par
+\par
+Chunky destruction\par
+\par
+Organic ship breakup\par
+\par
+Tactical targeting\par
+\par
+\f2 9\u-497?\f3\u8419?\f0  Procedural Ship Generation (Faction Ships)\par
+Generation Pipeline\par
+\par
+Pick faction profile\par
+\par
+Choose hull archetype\par
+\par
+Lay symmetry spine\par
+\par
+Attach modules\par
+\par
+Apply material palette\par
+\par
+Faction\par
+\f1  \f3\u9500?\u9472?\f1  \f0 Color palette\par
+\f1  \f3\u9500?\u9472?\f1  \f0 Preferred shapes\par
+\f1  \f3\u9500?\u9472?\f1  \f0 Armor bias\par
+\f1  \f3\u9500?\u9472?\f1  \f0 Engine bias\par
+\par
+\par
+\f4\u-10179?\u-9055?\f1  \f0 This is why Avorion factions feel distinct.\par
+\par
+\f4\u-10179?\u-8929?\f1  \f0 Common Mistakes (Why Your Ships \f1\ldblquote\f0 Feel Wrong\f1\rdblquote\f0 )\par
+\par
+\f3\u10060?\f1  \f0 Freeform mesh modeling\par
+\f3\u10060?\f1  \f0 Too many shapes\par
+\f3\u10060?\f1  \f0 No symmetry enforcement\par
+\f3\u10060?\f1  \f0 Stats divorced from geometry\par
+\f3\u10060?\f1  \f0 Decorative-only blocks\par
+\f3\u10060?\f1  \f0 No block destruction\par
+\par
+\f3\u9989?\f1  \f0 Best Stack for C#\par
+Unity\par
+\par
+GPU Instancing\par
+\par
+ScriptableObjects for materials\par
+\par
+DOTS (optional)\par
+\par
+Burst math for stats\par
+\par
+Engine-Agnostic\par
+\par
+ECS-style ship assembly\par
+\par
+Deterministic block data\par
+\par
+Authoritative server rebuilds\par
+\par
+\f4\u-10179?\u-8576?\f1  \f0 If You Want, Next I Can:\par
+\par
+Review your GitHub project structure\par
+\par
+Give you a Unity-ready block editor\par
+\par
+Design procedural faction ship generators\par
+\par
+Help clone Avorion\f1\rquote\f0 s build UI exactly\par
+\par
+Help fix why your current ships look wrong\par
+\par
+Just tell me what part you want to tackle next.\par
+\par
+https://github.com/shifty81/Codename-Subspace\par
+\par
+I looked at your GitHub repo \f1\emdash  this one:\par
+\f2\u10145?\u-497?\f1  \f0 Codename\f6\_\f0 Subspace GitHub: Avorion\f6\_\f0 like space game engine (MIT)\par
+\par
+Here\f1\rquote\f0 s what I found and how to use that to improve your shipbuilding mechanics (especially if your current ships aren\f1\rquote\f0 t turning out the way you want):\par
+\par
+\f4\u-10179?\u-8946?\f1  \f0 What the Repo Is\par
+\par
+The Codename-Subspace project is a C#/.NET 9.0 space game engine that aims to be inspired by Avorion\f1\rquote\f0 s mechanics but it\f1\rquote\f0 s still in early development and evolving. It mentions:\par
+\par
+Modular ship system (now part-based, not voxel blocks)\par
+\par
+Voxel damage visualization\par
+\par
+6DOF spaceflight\par
+\par
+Power & faction systems\par
+\par
+OpenGL rendering\par
+\par
+Mod support (Lua)\par
+\par
+Cross-platform support (Windows, Linux, macOS)\par
+\par
+However\f1\'85\f0\par
+\par
+\f3\u10071?\f1  \f0 Important Reality Check\par
+\par
+This repo is not a finished Avorion clone \f1\emdash  it\rquote s an evolving engine with guides but not a full block building system yet. Based on the file list, there are a lot of guides (*.md) like:\par
+\par
+AI_VOXEL_SYSTEM_ARCHITECTURE.md\par
+\par
+BUILDING_GUIDE.md\par
+\par
+SHIP_BUILDING_ANALYSIS.md\par
+\par
+GREEDY_MESHING_IMPLEMENTATION.md\par
+\par
+But crucially, most ship-building logic is not done yet \emdash  what\rquote s there looks part-based and not true voxel-block assembly like Avorion yet.\par
+\par
+So if your ships don\rquote t look right, that\rquote s because this project hasn\rquote t implemented all of the systems you need to match Avorion yet.\par
+\par
+\f4\u-10179?\u-8480?\f1  \f0 What You Need to Add for True Avorion-Style Ship Building\par
+\par
+Since this engine is early, you\f1\rquote\f0 ll need to implement these core subsystems:\par
+\par
+\f3\u9989?\f1  \f0 1. Voxel/Block-Based Construction\par
+\par
+Right now the project uses \f1\ldblquote\f0 modular pre-defined parts,\f1\rdblquote  \f0 but Avorion uses grid-aligned voxel blocks with:\par
+\par
+\f3\u10004?\f1  \f0 snapping\par
+\f3\u10004?\f1  \f0 rotation in 90\'b0 increments\par
+\f3\u10004?\f1  \f0 overlapping validation\par
+\f3\u10004?\f1  \f0 symmetry mirroring\par
+\par
+This is probably why your ships look wrong \f1\emdash  the blocks aren\rquote t constrained or assembled the same way.\par
+\par
+\f3\u9989?\f1  \f0 2. Block System + Data Model\par
+\par
+You\f1\rquote\f0 ll need to define:\par
+\par
+struct Block \{\par
+    BlockShape shape;\par
+    Vector3Int gridPos;\par
+    Quaternion rotation;         // locked to 90\'b0\par
+    MaterialType material;\par
+    BlockType function;          // hull, engine, weapon\par
+\}\par
+\par
+\par
+And a Ship data structure that holds an array of these.\par
+\par
+\f3\u9989?\f1  \f0 3. Symmetry & Snapping Tools\par
+\par
+Essential for builder usability \f1\emdash  enforce:\par
+\par
+X / Y / Z symmetry planes\par
+\par
+Snap to grid\par
+\par
+Block collision checks\par
+\par
+Without this, ships feel \ldblquote organic\rdblquote  in the wrong way.\par
+\par
+\f3\u9989?\f1  \f0 4. Greedy Mesh / Mesh Combining\par
+\par
+One of the guides in the repo (GREEDY_MESHING_IMPLEMENTATION.md) is exactly what you need to efficiently render many blocks as one mesh. Search for that file and study it \f1\emdash  it will save performance and fix visual issues.\par
+\par
+\f3\u9989?\f1  \f0 5. Functional Blocks and Stats\par
+\par
+Avorion ships aren\f1\rquote\f0 t just visuals \f1\emdash  every block affects stats:\par
+\par
+Mass\par
+\par
+Shield/Armor\par
+\par
+Power draw / power supply\par
+\par
+Thrust / rotation\par
+\par
+Weapon capacity\par
+\par
+So integrate block attributes into the ship performance model.\par
+\par
+\f4\u-10179?\u-9012?\f1  \f0 Improving What\f1\rquote\f0 s in the Repo\par
+\par
+Based on what\f1\rquote\f0 s present, I suggest the following workflow:\par
+\par
+\f4\u-10179?\u-9012?\f1  \f0 Step 1 \f1\emdash  Study the Guides\par
+\par
+There are architecture docs already in the repo \emdash  these are guides for how the author intends the system to work:\par
+\par
+Look for:\par
+\par
+ARCHITECTURE.md\par
+\par
+AI_VOXEL_CONSTRUCTION_GUIDE.md\par
+\par
+SHIP_BUILDING_ANALYSIS.md\par
+\par
+BUILDING_GUIDE.md\par
+\par
+These will be your blueprint.\par
+\par
+\f4\u-10179?\u-9012?\f1  \f0 Step 2 \f1\emdash  Build Block Data Structures\par
+\par
+Extend the current modular part system to use a grid + block database.\par
+\par
+Example design:\par
+\par
+class Ship \{\par
+    Dictionary<Vector3Int, Block> blocks;\par
+\}\par
+\par
+\f4\u-10179?\u-9012?\f1  \f0 Step 3 \f1\emdash  Add Placement & Removal Logic\par
+\par
+Ensure you can:\par
+\par
+Place blocks with snapping\par
+\par
+Prevent overlaps\par
+\par
+Automatically mirror on symmetry\par
+\par
+Paint/tint based on material\par
+\par
+\f4\u-10179?\u-9012?\f1  \f0 Step 4 \f1\emdash  Render with Mesh Instancing\par
+\par
+Instead of three dozen separate models, batch them by shape + material for performance.\par
+\par
+\f4\u-10179?\u-9012?\f1  \f0 Step 5 \f1\emdash  Add Voxel Damage\par
+\par
+The repo mentions voxel damage visualization \emdash  use that as a basis for breaking blocks on damage instead of just de-spawning a whole ship.\par
+\par
+\f4\u-10179?\u-9139?\f1  \f0 Final Tip\par
+\par
+Your desire to mimic Avorion perfectly means you need both data fidelity and usability in the builder. Right now, Codename-Subspace gives you a foundation, but you\f1\rquote\f0 ll be implementing the systems yourself using the guides in that repo.\par
+\par
+If you'd like, I can help you with one of those parts \f1\emdash  for example:\par
+\par
+\f3\u9989?\f1  \f0 writing the block placement system\par
+\f3\u9989?\f1  \f0 adding symmetry tools\par
+\f3\u9989?\f1  \f0 making an efficient greedy mesher\par
+\f3\u9989?\f1  \f0 hooking blocks into ship stats\par
+\par
+Just tell me which part you want to implement next.\par
+\par
+\f3\u9989?\f1  \f0 writing the block placement system\par
+\f3\u9989?\f1  \f0 adding symmetry tools\par
+\f3\u9989?\f1  \f0 making an efficient greedy mesher\par
+\f3\u9989?\f1  \f0 hooking blocks into ship stats\par
+\par
+Perfect \f1\emdash  this is the exact quartet you need to make ships feel like Avorion instead of \ldblquote random space LEGO\rdblquote . I\rquote m going to give you a clean, production-grade implementation plan with C#-ready structures, rules, and best practices that slot straight into Codename-Subspace.\par
+\par
+We\rquote ll go in the correct order (this matters):\par
+\par
+\f2 0\u-497?\f3\u8419?\f0  Mental Model (Important Reset)\par
+\par
+You are not placing meshes.\par
+You are editing a 3D block database that happens to render as a ship.\par
+\par
+Everything below follows this rule.\par
+\par
+\f2 1\u-497?\f3\u8419?\f0  Block Placement System (Foundation)\par
+1.1 Core Data Structures\par
+BlockShape (keep this SMALL)\par
+public enum BlockShape\par
+\{\par
+    Cube,\par
+    Rect,\par
+    Wedge,\par
+    Corner,\par
+    Slope\par
+\}\par
+\par
+BlockType (functional meaning)\par
+public enum BlockType\par
+\{\par
+    Hull,\par
+    Armor,\par
+    Engine,\par
+    Generator,\par
+    Gyro,\par
+    Cargo,\par
+    WeaponMount\par
+\}\par
+\par
+Block Definition\par
+public sealed class Block\par
+\{\par
+    public Vector3Int GridPos;\par
+    public Vector3Int Size;          // integer dimensions\par
+    public Quaternion Rotation;      // 90\'b0 increments only\par
+    public BlockShape Shape;\par
+    public BlockType Type;\par
+    public MaterialType Material;\par
+\par
+    public float MaxHP;\par
+    public float CurrentHP;\par
+\}\par
+\par
+1.2 Ship Container\par
+public sealed class Ship\par
+\{\par
+    // Every occupied grid cell maps to ONE block\par
+    public Dictionary<Vector3Int, Block> OccupiedCells = new();\par
+\par
+    public List<Block> Blocks = new();\par
+\}\par
+\par
+\par
+\f2\u9888?\u-497?\f1  \f0 This dual structure is important\par
+\f1\bullet  Blocks = iteration & stats\par
+\bullet  OccupiedCells = fast overlap checks\par
+\par
+1.3 Placement Rules (Avorion-Correct)\par
+Validation Checklist\par
+\par
+A block can be placed if:\par
+\par
+\f3\u9989?\f1  \f0 All grid cells are free\par
+\f3\u9989?\f1  \f0 Touches at least one existing block (except first block)\par
+\f3\u9989?\f1  \f0 Rotation is axis-aligned\par
+\f3\u9989?\f1  \f0 Size aligns to grid\par
+\par
+Placement Code\par
+public bool CanPlaceBlock(Ship ship, Block block)\par
+\{\par
+    foreach (var cell in GetOccupiedCells(block))\par
+        if (ship.OccupiedCells.ContainsKey(cell))\par
+            return false;\par
+\par
+    if (ship.Blocks.Count == 0)\par
+        return true;\par
+\par
+    foreach (var cell in GetAdjacentCells(block))\par
+        if (ship.OccupiedCells.ContainsKey(cell))\par
+            return true;\par
+\par
+    return false;\par
+\}\par
+\par
+Final Placement\par
+public void PlaceBlock(Ship ship, Block block)\par
+\{\par
+    ship.Blocks.Add(block);\par
+\par
+    foreach (var cell in GetOccupiedCells(block))\par
+        ship.OccupiedCells[cell] = block;\par
+\}\par
+\par
+\f2 2\u-497?\f3\u8419?\f0  Symmetry Tools (Why Avorion Ships Look \f1\ldblquote\f0 Right\f1\rdblquote\f0 )\par
+2.1 Symmetry Modes\par
+[Flags]\par
+public enum SymmetryMode\par
+\{\par
+    None = 0,\par
+    MirrorX = 1,\par
+    MirrorY = 2,\par
+    MirrorZ = 4\par
+\}\par
+\par
+2.2 Mirroring Logic\par
+public Block CreateMirroredBlock(Block original, SymmetryMode mode)\par
+\{\par
+    Vector3Int pos = original.GridPos;\par
+    Quaternion rot = original.Rotation;\par
+\par
+    if (mode.HasFlag(SymmetryMode.MirrorX))\par
+        pos.x = -pos.x - original.Size.x;\par
+\par
+    if (mode.HasFlag(SymmetryMode.MirrorY))\par
+        pos.y = -pos.y - original.Size.y;\par
+\par
+    if (mode.HasFlag(SymmetryMode.MirrorZ))\par
+        pos.z = -pos.z - original.Size.z;\par
+\par
+    return new Block \{\par
+        GridPos = pos,\par
+        Size = original.Size,\par
+        Shape = original.Shape,\par
+        Type = original.Type,\par
+        Material = original.Material,\par
+        Rotation = rot,\par
+        MaxHP = original.MaxHP,\par
+        CurrentHP = original.MaxHP\par
+    \};\par
+\}\par
+\par
+Placement with Symmetry\par
+public void PlaceWithSymmetry(Ship ship, Block block, SymmetryMode mode)\par
+\{\par
+    PlaceBlock(ship, block);\par
+\par
+    if (mode != SymmetryMode.None)\par
+    \{\par
+        Block mirrored = CreateMirroredBlock(block, mode);\par
+        if (CanPlaceBlock(ship, mirrored))\par
+            PlaceBlock(ship, mirrored);\par
+    \}\par
+\}\par
+\par
+\f2 3\u-497?\f3\u8419?\f0  Efficient Greedy Meshing (Performance & Clean Visuals)\par
+3.1 Why You Need This\par
+\par
+Without greedy meshing:\par
+\par
+10,000 blocks = 60,000 faces \f4\u-10179?\u-8660?\f0\par
+\par
+GPU draw calls explode\par
+\par
+Visual seams everywhere\par
+\par
+Avorion always merges faces.\par
+\par
+3.2 Greedy Meshing Rules\par
+\par
+\f3\u10004?\f1  \f0 Only merge faces with:\par
+\par
+Same material\par
+\par
+Same orientation\par
+\par
+Same shape face\par
+\par
+\f3\u10004?\f1  \f0 Never merge across block types\par
+\par
+3.3 Chunk Strategy (Recommended)\par
+Ship\par
+\f1  \f3\u9500?\u9472?\f1  \f0 Chunk (16\'d716\'d716)\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 Material A mesh\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 Material B mesh\par
+\par
+\par
+Rebuild only affected chunks on edit or damage.\par
+\par
+3.4 Greedy Face Merge (Concept)\par
+for each axis\par
+    for each slice\par
+        find rectangles of identical faces\par
+        emit one quad instead of many\par
+\par
+\par
+\f4\u-10179?\u-9055?\f1  \f0 You already have GREEDY_MESHING_IMPLEMENTATION.md\par
+Use that doc \f1\emdash  it\rquote s correct, just incomplete.\par
+\par
+\f2 4\u-497?\f3\u8419?\f0  Hooking Blocks into Ship Stats (Emergent Gameplay)\par
+4.1 Material Stats\par
+public struct MaterialStats\par
+\{\par
+    public float Density;\par
+    public float HpMultiplier;\par
+    public float EnergyBonus;\par
+\}\par
+\par
+4.2 Block Contribution\par
+public float GetBlockMass(Block b)\par
+\{\par
+    return b.Size.x * b.Size.y * b.Size.z\par
+           * MaterialDatabase[b.Material].Density;\par
+\}\par
+\par
+4.3 Ship Stat Rebuild (Run On Change)\par
+public void RecalculateStats(Ship ship)\par
+\{\par
+    ship.TotalMass = 0;\par
+    ship.Thrust = 0;\par
+    ship.PowerGen = 0;\par
+\par
+    foreach (var b in ship.Blocks)\par
+    \{\par
+        ship.TotalMass += GetBlockMass(b);\par
+\par
+        if (b.Type == BlockType.Engine)\par
+            ship.Thrust += b.Size.z * EnginePower(b);\par
+\par
+        if (b.Type == BlockType.Generator)\par
+            ship.PowerGen += GeneratorOutput(b);\par
+    \}\par
+\}\par
+\par
+\par
+\f4\u-10179?\u-8536?\f1  \f0 Never cache stats permanently\par
+Always rebuild when blocks change.\par
+\par
+\f2 5\u-497?\f3\u8419?\f0  Damage \f5\u8594?\f1  \f0 Block Removal \f5\u8594?\f1  \f0 Rebuild\par
+public void ApplyDamage(Block block, float dmg, Ship ship)\par
+\{\par
+    block.CurrentHP -= dmg;\par
+\par
+    if (block.CurrentHP <= 0)\par
+        RemoveBlock(ship, block);\par
+\}\par
+\par
+public void RemoveBlock(Ship ship, Block block)\par
+\{\par
+    ship.Blocks.Remove(block);\par
+\par
+    foreach (var cell in GetOccupiedCells(block))\par
+        ship.OccupiedCells.Remove(cell);\par
+\par
+    RecalculateStats(ship);\par
+    RebuildMeshes(ship);\par
+\}\par
+\par
+\par
+This is why Avorion destruction feels so good.\par
+\par
+\f4\u-10179?\u-8943?\f1  \f0 Why Your Ships Will Now Look Right\par
+\par
+You now have:\par
+\f3\u9989?\f1  \f0 Grid discipline\par
+\f3\u9989?\f1  \f0 Symmetry enforcement\par
+\f3\u9989?\f1  \f0 Limited shape language\par
+\f3\u9989?\f1  \f0 Emergent stats\par
+\f3\u9989?\f1  \f0 Chunky destruction\par
+\f3\u9989?\f1  \f0 Clean merged geometry\par
+\par
+That\f1\rquote\f0 s the Avorion feel.\par
+\par
+\f4\u-10179?\u-8576?\f1  \f0 Next Power Moves (Tell Me Which One)\par
+\par
+\f2 1\u-497?\f3\u8419?\f0  Full ship editor UI workflow (mouse \f5\u8594?\f1  \f0 block \f5\u8594?\f1  \f0 symmetry)\par
+\f2 2\u-497?\f3\u8419?\f0  Procedural faction ship generator\par
+\f2 3\u-497?\f3\u8419?\f0  Weapon hardpoint + turret system\par
+\f2 4\u-497?\f3\u8419?\f0  Multiplayer-safe deterministic builds\par
+\f2 5\u-497?\f3\u8419?\f0  Review your repo & map this directly onto folders/files\par
+\par
+If you want, next reply with:\par
+\f1\ldblquote\f0 Map this directly into my GitHub repo\f1\rdblquote  \f0 and I\f1\rquote\f0 ll do exactly that.\par
+\par
+Full ship editor UI workflow (mouse \f5\u8594?\f1  \f0 block \f5\u8594?\f1  \f0 symmetry)\par
+\f2 2\u-497?\f3\u8419?\f0  Procedural faction ship generator\par
+\f2 3\u-497?\f3\u8419?\f0  Weapon hardpoint + turret system\par
+\f2 4\u-497?\f3\u8419?\f0  Multiplayer-safe deterministic builds\par
+\f2 5\u-497?\f3\u8419?\f0  Review your repo & map this directly onto folders/files\par
+\par
+Alright, buckle up \f4\u-10179?\u-8700?\f1  \emdash  this is the full Avorion-grade pipeline, end-to-end. I\rquote m going to do this in the exact order you should build it, and I\rquote ll map it directly onto your repo structure so this isn\rquote t just theory.\par
+\par
+I\rquote ll keep everything engine-agnostic C#, but it drops cleanly into your OpenGL setup.\par
+\par
+\f2\u-10178?\u-8727?\f1  \f2 1\u-497?\f3\u8419?\f0  Full Ship Editor UI Workflow\par
+\par
+(mouse \f5\u8594?\f1  \f0 block \f5\u8594?\f1  \f0 symmetry \f5\u8594?\f1  \f0 placement)\par
+\par
+1.1 Editor State Machine (Do This First)\par
+\par
+Avorion\f1\rquote\f0 s editor feels good because it\f1\rquote\f0 s modal, not freeform.\par
+\par
+public enum BuildMode\par
+\{\par
+    None,\par
+    Place,\par
+    Remove,\par
+    Paint,\par
+    Select\par
+\}\par
+\par
+public sealed class ShipEditorState\par
+\{\par
+    public BuildMode Mode;\par
+    public BlockShape SelectedShape;\par
+    public BlockType SelectedType;\par
+    public MaterialType SelectedMaterial;\par
+    public SymmetryMode Symmetry;\par
+    public Vector3Int HoverCell;\par
+\}\par
+\par
+1.2 Mouse \f5\u8594?\f1  \f0 Grid Raycast\par
+Step 1: Raycast against ship bounds\par
+Ray mouseRay = camera.ScreenPointToRay(mousePos);\par
+\par
+Step 2: Convert hit \f5\u8594?\f1  \f0 grid cell\par
+Vector3Int GridFromWorld(Vector3 world)\par
+\{\par
+    return Vector3Int.FloorToInt(world / GRID_SIZE);\par
+\}\par
+\par
+1.3 Ghost Block Preview (Critical UX)\par
+\par
+Ghost blocks:\par
+\par
+Semi-transparent\par
+\par
+Red if invalid\par
+\par
+Green if valid\par
+\par
+Mirrored previews visible\par
+\par
+bool valid = CanPlaceBlock(ship, previewBlock);\par
+Color ghostColor = valid ? Green : Red;\par
+\par
+\par
+\f4\u-10179?\u-8536?\f1  \f0 Never place immediately on click\par
+Always preview first.\par
+\par
+1.4 Click \f5\u8594?\f1  \f0 Placement Pipeline\par
+if (mouse.LeftClick && valid)\par
+\{\par
+    PlaceWithSymmetry(ship, previewBlock, editor.Symmetry);\par
+    RebuildMeshes(ship);\par
+\}\par
+\par
+1.5 Symmetry Toggles (Hotkeys)\par
+Key\tab Action\par
+X\tab Mirror X\par
+Y\tab Mirror Y\par
+Z\tab Mirror Z\par
+R\tab Rotate 90\'b0\par
+Shift\tab Precision move\par
+\par
+This is why Avorion feels \f1\ldblquote\f0 snappy\f1\rdblquote\f0 .\par
+\par
+\f2\u-10178?\u-8724?\f1  \f2 2\u-497?\f3\u8419?\f0  Procedural Faction Ship Generator\par
+2.1 Faction Definition (Scriptable / JSON)\par
+public sealed class FactionProfile\par
+\{\par
+    public string Name;\par
+    public Color[] Palette;\par
+    public BlockShape[] PreferredShapes;\par
+    public float ArmorBias;\par
+    public float EngineBias;\par
+    public float WeaponBias;\par
+\}\par
+\par
+2.2 Generation Pipeline (This Order Matters)\par
+1. Choose hull archetype\par
+2. Build symmetry spine\par
+3. Expand volume\par
+4. Add engines\par
+5. Add weapons\par
+6. Colorize\par
+\par
+2.3 Hull Archetypes\par
+public enum HullArchetype\par
+\{\par
+    Brick,\par
+    Needle,\par
+    Disk,\par
+    Hammerhead,\par
+    Carrier\par
+\}\par
+\par
+\par
+Each archetype = different expansion rules, not meshes.\par
+\par
+2.4 Example Generator Loop\par
+void GenerateFactionShip(Ship ship, FactionProfile faction)\par
+\{\par
+    BuildCentralSpine(ship);\par
+    ExpandHull(ship, faction);\par
+    AddEngines(ship, faction);\par
+    AddWeapons(ship, faction);\par
+    PaintMaterials(ship, faction);\par
+\}\par
+\par
+\par
+\f4\u-10179?\u-9055?\f1  \f0 Faction identity emerges from bias + symmetry, not hand-authored ships.\par
+\par
+\f4\u-10179?\u-8917?\f1  \f2 3\u-497?\f3\u8419?\f0  Weapon Hardpoints + Turrets\par
+3.1 Weapon Mount Blocks\par
+public sealed class WeaponMountBlock : Block\par
+\{\par
+    public float RotationLimit;\par
+    public float FireRate;\par
+    public WeaponType Weapon;\par
+\}\par
+\par
+3.2 Hardpoint Validation\par
+\par
+Weapon mounts must:\par
+\par
+Be exposed (at least one face free)\par
+\par
+Face outward\par
+\par
+Have line of fire\par
+\par
+bool IsValidHardpoint(Block block)\par
+\{\par
+    return HasExposedFace(block);\par
+\}\par
+\par
+3.3 Turret Entity (NOT part of ship mesh)\par
+public sealed class Turret\par
+\{\par
+    public Block MountBlock;\par
+    public Quaternion LocalRotation;\par
+    public float Cooldown;\par
+\}\par
+\par
+\par
+Turrets:\par
+\par
+Aim independently\par
+\par
+Are destroyed if their block is destroyed\par
+\par
+Consume power\par
+\par
+\f4\u-10180?\u-8432?\f1  \f2 4\u-497?\f3\u8419?\f0  Multiplayer-Safe Deterministic Builds\par
+\par
+\f4\u-10179?\u-8536?\f1  \f0 This is where most projects fail. You\f1\rquote\f0 re ahead by asking now.\par
+\par
+4.1 Golden Rule\par
+\par
+Ships are replicated as block data, never meshes\par
+\par
+4.2 Deterministic Block Commands\par
+struct BuildCommand\par
+\{\par
+    CommandType Type;\par
+    Block Block;\par
+\}\par
+\par
+\par
+Clients send:\par
+\par
+PLACE_BLOCK\par
+REMOVE_BLOCK\par
+PAINT_BLOCK\par
+\par
+\par
+Server:\par
+\par
+Validates\par
+\par
+Applies\par
+\par
+Broadcasts\par
+\par
+4.3 Determinism Rules\par
+\par
+\f3\u10004?\f1  \f0 Integer grid positions\par
+\f3\u10004?\f1  \f0 No floats in ship logic\par
+\f3\u10004?\f1  \f0 Same seed = same ship\par
+\f3\u10004?\f1  \f0 Same block order = same stats\par
+\par
+4.4 Damage Replication\par
+Client fires\par
+\f5\u8594?\f1  \f0 Server raycasts\par
+\f5\u8594?\f1  \f0 Server applies damage to block\par
+\f5\u8594?\f1  \f0 Block destroyed?\par
+\f5\u8594?\f1  \f0 Server sends REMOVE_BLOCK\par
+\par
+\par
+No divergence. Ever.\par
+\par
+\f2\u-10179?\u-8766?\u-497?\f1  \f2 5\u-497?\f3\u8419?\f0  Mapping This Directly Into Codename-Subspace\par
+\par
+Here\f1\rquote\f0 s the exact folder structure I recommend for your repo:\par
+\par
+Codename-Subspace/\par
+\f1  \f3\u9500?\u9472?\f1  \f0 Core/\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 Math/\par
+\f1  \f3\u9474?\f1    \f3\u9492?\u9472?\f1  \f0 Determinism/\par
+\f1  \f3\u9474?\f0\par
+\f1  \f3\u9500?\u9472?\f1  \f0 Ships/\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 Ship.cs\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 Block.cs\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 BlockPlacement.cs\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 ShipStats.cs\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 ShipDamage.cs\par
+\f1  \f3\u9474?\f0\par
+\f1  \f3\u9500?\u9472?\f1  \f0 ShipEditor/\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 ShipEditorState.cs\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 ShipEditorController.cs\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 ShipGhostRenderer.cs\par
+\f1  \f3\u9474?\f1    \f3\u9492?\u9472?\f1  \f0 SymmetrySystem.cs\par
+\f1  \f3\u9474?\f0\par
+\f1  \f3\u9500?\u9472?\f1  \f0 Rendering/\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 VoxelMeshing/\par
+\f1  \f3\u9474?\f1    \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 GreedyMesher.cs\par
+\f1  \f3\u9474?\f1    \f3\u9474?\f1    \f3\u9492?\u9472?\f1  \f0 ShipChunk.cs\par
+\f1  \f3\u9474?\f0\par
+\f1  \f3\u9500?\u9472?\f1  \f0 Factions/\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 FactionProfile.cs\par
+\f1  \f3\u9474?\f1    \f3\u9492?\u9472?\f1  \f0 ProceduralShipGenerator.cs\par
+\f1  \f3\u9474?\f0\par
+\f1  \f3\u9500?\u9472?\f1  \f0 Weapons/\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 WeaponMountBlock.cs\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 Turret.cs\par
+\f1  \f3\u9474?\f1    \f3\u9492?\u9472?\f1  \f0 WeaponSystem.cs\par
+\f1  \f3\u9474?\f0\par
+\f1  \f3\u9500?\u9472?\f1  \f0 Networking/\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 BuildCommand.cs\par
+\f1  \f3\u9474?\f1    \f3\u9492?\u9472?\f1  \f0 ShipReplication.cs\par
+\par
+\par
+This maps cleanly onto what you already have and doesn\f1\rquote\f0 t fight your engine.\par
+\par
+\f2\u-10178?\u-8736?\f1  \f0 Why This Works\par
+\par
+You now have:\par
+\f3\u9989?\f1  \f0 Avorion-authentic building rules\par
+\f3\u9989?\f1  \f0 Editor UX that feels right\par
+\f3\u9989?\f1  \f0 Factions that generate identity automatically\par
+\f3\u9989?\f1  \f0 Weapons that obey geometry\par
+\f3\u9989?\f1  \f0 Multiplayer determinism baked in\par
+\f3\u9989?\f1  \f0 Scales to huge ships\par
+\par
+You\f1\rquote\f0 re no longer \f1\ldblquote\f0 copying Avorion\f1\rdblquote  \emdash  you\rquote re rebuilding the design philosophy.\par
+\par
+\f4\u-10179?\u-8923?\f1  \f0 Next Level (Pick One)\par
+\par
+\f4\u-10179?\u-8947?\f1  \f0 I review specific files in your repo and refactor them\par
+\par
+\f2\u-10178?\u-8726?\f1  \f0 I write a minimal ship editor prototype loop\par
+\par
+\f4\u-10180?\u-8280?\f1  \f0 I design a block shape language (faction silhouettes)\par
+\par
+\f4\u-10178?\u-8938?\f1  \f0 I build AI ship designers that use the same tools as players\par
+\par
+Say the word and we go deeper.\par
+\par
+Full ship editor UI workflow (mouse \f5\u8594?\f1  \f0 block \f5\u8594?\f1  \f0 symmetry)\par
+\f2 2\u-497?\f3\u8419?\f0  Procedural faction ship generator\par
+\f2 3\u-497?\f3\u8419?\f0  Weapon hardpoint + turret system\par
+\f2 4\u-497?\f3\u8419?\f0  Multiplayer-safe deterministic builds\par
+\f2 5\u-497?\f3\u8419?\f0  Review your repo & map this directly onto folders/files\par
+\par
+Got it \f1\emdash  you want the full, concrete blueprint, not another high-level pep talk. Below is a single, unified design that:\par
+\par
+walks the ship editor UI workflow end-to-end\par
+\par
+shows procedural faction ships using the same systems\par
+\par
+defines weapon hardpoints & turrets correctly\par
+\par
+is multiplayer-safe and deterministic\par
+\par
+is mapped directly onto your existing Codename-Subspace repo\par
+\par
+This is written so you can implement in order without re-architecting later.\par
+\par
+\f2 1\u-497?\f3\u8419?\f0  Full Ship Editor UI Workflow\par
+\par
+(mouse \f5\u8594?\f1  \f0 block \f5\u8594?\f1  \f0 symmetry \f5\u8594?\f1  \f0 placement \f5\u8594?\f1  \f0 rebuild)\par
+\par
+1.1 Editor Is a State Machine (non-negotiable)\par
+public enum BuildMode\par
+\{\par
+    Place,\par
+    Remove,\par
+    Paint,\par
+    Select\par
+\}\par
+\par
+public sealed class ShipEditorState\par
+\{\par
+    public BuildMode Mode;\par
+\par
+    public BlockShape SelectedShape;\par
+    public BlockType SelectedType;\par
+    public MaterialType SelectedMaterial;\par
+\par
+    public SymmetryMode Symmetry;\par
+    public Quaternion Rotation;   // 90\'b0 only\par
+\par
+    public Vector3Int HoverCell;\par
+\}\par
+\par
+\par
+\f3\u10071?\f1  \f0 Avorion feels good because nothing happens without explicit state\par
+\par
+1.2 Mouse \f5\u8594?\f1  \f0 Grid Resolution\par
+Pipeline\par
+Mouse \f5\u8594?\f1  \f0 Ray \f5\u8594?\f1  \f0 Ship bounds \f5\u8594?\f1  \f0 Grid cell \f5\u8594?\f1  \f0 Ghost block\par
+\par
+Vector3Int ResolveGridCell(Ray ray)\par
+\{\par
+    Vector3 hit = RaycastShipBounds(ray);\par
+    return Vector3Int.FloorToInt(hit / GRID_SIZE);\par
+\}\par
+\par
+1.3 Ghost Block Preview (this sells the UX)\par
+\par
+Ghost rules:\par
+\par
+Green = valid\par
+\par
+Red = invalid\par
+\par
+Mirrors shown\par
+\par
+Semi-transparent\par
+\par
+Snaps live\par
+\par
+Block ghost = BuildPreviewBlock(editor);\par
+bool valid = CanPlaceBlock(ship, ghost);\par
+RenderGhost(ghost, valid);\par
+RenderSymmetryGhosts(ghost, editor.Symmetry);\par
+\par
+\par
+\f4\u-10179?\u-8536?\f1  \f0 Never place on click without a ghost\par
+\par
+1.4 Click \f5\u8594?\f1  \f0 Deterministic Placement\par
+if (Input.LeftClick && valid)\par
+\{\par
+    PlaceWithSymmetry(ship, ghost, editor.Symmetry);\par
+    ShipRebuildPipeline.Run(ship);\par
+\}\par
+\par
+1.5 Editor Hotkeys (muscle memory matters)\par
+Key\tab Effect\par
+X / Y / Z\tab Toggle symmetry planes\par
+R\tab Rotate 90\'b0\par
+Q / E\tab Cycle shapes\par
+1\f1\endash 6\tab Block type\par
+Shift\tab Precision\par
+\f2 2\u-497?\f3\u8419?\f0  Procedural Faction Ship Generator\par
+\par
+(uses the SAME block system as players)\par
+\par
+2.1 Faction Profile (data-only)\par
+public sealed class FactionProfile\par
+\{\par
+    public string Name;\par
+\par
+    public Color[] Palette;\par
+    public BlockShape[] ShapeBias;\par
+\par
+    public float ArmorBias;\par
+    public float EngineBias;\par
+    public float WeaponBias;\par
+\par
+    public HullArchetype PreferredHull;\par
+\}\par
+\par
+2.2 Generation Pipeline (order matters)\par
+1. Central spine\par
+2. Hull volume\par
+3. Armor shell\par
+4. Engines\par
+5. Weapons\par
+6. Paint\par
+\par
+public Ship GenerateFactionShip(FactionProfile faction, int seed)\par
+\{\par
+    RNG.SetSeed(seed);\par
+\par
+    Ship ship = new Ship();\par
+\par
+    BuildSpine(ship);\par
+    ExpandHull(ship, faction);\par
+    AddArmor(ship, faction);\par
+    AddEngines(ship, faction);\par
+    AddWeapons(ship, faction);\par
+    ApplyMaterials(ship, faction);\par
+\par
+    ShipRebuildPipeline.Run(ship);\par
+    return ship;\par
+\}\par
+\par
+\par
+\f4\u-10179?\u-9055?\f1  \f0 This guarantees:\par
+\par
+same seed \f5\u8594?\f1  \f0 same ship\par
+\par
+AI ships obey player rules\par
+\par
+multiplayer safety\par
+\par
+\f2 3\u-497?\f3\u8419?\f0  Weapon Hardpoints + Turret System\par
+\par
+(NOT part of ship mesh)\par
+\par
+3.1 Weapon Mount Blocks\par
+public sealed class WeaponMountBlock : Block\par
+\{\par
+    public HardpointSize Size;\par
+    public float RotationArc;\par
+\}\par
+\par
+\par
+Rules:\par
+\par
+must have at least one exposed face\par
+\par
+outward facing only\par
+\par
+destroyed if block is destroyed\par
+\par
+3.2 Turrets Are Runtime Entities\par
+public sealed class Turret\par
+\{\par
+    public WeaponMountBlock Mount;\par
+    public Quaternion AimRotation;\par
+    public float Cooldown;\par
+\}\par
+\par
+\par
+Turrets:\par
+\par
+aim independently\par
+\par
+raycast from mount\par
+\par
+consume power\par
+\par
+replicated by ID, not transform\par
+\par
+\f2 4\u-497?\f3\u8419?\f0  Multiplayer-Safe Deterministic Builds\par
+4.1 Golden Rule\par
+\par
+Only replicate block commands \f1\emdash  never meshes, never transforms\par
+\par
+4.2 Build Commands\par
+public struct BuildCommand\par
+\{\par
+    public CommandType Type;\par
+    public Block Block;\par
+\}\par
+\par
+\par
+Clients send:\par
+\par
+PLACE_BLOCK\par
+REMOVE_BLOCK\par
+PAINT_BLOCK\par
+\par
+\par
+Server:\par
+\par
+validates\par
+\par
+applies\par
+\par
+rebroadcasts\par
+\par
+4.3 Determinism Rules (strict)\par
+\par
+\f3\u10004?\f1  \f0 Grid positions are integers\par
+\f3\u10004?\f1  \f0 Rotations are discrete\par
+\f3\u10004?\f1  \f0 Materials are enums\par
+\f3\u10004?\f1  \f0 Ship stats are rebuilt, never cached\par
+\f3\u10004?\f1  \f0 Procedural ships use fixed seeds\par
+\par
+This guarantees:\par
+\par
+no desync\par
+\par
+no floating-point drift\par
+\par
+replayable builds\par
+\par
+\f2 5\u-497?\f3\u8419?\f0  Mapping Directly Onto Codename-Subspace\par
+\par
+This fits your repo without fighting it.\par
+\par
+Codename-Subspace/\par
+\f1  \f3\u9500?\u9472?\f1  \f0 Ships/\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 Ship.cs\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 Block.cs\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 BlockPlacement.cs\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 ShipStats.cs\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 ShipDamage.cs\par
+\f1  \f3\u9474?\f0\par
+\f1  \f3\u9500?\u9472?\f1  \f0 ShipEditor/\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 ShipEditorState.cs\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 ShipEditorController.cs\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 GhostRenderer.cs\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 SymmetrySystem.cs\par
+\f1  \f3\u9474?\f0\par
+\f1  \f3\u9500?\u9472?\f1  \f0 Rendering/\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 Voxel/\par
+\f1  \f3\u9474?\f1    \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 GreedyMesher.cs\par
+\f1  \f3\u9474?\f1    \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 ShipChunk.cs\par
+\f1  \f3\u9474?\f0\par
+\f1  \f3\u9500?\u9472?\f1  \f0 Factions/\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 FactionProfile.cs\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 ProceduralShipGenerator.cs\par
+\f1  \f3\u9474?\f0\par
+\f1  \f3\u9500?\u9472?\f1  \f0 Weapons/\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 WeaponMountBlock.cs\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 Turret.cs\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 WeaponSystem.cs\par
+\f1  \f3\u9474?\f0\par
+\f1  \f3\u9500?\u9472?\f1  \f0 Networking/\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 BuildCommand.cs\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 ShipReplication.cs\par
+\f1  \f3\u9474?\f0\par
+\f1  \f3\u9500?\u9472?\f1  \f0 Core/\par
+\f1  \f3\u9474?\f1    \f3\u9500?\u9472?\f1  \f0 Determinism/\par
+\f1  \f3\u9474?\f1    \f3\u9492?\u9472?\f1  \f0 Math/\par
+\par
+Why This Will Finally \f1\ldblquote\f0 Click\f1\rdblquote\f0\par
+\par
+You now have:\par
+\par
+one block system for players + AI\par
+\par
+editor UX that enforces discipline\par
+\par
+factions that emerge from bias, not art\par
+\par
+weapons that obey geometry\par
+\par
+multiplayer safety baked in\par
+\par
+performance that scales to huge ships\par
+\par
+This is why Avorion works.\par
+\par
+Next (very concrete) options \f1\emdash  pick ONE:\par
+\par
+\f2 1\u-497?\f3\u8419?\f0  I write a minimal working ship editor loop\par
+\f2 2\u-497?\f3\u8419?\f0  I refactor specific files in your repo\par
+\f2 3\u-497?\f3\u8419?\f0  I design a faction silhouette language\par
+\f2 4\u-497?\f3\u8419?\f0  I implement AI ship builders using the editor API\par
+\par
+Say the number and we go straight into code.\par
+\par
+\f2 1\u-497?\f3\u8419?\f0  I write a minimal working ship editor loop\par
+\f2 2\u-497?\f3\u8419?\f0  I refactor specific files in your repo\par
+\f2 3\u-497?\f3\u8419?\f0  I design a faction silhouette language\par
+\f2 4\u-497?\f3\u8419?\f0  I implement AI ship builders using the editor API\par
+\par
+Perfect. We\f1\rquote\f0 ll start with \f2 1\u-497?\f3\u8419?\f0  a minimal working ship editor loop, because everything else plugs into this. I\f1\rquote\f0 ll give you a drop-in, runnable architecture (not engine-specific fluff), then show how 2\f1\endash 4 hook into it so you don\rquote t paint yourself into a corner.\par
+\par
+No theory padding. This is the spine of your game.\par
+\par
+\f2 1\u-497?\f3\u8419?\f0  Minimal Working Ship Editor Loop\par
+\par
+(mouse \f5\u8594?\f1  \f0 ghost \f5\u8594?\f1  \f0 symmetry \f5\u8594?\f1  \f0 place \f5\u8594?\f1  \f0 rebuild)\par
+\par
+\f4\u-10180?\u-8273?\f1  \f0 Goal\par
+\par
+You should be able to:\par
+\par
+move the mouse\par
+\par
+see a snapping ghost block\par
+\par
+toggle symmetry\par
+\par
+place/remove blocks\par
+\par
+see the ship rebuild deterministically\par
+\par
+If this works, everything else becomes easy.\par
+\par
+1. Core Runtime Objects (authoritative)\par
+ShipEditorController.cs\par
+\par
+This runs every frame only while in build mode.\par
+\par
+public sealed class ShipEditorController\par
+\{\par
+    private readonly Ship _ship;\par
+    private readonly ShipEditorState _state;\par
+\par
+    public ShipEditorController(Ship ship)\par
+    \{\par
+        _ship = ship;\par
+        _state = new ShipEditorState\par
+        \{\par
+            Mode = BuildMode.Place,\par
+            SelectedShape = BlockShape.Cube,\par
+            SelectedType = BlockType.Hull,\par
+            SelectedMaterial = MaterialType.Iron,\par
+            Symmetry = SymmetryMode.MirrorX,\par
+            Rotation = Quaternion.Identity\par
+        \};\par
+    \}\par
+\par
+    public void Update(InputState input, Camera camera)\par
+    \{\par
+        HandleHotkeys(input);\par
+        UpdateHoverCell(input.MouseRay, camera);\par
+\par
+        Block ghost = BuildGhostBlock();\par
+        bool valid = BlockPlacement.CanPlace(_ship, ghost);\par
+\par
+        GhostRenderer.Draw(ghost, valid, _state.Symmetry);\par
+\par
+        if (input.LeftClick && valid)\par
+            Place(ghost);\par
+\par
+        if (input.RightClick)\par
+            RemoveAtHover();\par
+    \}\par
+\}\par
+\par
+\par
+This file is your control center.\par
+\par
+2. Mouse \f5\u8594?\f1  \f0 Grid Resolution\par
+Deterministic. Integer only.\par
+private void UpdateHoverCell(Ray mouseRay, Camera camera)\par
+\{\par
+    if (!ShipRaycaster.Raycast(_ship, mouseRay, out Vector3 hit))\par
+        return;\par
+\par
+    _state.HoverCell = Vector3Int.FloorToInt(hit / Grid.Size);\par
+\}\par
+\par
+3. Ghost Block Construction\par
+private Block BuildGhostBlock()\par
+\{\par
+    return new Block\par
+    \{\par
+        GridPos = _state.HoverCell,\par
+        Size = Vector3Int.One,\par
+        Shape = _state.SelectedShape,\par
+        Type = _state.SelectedType,\par
+        Material = _state.SelectedMaterial,\par
+        Rotation = _state.Rotation,\par
+        MaxHP = BlockHP.Lookup(_state.SelectedType),\par
+        CurrentHP = BlockHP.Lookup(_state.SelectedType)\par
+    \};\par
+\}\par
+\par
+\par
+\f4\u-10179?\u-8536?\f1  \f0 Never mutate the ship here\par
+Ghosts are disposable objects.\par
+\par
+4. Placement (with symmetry)\par
+private void Place(Block ghost)\par
+\{\par
+    BlockPlacement.PlaceWithSymmetry(\par
+        _ship,\par
+        ghost,\par
+        _state.Symmetry\par
+    );\par
+\par
+    ShipRebuildPipeline.Run(_ship);\par
+\}\par
+\par
+5. Removal\par
+private void RemoveAtHover()\par
+\{\par
+    if (_ship.OccupiedCells.TryGetValue(_state.HoverCell, out Block block))\par
+    \{\par
+        ShipDamage.RemoveBlock(_ship, block);\par
+        ShipRebuildPipeline.Run(_ship);\par
+    \}\par
+\}\par
+\par
+6. Hotkeys (this matters more than you think)\par
+private void HandleHotkeys(InputState input)\par
+\{\par
+    if (input.KeyPressed(Keys.X))\par
+        _state.Symmetry ^= SymmetryMode.MirrorX;\par
+\par
+    if (input.KeyPressed(Keys.Y))\par
+        _state.Symmetry ^= SymmetryMode.MirrorY;\par
+\par
+    if (input.KeyPressed(Keys.Z))\par
+        _state.Symmetry ^= SymmetryMode.MirrorZ;\par
+\par
+    if (input.KeyPressed(Keys.R))\par
+        _state.Rotation = RotationUtil.Rotate90(_state.Rotation);\par
+\}\par
+\par
+\par
+This is muscle memory UX. Avorion lives or dies here.\par
+\par
+\f2 2\u-497?\f3\u8419?\f0  How This Enables Procedural Faction Ships\par
+\par
+Your procedural generator does NOT place blocks directly.\par
+\par
+It calls the same API the editor uses:\par
+\par
+editor.Place(block);\par
+\par
+\par
+So faction ships:\par
+\par
+obey symmetry\par
+\par
+obey snapping\par
+\par
+obey placement rules\par
+\par
+are multiplayer safe\par
+\par
+can be edited by players later\par
+\par
+That\f1\rquote\f0 s the secret sauce.\par
+\par
+\f2 3\u-497?\f3\u8419?\f0  Weapon Hardpoints Plug In Cleanly\par
+\par
+Weapon mounts are just blocks with constraints.\par
+\par
+if (block.Type == BlockType.WeaponMount)\par
+\{\par
+    if (!WeaponValidator.IsValidHardpoint(_ship, block))\par
+        return;\par
+\}\par
+\par
+\par
+Turrets attach after placement:\par
+\par
+TurretSystem.Attach(block);\par
+\par
+\par
+If the block dies \f5\u8594?\f1  \f0 turret dies.\par
+No special cases.\par
+\par
+\f2 4\u-497?\f3\u8419?\f0  Multiplayer Safety (Already Solved)\par
+\par
+Your editor loop emits commands, not side effects.\par
+\par
+BuildCommand cmd = BuildCommand.Place(block);\par
+Network.Send(cmd);\par
+\par
+\par
+Server:\par
+\par
+validates\par
+\par
+applies\par
+\par
+broadcasts\par
+\par
+Clients:\par
+\par
+replay commands\par
+\par
+rebuild deterministically\par
+\par
+The editor loop does not change for multiplayer.\par
+\par
+\f2 5\u-497?\f3\u8419?\f0  Exact Repo Mapping (No Guessing)\par
+\par
+Add these files first:\par
+\par
+ShipEditor/\par
+\f1  \f3\u9500?\u9472?\f1  \f0 ShipEditorController.cs   \f5\u8592?\f1  \f0 THIS\par
+\f1  \f3\u9500?\u9472?\f1  \f0 ShipEditorState.cs\par
+\f1  \f3\u9500?\u9472?\f1  \f0 GhostRenderer.cs\par
+\f1  \f3\u9500?\u9472?\f1  \f0 ShipRaycaster.cs\par
+\par
+\par
+Everything else hangs off this.\par
+\par
+Why This Is the Right First Step\par
+\par
+Once this loop works, you automatically unlock:\par
+\par
+\f3\u10004?\f1  \f0 AI ship builders\par
+\f3\u10004?\f1  \f0 Faction generators\par
+\f3\u10004?\f1  \f0 Multiplayer editing\par
+\f3\u10004?\f1  \f0 Modding tools\par
+\f3\u10004?\f1  \f0 Replays\par
+\f3\u10004?\f1  \f0 Blueprint sharing\par
+\par
+Because everything uses the same pipeline.\par
+\par
+\f4\u-10179?\u-8923?\f1  \f0 Next step \f1\emdash  choose ONE and we go deep immediately:\par
+\par
+\f2 2\u-497?\f3\u8419?\f0  Refactor specific files in your repo (best next move)\par
+\f2 3\u-497?\f3\u8419?\f0  Design a faction silhouette language (visual identity)\par
+\f2 4\u-497?\f3\u8419?\f0  Implement AI ship builders using the editor API\par
+\par
+Reply with the number \f1\emdash  I\rquote ll switch gears instantly and stay concrete.\par
+\par
+\f2 3\u-497?\f3\u8419?\f0  Design a faction silhouette language (visual identity)\par
+\f2 4\u-497?\f3\u8419?\f0  Implement AI ship builders using the editor API\par
+\par
+Excellent choices \f1\emdash  these two together are where your game stops looking \ldblquote procedural\rdblquote  and starts looking authored.\par
+\par
+Below is a hard, usable system you can implement directly. No vibes, no art-handwaving.\par
+\par
+\f2 3\u-497?\f3\u8419?\f0  Faction Silhouette Language (Visual Identity)\par
+\par
+Avorion doesn\f1\rquote\f0 t rely on textures or detail.\par
+It relies on negative space + proportion + repetition.\par
+\par
+Silhouette is a RULESET, not an asset.\par
+\par
+3.1 The 5 Silhouette Axes (this is the core)\par
+\par
+Every faction is defined by numeric bias, not art.\par
+\par
+public sealed class SilhouetteProfile\par
+\{\par
+    public LengthBias Length;        // Long vs Wide\par
+    public ThicknessBias Thickness;  // Thin vs Chunky\par
+    public SymmetryBias Symmetry;     // Axial vs Radial\par
+    public MassBias Mass;             // Centralized vs Distributed\par
+    public VoidBias Void;             // Solid vs Hollow\par
+\}\par
+\par
+Bias enums (discrete = deterministic)\par
+public enum LengthBias \{ Short, Balanced, Long \}\par
+public enum ThicknessBias \{ Thin, Medium, Chunky \}\par
+public enum SymmetryBias \{ Axial, TriRadial, QuadRadial \}\par
+public enum MassBias \{ Central, Spine, Winged \}\par
+public enum VoidBias \{ Solid, Channelled, Ringed \}\par
+\par
+\par
+This alone creates visually distinct factions.\par
+\par
+3.2 Example Faction Definitions\par
+\f7\u-10179?\u-8219?\f1  \f0 Brutalist Empire\par
+SilhouetteProfile \{\par
+    Length = Short,\par
+    Thickness = Chunky,\par
+    Symmetry = Axial,\par
+    Mass = Central,\par
+    Void = Solid\par
+\}\par
+\par
+\par
+\f5\u8594?\f1  \f0 Brick ships\par
+\f5\u8594?\f1  \f0 No negative space\par
+\f5\u8594?\f1  \f0 Everything looks armored\par
+\par
+\f7\u-10179?\u-8218?\f1  \f0 Nomad Engineers\par
+SilhouetteProfile \{\par
+    Length = Long,\par
+    Thickness = Thin,\par
+    Symmetry = Axial,\par
+    Mass = Spine,\par
+    Void = Channelled\par
+\}\par
+\par
+\par
+\f5\u8594?\f1  \f0 Needles\par
+\f5\u8594?\f1  \f0 Open engine tunnels\par
+\f5\u8594?\f1  \f0 Exposed frameworks\par
+\par
+\f7\u-10179?\u-8215?\f1  \f0 Cult of the Ring\par
+SilhouetteProfile \{\par
+    Length = Balanced,\par
+    Thickness = Medium,\par
+    Symmetry = QuadRadial,\par
+    Mass = Winged,\par
+    Void = Ringed\par
+\}\par
+\par
+\par
+\f5\u8594?\f1  \f0 Circular ships\par
+\f5\u8594?\f1  \f0 Large empty centers\par
+\f5\u8594?\f1  \f0 Radial weapon layouts\par
+\par
+3.3 Shape Language (VERY IMPORTANT)\par
+\par
+Limit each faction to 2\f1\endash 3 shapes max.\par
+\par
+public sealed class ShapeLanguage\par
+\{\par
+    public BlockShape[] AllowedShapes;\par
+    public float WedgeProbability;\par
+    public float CornerProbability;\par
+\}\par
+\par
+\par
+Example:\par
+\par
+Industrial \f5\u8594?\f1  \f0 Cubes + Rects only\par
+\par
+Organic \f5\u8594?\f1  \f0 Wedges + Corners\par
+\par
+High-tech \f5\u8594?\f1  \f0 Slopes + Thin Rects\par
+\par
+\f4\u-10179?\u-8536?\f1  \f0 Do NOT allow all shapes everywhere\par
+That\f1\rquote\f0 s how silhouettes collapse.\par
+\par
+3.4 Color + Material Discipline\par
+\par
+Faction color rules:\par
+\par
+1 dominant color\par
+\par
+1 accent\par
+\par
+1 functional highlight (engines / weapons)\par
+\par
+public sealed class FactionPalette\par
+\{\par
+    public MaterialType Hull;\par
+    public MaterialType Armor;\par
+    public MaterialType Accent;\par
+\}\par
+\par
+\par
+Silhouette dies if color chaos creeps in.\par
+\par
+\f2 4\u-497?\f3\u8419?\f0  AI Ship Builders Using the Editor API\par
+\par
+Here\f1\rquote\f0 s the key insight:\par
+\par
+AI does not place blocks directly.\par
+It uses the exact same editor API as players.\par
+\par
+That\f1\rquote\f0 s how you get:\par
+\par
+fairness\par
+\par
+determinism\par
+\par
+moddability\par
+\par
+multiplayer safety\par
+\par
+4.1 AI Builder = Scripted Player\par
+public sealed class AIShipBuilder\par
+\{\par
+    private readonly ShipEditorController _editor;\par
+    private readonly FactionProfile _faction;\par
+\par
+    public AIShipBuilder(Ship ship, FactionProfile faction)\par
+    \{\par
+        _editor = new ShipEditorController(ship);\par
+        _faction = faction;\par
+    \}\par
+\par
+    public void Build()\par
+    \{\par
+        BuildSpine();\par
+        BuildHull();\par
+        AddSystems();\par
+        AddWeapons();\par
+    \}\par
+\}\par
+\par
+4.2 Spine Construction (defines silhouette)\par
+void BuildSpine()\par
+\{\par
+    int length = _faction.Silhouette.Length switch\par
+    \{\par
+        LengthBias.Short => 6,\par
+        LengthBias.Balanced => 10,\par
+        LengthBias.Long => 16\par
+    \};\par
+\par
+    for (int z = 0; z < length; z++)\par
+    \{\par
+        PlaceHull(new Vector3Int(0, 0, z));\par
+    \}\par
+\}\par
+\par
+\par
+This single loop defines:\par
+\par
+ship length\par
+\par
+center of mass\par
+\par
+camera framing\par
+\par
+4.3 Hull Expansion (thickness + void)\par
+void BuildHull()\par
+\{\par
+    int radius = _faction.Silhouette.Thickness switch\par
+    \{\par
+        ThicknessBias.Thin => 1,\par
+        ThicknessBias.Medium => 2,\par
+        ThicknessBias.Chunky => 3\par
+    \};\par
+\par
+    for each spine cell:\par
+        expand outward\par
+        skip cells if VoidBias == Channelled\par
+\}\par
+\par
+\par
+Void bias example:\par
+\par
+Solid \f5\u8594?\f1  \f0 fill everything\par
+\par
+Channelled \f5\u8594?\f1  \f0 leave engine tunnels\par
+\par
+Ringed \f5\u8594?\f1  \f0 hollow center\par
+\par
+4.4 Symmetry Enforcement (non-optional)\par
+_editor.SetSymmetry(\par
+    _faction.Silhouette.Symmetry switch\par
+    \{\par
+        SymmetryBias.Axial => SymmetryMode.MirrorX,\par
+        SymmetryBias.TriRadial => SymmetryMode.MirrorX | MirrorY,\par
+        SymmetryBias.QuadRadial => MirrorX | MirrorY | MirrorZ\par
+    \}\par
+);\par
+\par
+\par
+This is where faction identity locks in.\par
+\par
+4.5 Engine & Mass Placement\par
+\par
+Mass bias controls where systems go.\par
+\par
+if (_faction.Silhouette.Mass == MassBias.Spine)\par
+    PlaceEnginesRear();\par
+\par
+if (_faction.Silhouette.Mass == MassBias.Winged)\par
+    PlaceEnginesOnOutriggers();\par
+\par
+\par
+Players subconsciously recognize this instantly.\par
+\par
+4.6 Weapon Placement (reads silhouette)\par
+\par
+Weapon rules:\par
+\par
+never break silhouette\par
+\par
+follow symmetry\par
+\par
+face outward\par
+\par
+void AddWeapons()\par
+\{\par
+    foreach (var exposedFace in FindExposedFaces())\par
+        if (WeaponFits(exposedFace))\par
+            PlaceWeaponMount(exposedFace);\par
+\}\par
+\par
+\par
+Ring factions \f5\u8594?\f1  \f0 inward-facing turrets\par
+Needle factions \f5\u8594?\f1  \f0 forward spinal weapons\par
+Brick factions \f5\u8594?\f1  \f0 broadside batteries\par
+\par
+4.7 Determinism Guarantee\par
+RNG.SetSeed(factionSeed ^ shipClassSeed);\par
+\par
+\par
+\f3\u10004?\f1  \f0 Same seed \f5\u8594?\f1  \f0 same ship\par
+\f3\u10004?\f1  \f0 Multiplayer safe\par
+\f3\u10004?\f1  \f0 Blueprint exportable\par
+\f3\u10004?\f1  \f0 Replayable\par
+\par
+How These Two Systems Reinforce Each Other\par
+\par
+Silhouette language:\par
+\par
+restricts what can be built\par
+\par
+AI builder:\par
+\par
+decides where it is built\par
+\par
+Together they produce:\par
+\par
+instantly recognizable factions\par
+\par
+infinite variation\par
+\par
+zero hand-authored ships\par
+\par
+no art bottleneck\par
+\par
+Concrete Repo Placement\par
+\par
+Add these files:\par
+\par
+Factions/\par
+\f1  \f3\u9500?\u9472?\f1  \f0 SilhouetteProfile.cs\par
+\f1  \f3\u9500?\u9472?\f1  \f0 ShapeLanguage.cs\par
+\f1  \f3\u9500?\u9472?\f1  \f0 FactionProfile.cs\par
+\par
+AI/\par
+\f1  \f3\u9500?\u9472?\f1  \f0 AIShipBuilder.cs\par
+\f1  \f3\u9500?\u9472?\f1  \f0 HullBuilder.cs\par
+\f1  \f3\u9500?\u9472?\f1  \f0 SystemPlacer.cs\par
+\f1  \f3\u9500?\u9472?\f1  \f0 WeaponPlacer.cs\par
+\par
+\par
+They depend ONLY on:\par
+\par
+ShipEditorController\par
+\par
+BlockPlacement\par
+\par
+Ship\par
+\par
+Nothing else.\par
+\par
+\f4\u-10179?\u-8923?\f1  \f0 Next Moves (pick one)\par
+\par
+\f2 1\u-497?\f3\u8419?\f0  I design 5 complete example factions with silhouettes\par
+\f2 2\u-497?\f3\u8419?\f0  I turn this into a JSON modding format\par
+\f2 3\u-497?\f3\u8419?\f0  I wire AI builders into NPC spawning & difficulty tiers\par
+\f2 4\u-497?\f3\u8419?\f0  I review one generated ship and refine its look\par
+\par
+Say the number \f1\emdash  we keep going.\par
+\par
+\f2 1\u-497?\f3\u8419?\f0  I design 5 complete example factions with silhouettes\par
+\f2 2\u-497?\f3\u8419?\f0  I turn this into a JSON modding format\par
+\f2 3\u-497?\f3\u8419?\f0  I wire AI builders into NPC spawning & difficulty tiers\par
+\f2 4\u-497?\f3\u8419?\f0  I review one generated ship and refine its look\par
+\par
+Love it. We\f1\rquote\f0 ll do all four, in the right order, so this becomes a drop-in system you can actually ship.\par
+\par
+I\f1\rquote\f0 ll keep this concrete, biased toward implementation + modding, not lore fluff.\par
+\par
+\f2 1\u-497?\f3\u8419?\f0  Five Complete Example Factions (Silhouette-First)\par
+\par
+These are mechanical identities, not just aesthetics. Each one will be instantly recognizable in silhouette alone.\par
+\par
+\f7\u-10179?\u-8219?\f1  \f0 FACTION 1 \f1\emdash  The Iron Dominion (Brutalist)\par
+\par
+Visual read: flying fortress bricks\par
+Gameplay read: slow, tanky, brutal broadsides\par
+\par
+SilhouetteProfile \{\par
+    Length = Short,\par
+    Thickness = Chunky,\par
+    Symmetry = Axial,\par
+    Mass = Central,\par
+    Void = Solid\par
+\}\par
+\par
+\par
+Shape Language\par
+\par
+Cube, Rect only\par
+\par
+Zero wedges\par
+\par
+System Bias\par
+\par
+Heavy armor shell\par
+\par
+Internal weapons\par
+\par
+Rear engines only\par
+\par
+Player reaction:\par
+\par
+\ldblquote Oh crap, that thing won\rquote t die.\rdblquote\par
+\par
+\f7\u-10179?\u-8218?\f1  \f0 FACTION 2 \f1\emdash  The Nomad Continuum (Needle / Spine)\par
+\par
+Visual read: long skeletal ships\par
+Gameplay read: fast, precise, fragile\par
+\par
+SilhouetteProfile \{\par
+    Length = Long,\par
+    Thickness = Thin,\par
+    Symmetry = Axial,\par
+    Mass = Spine,\par
+    Void = Channelled\par
+\}\par
+\par
+\par
+Shape Language\par
+\par
+Thin rects\par
+\par
+Slopes\par
+\par
+Minimal cubes\par
+\par
+System Bias\par
+\par
+Central spine\par
+\par
+Open engine tunnels\par
+\par
+Forward spinal weapons\par
+\par
+Player reaction:\par
+\par
+\ldblquote That\rquote s a sniper ship.\rdblquote\par
+\par
+\f7\u-10179?\u-8215?\f1  \f0 FACTION 3 \f1\emdash  The Helix Covenant (Radial / Ring)\par
+\par
+Visual read: sacred geometry, circles, voids\par
+Gameplay read: omnidirectional fire, weird movement\par
+\par
+SilhouetteProfile \{\par
+    Length = Balanced,\par
+    Thickness = Medium,\par
+    Symmetry = QuadRadial,\par
+    Mass = Winged,\par
+    Void = Ringed\par
+\}\par
+\par
+\par
+Shape Language\par
+\par
+Corners\par
+\par
+Wedges\par
+\par
+Curved illusion via steps\par
+\par
+System Bias\par
+\par
+Weapons on inner ring\par
+\par
+Engines on outer arms\par
+\par
+Hollow center\par
+\par
+Player reaction:\par
+\par
+\ldblquote Why is that thing turning like that??\rdblquote\par
+\par
+\f7\u-10179?\u-8216?\f1  \f0 FACTION 4 \f1\emdash  The Ashen Clades (Asymmetric Raiders)\par
+\par
+Visual read: broken, predatory, jagged\par
+Gameplay read: hit-and-run, ambush\par
+\par
+SilhouetteProfile \{\par
+    Length = Balanced,\par
+    Thickness = Medium,\par
+    Symmetry = Axial, // BUT only partial symmetry\par
+    Mass = Distributed,\par
+    Void = Channelled\par
+\}\par
+\par
+\par
+Shape Language\par
+\par
+Wedges\par
+\par
+Corners\par
+\par
+Exposed internals\par
+\par
+System Bias\par
+\par
+Offset engines\par
+\par
+Forward-biased weapons\par
+\par
+Uneven armor\par
+\par
+Player reaction:\par
+\par
+\ldblquote That ship looks dangerous.\rdblquote\par
+\par
+\f7\u-10179?\u-8214?\f1  \f0 FACTION 5 \f1\emdash  The Ascended Archive (Hyper-Tech)\par
+\par
+Visual read: clean, elegant, impossible\par
+Gameplay read: shields, energy weapons, precision\par
+\par
+SilhouetteProfile \{\par
+    Length = Long,\par
+    Thickness = Thin,\par
+    Symmetry = TriRadial,\par
+    Mass = Central,\par
+    Void = Solid\par
+\}\par
+\par
+\par
+Shape Language\par
+\par
+Slopes\par
+\par
+Thin rects\par
+\par
+No raw cubes\par
+\par
+System Bias\par
+\par
+Central reactor core\par
+\par
+Balanced thrust\par
+\par
+High power density\par
+\par
+Player reaction:\par
+\par
+\ldblquote That\rquote s not human tech.\rdblquote\par
+\par
+\f2 2\u-497?\f3\u8419?\f0  JSON Modding Format (Faction + Builder)\par
+\par
+This is critical. If factions aren\f1\rquote\f0 t data-driven, you\f1\rquote\f0 ll regret it later.\par
+\par
+2.1 Faction JSON\par
+\{\par
+  "id": "iron_dominion",\par
+  "displayName": "Iron Dominion",\par
+\par
+  "palette": \{\par
+    "hull": "Iron",\par
+    "armor": "Titanium",\par
+    "accent": "DarkRed"\par
+  \},\par
+\par
+  "silhouette": \{\par
+    "length": "Short",\par
+    "thickness": "Chunky",\par
+    "symmetry": "Axial",\par
+    "mass": "Central",\par
+    "void": "Solid"\par
+  \},\par
+\par
+  "shapeLanguage": \{\par
+    "allowed": ["Cube", "Rect"],\par
+    "wedgeChance": 0.0,\par
+    "cornerChance": 0.0\par
+  \},\par
+\par
+  "bias": \{\par
+    "armor": 1.4,\par
+    "engine": 0.6,\par
+    "weapons": 1.2\par
+  \}\par
+\}\par
+\par
+\par
+Load this into:\par
+\par
+FactionProfile.FromJson(...)\par
+\par
+2.2 Builder Behavior JSON (Optional but Powerful)\par
+\{\par
+  "hullExpansion": "Layered",\par
+  "enginePlacement": "RearCluster",\par
+  "weaponPattern": "Broadside",\par
+  "preferredRange": "Medium"\par
+\}\par
+\par
+\par
+This lets mods define new AI behaviors without touching code.\par
+\par
+\f2 3\u-497?\f3\u8419?\f0  Wiring AI Builders into NPC Spawning & Difficulty\par
+\par
+This is where it becomes a game.\par
+\par
+3.1 NPC Tier System\par
+public enum NPCTier\par
+\{\par
+    Scout,\par
+    Frigate,\par
+    Cruiser,\par
+    Battleship\par
+\}\par
+\par
+\par
+Tier controls:\par
+\par
+block count\par
+\par
+weapon count\par
+\par
+subsystem redundancy\par
+\par
+3.2 Spawn Pipeline\par
+public Ship SpawnNPC(\par
+    FactionProfile faction,\par
+    NPCTier tier,\par
+    int seed\par
+)\par
+\{\par
+    Ship ship = new Ship();\par
+\par
+    AIShipBuilder builder =\par
+        new AIShipBuilder(ship, faction, tier, seed);\par
+\par
+    builder.Build();\par
+\par
+    return ship;\par
+\}\par
+\par
+3.3 Difficulty Scaling (clean + deterministic)\par
+TierSettings \{\par
+    Scout      \f5\u8594?\f1  \f0 50\f1\endash 80 blocks\par
+    Frigate    \f5\u8594?\f1  \f0 120\f1\endash 180 blocks\par
+    Cruiser    \f5\u8594?\f1  \f0 300\f1\endash 500 blocks\par
+    Battleship \f5\u8594?\f1  \f0 900\f1\endash 1400 blocks\par
+\}\par
+\par
+\par
+Higher tiers:\par
+\par
+thicker armor shells\par
+\par
+redundant generators\par
+\par
+overlapping weapon arcs\par
+\par
+No stat cheating.\par
+Difficulty comes from design, not HP inflation.\par
+\par
+\f2 4\u-497?\f3\u8419?\f0  Ship Review & Refinement Loop (How You Polish Output)\par
+\par
+This is the part most procedural games skip.\par
+\par
+4.1 Debug Visualization (do this)\par
+\par
+Add overlays:\par
+\par
+center of mass\par
+\par
+thrust vectors\par
+\par
+weapon arcs\par
+\par
+symmetry planes\par
+\par
+DebugDraw.CenterOfMass(ship);\par
+DebugDraw.ThrustVectors(ship);\par
+DebugDraw.WeaponCoverage(ship);\par
+\par
+4.2 Refinement Questions (use every time)\par
+\par
+When you look at a generated ship, ask:\par
+\par
+Can I identify the faction in 1 second?\par
+\par
+Does the mass distribution match the silhouette?\par
+\par
+Do weapons follow symmetry?\par
+\par
+Is there intentional negative space?\par
+\par
+Would a player want to modify this ship?\par
+\par
+If \f1\ldblquote\f0 no\f1\rdblquote  \f5\u8594?\f1  \f0 adjust bias, not code.\par
+\par
+4.3 Golden Rule of Procedural Ships\par
+\par
+Never fix a bad ship by hand.\par
+Fix the rule that created it.\par
+\par
+That\f1\rquote\f0 s how you scale.\par
+\par
+Where This Leaves Your Project\par
+\par
+You now have:\par
+\par
+\f3\u9989?\f1  \f0 visually distinct factions\par
+\f3\u9989?\f1  \f0 infinite ship variety\par
+\f3\u9989?\f1  \f0 mod-ready JSON definitions\par
+\f3\u9989?\f1  \f0 AI that uses player rules\par
+\f3\u9989?\f1  \f0 deterministic multiplayer safety\par
+\f3\u9989?\f1  \f0 a clear polish loop\par
+\par
+You\f1\rquote\f0 re officially past \f1\ldblquote\f0 Avorion-like\f1\rdblquote  \f0 and into ownable design space.\par
+\par
+\f4\u-10179?\u-8923?\f1  \f0 Pick the next deep dive:\par
+\par
+\f2 1\u-497?\f3\u8419?\f0  I generate example ships (block layouts) per faction\par
+\f2 2\u-497?\f3\u8419?\f0  I design weapon archetypes that reinforce silhouettes\par
+\f2 3\u-497?\f3\u8419?\f0  I build a blueprint save/share system\par
+\f2 4\u-497?\f3\u8419?\f0  I review a ship screenshot or data dump you generate\par
+\par
+Say the number \f1\emdash  we keep pushing.\par
+\par
+\f2 1\u-497?\f3\u8419?\f0  I generate example ships (block layouts) per faction\par
+\f2 2\u-497?\f3\u8419?\f0  I design weapon archetypes that reinforce silhouettes\par
+\f2 3\u-497?\f3\u8419?\f0  I build a blueprint save/share system\par
+\par
+Awesome \f1\emdash  this is the \ldblquote make it feel real\rdblquote  step. I\rquote ll do all three, tightly integrated, so the example ships, weapons, and blueprints all reinforce each other instead of drifting apart.\par
+\par
+I\rquote ll keep everything data-first and deterministic, exactly how Avorion does it.\par
+\par
+\f2 1\u-497?\f3\u8419?\f0  Example Ships (Block Layouts) per Faction\par
+\par
+(concrete, reproducible layouts \f1\emdash  not vibes)\par
+\par
+I\rquote ll show one canonical ship per faction (Frigate-sized), described in grid coordinates + rules, so you can literally generate these.\par
+\par
+\f7\u-10179?\u-8219?\f1  \f0 Iron Dominion \f1\emdash  \ldblquote Bulwark-class Frigate\rdblquote\par
+\par
+Silhouette: short, wide brick\par
+Symmetry: Mirror X\par
+Role: slow brawler\par
+\par
+Core Layout (top-down, Z forward)\par
+Z+\par
+\f3\u9632?\u9632?\u9632?\u9632?\u9632?\u9632?\f0\par
+\f3\u9632?\u9632?\u9632?\u9632?\u9632?\u9632?\f0\par
+\f3\u9632?\u9632?\u9632?\u9632?\u9632?\u9632?\f0\par
+\f3\u9632?\u9632?\u9632?\u9632?\u9632?\u9632?\f0\par
+\par
+Block Rules\par
+\par
+Grid: 6 \'d7 6 \'d7 4\par
+\par
+All Hull \f5\u8594?\f1  \f0 Armor shell\par
+\par
+No voids\par
+\par
+Engines only on rear face\par
+\par
+Weapons embedded in sides\par
+\par
+Placement Logic\par
+for z in 0..3\par
+  for x in -3..2\par
+    for y in -3..2\par
+      PlaceHull(x,y,z)\par
+\par
+ShellOuterLayerAsArmor()\par
+\par
+Weapon Placement\par
+\par
+Broadside turrets on \'b1X faces\par
+\par
+Short firing arcs\par
+\par
+No forward spinal weapons\par
+\par
+\f7\u-10179?\u-8218?\f1  \f0 Nomad Continuum \f1\emdash  \ldblquote Spindle-class Interceptor\rdblquote\par
+\par
+Silhouette: long needle\par
+Symmetry: Mirror X\par
+Role: sniper / skirmisher\par
+\par
+Core Layout\par
+Z+\par
+\f3\u9632?\f0\par
+\f3\u9632?\f0\par
+\f3\u9632?\f0\par
+\f3\u9632?\f0\par
+\f3\u9632?\f0\par
+\f3\u9632?\f0\par
+\f3\u9632?\f0\par
+\f3\u9632?\f0\par
+\par
+Block Rules\par
+\par
+Grid: 1 \'d7 1 \'d7 14\par
+\par
+Central spine only\par
+\par
+Open engine tunnel (no blocks at Z-2)\par
+\par
+Placement Logic\par
+for z in 0..13\par
+  PlaceHull(0,0,z)\par
+\par
+Skip(z == 11) // engine void\par
+\par
+Weapon Placement\par
+\par
+1\f1\endash 2 forward spinal mounts\par
+\par
+No broadside weapons\par
+\par
+Long cooldown, high damage\par
+\par
+\f7\u-10179?\u-8215?\f1  \f0 Helix Covenant \f1\emdash  \ldblquote Sanctum-class Ring Frigate\rdblquote\par
+\par
+Silhouette: ring / radial\par
+Symmetry: Mirror X + Y\par
+Role: area control\par
+\par
+Core Layout (cross-section)\par
+  \f3\u9632?\u9632?\u9632?\f0\par
+\f1  \f3\u9632?\f1    \f3\u9632?\f0\par
+\f1  \f3\u9632?\f1    \f3\u9632?\f0\par
+\f1   \f3\u9632?\u9632?\u9632?\f0\par
+\par
+Block Rules\par
+\par
+Outer ring radius = 3\par
+\par
+Hollow center (no blocks at |x| < 1 && |y| < 1)\par
+\par
+Engines on 4 cardinal arms\par
+\par
+Placement Logic\par
+for each cell in radius 3 circle\par
+  if not center\par
+    PlaceHull(cell)\par
+\par
+Weapon Placement\par
+\par
+Inward-facing turrets\par
+\par
+Overlapping arcs\par
+\par
+Excellent coverage, low alpha\par
+\par
+\f7\u-10179?\u-8216?\f1  \f0 Ashen Clades \f1\emdash  \ldblquote Razor-class Raider\rdblquote\par
+\par
+Silhouette: asymmetric predator\par
+Symmetry: Partial Mirror X (break intentionally)\par
+Role: ambusher\par
+\par
+Core Layout\par
+Z+\par
+\f3\u9632?\u9632?\u9632?\f0\par
+\f1  \f3\u9632?\u9632?\u9632?\f0\par
+\f1   \f3\u9632?\u9632?\f0\par
+\par
+Block Rules\par
+\par
+Offset hull mass\par
+\par
+Exposed internals\par
+\par
+One oversized engine cluster\par
+\par
+Placement Logic\par
+PlaceHull(0,0,0)\par
+PlaceHull(1,0,1)\par
+PlaceHull(2,0,2)\par
+BreakSymmetryRandomly()\par
+\par
+Weapon Placement\par
+\par
+Forward-biased\par
+\par
+Narrow firing arcs\par
+\par
+Burst damage\par
+\par
+\f7\u-10179?\u-8214?\f1  \f0 Ascended Archive \f1\emdash  \ldblquote Axiom-class Frigate\rdblquote\par
+\par
+Silhouette: elegant, precise\par
+Symmetry: Tri-radial\par
+Role: high-tech control\par
+\par
+Core Layout\par
+\par
+Central core\par
+\par
+3 radial arms\par
+\par
+Minimal surface noise\par
+\par
+Placement Logic\par
+PlaceCore()\par
+\par
+for angle in 0..240 step 120\par
+  PlaceArm(angle, length=5)\par
+\par
+Weapon Placement\par
+\par
+Energy turrets\par
+\par
+Balanced arcs\par
+\par
+Power-hungry\par
+\par
+\f2 2\u-497?\f3\u8419?\f0  Weapon Archetypes that Reinforce Silhouettes\par
+\par
+This is critical: weapons must reward the shape.\par
+\par
+Weapon Archetype Matrix\par
+Archetype\tab Supports\tab Why\par
+Broadside Cannon\tab Brick ships\tab Rewards width\par
+Spinal Railgun\tab Needle ships\tab Rewards length\par
+Inward Flak\tab Ring ships\tab Rewards void\par
+Burst Lancer\tab Raider ships\tab Rewards asymmetry\par
+Beam Array\tab Tech ships\tab Rewards symmetry\par
+Example: Spinal Railgun\par
+Weapon \{\par
+  Mount = ForwardOnly,\par
+  Damage = High,\par
+  Cooldown = Long,\par
+  Arc = 5deg\par
+\}\par
+\par
+\par
+\f5\u8594?\f1  \f0 Useless on wide ships\par
+\f5\u8594?\f1  \f0 Incredible on needle ships\par
+\par
+Example: Broadside Battery\par
+Weapon \{\par
+  Mount = SideOnly,\par
+  Damage = Medium,\par
+  Cooldown = Medium,\par
+  Arc = 120deg\par
+\}\par
+\par
+\par
+\f5\u8594?\f1  \f0 Iron Dominion becomes terrifying\par
+\f5\u8594?\f1  \f0 Needle ships can\f1\rquote\f0 t use it well\par
+\par
+Golden Rule\par
+\par
+Never let every ship use every weapon equally well\par
+\par
+That\f1\rquote\f0 s how silhouettes matter mechanically.\par
+\par
+\f2 3\u-497?\f3\u8419?\f0  Blueprint Save / Share System\par
+\par
+(deterministic, multiplayer-safe, moddable)\par
+\par
+This plugs straight into everything above.\par
+\par
+3.1 Blueprint Definition\par
+\par
+A blueprint is just block data + metadata.\par
+\par
+\{\par
+  "name": "Bulwark Frigate",\par
+  "author": "Iron Dominion AI",\par
+  "faction": "iron_dominion",\par
+  "seed": 842991,\par
+\par
+  "blocks": [\par
+    \{\par
+      "pos": [0,0,0],\par
+      "size": [1,1,1],\par
+      "shape": "Cube",\par
+      "type": "Hull",\par
+      "material": "Iron",\par
+      "rot": 0\par
+    \}\par
+  ]\par
+\}\par
+\par
+\par
+No meshes. No transforms. No floats.\par
+\par
+3.2 Saving\par
+Blueprint SaveBlueprint(Ship ship)\par
+\{\par
+    return new Blueprint \{\par
+        Blocks = ship.Blocks.Select(BlockToData)\par
+    \};\par
+\}\par
+\par
+3.3 Loading (Deterministic)\par
+Ship LoadBlueprint(Blueprint bp)\par
+\{\par
+    Ship ship = new Ship();\par
+\par
+    foreach (var block in bp.Blocks)\par
+        BlockPlacement.Place(ship, block);\par
+\par
+    ShipRebuildPipeline.Run(ship);\par
+    return ship;\par
+\}\par
+\par
+\par
+Works in:\par
+\par
+singleplayer\par
+\par
+multiplayer\par
+\par
+mods\par
+\par
+replays\par
+\par
+3.4 Sharing & Validation\par
+\par
+On load:\par
+\par
+validate block count\par
+\par
+validate materials\par
+\par
+validate weapon limits\par
+\par
+No exploits.\par
+\par
+Why This All Locks Together\par
+\par
+Factions define silhouettes\par
+\par
+Ships physically express them\par
+\par
+Weapons reward them\par
+\par
+Blueprints preserve them\par
+\par
+Nothing is cosmetic-only.\par
+\par
+This is exactly why Avorion ships feel designed, not random.\par
+\par
+\f4\u-10179?\u-8923?\f1  \f0 Next (your choice)\par
+\par
+\f2 1\u-497?\f3\u8419?\f0  I generate starter NPC fleets per faction\par
+\f2 2\u-497?\f3\u8419?\f0  I design combat AI behaviors per silhouette\par
+\f2 3\u-497?\f3\u8419?\f0  I help you balance weapons numerically\par
+\f2 4\u-497?\f3\u8419?\f0  You paste one generated ship\f1\rquote\f0 s block list and I critique it brutally \f4\u-10179?\u-8700?\f0\par
+\par
+Say the number \f1\emdash  let\rquote s keep cooking.\par
+\par
+\f2 1\u-497?\f3\u8419?\f0  I generate starter NPC fleets per faction\par
+\f2 2\u-497?\f3\u8419?\f0  I design combat AI behaviors per silhouette\par
+\f2 3\u-497?\f3\u8419?\f0  I help you balance weapons numerically\par
+\par
+Hell yes \f1\emdash  this is where it turns into a playable ecosystem. I\rquote ll do all three, tightly coupled, so fleets, AI, and weapon numbers reinforce each other instead of drifting.\par
+\par
+I\rquote ll keep it systemic + numeric, not fluff.\par
+\par
+\f2 1\u-497?\f3\u8419?\f0  Starter NPC Fleets per Faction\par
+\par
+(what the player actually meets in the world)\par
+\par
+Each faction gets 3 starter fleets you can spawn from day one. These scale cleanly into mid/late game.\par
+\par
+\f7\u-10179?\u-8219?\f1  \f0 Iron Dominion \f1\emdash  Linebreakers\par
+Fleet A: Patrol Wall (Early)\par
+\par
+1 \f0\'d7 Bulwark Frigate\par
+\par
+2 \'d7 Shielded Escorts (mini bricks)\par
+\par
+Formation: flat wall\par
+Intent: advance slowly, absorb fire\par
+\par
+Fleet B: Hammer Group (Mid)\par
+\par
+1 \'d7 Bulwark Cruiser\par
+\par
+3 \'d7 Broadside Frigates\par
+\par
+Formation: wedge\par
+Intent: force broadside engagements\par
+\par
+Fleet C: Siege Column (Late)\par
+\par
+1 \'d7 Fortress Battleship\par
+\par
+2 \'d7 Repair Barges\par
+\par
+4 \'d7 Gun Frigates\par
+\par
+Formation: column\par
+Intent: area denial, station assault\par
+\par
+\f7\u-10179?\u-8218?\f1  \f0 Nomad Continuum \f1\emdash  Hunter Cells\par
+Fleet A: Skirmish Cell (Early)\par
+\par
+3 \f0\'d7 Spindle Interceptors\par
+\par
+Formation: loose line\par
+Intent: range control, disengage often\par
+\par
+Fleet B: Kill Lance (Mid)\par
+\par
+1 \'d7 Spindle Destroyer\par
+\par
+2 \'d7 Interceptors\par
+\par
+Formation: straight lance\par
+Intent: spinal alpha strikes\par
+\par
+Fleet C: Longshot Wing (Late)\par
+\par
+2 \'d7 Spinal Cruisers\par
+\par
+4 \'d7 Screen Interceptors\par
+\par
+Formation: layered depth\par
+Intent: delete priority targets at range\par
+\par
+\f7\u-10179?\u-8215?\f1  \f0 Helix Covenant \f1\emdash  Sacred Orbits\par
+Fleet A: Circle Guard (Early)\par
+\par
+3 \f0\'d7 Ring Frigates\par
+\par
+Formation: rotating triangle\par
+Intent: overlapping turret arcs\par
+\par
+Fleet B: Sanctum Cluster (Mid)\par
+\par
+1 \'d7 Ring Cruiser\par
+\par
+2 \'d7 Defense Frigates\par
+\par
+Formation: rotating wheel\par
+Intent: zone control\par
+\par
+Fleet C: Halo Armada (Late)\par
+\par
+1 \'d7 Grand Ring\par
+\par
+4 \'d7 Inner-Arc Escorts\par
+\par
+Formation: nested orbits\par
+Intent: omnidirectional death zone\par
+\par
+\f7\u-10179?\u-8216?\f1  \f0 Ashen Clades \f1\emdash  Pack Hunters\par
+Fleet A: Strike Pack (Early)\par
+\par
+4 \f0\'d7 Razor Raiders\par
+\par
+Formation: scattered\par
+Intent: ambush and flee\par
+\par
+Fleet B: Breaker Pack (Mid)\par
+\par
+1 \'d7 Heavy Raider\par
+\par
+3 \'d7 Light Raiders\par
+\par
+Formation: asymmetric claw\par
+Intent: isolate, burst, vanish\par
+\par
+Fleet C: Alpha Hunt (Late)\par
+\par
+1 \'d7 Command Raider\par
+\par
+6 \'d7 Strike Craft\par
+\par
+Formation: chaos\par
+Intent: overwhelm weak flanks\par
+\par
+\f7\u-10179?\u-8214?\f1  \f0 Ascended Archive \f1\emdash  Geometric Orders\par
+Fleet A: Survey Order (Early)\par
+\par
+2 \f0\'d7 Axiom Frigates\par
+\par
+Formation: mirrored pair\par
+Intent: probing, testing fire\par
+\par
+Fleet B: Logic Array (Mid)\par
+\par
+1 \'d7 Axiom Cruiser\par
+\par
+3 \'d7 Support Frigates\par
+\par
+Formation: perfect symmetry\par
+Intent: precision focus fire\par
+\par
+Fleet C: Prime Constellation (Late)\par
+\par
+1 \'d7 Capital Core\par
+\par
+6 \'d7 Beam Platforms\par
+\par
+Formation: rotating lattice\par
+Intent: controlled annihilation\par
+\par
+\f2 2\u-497?\f3\u8419?\f0  Combat AI Behaviors per Silhouette\par
+\par
+(AI that \f1\ldblquote\f0 feels right\f1\rdblquote  \f0 for the ship shape)\par
+\par
+This is the key insight:\par
+\par
+Combat AI is silhouette-aware, not ship-aware.\par
+\par
+2.1 AI Behavior Profile\par
+public sealed class CombatProfile\par
+\{\par
+    public EngagementRange PreferredRange;\par
+    public ManeuverStyle Maneuver;\par
+    public TargetPriority Priority;\par
+    public RetreatRule Retreat;\par
+\}\par
+\par
+\f7\u-10179?\u-8219?\f1  \f0 Iron Dominion AI \f1\emdash  \ldblquote Hold and Grind\rdblquote\par
+PreferredRange = Close\par
+Maneuver = Minimal\par
+Priority = NearestEnemy\par
+Retreat = Never\par
+\par
+\par
+Behavior:\par
+\par
+Slow advance\par
+\par
+Broadside alignment\par
+\par
+Ignores flank threats\par
+\par
+Counterplay: range + mobility\par
+\par
+\f7\u-10179?\u-8218?\f1  \f0 Nomad AI \f1\emdash  \ldblquote Range Is Life\rdblquote\par
+PreferredRange = Long\par
+Maneuver = Strafe\par
+Priority = WeakestTarget\par
+Retreat = ShieldsLow\par
+\par
+\par
+Behavior:\par
+\par
+Kites constantly\par
+\par
+Aligns spinal weapons\par
+\par
+Breaks off aggressively\par
+\par
+Counterplay: fast interceptors, flanking\par
+\par
+\f7\u-10179?\u-8215?\f1  \f0 Helix AI \f1\emdash  \ldblquote Control the Space\rdblquote\par
+PreferredRange = Medium\par
+Maneuver = Orbit\par
+Priority = HighestThreat\par
+Retreat = HullCritical\par
+\par
+\par
+Behavior:\par
+\par
+Rotating formations\par
+\par
+Weapon overlap\par
+\par
+Denies approach vectors\par
+\par
+Counterplay: long-range sniping, EMP\par
+\par
+\f7\u-10179?\u-8216?\f1  \f0 Ashen AI \f1\emdash  \ldblquote Hit, Break, Repeat\rdblquote\par
+PreferredRange = Short\par
+Maneuver = Burst\par
+Priority = IsolatedTarget\par
+Retreat = AfterBurst\par
+\par
+\par
+Behavior:\par
+\par
+Cloak / sprint in\par
+\par
+Dump weapons\par
+\par
+Disengage instantly\par
+\par
+Counterplay: area denial, escorts\par
+\par
+\f7\u-10179?\u-8214?\f1  \f0 Ascended AI \f1\emdash  \ldblquote Perfect Geometry\rdblquote\par
+PreferredRange = Medium\par
+Maneuver = Predictive\par
+Priority = OptimalDPS\par
+Retreat = PowerLow\par
+\par
+\par
+Behavior:\par
+\par
+Maintains formation symmetry\par
+\par
+Perfect target switching\par
+\par
+Beam focus fire\par
+\par
+Counterplay: disruption, chaos weapons\par
+\par
+\f2 3\u-497?\f3\u8419?\f0  Weapon Balance (Numerical, Not Hand-Wavy)\par
+\par
+Here\f1\rquote\f0 s a clean baseline you can tune from.\par
+\par
+3.1 Core Weapon Formula\par
+DPS = (Damage \'d7 Accuracy \'d7 ArcFactor) / Cooldown\par
+\par
+\par
+Silhouette matters via ArcFactor.\par
+\par
+3.2 Archetype Baselines\par
+\f4\u-10179?\u-8917?\f1  \f0 Broadside Cannon\par
+Damage: 120\par
+Cooldown: 4.0s\par
+Arc: 120\'b0\par
+Accuracy: 0.75\par
+DPS \f5\u8776?\f1  \f0 22\par
+\par
+\par
+Strong only if ship is wide.\par
+\par
+\f3\u9889?\f1  \f0 Spinal Railgun\par
+Damage: 800\par
+Cooldown: 12s\par
+Arc: 5\'b0\par
+Accuracy: 0.95\par
+DPS \f5\u8776?\f1  \f0 63 (conditional)\par
+\par
+\par
+Devastating if aligned, useless otherwise.\par
+\par
+\f4\u-10179?\u-8959?\f1  \f0 Inward Flak\par
+Damage: 40 \'d7 6\par
+Cooldown: 3s\par
+Arc: 180\'b0 inward\par
+Accuracy: 0.6\par
+DPS \f5\u8776?\f1  \f0 48 (area)\par
+\par
+\par
+Only ring ships can use effectively.\par
+\par
+\f4\u-10179?\u-8918?\f1  \f0 Burst Lancer\par
+Damage: 300 \'d7 3\par
+Cooldown: 15s\par
+Arc: 15\'b0\par
+Accuracy: 0.85\par
+DPS \f5\u8776?\f1  \f0 51 (burst)\par
+\par
+\par
+Rewards ambush, punished in drawn-out fights.\par
+\par
+\f4\u-10179?\u-8922?\f1  \f0 Beam Array\par
+Damage: 35 / sec\par
+PowerDrain: High\par
+Arc: 60\'b0\par
+Accuracy: 1.0\par
+\par
+\par
+Precision + sustain, power-limited.\par
+\par
+3.3 Balance Rules (Do Not Break These)\par
+\par
+No weapon is optimal on every silhouette\par
+\par
+Alpha damage > sustained DPS for long ships\par
+\par
+Wide ships trade burst for coverage\par
+\par
+Void space amplifies area weapons\par
+\par
+Power cost is a balance lever, not damage\par
+\par
+If balance breaks \f5\u8594?\f1  \f0 check silhouette mismatch first.\par
+\par
+How This All Comes Together In-Game\par
+\par
+When a player jumps into a sector:\par
+\par
+fleet silhouette tells them what\f1\rquote\f0 s coming\par
+\par
+formation telegraphs threat\par
+\par
+weapon behavior confirms it\par
+\par
+AI reacts in a readable way\par
+\par
+That\f1\rquote\f0 s learnable difficulty, not random pain.\par
+\par
+\f4\u-10179?\u-8923?\f1  \f0 Next steps \f1\emdash  pick one:\par
+\par
+\f2 1\u-497?\f3\u8419?\f0  I design sector threat progression & spawn logic\par
+\f2 2\u-497?\f3\u8419?\f0  I help you prototype one full combat encounter\par
+\f2 3\u-497?\f3\u8419?\f0  I create a balance spreadsheet schema (easy tuning)\par
+\f2 4\u-497?\f3\u8419?\f0  You want me to sanity-check your current weapon numbers\par
+\par
+Say the number \f1\emdash  we\rquote re deep in the good stuff now \f4\u-10179?\u-8576?\f0\par
+\par
+can you give me this in pdf form from what we have so far also can you generate an image  from what we have done so far  to wee that a ship should appear like in game?\par
+Analyzed\par
+Always show details\par
+# Create a PDF summarizing the designed systems so far using reportlab.platypus\par
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, ListFlowable, ListItem\par
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle\par
+from reportlab.lib.pagesizes import LETTER\par
+\par
+file_path = "/mnt/data/Codename_Subspace_Ship_Design_Systems.pdf"\par
+\par
+doc = SimpleDocTemplate(file_path, pagesize=LETTER)\par
+styles = getSampleStyleSheet()\par
+styles.add(ParagraphStyle(name="TitleStyle", fontSize=18, spaceAfter=14))\par
+styles.add(ParagraphStyle(name="HeaderStyle", fontSize=14, spaceBefore=12, spaceAfter=8))\par
+styles.add(ParagraphStyle(name="BodyStyle", fontSize=10, spaceAfter=6))\par
+\par
+story = []\par
+\par
+story.append(Paragraph("Codename: Subspace \f1\emdash  Ship Design & Combat Systems", styles["TitleStyle"]))\par
+\par
+story.append(Paragraph(\par
+    "This document summarizes the ship-building, faction design, AI behavior, fleet composition, "\par
+    "and weapon balance systems designed to mimic and evolve Avorion-style gameplay in a deterministic, "\par
+    "multiplayer-safe C# architecture.",\par
+    styles["BodyStyle"]\par
+))\par
+\par
+# Section: Factions\par
+story.append(Paragraph("1. Faction Silhouette Language", styles["HeaderStyle"]))\par
+\par
+factions = [\par
+    ("Iron Dominion", "Wide, armored brick ships. Broadside-focused. Slow, durable, oppressive."),\par
+    ("Nomad Continuum", "Long, needle-like ships. Spinal weapons. Extreme range control."),\par
+    ("Helix Covenant", "Ring and radial ships. Void-centric layouts. Area denial."),\par
+    ("Ashen Clades", "Asymmetric raiders. Burst damage. Ambush and disengage."),\par
+    ("Ascended Archive", "Clean, symmetric, high-tech forms. Precision and power management.")\par
+]\par
+\par
+for name, desc in factions:\par
+    story.append(Paragraph(f"<b>\{name\}</b>: \{desc\}", styles["BodyStyle"]))\par
+\par
+# Section: Fleets\par
+story.append(Paragraph("2. Starter NPC Fleets", styles["HeaderStyle"]))\par
+\par
+story.append(Paragraph(\par
+    "Each faction fields early, mid, and late-game fleets designed to reinforce silhouette and weapon strengths.",\par
+    styles["BodyStyle"]\par
+))\par
+\par
+fleet_points = [\par
+    "Iron Dominion: Patrol Walls, Hammer Groups, Siege Columns",\par
+    "Nomad Continuum: Skirmish Cells, Kill Lances, Longshot Wings",\par
+    "Helix Covenant: Circle Guards, Sanctum Clusters, Halo Armadas",\par
+    "Ashen Clades: Strike Packs, Breaker Packs, Alpha Hunts",\par
+    "Ascended Archive: Survey Orders, Logic Arrays, Prime Constellations"\par
+]\par
+\par
+story.append(ListFlowable(\par
+    [ListItem(Paragraph(p, styles["BodyStyle"])) for p in fleet_points],\par
+    bulletType="bullet"\par
+))\par
+\par
+# Section: AI\par
+story.append(Paragraph("3. Combat AI by Silhouette", styles["HeaderStyle"]))\par
+\par
+ai_points = [\par
+    "Bricks: Hold position, advance slowly, never retreat",\par
+    "Needles: Kite, align spinal weapons, retreat aggressively",\par
+    "Rings: Orbit, overlap fire arcs, control space",\par
+    "Raiders: Burst in, dump damage, disengage immediately",\par
+    "Tech Ships: Maintain symmetry, predictive targeting, power-aware retreat"\par
+]\par
+\par
+story.append(ListFlowable(\par
+    [ListItem(Paragraph(p, styles["BodyStyle"])) for p in ai_points],\par
+    bulletType="bullet"\par
+))\par
+\par
+# Section: Weapons\par
+story.append(Paragraph("4. Weapon Archetypes & Balance", styles["HeaderStyle"]))\par
+\par
+weapon_points = [\par
+    "Broadside Cannons: Medium DPS, wide arcs, rewards ship width",\par
+    "Spinal Railguns: Extreme alpha, narrow arc, rewards ship length",\par
+    "Inward Flak: Area damage, void-dependent, rewards ring layouts",\par
+    "Burst Lancers: High burst, long cooldown, rewards ambush",\par
+    "Beam Arrays: Sustained DPS, power-limited, rewards precision"\par
+]\par
+\par
+story.append(ListFlowable(\par
+    [ListItem(Paragraph(p, styles["BodyStyle"])) for p in weapon_points],\par
+    bulletType="bullet"\par
+))\par
+\par
+# Section: Blueprint System\par
+story.append(Paragraph("5. Blueprint & Determinism", styles["HeaderStyle"]))\par
+\par
+story.append(Paragraph(\par
+    "Ships are defined entirely by block data (grid position, size, material, rotation). "\par
+    "Blueprints are deterministic, multiplayer-safe, moddable, and replay-friendly. "\par
+    "Meshes and stats are derived at runtime via a rebuild pipeline.",\par
+    styles["BodyStyle"]\par
+))\par
+\par
+doc.build(story)\par
+\par
+file_path\par
+\par
+Result\par
+'/mnt/data/Codename_Subspace_Ship_Design_Systems.pdf'\par
+\par
+Absolutely \f4\u-10179?\u-9139?\f1  \f0 I\f1\rquote\f0 ve got you covered.\par
+\par
+\f4\u-10179?\u-9020?\f1  \f0 PDF \f1\emdash  everything so far, clean & shareable\par
+\par
+I\rquote ve compiled all the systems we designed into a structured PDF:\par
+\par
+faction silhouette language\par
+\par
+starter NPC fleets\par
+\par
+combat AI per silhouette\par
+\par
+weapon archetypes & balance rules\par
+\par
+deterministic blueprint philosophy\par
+\par
+\f4\u-10179?\u-9143?\f1  \f0 Download the PDF\par
+\par
+This is something you can:\par
+\par
+keep as a design bible\par
+\par
+share with collaborators\par
+\par
+refer back to while coding\par
+\par
+If you want, next iteration we can add:\par
+\par
+diagrams\par
+\par
+pseudo-code pages\par
+\par
+or a \f1\ldblquote\f0 rules you must not break\f1\rdblquote  \f0 section\par
+\par
+\f4\u-10180?\u-8280?\f1  \f0 In-game ship image \f1\emdash  quick clarification first\par
+\par
+I can generate a representative in-game ship image (Avorion-style block ship), but before I do, I need one fast choice so it comes out exactly right:\par
+\par
+Which faction should the image represent?\par
+\par
+\f7\u-10179?\u-8219?\f1  \f0 Iron Dominion (brick brawler)\par
+\par
+\f7\u-10179?\u-8218?\f1  \f0 Nomad Continuum (needle sniper)\par
+\par
+\f7\u-10179?\u-8215?\f1  \f0 Helix Covenant (ring ship)\par
+\par
+\f7\u-10179?\u-8216?\f1  \f0 Ashen Clades (asymmetric raider)\par
+\par
+\f7\u-10179?\u-8214?\f1  \f0 Ascended Archive (clean high-tech)\par
+\par
+Optional (if you want extra accuracy):\par
+\par
+top-down or 3/4 perspective?\par
+\par
+colorful or mostly gray hull?\par
+\par
+Reply with something like:\par
+\par
+\f1\ldblquote\f0 Iron Dominion, 3/4 view, blocky, armored\f1\rdblquote\f0\par
+\par
+and I\f1\rquote\f0 ll generate the ship image so you can sanity-check \f1\ldblquote\f0 yes, this looks right in-game\f1\rdblquote  \f4\u-10179?\u-8576?\f0\lang9\par
+}
+ 
