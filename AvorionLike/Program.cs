@@ -19,6 +19,8 @@ using AvorionLike.Examples;
 using System.Numerics;
 using ShipSize = AvorionLike.Core.Modular.ShipSize;
 using ShipRole = AvorionLike.Core.Modular.ShipRole;
+using ProceduralShipSize = AvorionLike.Core.Procedural.ShipSize;
+using ProceduralShipRole = AvorionLike.Core.Procedural.ShipRole;
 
 namespace AvorionLike;
 
@@ -3411,10 +3413,8 @@ class Program
     {
         Console.WriteLine("Generating test showcase with multiple ship types...");
         
-        // Initialize modular ship generation system
-        var moduleLibrary = new ModuleLibrary();
-        moduleLibrary.InitializeBuiltInModules();
-        var shipGenerator = new ModularProceduralShipGenerator(moduleLibrary, Environment.TickCount);
+        // Initialize procedural ship generation system (new generation rules)
+        var shipGenerator = new ProceduralShipGenerator(Environment.TickCount);
         
         int shipCount = 0;
         
@@ -3425,38 +3425,38 @@ class Program
         var testConfigurations = new[]
         {
             // Fighter examples (different factions, styles, and hull shapes)
-            new { Name = "Military Fighter", Size = ShipSize.Fighter, Role = ShipRole.Combat, Material = "Avorion", Style = "Military", Hull = ShipHullShape.Angular, Position = new Vector3(150, 0, 0) },
-            new { Name = "Scout Fighter", Size = ShipSize.Fighter, Role = ShipRole.Exploration, Material = "Trinium", Style = "Explorers", Hull = ShipHullShape.Sleek, Position = new Vector3(150, 50, 0) },
+            new { Name = "Military Fighter", Size = ProceduralShipSize.Fighter, Role = ProceduralShipRole.Combat, Material = "Avorion", Style = "Military", Hull = ShipHullShape.Angular, Position = new Vector3(150, 0, 0) },
+            new { Name = "Scout Fighter", Size = ProceduralShipSize.Fighter, Role = ProceduralShipRole.Exploration, Material = "Trinium", Style = "Explorers", Hull = ShipHullShape.Sleek, Position = new Vector3(150, 50, 0) },
             
             // Corvette examples with varied hulls
-            new { Name = "Combat Corvette", Size = ShipSize.Corvette, Role = ShipRole.Combat, Material = "Titanium", Style = "Military", Hull = ShipHullShape.Angular, Position = new Vector3(200, 0, 0) },
-            new { Name = "Mining Corvette", Size = ShipSize.Corvette, Role = ShipRole.Mining, Material = "Iron", Style = "Miners", Hull = ShipHullShape.Blocky, Position = new Vector3(200, 50, 0) },
+            new { Name = "Combat Corvette", Size = ProceduralShipSize.Corvette, Role = ProceduralShipRole.Combat, Material = "Titanium", Style = "Military", Hull = ShipHullShape.Angular, Position = new Vector3(200, 0, 0) },
+            new { Name = "Mining Corvette", Size = ProceduralShipSize.Corvette, Role = ProceduralShipRole.Mining, Material = "Iron", Style = "Miners", Hull = ShipHullShape.Blocky, Position = new Vector3(200, 50, 0) },
             
             // Frigate examples with distinct shapes
-            new { Name = "Military Frigate", Size = ShipSize.Frigate, Role = ShipRole.Combat, Material = "Ogonite", Style = "Military", Hull = ShipHullShape.Angular, Position = new Vector3(300, 0, 0) },
-            new { Name = "Trading Frigate", Size = ShipSize.Frigate, Role = ShipRole.Trading, Material = "Xanion", Style = "Traders", Hull = ShipHullShape.Cylindrical, Position = new Vector3(300, 50, 0) },
-            new { Name = "Explorer Frigate", Size = ShipSize.Frigate, Role = ShipRole.Exploration, Material = "Naonite", Style = "Explorers", Hull = ShipHullShape.Sleek, Position = new Vector3(300, -50, 0) },
+            new { Name = "Military Frigate", Size = ProceduralShipSize.Frigate, Role = ProceduralShipRole.Combat, Material = "Ogonite", Style = "Military", Hull = ShipHullShape.Angular, Position = new Vector3(300, 0, 0) },
+            new { Name = "Trading Frigate", Size = ProceduralShipSize.Frigate, Role = ProceduralShipRole.Trading, Material = "Xanion", Style = "Traders", Hull = ShipHullShape.Cylindrical, Position = new Vector3(300, 50, 0) },
+            new { Name = "Explorer Frigate", Size = ProceduralShipSize.Frigate, Role = ProceduralShipRole.Exploration, Material = "Naonite", Style = "Explorers", Hull = ShipHullShape.Sleek, Position = new Vector3(300, -50, 0) },
             
             // Destroyer examples
-            new { Name = "Heavy Destroyer", Size = ShipSize.Destroyer, Role = ShipRole.Combat, Material = "Avorion", Style = "Military", Hull = ShipHullShape.Angular, Position = new Vector3(450, 0, 0) },
-            new { Name = "Salvage Destroyer", Size = ShipSize.Destroyer, Role = ShipRole.Salvage, Material = "Ogonite", Style = "Pirates", Hull = ShipHullShape.Irregular, Position = new Vector3(450, 50, 0) },
+            new { Name = "Heavy Destroyer", Size = ProceduralShipSize.Destroyer, Role = ProceduralShipRole.Combat, Material = "Avorion", Style = "Military", Hull = ShipHullShape.Angular, Position = new Vector3(450, 0, 0) },
+            new { Name = "Salvage Destroyer", Size = ProceduralShipSize.Destroyer, Role = ProceduralShipRole.Salvage, Material = "Ogonite", Style = "Pirates", Hull = ShipHullShape.Irregular, Position = new Vector3(450, 50, 0) },
             
             // Cruiser examples
-            new { Name = "Battle Cruiser", Size = ShipSize.Cruiser, Role = ShipRole.Combat, Material = "Avorion", Style = "Military", Hull = ShipHullShape.Angular, Position = new Vector3(600, 0, 0) },
-            new { Name = "Trade Cruiser", Size = ShipSize.Cruiser, Role = ShipRole.Trading, Material = "Xanion", Style = "Traders", Hull = ShipHullShape.Cylindrical, Position = new Vector3(600, 50, 0) },
+            new { Name = "Battle Cruiser", Size = ProceduralShipSize.Cruiser, Role = ProceduralShipRole.Combat, Material = "Avorion", Style = "Military", Hull = ShipHullShape.Angular, Position = new Vector3(600, 0, 0) },
+            new { Name = "Trade Cruiser", Size = ProceduralShipSize.Cruiser, Role = ProceduralShipRole.Trading, Material = "Xanion", Style = "Traders", Hull = ShipHullShape.Cylindrical, Position = new Vector3(600, 50, 0) },
             
             // Battleship examples
-            new { Name = "Dreadnought", Size = ShipSize.Battleship, Role = ShipRole.Combat, Material = "Avorion", Style = "Military", Hull = ShipHullShape.Angular, Position = new Vector3(800, 0, 0) },
+            new { Name = "Dreadnought", Size = ProceduralShipSize.Battleship, Role = ProceduralShipRole.Combat, Material = "Avorion", Style = "Military", Hull = ShipHullShape.Angular, Position = new Vector3(800, 0, 0) },
             
             // Carrier example
-            new { Name = "Fleet Carrier", Size = ShipSize.Carrier, Role = ShipRole.Multipurpose, Material = "Avorion", Style = "Military", Hull = ShipHullShape.Blocky, Position = new Vector3(1000, 0, 0) },
+            new { Name = "Fleet Carrier", Size = ProceduralShipSize.Carrier, Role = ProceduralShipRole.Multipurpose, Material = "Avorion", Style = "Military", Hull = ShipHullShape.Blocky, Position = new Vector3(1000, 0, 0) },
             
             // Different hull shapes at various positions (for visual comparison)
-            new { Name = "Angular Fighter", Size = ShipSize.Fighter, Role = ShipRole.Combat, Material = "Titanium", Style = "Military", Hull = ShipHullShape.Angular, Position = new Vector3(-150, 0, 100) },
-            new { Name = "Sleek Fighter", Size = ShipSize.Fighter, Role = ShipRole.Combat, Material = "Trinium", Style = "Explorers", Hull = ShipHullShape.Sleek, Position = new Vector3(-150, 0, 150) },
-            new { Name = "Blocky Trader", Size = ShipSize.Corvette, Role = ShipRole.Trading, Material = "Iron", Style = "Traders", Hull = ShipHullShape.Blocky, Position = new Vector3(-150, 0, 200) },
-            new { Name = "Cylindrical Hauler", Size = ShipSize.Frigate, Role = ShipRole.Trading, Material = "Titanium", Style = "Traders", Hull = ShipHullShape.Cylindrical, Position = new Vector3(-150, 0, 250) },
-            new { Name = "Irregular Pirate", Size = ShipSize.Corvette, Role = ShipRole.Combat, Material = "Iron", Style = "Pirates", Hull = ShipHullShape.Irregular, Position = new Vector3(-150, 0, 300) },
+            new { Name = "Angular Fighter", Size = ProceduralShipSize.Fighter, Role = ProceduralShipRole.Combat, Material = "Titanium", Style = "Military", Hull = ShipHullShape.Angular, Position = new Vector3(-150, 0, 100) },
+            new { Name = "Sleek Fighter", Size = ProceduralShipSize.Fighter, Role = ProceduralShipRole.Combat, Material = "Trinium", Style = "Explorers", Hull = ShipHullShape.Sleek, Position = new Vector3(-150, 0, 150) },
+            new { Name = "Blocky Trader", Size = ProceduralShipSize.Corvette, Role = ProceduralShipRole.Trading, Material = "Iron", Style = "Traders", Hull = ShipHullShape.Blocky, Position = new Vector3(-150, 0, 200) },
+            new { Name = "Cylindrical Hauler", Size = ProceduralShipSize.Frigate, Role = ProceduralShipRole.Trading, Material = "Titanium", Style = "Traders", Hull = ShipHullShape.Cylindrical, Position = new Vector3(-150, 0, 250) },
+            new { Name = "Irregular Pirate", Size = ProceduralShipSize.Corvette, Role = ProceduralShipRole.Combat, Material = "Iron", Style = "Pirates", Hull = ShipHullShape.Irregular, Position = new Vector3(-150, 0, 300) },
         };
         
         // Generate all test ships with varied seeds
@@ -3465,39 +3465,36 @@ class Program
             var config = testConfigurations[i];
             try
             {
-                // Create modular ship config
-                var shipConfig = new ModularShipConfig
+                var style = FactionShipStyle.GetDefaultStyle(config.Style);
+                style.PreferredHullShape = config.Hull;
+                
+                var shipConfig = new ShipGenerationConfig
                 {
-                    ShipName = config.Name,
                     Size = config.Size,
                     Role = config.Role,
                     Material = config.Material,
+                    Style = style,
                     Seed = baseSeed + i * 1000 + config.Name.GetHashCode(), // Varied seed for different results each time
-                    AddWings = config.Size <= ShipSize.Destroyer,
-                    AddWeapons = true,
-                    AddCargo = config.Role == ShipRole.Trading || config.Role == ShipRole.Mining,
-                    AddHyperdrive = config.Size >= ShipSize.Corvette
+                    RequireHyperdrive = config.Size >= ProceduralShipSize.Corvette,
+                    RequireCargo = config.Role == ProceduralShipRole.Trading || config.Role == ProceduralShipRole.Mining,
+                    MinimumWeaponMounts = config.Role == ProceduralShipRole.Combat ? 4 : 2
                 };
                 
                 var generatedShip = shipGenerator.GenerateShip(shipConfig);
                 var ship = _gameEngine!.EntityManager.CreateEntity(config.Name);
                 
-                // Add modular ship component
-                _gameEngine.EntityManager.AddComponent(ship.Id, generatedShip.Ship);
-                
-                // Calculate simplified physics properties
-                float momentOfInertia = generatedShip.Ship.TotalMass * 10f; // Simplified calculation
-                float totalTorque = generatedShip.Ship.AggregatedStats.ThrustPower * 0.5f; // Simplified calculation
+                // Add voxel ship component
+                _gameEngine.EntityManager.AddComponent(ship.Id, generatedShip.Structure);
                 
                 // Add physics at specified position
                 var physicsComponent = new PhysicsComponent
                 {
                     Position = playerPosition + config.Position,
                     Velocity = Vector3.Zero,
-                    Mass = generatedShip.Ship.TotalMass,
-                    MomentOfInertia = momentOfInertia,
-                    MaxThrust = generatedShip.Ship.AggregatedStats.ThrustPower,
-                    MaxTorque = totalTorque
+                    Mass = generatedShip.TotalMass,
+                    MomentOfInertia = generatedShip.Structure.MomentOfInertia,
+                    MaxThrust = generatedShip.TotalThrust,
+                    MaxTorque = generatedShip.Structure.TotalTorque
                 };
                 _gameEngine.EntityManager.AddComponent(ship.Id, physicsComponent);
                 
@@ -3505,10 +3502,10 @@ class Program
                 var combatComponent = new CombatComponent
                 {
                     EntityId = ship.Id,
-                    MaxShields = generatedShip.Ship.AggregatedStats.ShieldCapacity,
-                    CurrentShields = generatedShip.Ship.AggregatedStats.ShieldCapacity,
-                    MaxEnergy = generatedShip.Ship.AggregatedStats.PowerGeneration,
-                    CurrentEnergy = generatedShip.Ship.AggregatedStats.PowerGeneration
+                    MaxShields = generatedShip.TotalShieldCapacity,
+                    CurrentShields = generatedShip.TotalShieldCapacity,
+                    MaxEnergy = generatedShip.TotalPowerGeneration,
+                    CurrentEnergy = generatedShip.TotalPowerGeneration
                 };
                 _gameEngine.EntityManager.AddComponent(ship.Id, combatComponent);
                 
