@@ -54,28 +54,28 @@ public class EnhancedVoxelRenderer : IDisposable
 
     private void InitializeLights()
     {
-        // Main sun light - Bright warm white for primary illumination
+        // Main sun light - Warm white from above-right (primary illumination)
         _lights.Add(new LightSource
         {
             Position = new Vector3(250, 350, 250),
-            Color = new Vector3(1.0f, 0.97f, 0.92f), // Warm white
-            Intensity = 2.0f // Brighter main light for better visibility
+            Color = new Vector3(1.0f, 0.95f, 0.88f), // Warm white
+            Intensity = 1.8f
         });
 
-        // Ambient fill light - Cool blue for space atmosphere and shadow fill
+        // Ambient fill light - Cool teal for nebula-lit space atmosphere
         _lights.Add(new LightSource
         {
             Position = new Vector3(-150, -80, 120),
-            Color = new Vector3(0.4f, 0.55f, 0.9f),  // Cool blue
-            Intensity = 0.6f // Increased for better shadow fill
+            Color = new Vector3(0.15f, 0.35f, 0.30f),  // Teal-green (nebula reflection)
+            Intensity = 0.5f
         });
 
-        // Rim/Back light - Creates dramatic edge highlights
+        // Rim/Back light - Cool blue-white for edge definition
         _lights.Add(new LightSource
         {
             Position = new Vector3(0, 80, -250),
-            Color = new Vector3(0.75f, 0.85f, 1.0f),  // Bright blue-white
-            Intensity = 0.8f  // Strong rim light for shiny edge effect
+            Color = new Vector3(0.55f, 0.70f, 0.80f),  // Cool blue-white
+            Intensity = 0.6f
         });
     }
 
@@ -176,7 +176,7 @@ uniform bool enableEnvReflections;   // Environment reflections
 
 // Constants for rendering calculations
 const float PI = 3.14159265359;
-const vec3 ambientLight = vec3(0.18, 0.20, 0.25); // Cool-toned ambient for space
+const vec3 ambientLight = vec3(0.10, 0.12, 0.13); // Dark cool-toned ambient for deep space
 const float EDGE_DETECTION_THRESHOLD = 0.08;       // Edge detection sensitivity
 const float AO_CORNER_THRESHOLD = 0.25;            // Ambient occlusion corner distance
 const float AO_EDGE_THRESHOLD = 0.15;              // Ambient occlusion edge distance
@@ -238,13 +238,14 @@ vec3 getEnvironmentReflection(vec3 R, float roughness)
     // Simulate space environment with stars and nebula hints
     float height = R.y * 0.5 + 0.5;
     
-    // Base space color gradient (dark blue to black)
-    vec3 spaceColor = mix(vec3(0.01, 0.02, 0.05), vec3(0.0, 0.0, 0.02), height);
+    // Base space color gradient (very dark with teal undertone)
+    vec3 spaceColor = mix(vec3(0.01, 0.03, 0.04), vec3(0.0, 0.01, 0.02), height);
     
-    // Add subtle nebula coloring
+    // Add teal-green nebula coloring (matching reference skybox)
+    // Gradient: teal-green (0.03, 0.10, 0.08) -> warm amber (0.10, 0.06, 0.02)
     float nebula = sin(R.x * 3.0 + R.z * 2.0) * 0.5 + 0.5;
     nebula *= sin(R.y * 2.0 + R.x) * 0.5 + 0.5;
-    vec3 nebulaColor = mix(vec3(0.1, 0.05, 0.15), vec3(0.05, 0.1, 0.2), nebula) * 0.3;
+    vec3 nebulaColor = mix(vec3(0.03, 0.10, 0.08), vec3(0.10, 0.06, 0.02), nebula) * 0.25;
     
     // Star-like highlights based on reflection direction
     float stars = pow(max(0.0, hash(floor(R * 50.0)) - 0.97), 2.0) * 30.0;
@@ -356,8 +357,8 @@ vec3 addProceduralDetail(vec3 worldPos, vec3 baseColor, float blockType)
         float ventGlow = sin(ventPos.y * 8.0) * 0.5 + 0.5;
         ventGlow = pow(ventGlow, 3.0) * 0.4 * strength;
         
-        // Hot glow gradient
-        vec3 hotColor = mix(vec3(1.0, 0.3, 0.1), vec3(1.0, 0.8, 0.2), ventGlow);
+        // Hot glow gradient (orange-amber engine glow matching reference)
+        vec3 hotColor = mix(vec3(1.0, 0.5, 0.1), vec3(1.0, 0.7, 0.2), ventGlow);
         return baseColor + hotColor * ventGlow * 0.5;
     }
     // Generators (5) - pulsing energy core
@@ -463,7 +464,7 @@ void main()
     if (enableRimLighting) {
         float rimFactor = 1.0 - NdotV;
         rimFactor = pow(rimFactor, 3.0);
-        rimColor = mix(vec3(0.5, 0.6, 0.8), blockColor, 0.3) * rimFactor * rimStrength;
+        rimColor = mix(vec3(0.3, 0.5, 0.5), blockColor, 0.3) * rimFactor * rimStrength;
     }
 
     // Ambient with AO applied
@@ -502,8 +503,8 @@ void main()
     // Gamma correction
     color = pow(color, vec3(1.0/2.2));
     
-    // Subtle color grading for more vibrant output
-    color = mix(color, color * vec3(1.02, 1.0, 1.05), 0.3); // Slight warm-cool split
+    // Subtle color grading: teal shadows, warm highlights
+    color = mix(color, color * vec3(0.97, 1.02, 1.03), 0.3); // Slight teal-warm split
 
     FragColor = vec4(color, 1.0);
 }

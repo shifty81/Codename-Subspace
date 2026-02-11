@@ -715,15 +715,15 @@ public class AsteroidVoxelGenerator
     {
         return resourceType switch
         {
-            "Avorion" => 0xFF0000,      // Red
-            "Ogonite" => 0xFF8C00,      // Dark Orange
-            "Xanion" => 0x00FF00,       // Green
-            "Trinium" => 0x1E90FF,      // Dodger Blue
-            "Naonite" => 0x9370DB,      // Medium Purple
-            "Titanium" => 0xC0C0C0,     // Silver
-            "Iron" => 0x808080,         // Gray
-            "Crystal" => 0x00FFFF,      // Cyan
-            _ => 0xFFFFFF               // White (default)
+            "Avorion" => 0x8B2020,      // Dark red
+            "Ogonite" => 0x8B5A00,      // Dark amber
+            "Xanion" => 0x2B6B2B,       // Dark green
+            "Trinium" => 0x1A5580,      // Dark blue
+            "Naonite" => 0x5B4590,      // Dark purple
+            "Titanium" => 0x606068,     // Dark silver
+            "Iron" => 0x404040,         // Dark grey
+            "Crystal" => 0x2A8080,      // Dark cyan
+            _ => 0x808080               // Grey (default)
         };
     }
 }

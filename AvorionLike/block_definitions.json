@@ -21,7 +21,7 @@
     "requiresInternalPlacement": false,
     "suitableForExterior": true,
     "minTechLevel": 1,
-    "defaultColor": "#808080"
+    "defaultColor": "#3F3D3B"
   },
   {
     "id": "armor_plating",
@@ -45,7 +45,7 @@
     "requiresInternalPlacement": false,
     "suitableForExterior": true,
     "minTechLevel": 1,
-    "defaultColor": "#A0A0A0"
+    "defaultColor": "#4A4846"
   },
   {
     "id": "engine_main",
@@ -70,7 +70,7 @@
     "requiresInternalPlacement": false,
     "suitableForExterior": true,
     "minTechLevel": 1,
-    "defaultColor": "#FF6600"
+    "defaultColor": "#3D3530"
   },
   {
     "id": "thruster_maneuvering",
@@ -94,7 +94,7 @@
     "requiresInternalPlacement": false,
     "suitableForExterior": true,
     "minTechLevel": 1,
-    "defaultColor": "#0099FF"
+    "defaultColor": "#353840"
   },
   {
     "id": "gyro_array",
@@ -119,7 +119,7 @@
     "requiresInternalPlacement": true,
     "suitableForExterior": false,
     "minTechLevel": 1,
-    "defaultColor": "#00FFFF"
+    "defaultColor": "#383D3E"
   },
   {
     "id": "power_generator",
@@ -144,7 +144,7 @@
     "requiresInternalPlacement": true,
     "suitableForExterior": false,
     "minTechLevel": 1,
-    "defaultColor": "#FFFF00"
+    "defaultColor": "#3D3A32"
   },
   {
     "id": "shield_generator",
@@ -169,7 +169,7 @@
     "requiresInternalPlacement": true,
     "suitableForExterior": false,
     "minTechLevel": 2,
-    "defaultColor": "#00FFAA"
+    "defaultColor": "#333D38"
   },
   {
     "id": "cargo_bay",
@@ -193,7 +193,7 @@
     "requiresInternalPlacement": true,
     "suitableForExterior": false,
     "minTechLevel": 1,
-    "defaultColor": "#8B4513"
+    "defaultColor": "#352E28"
   },
   {
     "id": "crew_quarters",
@@ -217,7 +217,7 @@
     "requiresInternalPlacement": true,
     "suitableForExterior": false,
     "minTechLevel": 1,
-    "defaultColor": "#4169E1"
+    "defaultColor": "#333845"
   },
   {
     "id": "turret_mount",
@@ -242,7 +242,7 @@
     "requiresInternalPlacement": false,
     "suitableForExterior": true,
     "minTechLevel": 1,
-    "defaultColor": "#FF0000"
+    "defaultColor": "#3D3335"
   },
   {
     "id": "hyperdrive_core",
@@ -267,7 +267,7 @@
     "requiresInternalPlacement": true,
     "suitableForExterior": false,
     "minTechLevel": 3,
-    "defaultColor": "#9370DB"
+    "defaultColor": "#383040"
   },
   {
     "id": "pod_docking",
@@ -292,7 +292,7 @@
     "requiresInternalPlacement": false,
     "suitableForExterior": true,
     "minTechLevel": 1,
-    "defaultColor": "#00CED1"
+    "defaultColor": "#333D3E"
   },
   {
     "id": "framework_block",
@@ -316,6 +316,6 @@
     "requiresInternalPlacement": false,
     "suitableForExterior": true,
     "minTechLevel": 1,
-    "defaultColor": "#606060"
+    "defaultColor": "#2E2E2E"
   }
 ]
