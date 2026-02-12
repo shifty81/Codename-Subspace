@@ -123,9 +123,12 @@ BuildCommand ShipReplication::Deserialize(const std::vector<uint8_t>& data) {
     size_t offset = 0;
 
     auto readRaw = [&](void* dst, size_t len) {
-        if (offset + len <= data.size()) {
-            std::memcpy(dst, data.data() + offset, len);
+        if (offset + len > data.size()) {
+            std::memset(dst, 0, len);
+            offset = data.size(); // mark exhausted
+            return;
         }
+        std::memcpy(dst, data.data() + offset, len);
         offset += len;
     };
 
