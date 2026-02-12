@@ -454,13 +454,16 @@ public class BlueprintInventoryComponent : IComponent, ISerializable
     /// </summary>
     public bool AddBlueprint(string blueprintName)
     {
-        if (string.IsNullOrWhiteSpace(blueprintName) || StoredBlueprints.Count >= MaxStorage)
+        if (string.IsNullOrWhiteSpace(blueprintName))
             return false;
         
-        if (!StoredBlueprints.Contains(blueprintName))
-        {
-            StoredBlueprints.Add(blueprintName);
-        }
+        if (StoredBlueprints.Count >= MaxStorage)
+            return false;
+        
+        if (StoredBlueprints.Contains(blueprintName))
+            return false;
+        
+        StoredBlueprints.Add(blueprintName);
         
         return true;
     }
