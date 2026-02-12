@@ -3,12 +3,12 @@
 
 int main(int argc, char* argv[])
 {
-    std::cout << "Codename: Subspace Engine starting..." << std::endl;
-    subspace::engineInfo();
+    std::cout << "Codename: Subspace starting..." << std::endl;
 
-    // TODO: Instantiate and run the engine loop once the core is implemented
-    // subspace::Engine engine;
-    // engine.run();
+    subspace::Engine engine;
+    engine.Initialize();
+    engine.Run();
+    engine.Shutdown();
 
     return 0;
 }
