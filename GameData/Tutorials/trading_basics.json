@@ -1,0 +1,52 @@
+{
+  "Id": "tutorial_trading_basics",
+  "Title": "Trading Basics",
+  "Description": "Learn how to trade resources and make profits at space stations.",
+  "AutoStart": false,
+  "Prerequisites": ["tutorial_basic_controls", "tutorial_mining_basics"],
+  "Steps": [
+    {
+      "Type": "Message",
+      "Title": "Introduction to Trading",
+      "Message": "Trading is a lucrative way to earn credits in Codename: Subspace. You can buy low and sell high to make profits!",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Finding Stations",
+      "Message": "Space stations are your trading hubs:\n• Stations appear on your radar and galaxy map\n• Different stations trade different goods\n• Approach a station and dock to access trading\n• Look for stations marked with trading icons",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Trading Interface",
+      "Message": "When docked at a station:\n• Open the trading menu\n• View available goods and their prices\n• BUY goods when prices are low\n• SELL goods when prices are high\n• Watch your cargo capacity limits",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Trade Goods",
+      "Message": "Common trade goods include:\n• Raw materials (Iron, Titanium, etc.)\n• Processed goods (Steel, Electronics)\n• Consumer goods (Food, Medicine)\n• Luxury items (Artwork, Rare artifacts)\n\nEach sector has different supply and demand, affecting prices.",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Trading Strategy",
+      "Message": "Profitable trading tips:\n• Buy resources in mining sectors (cheap)\n• Sell resources in industrial sectors (expensive)\n• Monitor price trends over time\n• Invest in larger cargo holds for more profit\n• Watch for special trade missions with bonuses",
+      "CanSkip": true
+    },
+    {
+      "Type": "WaitForAction",
+      "Title": "Complete Your First Trade",
+      "Message": "Now find a station and complete a trade! Buy or sell something to learn the system.",
+      "RequiredAction": "complete_trade",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Trading Complete!",
+      "Message": "Great job! You've learned the basics of trading. Keep exploring sectors to find the best trade routes!",
+      "CanSkip": false
+    }
+  ]
+}

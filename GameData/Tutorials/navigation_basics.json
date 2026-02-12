@@ -1,0 +1,52 @@
+{
+  "Id": "tutorial_navigation_basics",
+  "Title": "Navigation & Hyperdrive",
+  "Description": "Learn how to navigate the galaxy and use your hyperdrive to jump between sectors.",
+  "AutoStart": false,
+  "Prerequisites": ["tutorial_basic_controls"],
+  "Steps": [
+    {
+      "Type": "Message",
+      "Title": "Introduction to Navigation",
+      "Message": "The galaxy is vast! To explore efficiently, you'll need to master navigation and hyperdrive technology.",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Galaxy Map",
+      "Message": "Press M to open the Galaxy Map:\n• View all sectors in the galaxy\n• See sector coordinates (X, Y, Z)\n• Tech levels shown by color (Iron to Avorion)\n• Stations, asteroids, and ships marked\n• Zoom and pan to explore",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Understanding Sectors",
+      "Message": "The galaxy is divided into sectors:\n• Each sector has coordinates (X, Y, Z)\n• Sectors contain asteroids, stations, and ships\n• Tech level increases toward the galaxy center\n• Higher tech = better materials and equipment\n• Distance from center affects difficulty",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Hyperdrive System",
+      "Message": "The hyperdrive allows instant travel between sectors:\n• Select a destination sector on the map\n• Right-click or press Jump to initiate\n• Hyperdrive charges for 5 seconds\n• You can cancel during charge time\n• Cooldown period after each jump",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Jump Range",
+      "Message": "Your hyperdrive has a limited jump range:\n• Range shown as circle on galaxy map\n• Upgrade your hyperdrive to increase range\n• Energy cost increases with distance\n• Plan multi-jump routes for distant sectors\n• Some sectors may be unreachable until you upgrade",
+      "CanSkip": true
+    },
+    {
+      "Type": "WaitForKey",
+      "Title": "Open the Galaxy Map",
+      "Message": "Press M to open the Galaxy Map and explore the sectors around you.",
+      "RequiredKey": "M",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Navigation Complete!",
+      "Message": "Excellent! You now know how to navigate the galaxy. Explore freely and discover what each sector has to offer!",
+      "CanSkip": false
+    }
+  ]
+}
