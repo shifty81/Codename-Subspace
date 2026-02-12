@@ -3883,7 +3883,7 @@ static void TestEngine() {
         engine.Initialize();
         engine.SetMaxFrames(5);
         engine.Run();
-        TEST("Ran exactly max frames", engine.GetFrameCount() >= 5);
+        TEST("Ran max frames", engine.GetFrameCount() == 5);
         TEST("State after Run with max frames", engine.GetState() == EngineState::ShuttingDown);
         engine.Shutdown();
         TEST("State stopped", engine.GetState() == EngineState::Stopped);

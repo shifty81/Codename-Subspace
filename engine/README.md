@@ -9,9 +9,9 @@ The engine is organized into modular subsystems that follow the design philosoph
 ```
 engine/
 ├── include/                    # Public headers
-│   ├── core/                   # Math types, engine info
+│   ├── core/                   # Math types, engine core
 │   │   ├── Math.h              # Vector3Int, Vector3 (integer grid math)
-│   │   ├── Engine.h            # Engine version info
+│   │   ├── Engine.h            # Main game engine (lifecycle, game loop, system orchestration)
 │   │   ├── ecs/                # Entity-Component System (ported from C#)
 │   │   │   ├── Entity.h        # Entity with unique ID
 │   │   │   ├── IComponent.h    # Base component interface
