@@ -10,6 +10,21 @@
     <Filter Include="src\core">
       <UniqueIdentifier>{A1B2C301-0000-0000-0000-000000000002}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\core\ecs">
+      <UniqueIdentifier>{A1B2C301-0000-0000-0000-000000000012}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\core\events">
+      <UniqueIdentifier>{A1B2C301-0000-0000-0000-000000000013}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\core\logging">
+      <UniqueIdentifier>{A1B2C301-0000-0000-0000-000000000014}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\core\physics">
+      <UniqueIdentifier>{A1B2C301-0000-0000-0000-000000000015}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\core\resources">
+      <UniqueIdentifier>{A1B2C301-0000-0000-0000-000000000016}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\factions">
       <UniqueIdentifier>{A1B2C301-0000-0000-0000-000000000003}</UniqueIdentifier>
     </Filter>
@@ -36,6 +51,21 @@
     </Filter>
     <Filter Include="include\core">
       <UniqueIdentifier>{B1B2C301-0000-0000-0000-000000000002}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\core\ecs">
+      <UniqueIdentifier>{B1B2C301-0000-0000-0000-000000000012}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\core\events">
+      <UniqueIdentifier>{B1B2C301-0000-0000-0000-000000000013}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\core\logging">
+      <UniqueIdentifier>{B1B2C301-0000-0000-0000-000000000014}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\core\physics">
+      <UniqueIdentifier>{B1B2C301-0000-0000-0000-000000000015}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\core\resources">
+      <UniqueIdentifier>{B1B2C301-0000-0000-0000-000000000016}</UniqueIdentifier>
     </Filter>
     <Filter Include="include\factions">
       <UniqueIdentifier>{B1B2C301-0000-0000-0000-000000000003}</UniqueIdentifier>
@@ -68,6 +98,24 @@
     </ClCompile>
     <ClCompile Include="src\core\Math.cpp">
       <Filter>src\core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\ecs\EntityManager.cpp">
+      <Filter>src\core\ecs</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\events\EventSystem.cpp">
+      <Filter>src\core\events</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\logging\Logger.cpp">
+      <Filter>src\core\logging</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\physics\PhysicsComponent.cpp">
+      <Filter>src\core\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\physics\PhysicsSystem.cpp">
+      <Filter>src\core\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\resources\Inventory.cpp">
+      <Filter>src\core\resources</Filter>
     </ClCompile>
     <ClCompile Include="src\factions\FactionProfile.cpp">
       <Filter>src\factions</Filter>
@@ -124,6 +172,36 @@
     </ClInclude>
     <ClInclude Include="include\core\Math.h">
       <Filter>include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\ecs\Entity.h">
+      <Filter>include\core\ecs</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\ecs\EntityManager.h">
+      <Filter>include\core\ecs</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\ecs\IComponent.h">
+      <Filter>include\core\ecs</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\ecs\SystemBase.h">
+      <Filter>include\core\ecs</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\events\EventSystem.h">
+      <Filter>include\core\events</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\events\GameEvents.h">
+      <Filter>include\core\events</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\logging\Logger.h">
+      <Filter>include\core\logging</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\physics\PhysicsComponent.h">
+      <Filter>include\core\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\physics\PhysicsSystem.h">
+      <Filter>include\core\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\resources\Inventory.h">
+      <Filter>include\core\resources</Filter>
     </ClInclude>
     <ClInclude Include="include\factions\FactionProfile.h">
       <Filter>include\factions</Filter>
