@@ -1,0 +1,2 @@
+/usr/bin/ar qc libsubspace_engine.a CMakeFiles/subspace_engine.dir/src/core/Engine.cpp.o
+/usr/bin/ranlib libsubspace_engine.a
