@@ -1575,6 +1575,12 @@ static void TestTradingSystem() {
     trading.SellResource(ResourceType::Titanium, 10, inv4);
     int afterCredits = inv4.GetResourceAmount(ResourceType::Credits);
     TEST("Round-trip loses credits (spread)", afterCredits < beforeCredits);
+
+    // BuyResource fails due to inventory capacity limit
+    Inventory inv5;
+    inv5.SetMaxCapacity(5); // very small capacity
+    inv5.AddResource(ResourceType::Credits, 50000);
+    TEST("BuyResource fails at capacity", !trading.BuyResource(ResourceType::Iron, 10, inv5));
 }
 
 // ===================================================================
@@ -1642,7 +1648,7 @@ static void TestProgressionSystem() {
     FactionComponent fac2;
     fac2.ModifyReputation("Neutral", 50);
     TEST("Rep 50 is friendly", fac2.IsFriendly("Neutral"));
-    fac2.ModifyReputation("Neutral", -100); // now -50
+    fac2.ModifyReputation("Neutral", -100); // 50 + (-100) = -50
     TEST("Rep -50 is hostile", fac2.IsHostile("Neutral"));
 
     // Multiple factions tracked independently
