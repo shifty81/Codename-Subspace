@@ -61,14 +61,20 @@ std::string ParseString(const std::string& json, size_t& pos) {
     return result;
 }
 
-// Parse an integer starting at pos
+// Parse an integer starting at pos (with overflow protection)
 int ParseInt(const std::string& json, size_t& pos) {
     SkipWS(json, pos);
     size_t start = pos;
     if (pos < json.size() && json[pos] == '-') ++pos;
     while (pos < json.size() && json[pos] >= '0' && json[pos] <= '9') ++pos;
     if (pos == start) return 0;
-    return std::stoi(json.substr(start, pos - start));
+    try {
+        return std::stoi(json.substr(start, pos - start));
+    } catch (const std::out_of_range&) {
+        return 0;
+    } catch (const std::invalid_argument&) {
+        return 0;
+    }
 }
 
 // Find the next occurrence of key "key": in json starting at pos
@@ -220,10 +226,21 @@ Ship Blueprint::ToShip() const {
     ship.seed    = seed;
 
     for (const auto& bd : blocks) {
+        // Validate enum ranges before casting
+        if (bd.shape < 0 || bd.shape > static_cast<int>(BlockShape::Slope))
+            continue;
+        if (bd.type < 0 || bd.type > static_cast<int>(BlockType::WeaponMount))
+            continue;
+        if (bd.material < 0 || bd.material > static_cast<int>(MaterialType::Avorion))
+            continue;
+        // Validate block dimensions are positive
+        if (bd.sizeX <= 0 || bd.sizeY <= 0 || bd.sizeZ <= 0)
+            continue;
+
         auto block = std::make_shared<Block>();
         block->gridPos       = { bd.posX, bd.posY, bd.posZ };
         block->size          = { bd.sizeX, bd.sizeY, bd.sizeZ };
-        block->rotationIndex = bd.rotationIndex;
+        block->rotationIndex = bd.rotationIndex % 4;
         block->shape         = static_cast<BlockShape>(bd.shape);
         block->type          = static_cast<BlockType>(bd.type);
         block->material      = static_cast<MaterialType>(bd.material);

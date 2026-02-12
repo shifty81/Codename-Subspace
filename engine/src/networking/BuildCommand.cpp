@@ -148,6 +148,17 @@ BuildCommand ShipReplication::Deserialize(const std::vector<uint8_t>& data) {
     readRaw(&shape, sizeof(int32_t));
     readRaw(&btype, sizeof(int32_t));
     readRaw(&mat, sizeof(int32_t));
+
+    // Clamp enum values to valid ranges to prevent undefined behavior
+    if (cmdType < 0 || cmdType > static_cast<int32_t>(CommandType::PaintBlock))
+        cmd.type = CommandType::PlaceBlock;
+    if (shape < 0 || shape > static_cast<int32_t>(BlockShape::Slope))
+        shape = 0;
+    if (btype < 0 || btype > static_cast<int32_t>(BlockType::WeaponMount))
+        btype = 0;
+    if (mat < 0 || mat > static_cast<int32_t>(MaterialType::Avorion))
+        mat = 0;
+
     cmd.block.shape    = static_cast<BlockShape>(shape);
     cmd.block.type     = static_cast<BlockType>(btype);
     cmd.block.material = static_cast<MaterialType>(mat);
@@ -158,6 +169,8 @@ BuildCommand ShipReplication::Deserialize(const std::vector<uint8_t>& data) {
 
     int32_t paintMat = 0;
     readRaw(&paintMat, sizeof(int32_t));
+    if (paintMat < 0 || paintMat > static_cast<int32_t>(MaterialType::Avorion))
+        paintMat = 0;
     cmd.paintMaterial = static_cast<MaterialType>(paintMat);
 
     readRaw(&cmd.symmetryFlags, sizeof(uint8_t));

@@ -7,7 +7,13 @@ namespace subspace {
 
 std::vector<Vector3Int> BlockPlacement::GetOccupiedCells(const Block& block) {
     std::vector<Vector3Int> cells;
-    cells.reserve(static_cast<size_t>(block.size.x * block.size.y * block.size.z));
+    // Guard against non-positive dimensions
+    if (block.size.x <= 0 || block.size.y <= 0 || block.size.z <= 0) {
+        return cells;
+    }
+    cells.reserve(static_cast<size_t>(block.size.x) *
+                  static_cast<size_t>(block.size.y) *
+                  static_cast<size_t>(block.size.z));
 
     for (int x = 0; x < block.size.x; ++x) {
         for (int y = 0; y < block.size.y; ++y) {
