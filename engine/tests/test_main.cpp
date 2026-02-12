@@ -22,6 +22,8 @@
 #include "factions/SilhouetteProfile.h"
 #include "ai/AIShipBuilder.h"
 #include "weapons/WeaponSystem.h"
+#include "ships/ModuleDef.h"
+#include "ships/ShipArchetype.h"
 
 using namespace subspace;
 
@@ -555,6 +557,246 @@ static void TestWeaponSystem() {
 }
 
 // ===================================================================
+// 13. ModuleDef tests
+// ===================================================================
+static void TestModuleDef() {
+    std::cout << "[ModuleDef]\n";
+
+    // ModuleDatabase returns all 12 modules
+    auto all = ModuleDatabase::GetAll();
+    TEST("ModuleDatabase has 12 modules", all.size() == 12);
+
+    // Each module has a non-empty id
+    for (const auto* m : all) {
+        TEST(("Module id non-empty: " + m->id).c_str(), !m->id.empty());
+    }
+
+    // Each module has positive mass and HP
+    for (const auto* m : all) {
+        TEST(("Module mass > 0: " + m->id).c_str(), m->mass > 0.0f);
+        TEST(("Module hp > 0: " + m->id).c_str(), m->hp > 0.0f);
+    }
+
+    // Each module has at least one hardpoint
+    for (const auto* m : all) {
+        TEST(("Module has hardpoints: " + m->id).c_str(), m->HardpointCount() > 0);
+    }
+
+    // GetByType filters correctly
+    auto engines = ModuleDatabase::GetByType(ModuleType::Engine);
+    TEST("GetByType Engine returns 2", engines.size() == 2);
+    for (const auto* e : engines) {
+        TEST(("Engine module type correct: " + e->id).c_str(), e->type == ModuleType::Engine);
+    }
+
+    auto cores = ModuleDatabase::GetByType(ModuleType::Core);
+    TEST("GetByType Core returns 2", cores.size() == 2);
+
+    auto weapons = ModuleDatabase::GetByType(ModuleType::Weapon);
+    TEST("GetByType Weapon returns 2", weapons.size() == 2);
+
+    // Named accessors
+    TEST("CoreSmall id", ModuleDatabase::CoreSmall().id == "core_small");
+    TEST("CoreMedium id", ModuleDatabase::CoreMedium().id == "core_medium");
+    TEST("EngineSmall id", ModuleDatabase::EngineSmall().id == "engine_small");
+    TEST("EngineLarge id", ModuleDatabase::EngineLarge().id == "engine_large");
+    TEST("WeaponTurret id", ModuleDatabase::WeaponTurret().id == "weapon_turret");
+    TEST("ShieldGenerator id", ModuleDatabase::ShieldGenerator().id == "shield_gen");
+
+    // FreeHardpointCount equals total when none occupied
+    const ModuleDef& core = ModuleDatabase::CoreSmall();
+    TEST("Free hardpoints = total initially", core.FreeHardpointCount() == core.HardpointCount());
+
+    // CoreSmall has powerOutput > 0
+    TEST("CoreSmall has powerOutput", ModuleDatabase::CoreSmall().powerOutput > 0.0f);
+
+    // EngineSmall has thrustOutput > 0
+    TEST("EngineSmall has thrustOutput", ModuleDatabase::EngineSmall().thrustOutput > 0.0f);
+
+    // CargoSmall has cargoCapacity > 0
+    TEST("CargoSmall has cargoCapacity", ModuleDatabase::CargoSmall().cargoCapacity > 0.0f);
+
+    // ShieldGenerator has shieldStrength > 0
+    TEST("ShieldGenerator has shieldStrength", ModuleDatabase::ShieldGenerator().shieldStrength > 0.0f);
+}
+
+// ===================================================================
+// 14. ModularShip tests
+// ===================================================================
+static void TestModularShip() {
+    std::cout << "[ModularShip]\n";
+
+    // Empty ship
+    {
+        ModularShip ship;
+        TEST("Empty modular ship count 0", ship.ModuleCount() == 0);
+        TEST("Empty modular ship IsEmpty", ship.IsEmpty());
+        TEST("Empty modular ship no core", !ship.HasCore());
+    }
+
+    // Add core module
+    {
+        ModularShip ship;
+        const ModuleDef& core = ModuleDatabase::CoreSmall();
+        int idx = ship.AddModule(&core, Vector3(0, 0, 0));
+        TEST("AddModule returns 0 for first", idx == 0);
+        TEST("Ship has 1 module", ship.ModuleCount() == 1);
+        TEST("Ship has core", ship.HasCore());
+        TEST("Ship has positive mass", ship.totalMass > 0.0f);
+        TEST("Ship has positive HP", ship.totalHP > 0.0f);
+        TEST("Ship has power generation", ship.totalPowerGen > 0.0f);
+    }
+
+    // Add engine → can accelerate
+    {
+        ModularShip ship;
+        ship.AddModule(&ModuleDatabase::CoreSmall(), Vector3(0, 0, 0));
+        TEST("No thrust before engine", !ship.CanAccelerate());
+
+        ship.AddModule(&ModuleDatabase::EngineSmall(), Vector3(0, 0, -2), 0);
+        TEST("Has thrust after engine", ship.CanAccelerate());
+        TEST("Thrust > 0", ship.totalThrust > 0.0f);
+    }
+
+    // Power balance
+    {
+        ModularShip ship;
+        ship.AddModule(&ModuleDatabase::CoreSmall(), Vector3(0, 0, 0)); // powerOutput=10
+        TEST("Core alone is power balanced", ship.PowerBalanced());
+
+        // Add many weapons to exceed power
+        for (int i = 0; i < 5; i++) {
+            ship.AddModule(&ModuleDatabase::WeaponRailgun(), Vector3(static_cast<float>(i)*2, 0, 0), 0);
+        }
+        // 5 railguns * 15 power draw = 75, core output = 10
+        TEST("Many weapons exceeds power", !ship.PowerBalanced());
+    }
+
+    // Destroy module — recursive
+    {
+        ModularShip ship;
+        ship.AddModule(&ModuleDatabase::CoreSmall(), Vector3(0, 0, 0));   // 0
+        ship.AddModule(&ModuleDatabase::HullPlate(), Vector3(0, 0, 2), 0); // 1
+        ship.AddModule(&ModuleDatabase::WeaponTurret(), Vector3(0, 1, 2), 1); // 2 (child of 1)
+
+        TEST("3 modules before destroy", ship.ModuleCount() == 3);
+
+        ship.DestroyModule(1); // should destroy module 1 and child 2
+        TEST("1 module after destroying subtree", ship.ModuleCount() == 1);
+        TEST("Core survives subtree destroy", ship.HasCore());
+    }
+
+    // Destroy core kills ship
+    {
+        ModularShip ship;
+        ship.AddModule(&ModuleDatabase::CoreSmall(), Vector3(0, 0, 0));
+        ship.AddModule(&ModuleDatabase::EngineSmall(), Vector3(0, 0, -2), 0);
+
+        ship.DestroyModule(0); // destroy core and all children
+        TEST("Destroying core empties ship", ship.IsEmpty());
+    }
+
+    // RecalculateStats
+    {
+        ModularShip ship;
+        ship.AddModule(&ModuleDatabase::CoreSmall(), Vector3(0, 0, 0));
+        ship.AddModule(&ModuleDatabase::CargoLarge(), Vector3(0, 0, 3), 0);
+
+        TEST("Cargo adds capacity", ship.totalCargo > 0.0f);
+        float cargoBefore = ship.totalCargo;
+
+        ship.AddModule(&ModuleDatabase::CargoSmall(), Vector3(0, 0, 6), 1);
+        TEST("More cargo increases capacity", ship.totalCargo > cargoBefore);
+    }
+}
+
+// ===================================================================
+// 15. ShipArchetype & Generator tests
+// ===================================================================
+static void TestShipArchetypeGenerator() {
+    std::cout << "[ShipArchetype & Generator]\n";
+
+    // All 5 archetypes exist
+    auto archetypes = ShipArchetypes::GetAll();
+    TEST("5 archetypes exist", archetypes.size() == 5);
+
+    // Interceptor specifics
+    auto interceptor = ShipArchetypes::Interceptor();
+    TEST("Interceptor id", interceptor.id == "interceptor");
+    TEST("Interceptor minModules < maxModules", interceptor.minModules < interceptor.maxModules);
+
+    // Battleship is bigger than interceptor
+    auto battleship = ShipArchetypes::BattleshipArchetype();
+    TEST("Battleship more modules than Interceptor",
+         battleship.maxModules > interceptor.maxModules);
+    TEST("Battleship more weapons than Interceptor",
+         battleship.maxWeapons > interceptor.maxWeapons);
+
+    // Generate Interceptor
+    auto faction = FactionDefinitions::IronDominion();
+    {
+        ModularShipGenerator gen(interceptor, faction, 42);
+        ModularShip ship = gen.Generate();
+        TEST("Generated interceptor not empty", !ship.IsEmpty());
+        TEST("Generated interceptor has core", ship.HasCore());
+        TEST("Generated interceptor can accelerate", ship.CanAccelerate());
+        TEST("Generated interceptor has name", !ship.name.empty());
+        TEST("Generated interceptor has faction", !ship.faction.empty());
+    }
+
+    // Generate Freighter
+    {
+        auto freighter = ShipArchetypes::Freighter();
+        ModularShipGenerator gen(freighter, faction, 99);
+        ModularShip ship = gen.Generate();
+        TEST("Generated freighter not empty", !ship.IsEmpty());
+        TEST("Generated freighter has cargo", ship.totalCargo > 0.0f);
+    }
+
+    // Generate Battleship
+    {
+        ModularShipGenerator gen(battleship, faction, 77);
+        ModularShip ship = gen.Generate();
+        TEST("Generated battleship not empty", !ship.IsEmpty());
+        TEST("Generated battleship has core", ship.HasCore());
+        TEST("Battleship more modules than interceptor min",
+             static_cast<int>(ship.ModuleCount()) >= battleship.minModules);
+    }
+
+    // Deterministic: same seed → same module count
+    {
+        ModularShipGenerator gen1(interceptor, faction, 42);
+        ModularShip s1 = gen1.Generate();
+        ModularShipGenerator gen2(interceptor, faction, 42);
+        ModularShip s2 = gen2.Generate();
+        TEST("Same seed produces same module count", s1.ModuleCount() == s2.ModuleCount());
+    }
+
+    // Different seeds → may differ
+    {
+        ModularShipGenerator gen1(interceptor, faction, 42);
+        ModularShip s1 = gen1.Generate();
+        ModularShipGenerator gen2(interceptor, faction, 999);
+        ModularShip s2 = gen2.Generate();
+        // Both should still be valid
+        TEST("Different seed ship 1 valid", s1.HasCore());
+        TEST("Different seed ship 2 valid", s2.HasCore());
+    }
+
+    // All factions can generate ships
+    {
+        auto allFactions = FactionDefinitions::GetAllFactions();
+        for (const auto& f : allFactions) {
+            auto frigate = ShipArchetypes::FrigateArchetype();
+            ModularShipGenerator gen(frigate, f, 123);
+            ModularShip ship = gen.Generate();
+            TEST(("Faction " + f.id + " generates valid ship").c_str(),
+                 ship.HasCore() && !ship.IsEmpty());
+        }
+    }
+}
+
+// ===================================================================
 // Main
 // ===================================================================
 int main() {
@@ -572,6 +814,9 @@ int main() {
     TestAIShipBuilder();
     TestBlueprint();
     TestWeaponSystem();
+    TestModuleDef();
+    TestModularShip();
+    TestShipArchetypeGenerator();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
               << testsFailed << " failed ===\n";
