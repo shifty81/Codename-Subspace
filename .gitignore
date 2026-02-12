@@ -5,6 +5,7 @@
 
 # C++ / CMake build artifacts
 engine/build/
+engine/_codeql_build_dir/
 cmake-build-*/
 CMakeCache.txt
 CMakeFiles/
