@@ -3,6 +3,17 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
+# C++ / CMake build artifacts
+engine/build/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+*.a
+*.so
+*.dylib
+
 # dotenv files
 .env
 
