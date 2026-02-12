@@ -155,6 +155,8 @@ void ShipRenderer::MarkDirty(
     chunks[cpos].dirty = true;
 
     // Also mark chunks that the block extends into (multi-cell blocks)
+    if (block.size.x <= 0 || block.size.y <= 0 || block.size.z <= 0) return;
+
     Vector3Int endPos = block.gridPos + block.size - Vector3Int::One();
     Vector3Int endChunk = ShipChunk::GetChunkPos(endPos);
 
