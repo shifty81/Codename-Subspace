@@ -100,7 +100,22 @@ engine/
 - C++17 compatible compiler (GCC 7+, Clang 5+, MSVC 2017+)
 - OpenGL development libraries
 
-### Build & Run
+### Build with Visual Studio (Windows — Recommended)
+
+The engine integrates directly into the Visual Studio solution:
+
+1. Open `AvorionLike.sln` in Visual Studio 2022
+2. In Solution Explorer, the **C++ Engine** folder contains:
+   - **SubspaceEngine** — Static library with all engine systems
+   - **SubspaceGame** — Game executable
+   - **SubspaceTests** — 118 unit tests
+3. Select **Debug | x64** or **Release | x64**
+4. Build → Build Solution (Ctrl+Shift+B)
+5. Right-click SubspaceTests → Set as Startup Project → F5 to run tests
+
+**Requirements**: Visual Studio 2022 with "Desktop development with C++" workload.
+
+### Build with CMake (Linux/macOS)
 
 ```bash
 cd engine

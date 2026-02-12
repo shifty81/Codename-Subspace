@@ -15,6 +15,10 @@ compile_commands.json
 *.so
 *.dylib
 
+# VS C++ build output (shared output directories)
+out/
+obj/
+
 # dotenv files
 .env
 
