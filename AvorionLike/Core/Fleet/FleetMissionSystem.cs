@@ -503,14 +503,23 @@ public class BlueprintInventoryComponent : IComponent, ISerializable
     /// </summary>
     public void Deserialize(Dictionary<string, object> data)
     {
-        var entityIdValue = data["EntityId"].ToString();
-        if (!Guid.TryParse(entityIdValue, out var entityId))
+        if (!data.TryGetValue("EntityId", out var entityIdRaw))
+        {
+            throw new InvalidOperationException("Failed to deserialize BlueprintInventoryComponent: Missing EntityId.");
+        }
+        
+        var entityIdValue = entityIdRaw?.ToString();
+        if (string.IsNullOrWhiteSpace(entityIdValue) || !Guid.TryParse(entityIdValue, out var entityId))
         {
             throw new InvalidOperationException($"Failed to deserialize BlueprintInventoryComponent: Invalid EntityId format '{entityIdValue}'.");
         }
         
         EntityId = entityId;
-        MaxStorage = Convert.ToInt32(data["MaxStorage"]);
+        
+        if (data.TryGetValue("MaxStorage", out var maxStorageValue))
+        {
+            MaxStorage = Convert.ToInt32(maxStorageValue);
+        }
         
         StoredBlueprints.Clear();
         
