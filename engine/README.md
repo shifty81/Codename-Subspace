@@ -64,6 +64,15 @@ engine/
 │   ├── navigation/             # Navigation System (ported from C#)
 │   │   └── NavigationSystem.h  # Sectors, hyperdrive, security levels
 │   │
+│   ├── trading/                # Trading System (ported from C#)
+│   │   └── TradingSystem.h     # Buy/sell prices, resource trading
+│   │
+│   ├── rpg/                    # RPG/Progression System (ported from C#)
+│   │   └── ProgressionSystem.h # XP, levels, skill points, faction reputation
+│   │
+│   ├── crew/                   # Crew Management System (ported from C#)
+│   │   └── CrewSystem.h        # Pilots, crew, ship staffing, efficiency
+│   │
 │   ├── networking/             # Multiplayer determinism
 │   │   └── BuildCommand.h      # Deterministic build commands, replication
 │   │
@@ -75,7 +84,7 @@ engine/
 │   └── [mirrors include/ structure]
 │
 ├── tests/
-│   └── test_main.cpp           # 416 unit tests covering all systems
+│   └── test_main.cpp           # 512 unit tests covering all systems
 │
 ├── data/
 │   └── factions/               # JSON faction definitions
@@ -259,6 +268,27 @@ Ships can be built from **modules** that snap together via **hardpoints** — co
 - **CombatSystem** — Projectile simulation, armor reduction by damage type, shield effectiveness multipliers
 - **Damage types:** Kinetic (50% armor), Energy (25% armor), Explosive (75% armor), Thermal (10% armor), EMP (0% armor, 120% shield damage)
 
+### Trading System
+- **TradingSystem** — Buy/sell resource trading with configurable base prices
+- 7 resource base prices: Iron (10) → Avorion (800)
+- 20% buy markup, 20% sell markdown (buy/sell spread)
+- Inventory-integrated transactions with credit validation
+- Equivalent to C# `TradingSystem`
+
+### RPG/Progression System
+- **ProgressionComponent** — XP, levels, skill points with 1.5× scaling per level, 3 skill points per level-up
+- **FactionComponent** — Named faction reputation tracking, clamped to [-100, 100]
+- Friendly threshold: ≥ 50, Hostile threshold: ≤ -50
+- Multiple independent faction relationships per entity
+- Equivalent to C# `ProgressionComponent`, `FactionComponent`
+
+### Crew Management System
+- **Pilot** — Named crew member with combat/navigation/engineering skills (0–1), XP, levels, hiring cost and salary
+- **CrewComponent** — Ship crew management: minimum/current/max crew, pilot assignment, efficiency calculation
+- Crew efficiency: undermanned (proportional), exact (1.0×), overmanned (up to 1.2× bonus)
+- Pilot assignment with exclusivity check (one ship per pilot)
+- Equivalent to C# `Pilot`, `CrewComponent`
+
 ## Ported from C# Prototype
 
 The following core systems have been ported from the C# prototype (`AvorionLike/`) to C++:
@@ -293,6 +323,22 @@ The following core systems have been ported from the C# prototype (`AvorionLike/
 - Add/remove/query resources with capacity enforcement
 - Equivalent to C# `Inventory`, `ResourceType`
 
+### Trading System
+- **TradingSystem** — Buy/sell trading with base prices per resource type
+- Buy price = base × amount × 1.2, Sell price = base × amount × 0.8
+- Full inventory-integrated transactions (credit check, resource transfer)
+- Equivalent to C# `TradingSystem`
+
+### RPG/Progression System
+- **ProgressionComponent** — XP accumulation, level-up with 1.5× scaling, 3 skill points per level
+- **FactionComponent** — Per-faction reputation tracking, clamped [-100, 100], friendly/hostile thresholds
+- Equivalent to C# `ProgressionComponent`, `FactionComponent`
+
+### Crew Management System
+- **Pilot** — Crew member with 3 skills (combat, navigation, engineering), XP/level system (500 × level XP per level), hiring cost and daily salary
+- **CrewComponent** — Ship crew management: min/current/max crew, pilot assignment with exclusivity, efficiency calculation (undermanned/exact/overmanned)
+- Equivalent to C# `Pilot`, `CrewComponent`, `CrewManagementSystem`
+
 ### Migration Status
 
 | C# System | C++ Status | Tests |
@@ -306,9 +352,9 @@ The following core systems have been ported from the C# prototype (`AvorionLike/
 | Persistence/Save-Load | ✅ Ported | 19 tests |
 | Navigation/Hyperdrive | ✅ Ported | 33 tests |
 | Combat System | ✅ Ported | 36 tests |
-| Trading/Economy | ⏳ Planned | — |
-| RPG/Progression | ⏳ Planned | — |
-| Fleet/Crew Management | ⏳ Planned | — |
+| Trading/Economy | ✅ Ported | 22 tests |
+| RPG/Progression | ✅ Ported | 27 tests |
+| Fleet/Crew Management | ✅ Ported | 47 tests |
 | AI Decision/Perception | ⏳ Planned | — |
 | Procedural Generation | ⏳ Planned | — |
 | Networking (full) | ⏳ Planned | — |
