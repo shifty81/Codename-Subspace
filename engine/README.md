@@ -11,7 +11,22 @@ engine/
 ├── include/                    # Public headers
 │   ├── core/                   # Math types, engine info
 │   │   ├── Math.h              # Vector3Int, Vector3 (integer grid math)
-│   │   └── Engine.h            # Engine version info
+│   │   ├── Engine.h            # Engine version info
+│   │   ├── ecs/                # Entity-Component System (ported from C#)
+│   │   │   ├── Entity.h        # Entity with unique ID
+│   │   │   ├── IComponent.h    # Base component interface
+│   │   │   ├── SystemBase.h    # Base system class
+│   │   │   └── EntityManager.h # Entity/component/system management
+│   │   ├── events/             # Event System (ported from C#)
+│   │   │   ├── GameEvents.h    # Event types and data structs
+│   │   │   └── EventSystem.h   # Pub/sub event bus (singleton)
+│   │   ├── logging/            # Logging System (ported from C#)
+│   │   │   └── Logger.h        # Multi-level logger (singleton)
+│   │   ├── physics/            # Physics System (ported from C#)
+│   │   │   ├── PhysicsComponent.h # Newtonian physics properties
+│   │   │   └── PhysicsSystem.h    # Physics simulation & collision
+│   │   └── resources/          # Resource System (ported from C#)
+│   │       └── Inventory.h     # Resource inventory management
 │   │
 │   ├── ships/                  # Ship & block data model
 │   │   ├── Block.h             # Block, BlockShape, BlockType, MaterialType, MaterialDatabase
@@ -50,7 +65,7 @@ engine/
 │   └── [mirrors include/ structure]
 │
 ├── tests/
-│   └── test_main.cpp           # 226 unit tests covering all systems
+│   └── test_main.cpp           # 306 unit tests covering all systems
 │
 ├── data/
 │   └── factions/               # JSON faction definitions
@@ -127,7 +142,7 @@ cmake --build build
 # Run the game
 ./build/subspace_game
 
-# Run tests (226 tests)
+# Run tests (306 tests)
 ./build/subspace_tests
 ```
 
@@ -209,3 +224,61 @@ Ships can be built from **modules** that snap together via **hardpoints** — co
 - Build commands (Place/Remove/Paint) for replication
 - Server validates, applies, broadcasts
 - Clients replay commands deterministically
+
+## Ported from C# Prototype
+
+The following core systems have been ported from the C# prototype (`AvorionLike/`) to C++:
+
+### Entity-Component System (ECS)
+- **Entity** — Lightweight ID + name + active flag
+- **IComponent** — Base struct for all data components
+- **SystemBase** — Abstract base for update-driven systems (enable/disable, initialize/shutdown)
+- **EntityManager** — Thread-safe entity creation/destruction, typed component add/get/remove, system registration and update loop
+- Equivalent to C# `EntityManager`, `Entity`, `IComponent`, `SystemBase`
+
+### Event System
+- **EventSystem** — Singleton pub/sub event bus with immediate and deferred (queued) event processing
+- **GameEvents** — 30+ event type constants (entity, component, resource, physics, combat, trading, faction, network, system, sector)
+- **Event data structs** — `EntityEvent`, `ResourceEvent`, `CollisionEvent`, `ProgressionEvent`
+- Thread-safe with mutex locking
+- Equivalent to C# `EventSystem`, `GameEvents`, `GameEvent` hierarchy
+
+### Logger
+- **Logger** — Singleton multi-level logging (Debug, Info, Warning, Error, Critical)
+- Level filtering, recent log history, console output
+- Thread-safe with mutex locking
+- Equivalent to C# `Logger`, `LogLevel`, `LogEntry`
+
+### Physics System
+- **PhysicsComponent** — Newtonian physics: position, velocity, acceleration, rotation, angular velocity, forces, drag, mass, collision radius
+- **PhysicsSystem** — Full simulation loop: force integration (F=ma), exponential drag, velocity clamping, position update, interpolation for smooth rendering, sphere-based collision detection with elastic response
+- Equivalent to C# `PhysicsComponent`, `PhysicsSystem`
+
+### Resource/Inventory System
+- **Inventory** — Capacity-limited resource storage with 8 resource types (Iron through Avorion + Credits)
+- Add/remove/query resources with capacity enforcement
+- Equivalent to C# `Inventory`, `ResourceType`
+
+### Migration Status
+
+| C# System | C++ Status | Tests |
+|-----------|-----------|-------|
+| Entity-Component System | ✅ Ported | 24 tests |
+| Event System | ✅ Ported | 12 tests |
+| Logger | ✅ Ported | 4 tests |
+| Physics System | ✅ Ported | 19 tests |
+| Resource/Inventory | ✅ Ported | 21 tests |
+| Configuration Manager | ⏳ Planned | — |
+| Combat System | ⏳ Planned | — |
+| Trading/Economy | ⏳ Planned | — |
+| Navigation/Hyperdrive | ⏳ Planned | — |
+| RPG/Progression | ⏳ Planned | — |
+| Fleet/Crew Management | ⏳ Planned | — |
+| AI Decision/Perception | ⏳ Planned | — |
+| Procedural Generation | ⏳ Planned | — |
+| Persistence/Save-Load | ⏳ Planned | — |
+| Networking (full) | ⏳ Planned | — |
+| Scripting/Lua | ⏳ Planned | — |
+| Quest System | ⏳ Planned | — |
+| Tutorial System | ⏳ Planned | — |
+| Graphics/UI (ImGui) | ⏳ Planned | — |

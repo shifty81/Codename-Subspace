@@ -24,6 +24,16 @@
 #include "weapons/WeaponSystem.h"
 #include "ships/ModuleDef.h"
 #include "ships/ShipArchetype.h"
+#include "core/logging/Logger.h"
+#include "core/events/EventSystem.h"
+#include "core/events/GameEvents.h"
+#include "core/ecs/Entity.h"
+#include "core/ecs/IComponent.h"
+#include "core/ecs/SystemBase.h"
+#include "core/ecs/EntityManager.h"
+#include "core/physics/PhysicsComponent.h"
+#include "core/physics/PhysicsSystem.h"
+#include "core/resources/Inventory.h"
 
 using namespace subspace;
 
@@ -797,6 +807,380 @@ static void TestShipArchetypeGenerator() {
 }
 
 // ===================================================================
+// 16. Logger tests
+// ===================================================================
+static void TestLogger() {
+    std::cout << "[Logger]\n";
+
+    auto& logger = Logger::Instance();
+
+    // Singleton returns same instance
+    auto& logger2 = Logger::Instance();
+    TEST("Logger singleton same instance", &logger == &logger2);
+
+    // Set minimum level
+    logger.SetMinimumLevel(LogLevel::Debug);
+    TEST("Logger set min level", logger.GetMinimumLevel() == LogLevel::Debug);
+
+    // Log messages at various levels
+    logger.Debug("Test", "debug message");
+    logger.Info("Test", "info message");
+    logger.Warning("Test", "warning message");
+    logger.Error("Test", "error message");
+    logger.Critical("Test", "critical message");
+
+    auto logs = logger.GetRecentLogs(10);
+    TEST("Logger stores recent logs", logs.size() >= 5);
+
+    // Check that filtering works
+    logger.SetMinimumLevel(LogLevel::Error);
+    size_t countBefore = logger.GetRecentLogs(1000).size();
+    logger.Debug("Test", "should be filtered");
+    size_t countAfter = logger.GetRecentLogs(1000).size();
+    TEST("Logger filters below min level", countBefore == countAfter);
+
+    // Reset for other tests
+    logger.SetMinimumLevel(LogLevel::Warning);
+}
+
+// ===================================================================
+// 17. EventSystem tests
+// ===================================================================
+static void TestEventSystem() {
+    std::cout << "[EventSystem]\n";
+
+    auto& events = EventSystem::Instance();
+    events.ClearAllListeners();
+
+    // Singleton
+    auto& events2 = EventSystem::Instance();
+    TEST("EventSystem singleton same instance", &events == &events2);
+
+    // Subscribe and publish
+    int callCount = 0;
+    events.Subscribe("test.event", [&](const GameEvent& e) {
+        callCount++;
+    });
+    TEST("EventSystem listener count is 1", events.GetListenerCount("test.event") == 1);
+
+    GameEvent evt;
+    events.Publish("test.event", evt);
+    TEST("EventSystem publish calls subscriber", callCount == 1);
+
+    events.Publish("test.event", evt);
+    TEST("EventSystem publish calls again", callCount == 2);
+
+    // Unrelated event doesn't trigger callback
+    events.Publish("other.event", evt);
+    TEST("EventSystem unrelated event no call", callCount == 2);
+
+    // Queue and process
+    auto queued = std::make_shared<GameEvent>();
+    events.QueueEvent("test.event", queued);
+    TEST("EventSystem queued not yet processed", callCount == 2);
+    events.ProcessQueuedEvents();
+    TEST("EventSystem queued now processed", callCount == 3);
+
+    // Clear
+    events.ClearAllListeners();
+    TEST("EventSystem cleared has 0 listeners", events.GetListenerCount("test.event") == 0);
+    events.Publish("test.event", evt);
+    TEST("EventSystem after clear no callback", callCount == 3);
+
+    // GameEvents constants exist
+    TEST("GameEvents::EntityCreated exists", std::string(GameEvents::EntityCreated) == "entity.created");
+    TEST("GameEvents::CollisionDetected exists", std::string(GameEvents::CollisionDetected) == "physics.collision");
+    TEST("GameEvents::GameSaved exists", std::string(GameEvents::GameSaved) == "game.saved");
+}
+
+// ===================================================================
+// 18. ECS tests
+// ===================================================================
+
+// Test component for ECS tests
+struct TestHealthComponent : IComponent {
+    float health = 100.0f;
+    float maxHealth = 100.0f;
+};
+
+struct TestNameComponent : IComponent {
+    std::string displayName;
+};
+
+// Test system for ECS tests
+class TestCountingSystem : public SystemBase {
+public:
+    int updateCount = 0;
+    TestCountingSystem() : SystemBase("TestCountingSystem") {}
+    void Update(float /*deltaTime*/) override { updateCount++; }
+};
+
+static void TestECS() {
+    std::cout << "[ECS]\n";
+
+    // Entity creation
+    EntityManager em;
+    auto& e1 = em.CreateEntity("Ship1");
+    TEST("Entity created with name", e1.name == "Ship1");
+    TEST("Entity has valid id", e1.id != InvalidEntityId);
+    TEST("Entity is active", e1.isActive);
+
+    auto& e2 = em.CreateEntity("Ship2");
+    TEST("Second entity different id", e1.id != e2.id);
+    TEST("Entity count is 2", em.GetEntityCount() == 2);
+
+    // Get entity
+    auto* found = em.GetEntity(e1.id);
+    TEST("GetEntity returns entity", found != nullptr);
+    TEST("GetEntity correct name", found != nullptr && found->name == "Ship1");
+
+    auto* notFound = em.GetEntity(999999);
+    TEST("GetEntity unknown returns null", notFound == nullptr);
+
+    // Add component
+    auto healthComp = std::make_unique<TestHealthComponent>();
+    healthComp->health = 75.0f;
+    auto* hp = em.AddComponent<TestHealthComponent>(e1.id, std::move(healthComp));
+    TEST("AddComponent returns ptr", hp != nullptr);
+    TEST("Component has correct value", hp != nullptr && ApproxEq(hp->health, 75.0f));
+    TEST("Component entityId set", hp != nullptr && hp->entityId == e1.id);
+
+    // Get component
+    auto* retrieved = em.GetComponent<TestHealthComponent>(e1.id);
+    TEST("GetComponent returns same ptr", retrieved == hp);
+
+    // Has component
+    TEST("HasComponent true for added", em.HasComponent<TestHealthComponent>(e1.id));
+    TEST("HasComponent false for other entity", !em.HasComponent<TestHealthComponent>(e2.id));
+    TEST("HasComponent false for other type", !em.HasComponent<TestNameComponent>(e1.id));
+
+    // Add second component type
+    auto nameComp = std::make_unique<TestNameComponent>();
+    nameComp->displayName = "Player Ship";
+    em.AddComponent<TestNameComponent>(e1.id, std::move(nameComp));
+    TEST("Has both components", em.HasComponent<TestHealthComponent>(e1.id) &&
+                                em.HasComponent<TestNameComponent>(e1.id));
+
+    // GetAllComponents
+    auto allHealth = em.GetAllComponents<TestHealthComponent>();
+    TEST("GetAllComponents returns 1", allHealth.size() == 1);
+
+    // Add component to second entity
+    em.AddComponent<TestHealthComponent>(e2.id, std::make_unique<TestHealthComponent>());
+    allHealth = em.GetAllComponents<TestHealthComponent>();
+    TEST("GetAllComponents returns 2 after adding", allHealth.size() == 2);
+
+    // Remove component
+    em.RemoveComponent<TestHealthComponent>(e2.id);
+    TEST("RemoveComponent removes it", !em.HasComponent<TestHealthComponent>(e2.id));
+
+    // Destroy entity
+    em.DestroyEntity(e2.id);
+    TEST("Entity count after destroy", em.GetEntityCount() == 1);
+    TEST("Destroyed entity not found", em.GetEntity(e2.id) == nullptr);
+
+    // System registration and update
+    EntityManager em2;
+    auto sys = std::make_unique<TestCountingSystem>();
+    auto* sysPtr = sys.get();
+    em2.RegisterSystem(std::move(sys));
+    em2.UpdateSystems(1.0f / 60.0f);
+    TEST("System updated once", sysPtr->updateCount == 1);
+    em2.UpdateSystems(1.0f / 60.0f);
+    TEST("System updated twice", sysPtr->updateCount == 2);
+
+    // Disabled system
+    sysPtr->SetEnabled(false);
+    em2.UpdateSystems(1.0f / 60.0f);
+    TEST("Disabled system not updated", sysPtr->updateCount == 2);
+
+    em2.Shutdown();
+}
+
+// ===================================================================
+// 19. PhysicsComponent tests
+// ===================================================================
+static void TestPhysicsComponent() {
+    std::cout << "[PhysicsComponent]\n";
+
+    PhysicsComponent pc;
+
+    // Default values
+    TEST("Default mass 1000", ApproxEq(pc.mass, 1000.0f));
+    TEST("Default drag 0.1", ApproxEq(pc.drag, 0.1f));
+    TEST("Default maxThrust 100", ApproxEq(pc.maxThrust, 100.0f));
+    TEST("Default not static", !pc.isStatic);
+
+    // AddForce
+    pc.AddForce(Vector3(10.0f, 0.0f, 0.0f));
+    TEST("AddForce applies x", ApproxEq(pc.appliedForce.x, 10.0f));
+    pc.AddForce(Vector3(5.0f, 3.0f, 0.0f));
+    TEST("AddForce accumulates", ApproxEq(pc.appliedForce.x, 15.0f) &&
+                                  ApproxEq(pc.appliedForce.y, 3.0f));
+
+    // ClearForces
+    pc.ClearForces();
+    TEST("ClearForces zeroes force", ApproxEq(pc.appliedForce.x, 0.0f) &&
+                                      ApproxEq(pc.appliedForce.y, 0.0f));
+
+    // ApplyThrust (limited by maxThrust)
+    pc.maxThrust = 50.0f;
+    pc.ApplyThrust(Vector3(1.0f, 0.0f, 0.0f), 200.0f);
+    TEST("ApplyThrust clamped to maxThrust", ApproxEq(pc.appliedForce.x, 50.0f));
+
+    pc.ClearForces();
+    pc.ApplyThrust(Vector3(1.0f, 0.0f, 0.0f), 30.0f);
+    TEST("ApplyThrust below max uses actual", ApproxEq(pc.appliedForce.x, 30.0f));
+
+    // AddTorque
+    pc.ClearForces();
+    pc.AddTorque(Vector3(0.0f, 1.0f, 0.0f));
+    TEST("AddTorque applies", ApproxEq(pc.appliedTorque.y, 1.0f));
+}
+
+// ===================================================================
+// 20. PhysicsSystem tests
+// ===================================================================
+static void TestPhysicsSystem() {
+    std::cout << "[PhysicsSystem]\n";
+
+    EntityManager em;
+    PhysicsSystem physSys(em);
+
+    // Create entity with physics
+    auto& ent = em.CreateEntity("TestShip");
+    auto comp = std::make_unique<PhysicsComponent>();
+    comp->mass = 100.0f;
+    comp->drag = 0.0f; // No drag for predictable tests
+    comp->angularDrag = 0.0f;
+    auto* pc = em.AddComponent<PhysicsComponent>(ent.id, std::move(comp));
+
+    // Apply force and update
+    pc->AddForce(Vector3(1000.0f, 0.0f, 0.0f)); // F=1000, m=100, a=10
+    physSys.Update(1.0f); // dt=1s
+    TEST("PhysSystem velocity after force", ApproxEq(pc->velocity.x, 10.0f));
+    TEST("PhysSystem position after update", ApproxEq(pc->position.x, 10.0f));
+
+    // Forces cleared after update
+    TEST("PhysSystem forces cleared", ApproxEq(pc->appliedForce.x, 0.0f));
+
+    // Another update with no force: velocity persists (no drag)
+    physSys.Update(1.0f);
+    TEST("PhysSystem velocity persists (no drag)", ApproxEq(pc->velocity.x, 10.0f));
+    TEST("PhysSystem position advances", ApproxEq(pc->position.x, 20.0f));
+
+    // Static entity should not move
+    auto& staticEnt = em.CreateEntity("Station");
+    auto sComp = std::make_unique<PhysicsComponent>();
+    sComp->isStatic = true;
+    sComp->position = Vector3(100.0f, 0.0f, 0.0f);
+    auto* spc = em.AddComponent<PhysicsComponent>(staticEnt.id, std::move(sComp));
+    spc->AddForce(Vector3(999.0f, 0.0f, 0.0f));
+    physSys.Update(1.0f);
+    TEST("PhysSystem static entity doesn't move", ApproxEq(spc->position.x, 100.0f));
+
+    // Collision detection between two dynamic objects
+    EntityManager em2;
+    PhysicsSystem physSys2(em2);
+
+    auto& obj1 = em2.CreateEntity("Obj1");
+    auto c1 = std::make_unique<PhysicsComponent>();
+    c1->mass = 100.0f;
+    c1->drag = 0.0f;
+    c1->angularDrag = 0.0f;
+    c1->position = Vector3(0.0f, 0.0f, 0.0f);
+    c1->velocity = Vector3(5.0f, 0.0f, 0.0f);
+    c1->collisionRadius = 5.0f;
+    auto* pc1 = em2.AddComponent<PhysicsComponent>(obj1.id, std::move(c1));
+
+    auto& obj2 = em2.CreateEntity("Obj2");
+    auto c2 = std::make_unique<PhysicsComponent>();
+    c2->mass = 100.0f;
+    c2->drag = 0.0f;
+    c2->angularDrag = 0.0f;
+    c2->position = Vector3(8.0f, 0.0f, 0.0f); // Within collision range (5+5=10 > 8)
+    c2->velocity = Vector3(-5.0f, 0.0f, 0.0f);
+    c2->collisionRadius = 5.0f;
+    auto* pc2 = em2.AddComponent<PhysicsComponent>(obj2.id, std::move(c2));
+
+    physSys2.Update(0.001f); // Very small dt for collision test
+    // After elastic collision with equal masses, velocities should swap
+    TEST("PhysSystem collision obj1 velocity changed", !ApproxEq(pc1->velocity.x, 5.0f));
+    TEST("PhysSystem collision obj2 velocity changed", !ApproxEq(pc2->velocity.x, -5.0f));
+
+    // Interpolation test
+    EntityManager em3;
+    PhysicsSystem physSys3(em3);
+    auto& interpEnt = em3.CreateEntity("InterpShip");
+    auto iComp = std::make_unique<PhysicsComponent>();
+    iComp->mass = 100.0f;
+    iComp->drag = 0.0f;
+    iComp->angularDrag = 0.0f;
+    iComp->position = Vector3(0.0f, 0.0f, 0.0f);
+    auto* ipc = em3.AddComponent<PhysicsComponent>(interpEnt.id, std::move(iComp));
+    ipc->AddForce(Vector3(1000.0f, 0.0f, 0.0f));
+    physSys3.Update(1.0f);
+    physSys3.InterpolatePhysics(0.5f);
+    // At alpha=0.5, interpolated should be between previous (0) and current (10)
+    TEST("PhysSystem interpolation midpoint", ApproxEq(ipc->interpolatedPosition.x, 5.0f));
+}
+
+// ===================================================================
+// 21. Inventory tests
+// ===================================================================
+static void TestInventory() {
+    std::cout << "[Inventory]\n";
+
+    Inventory inv;
+
+    // Default state
+    TEST("Inventory default capacity 1000", inv.GetMaxCapacity() == 1000);
+    TEST("Inventory starts empty", inv.GetCurrentCapacity() == 0);
+    TEST("Inventory iron starts at 0", inv.GetResourceAmount(ResourceType::Iron) == 0);
+
+    // Add resources
+    TEST("Inventory add iron succeeds", inv.AddResource(ResourceType::Iron, 100));
+    TEST("Inventory iron amount", inv.GetResourceAmount(ResourceType::Iron) == 100);
+    TEST("Inventory current capacity", inv.GetCurrentCapacity() == 100);
+
+    // Add more types
+    inv.AddResource(ResourceType::Credits, 500);
+    inv.AddResource(ResourceType::Titanium, 200);
+    TEST("Inventory capacity tracks total", inv.GetCurrentCapacity() == 800);
+
+    // HasResource
+    TEST("Inventory has 100 iron", inv.HasResource(ResourceType::Iron, 100));
+    TEST("Inventory doesn't have 101 iron", !inv.HasResource(ResourceType::Iron, 101));
+
+    // Remove resources
+    TEST("Inventory remove 50 iron", inv.RemoveResource(ResourceType::Iron, 50));
+    TEST("Inventory iron after remove", inv.GetResourceAmount(ResourceType::Iron) == 50);
+    TEST("Inventory capacity after remove", inv.GetCurrentCapacity() == 750);
+
+    // Remove more than available fails
+    TEST("Inventory remove too much fails", !inv.RemoveResource(ResourceType::Iron, 999));
+    TEST("Inventory iron unchanged after failed remove", inv.GetResourceAmount(ResourceType::Iron) == 50);
+
+    // Capacity limit
+    inv.SetMaxCapacity(800);
+    TEST("Inventory add over capacity fails", !inv.AddResource(ResourceType::Avorion, 100));
+    TEST("Inventory add within capacity ok", inv.AddResource(ResourceType::Avorion, 50));
+
+    // Clear
+    inv.Clear();
+    TEST("Inventory clear zeros capacity", inv.GetCurrentCapacity() == 0);
+    TEST("Inventory clear zeros iron", inv.GetResourceAmount(ResourceType::Iron) == 0);
+    TEST("Inventory clear zeros credits", inv.GetResourceAmount(ResourceType::Credits) == 0);
+
+    // GetAllResources
+    inv.AddResource(ResourceType::Naonite, 42);
+    const auto& all = inv.GetAllResources();
+    TEST("Inventory getAllResources has naonite", all.count(ResourceType::Naonite) > 0);
+    auto it = all.find(ResourceType::Naonite);
+    TEST("Inventory getAllResources naonite amount", it != all.end() && it->second == 42);
+}
+
+// ===================================================================
 // Main
 // ===================================================================
 int main() {
@@ -817,6 +1201,12 @@ int main() {
     TestModuleDef();
     TestModularShip();
     TestShipArchetypeGenerator();
+    TestLogger();
+    TestEventSystem();
+    TestECS();
+    TestPhysicsComponent();
+    TestPhysicsSystem();
+    TestInventory();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
               << testsFailed << " failed ===\n";
