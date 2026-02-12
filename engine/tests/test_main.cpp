@@ -3546,7 +3546,7 @@ static void TestScriptingEngine() {
     // Unregister
     bool unreg = engine.UnregisterFunction("greet");
     TEST("Unregister success", unreg);
-    TEST("0 functions after unregister", engine.GetFunctionCount() == 1); // bomb remains
+    TEST("1 function after unregister", engine.GetFunctionCount() == 1); // bomb remains
     TEST("greet gone", !engine.HasFunction("greet"));
 
     bool unreg2 = engine.UnregisterFunction("nonexistent");
