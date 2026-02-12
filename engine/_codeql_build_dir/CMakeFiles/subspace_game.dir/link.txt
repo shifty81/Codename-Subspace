@@ -1,1 +1,0 @@
-/home/runner/work/Codename-Subspace/.codeql-scratch/dbs/cpp/working/autobuild/bin/c++ -O3 -DNDEBUG -Wl,--dependency-file=CMakeFiles/subspace_game.dir/link.d CMakeFiles/subspace_game.dir/src/main.cpp.o -o subspace_game  libsubspace_engine.a /usr/lib/x86_64-linux-gnu/libGL.so
