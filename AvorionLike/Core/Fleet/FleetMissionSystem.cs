@@ -240,12 +240,28 @@ public class FleetMissionSystem
         
         // Store subsystems in dedicated inventory
         var subsystemInventory = _entityManager.GetComponent<SubsystemInventoryComponent>(playerEntity.Id);
-        if (subsystemInventory != null)
+        if (subsystemInventory == null)
         {
-            foreach (var subsystem in mission.RewardSubsystems)
-            {
-                subsystemInventory.AddSubsystem(subsystem);
-            }
+            subsystemInventory = new SubsystemInventoryComponent();
+            _entityManager.AddComponent(playerEntity.Id, subsystemInventory);
+        }
+        
+        foreach (var subsystem in mission.RewardSubsystems)
+        {
+            subsystemInventory.AddSubsystem(subsystem);
+        }
+        
+        // Store blueprints in dedicated inventory
+        var blueprintInventory = _entityManager.GetComponent<BlueprintInventoryComponent>(playerEntity.Id);
+        if (blueprintInventory == null)
+        {
+            blueprintInventory = new BlueprintInventoryComponent();
+            _entityManager.AddComponent(playerEntity.Id, blueprintInventory);
+        }
+        
+        foreach (var blueprint in mission.RewardBlueprints)
+        {
+            blueprintInventory.AddBlueprint(blueprint);
         }
     }
     
@@ -416,6 +432,96 @@ public class SubsystemInventoryComponent : IComponent, ISerializable
                     if (subsystemObj is Dictionary<string, object> subsystemDict)
                     {
                         StoredSubsystems.Add(RPG.SubsystemUpgrade.Deserialize(subsystemDict));
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// <summary>
+/// Component for storing blueprint inventory
+/// </summary>
+public class BlueprintInventoryComponent : IComponent, ISerializable
+{
+    public Guid EntityId { get; set; }
+    
+    public List<string> StoredBlueprints { get; set; } = new();
+    public int MaxStorage { get; set; } = 100;
+    
+    /// <summary>
+    /// Add a blueprint to inventory
+    /// </summary>
+    public bool AddBlueprint(string blueprintName)
+    {
+        if (string.IsNullOrWhiteSpace(blueprintName) || StoredBlueprints.Count >= MaxStorage)
+            return false;
+        
+        if (!StoredBlueprints.Contains(blueprintName))
+        {
+            StoredBlueprints.Add(blueprintName);
+        }
+        
+        return true;
+    }
+    
+    /// <summary>
+    /// Remove a blueprint from inventory
+    /// </summary>
+    public bool RemoveBlueprint(string blueprintName)
+    {
+        if (string.IsNullOrWhiteSpace(blueprintName))
+            return false;
+        
+        return StoredBlueprints.Remove(blueprintName);
+    }
+    
+    /// <summary>
+    /// Serialize the component
+    /// </summary>
+    public Dictionary<string, object> Serialize()
+    {
+        return new Dictionary<string, object>
+        {
+            ["EntityId"] = EntityId.ToString(),
+            ["StoredBlueprints"] = StoredBlueprints,
+            ["MaxStorage"] = MaxStorage
+        };
+    }
+    
+    /// <summary>
+    /// Deserialize the component
+    /// </summary>
+    public void Deserialize(Dictionary<string, object> data)
+    {
+        EntityId = Guid.Parse(data["EntityId"].ToString()!);
+        MaxStorage = Convert.ToInt32(data["MaxStorage"]);
+        
+        StoredBlueprints.Clear();
+        
+        if (data.ContainsKey("StoredBlueprints"))
+        {
+            var blueprintsData = data["StoredBlueprints"];
+            
+            if (blueprintsData is System.Text.Json.JsonElement jsonElement && 
+                jsonElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+            {
+                foreach (var blueprintElement in jsonElement.EnumerateArray())
+                {
+                    var blueprintName = blueprintElement.GetString();
+                    if (!string.IsNullOrWhiteSpace(blueprintName))
+                    {
+                        StoredBlueprints.Add(blueprintName);
+                    }
+                }
+            }
+            else if (blueprintsData is List<object> blueprintList)
+            {
+                foreach (var blueprintObj in blueprintList)
+                {
+                    if (blueprintObj is string blueprintName && !string.IsNullOrWhiteSpace(blueprintName))
+                    {
+                        StoredBlueprints.Add(blueprintName);
                     }
                 }
             }
