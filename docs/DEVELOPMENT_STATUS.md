@@ -9,11 +9,13 @@
 ## Quick Status Overview
 
 ### 🔧 C++ Engine (Primary Focus)
-- **Modular ship generation system** with hardpoint-based module assembly ✨ **NEW**
+- **Engine game loop implemented** — Initialize / Run / Tick / Shutdown lifecycle ✨ **NEW**
+- **9 systems registered** into ECS update loop (Physics, Combat, Navigation, Power, AI, Mining, Quest, Tutorial, UI)
+- **Modular ship generation system** with hardpoint-based module assembly
 - **12 module types** (Core, Engine, Weapon, Hull, Cargo, Shield, Utility)
 - **5 ship archetypes** (Interceptor, Frigate, Freighter, Cruiser, Battleship)
 - **Faction-aware procedural generation** using BFS assembly pipeline
-- **1049/1049 unit tests** passing across all engine systems
+- **1087/1087 unit tests** passing across all engine systems
 - **12 subsystems** operational (blocks, modules, editor, weapons, factions, AI, rendering, blueprints, networking, damage, scripting, UI)
 
 ### ✅ C# Prototype (Playable Reference)
@@ -24,13 +26,13 @@
 - **All core mechanics**: Mining, combat, trading, building, navigation
 
 ### 📊 Completion Metrics
-- **C++ Engine Systems:** 75% complete (all systems ported, game loop pending)
+- **C++ Engine Systems:** 80% complete (game loop implemented, all systems integrated)
 - **C# Backend Systems:** 95% complete
 - **C# Frontend/UI:** 90% complete
 - **Gameplay Loop:** 85% complete
 - **Content:** 60% complete
 - **Polish:** 40% complete
-- **Overall:** ~75% complete (weighted toward C++ engine work)
+- **Overall:** ~78% complete (weighted toward C++ engine work)
 
 ---
 
@@ -221,7 +223,8 @@
 - **Lines of Code:** ~35,000+
 - **Systems:** 19+ major systems
 - **Components:** 40+ component types
-- **Test Pass Rate:** 100% (32/32)
+- **C++ Test Pass Rate:** 100% (1087/1087)
+- **C# Test Pass Rate:** 100% (32/32)
 
 ### Quality Metrics
 - **Build Status:** ✅ 0 errors, 0 warnings

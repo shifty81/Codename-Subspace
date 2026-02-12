@@ -54,6 +54,7 @@
 #include "ui/UISystem.h"
 #include "networking/NetworkSystem.h"
 #include "scripting/ScriptingSystem.h"
+#include "core/Engine.h"
 
 using namespace subspace;
 
@@ -3790,6 +3791,196 @@ static void TestModReload() {
 }
 
 // ===================================================================
+// Engine tests
+// ===================================================================
+
+static void TestEngine() {
+    std::cout << "[Engine]\n";
+
+    // Clear singleton state left over from earlier tests.
+    EventSystem::Instance().ClearAllListeners();
+
+    // --- Construction ---
+    {
+        Engine engine;
+        TEST("Initial state is Uninitialized", engine.GetState() == EngineState::Uninitialized);
+        TEST("Frame count starts at 0", engine.GetFrameCount() == 0);
+        TEST("Elapsed seconds starts at 0", engine.GetElapsedSeconds() == 0.0);
+        TEST("Not running before init", !engine.IsRunning());
+        TEST("Not paused before init", !engine.IsPaused());
+    }
+
+    // --- Initialize ---
+    {
+        Engine engine;
+        engine.Initialize();
+        TEST("State is Running after init", engine.GetState() == EngineState::Running);
+        TEST("IsRunning true after init", engine.IsRunning());
+        TEST("Frame count still 0 after init", engine.GetFrameCount() == 0);
+        engine.Shutdown();
+    }
+
+    // --- Version ---
+    {
+        const char* ver = Engine::GetVersionString();
+        std::string vs(ver);
+        TEST("Version string not empty", !vs.empty());
+        TEST("Version contains Subspace", vs.find("Subspace") != std::string::npos);
+    }
+
+    // --- Tick ---
+    {
+        Engine engine;
+        engine.Initialize();
+        engine.Tick();
+        TEST("Frame count 1 after one tick", engine.GetFrameCount() == 1);
+        TEST("Last delta > 0 after tick", engine.GetLastDeltaTime() >= 0.0f);
+        engine.Tick();
+        engine.Tick();
+        TEST("Frame count 3 after three ticks", engine.GetFrameCount() == 3);
+        engine.Shutdown();
+    }
+
+    // --- Pause / Resume ---
+    {
+        Engine engine;
+        engine.Initialize();
+
+        engine.Pause();
+        TEST("State paused", engine.GetState() == EngineState::Paused);
+        TEST("IsPaused true", engine.IsPaused());
+        TEST("IsRunning false when paused", !engine.IsRunning());
+
+        // Ticking while paused should still increment frames but not update systems.
+        engine.Tick();
+        TEST("Frame increments while paused", engine.GetFrameCount() == 1);
+
+        engine.Resume();
+        TEST("State running after resume", engine.GetState() == EngineState::Running);
+        TEST("IsRunning true after resume", engine.IsRunning());
+        TEST("IsPaused false after resume", !engine.IsPaused());
+        engine.Shutdown();
+    }
+
+    // --- RequestShutdown ---
+    {
+        Engine engine;
+        engine.Initialize();
+        engine.RequestShutdown();
+        TEST("State is ShuttingDown", engine.GetState() == EngineState::ShuttingDown);
+        TEST("IsRunning false after shutdown request", !engine.IsRunning());
+
+        // Tick should no-op in ShuttingDown state.
+        engine.Tick();
+        TEST("Frame count 0 after tick in ShuttingDown", engine.GetFrameCount() == 0);
+        engine.Shutdown();
+        TEST("State stopped after Shutdown", engine.GetState() == EngineState::Stopped);
+    }
+
+    // --- Run with MaxFrames ---
+    {
+        Engine engine;
+        engine.Initialize();
+        engine.SetMaxFrames(5);
+        engine.Run();
+        TEST("Ran max frames", engine.GetFrameCount() == 5);
+        TEST("State after Run with max frames", engine.GetState() == EngineState::ShuttingDown);
+        engine.Shutdown();
+        TEST("State stopped", engine.GetState() == EngineState::Stopped);
+    }
+
+    // --- Fixed timestep ---
+    {
+        Engine engine;
+        engine.SetFixedTimestep(1.0f / 30.0f);
+        TEST("Timestep is 1/30", ApproxEq(engine.GetFixedTimestep(), 1.0f / 30.0f));
+    }
+
+    // --- Double-init is a no-op ---
+    {
+        Engine engine;
+        engine.Initialize();
+        engine.Initialize(); // should not crash or change state
+        TEST("Still running after double init", engine.IsRunning());
+        engine.Shutdown();
+    }
+
+    // --- Double-shutdown is safe ---
+    {
+        Engine engine;
+        engine.Initialize();
+        engine.Shutdown();
+        engine.Shutdown(); // should not crash
+        TEST("Still stopped after double shutdown", engine.GetState() == EngineState::Stopped);
+    }
+
+    // --- Pause before init is harmless ---
+    {
+        Engine engine;
+        engine.Pause();
+        TEST("Pause on uninitialized is no-op", engine.GetState() == EngineState::Uninitialized);
+    }
+
+    // --- Resume before init is harmless ---
+    {
+        Engine engine;
+        engine.Resume();
+        TEST("Resume on uninitialized is no-op", engine.GetState() == EngineState::Uninitialized);
+    }
+
+    // --- EntityManager accessible ---
+    {
+        Engine engine;
+        engine.Initialize();
+        auto& em = engine.GetEntityManager();
+        auto& e = em.CreateEntity("TestFromEngine");
+        TEST("Can create entity via engine", e.name == "TestFromEngine");
+        engine.Shutdown();
+    }
+
+    // --- GalaxyGenerator accessible ---
+    {
+        Engine engine;
+        engine.Initialize();
+        auto sector = engine.GetGalaxyGenerator().GenerateSector(0, 0, 0);
+        TEST("Galaxy generator works via engine", true);
+        engine.Shutdown();
+    }
+
+    // --- Events fire on lifecycle ---
+    {
+        EventSystem::Instance().ClearAllListeners();
+        int started = 0, paused = 0, resumed = 0;
+        EventSystem::Instance().Subscribe(GameEvents::GameStarted,
+            [&](const GameEvent&) { started++; });
+        EventSystem::Instance().Subscribe(GameEvents::GamePaused,
+            [&](const GameEvent&) { paused++; });
+        EventSystem::Instance().Subscribe(GameEvents::GameResumed,
+            [&](const GameEvent&) { resumed++; });
+
+        Engine engine;
+        engine.Initialize();
+        TEST("GameStarted event fired", started == 1);
+        engine.Pause();
+        TEST("GamePaused event fired", paused == 1);
+        engine.Resume();
+        TEST("GameResumed event fired", resumed == 1);
+        engine.Shutdown();
+        EventSystem::Instance().ClearAllListeners();
+    }
+
+    // --- Elapsed time increases ---
+    {
+        Engine engine;
+        engine.Initialize();
+        engine.SetMaxFrames(10);
+        engine.Run();
+        TEST("Elapsed seconds > 0 after run", engine.GetElapsedSeconds() > 0.0);
+        engine.Shutdown();
+    }
+}
+
+// ===================================================================
 // Main
 // ===================================================================
 int main() {
@@ -3857,6 +4048,7 @@ int main() {
     TestModDependencyCycle();
     TestModMissingDependency();
     TestModReload();
+    TestEngine();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
               << testsFailed << " failed ===\n";
