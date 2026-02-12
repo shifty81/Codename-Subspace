@@ -1,0 +1,59 @@
+{
+  "id": "nomad_continuum",
+  "displayName": "Nomad Continuum",
+  "palette": {
+    "hull": "Trinium",
+    "armor": "Naonite",
+    "accent": "Cyan"
+  },
+  "silhouette": {
+    "length": "Long",
+    "thickness": "Thin",
+    "symmetry": "Axial",
+    "mass": "Spine",
+    "void": "Channelled"
+  },
+  "shapeLanguage": {
+    "allowed": ["Rect", "Slope"],
+    "wedgeChance": 0.2,
+    "cornerChance": 0.0
+  },
+  "bias": {
+    "armor": 0.6,
+    "engine": 1.5,
+    "weapons": 1.0
+  },
+  "combatAI": {
+    "preferredRange": "Long",
+    "maneuver": "Evasive",
+    "priority": "WeakestEnemy",
+    "retreat": "AtHalfHP"
+  },
+  "fleets": {
+    "early": {
+      "name": "Skirmish Line",
+      "composition": [
+        {"class": "Scout", "count": 3},
+        {"class": "Frigate", "count": 1}
+      ],
+      "formation": "Skirmish"
+    },
+    "mid": {
+      "name": "Kill Lance",
+      "composition": [
+        {"class": "Destroyer", "count": 2},
+        {"class": "Scout", "count": 3}
+      ],
+      "formation": "Lance"
+    },
+    "late": {
+      "name": "Longshot Fleet",
+      "composition": [
+        {"class": "Battlecruiser", "count": 1},
+        {"class": "Destroyer", "count": 3},
+        {"class": "Scout", "count": 4}
+      ],
+      "formation": "Echelon"
+    }
+  }
+}

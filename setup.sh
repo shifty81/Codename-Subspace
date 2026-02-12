@@ -1,6 +1,7 @@
 #!/bin/bash
-# AvorionLike - Automated Setup Script for Linux/macOS
-# This script checks for prerequisites and sets up the project automatically
+# Codename: Subspace - Automated Setup Script for Linux/macOS
+# This script checks for prerequisites and sets up both the C# prototype
+# and the new C++ engine.
 
 set -e  # Exit on error
 
@@ -114,14 +115,72 @@ echo -e "${GREEN}✓ Project built successfully${NC}"
 echo ""
 
 echo -e "${CYAN}========================================${NC}"
-echo -e "${GREEN}  Setup Complete!${NC}"
+echo -e "${GREEN}  C# Prototype Setup Complete!${NC}"
 echo -e "${CYAN}========================================${NC}"
 echo ""
-echo -e "${YELLOW}You can now run the application using:${NC}"
+echo -e "${YELLOW}You can now run the C# prototype using:${NC}"
 echo -e "${CYAN}  cd AvorionLike${NC}"
 echo -e "${CYAN}  dotnet run${NC}"
 echo ""
 echo -e "${YELLOW}Or build and run in release mode:${NC}"
 echo -e "${CYAN}  cd AvorionLike${NC}"
 echo -e "${CYAN}  dotnet run --configuration Release${NC}"
+echo ""
+
+# ================================================================
+# C++ Engine Build
+# ================================================================
+echo -e "${CYAN}========================================${NC}"
+echo -e "${CYAN}  C++ Engine (CMake)${NC}"
+echo -e "${CYAN}========================================${NC}"
+echo ""
+
+if command_exists cmake; then
+    CMAKE_VERSION=$(cmake --version | head -1)
+    echo -e "${GREEN}✓ CMake found: $CMAKE_VERSION${NC}"
+    echo ""
+
+    if command_exists g++ || command_exists clang++; then
+        echo -e "${YELLOW}Building C++ engine...${NC}"
+        cd "$SCRIPT_DIR/engine"
+        cmake -B build -DCMAKE_BUILD_TYPE=Debug
+        if cmake --build build; then
+            echo -e "${GREEN}✓ C++ engine built successfully${NC}"
+            echo ""
+
+            echo -e "${YELLOW}Running C++ tests...${NC}"
+            if [ -f "build/subspace_tests" ]; then
+                ./build/subspace_tests
+            fi
+        else
+            echo -e "${YELLOW}⚠️  C++ engine build had issues (this is optional)${NC}"
+        fi
+    else
+        echo -e "${YELLOW}⚠️  No C++ compiler found. Install g++ or clang++:${NC}"
+        if [[ "$OS" == "linux" ]]; then
+            echo -e "${CYAN}  sudo apt install build-essential libgl-dev${NC}"
+        elif [[ "$OS" == "macos" ]]; then
+            echo -e "${CYAN}  xcode-select --install${NC}"
+        fi
+    fi
+else
+    echo -e "${YELLOW}⚠️  CMake not found. Install it to build the C++ engine:${NC}"
+    if [[ "$OS" == "linux" ]]; then
+        echo -e "${CYAN}  sudo apt install cmake build-essential libgl-dev${NC}"
+    elif [[ "$OS" == "macos" ]]; then
+        echo -e "${CYAN}  brew install cmake${NC}"
+    fi
+fi
+
+echo ""
+echo -e "${CYAN}========================================${NC}"
+echo -e "${GREEN}  All Done!${NC}"
+echo -e "${CYAN}========================================${NC}"
+echo ""
+echo -e "${YELLOW}Projects in this repository:${NC}"
+echo -e "${CYAN}  C# Prototype (AvorionLike)  — existing gameplay prototype${NC}"
+echo -e "${CYAN}  C++ Engine   (engine/)       — new block-based ship engine${NC}"
+echo ""
+echo -e "${YELLOW}On Windows, open AvorionLike.sln in Visual Studio to build everything.${NC}"
+echo -e "${YELLOW}On Linux/macOS, use dotnet + cmake as shown above.${NC}"
 echo ""

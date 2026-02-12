@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!-- ================================================================== -->
+  <!-- Project configurations                                              -->
+  <!-- ================================================================== -->
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+
+  <!-- ================================================================== -->
+  <!-- Global properties                                                   -->
+  <!-- ================================================================== -->
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{CD7389A1-1C6F-4276-843C-34CCCF05573A}</ProjectGuid>
+    <RootNamespace>SubspaceEngine</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>SubspaceEngine</ProjectName>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <!-- ================================================================== -->
+  <!-- Configuration type: Static Library                                  -->
+  <!-- ================================================================== -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <!-- ================================================================== -->
+  <!-- Output directories                                                  -->
+  <!-- ================================================================== -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>$(SolutionDir)out\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)obj\$(ProjectName)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>$(SolutionDir)out\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)obj\$(ProjectName)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+
+  <!-- ================================================================== -->
+  <!-- Compiler / linker settings                                          -->
+  <!-- ================================================================== -->
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_LIB;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_LIB;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <!-- ================================================================== -->
+  <!-- Source files                                                        -->
+  <!-- ================================================================== -->
+  <ItemGroup>
+    <ClCompile Include="src\ai\AIShipBuilder.cpp" />
+    <ClCompile Include="src\core\Engine.cpp" />
+    <ClCompile Include="src\core\Math.cpp" />
+    <ClCompile Include="src\factions\FactionProfile.cpp" />
+    <ClCompile Include="src\factions\SilhouetteProfile.cpp" />
+    <ClCompile Include="src\networking\BuildCommand.cpp" />
+    <ClCompile Include="src\rendering\GhostRenderer.cpp" />
+    <ClCompile Include="src\rendering\ShipRenderer.cpp" />
+    <ClCompile Include="src\ship_editor\ShipEditorController.cpp" />
+    <ClCompile Include="src\ship_editor\ShipEditorState.cpp" />
+    <ClCompile Include="src\ship_editor\SymmetrySystem.cpp" />
+    <ClCompile Include="src\ships\Block.cpp" />
+    <ClCompile Include="src\ships\BlockPlacement.cpp" />
+    <ClCompile Include="src\ships\Blueprint.cpp" />
+    <ClCompile Include="src\ships\Ship.cpp" />
+    <ClCompile Include="src\ships\ShipDamage.cpp" />
+    <ClCompile Include="src\ships\ShipStats.cpp" />
+    <ClCompile Include="src\weapons\WeaponSystem.cpp" />
+  </ItemGroup>
+
+  <!-- ================================================================== -->
+  <!-- Header files                                                        -->
+  <!-- ================================================================== -->
+  <ItemGroup>
+    <ClInclude Include="include\ai\AIShipBuilder.h" />
+    <ClInclude Include="include\core\Engine.h" />
+    <ClInclude Include="include\core\Math.h" />
+    <ClInclude Include="include\factions\FactionProfile.h" />
+    <ClInclude Include="include\factions\SilhouetteProfile.h" />
+    <ClInclude Include="include\networking\BuildCommand.h" />
+    <ClInclude Include="include\rendering\GhostRenderer.h" />
+    <ClInclude Include="include\rendering\ShipRenderer.h" />
+    <ClInclude Include="include\ship_editor\ShipEditorController.h" />
+    <ClInclude Include="include\ship_editor\ShipEditorState.h" />
+    <ClInclude Include="include\ship_editor\SymmetrySystem.h" />
+    <ClInclude Include="include\ships\Block.h" />
+    <ClInclude Include="include\ships\BlockPlacement.h" />
+    <ClInclude Include="include\ships\Blueprint.h" />
+    <ClInclude Include="include\ships\Ship.h" />
+    <ClInclude Include="include\ships\ShipDamage.h" />
+    <ClInclude Include="include\ships\ShipStats.h" />
+    <ClInclude Include="include\weapons\WeaponSystem.h" />
+  </ItemGroup>
+
+  <!-- ================================================================== -->
+  <!-- JSON data files (included for easy access in VS, not compiled)      -->
+  <!-- ================================================================== -->
+  <ItemGroup>
+    <None Include="data\factions\iron_dominion.json" />
+    <None Include="data\factions\nomad_continuum.json" />
+    <None Include="data\factions\helix_covenant.json" />
+    <None Include="data\factions\ashen_clades.json" />
+    <None Include="data\factions\ascended_archive.json" />
+    <None Include="CMakeLists.txt" />
+    <None Include="README.md" />
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+
+</Project>

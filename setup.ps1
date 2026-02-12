@@ -1,9 +1,10 @@
 #!/usr/bin/env pwsh
-# AvorionLike - Automated Setup Script for Windows/PowerShell
-# This script checks for prerequisites and sets up the project automatically
+# Codename: Subspace - Automated Setup Script for Windows/PowerShell
+# This script checks for prerequisites and sets up both the C# prototype
+# and the new C++ engine.
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  AvorionLike Setup Script" -ForegroundColor Cyan
+Write-Host "  Codename: Subspace Setup Script" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -109,14 +110,86 @@ Write-Host "✓ Project built successfully" -ForegroundColor Green
 Write-Host ""
 
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  Setup Complete!" -ForegroundColor Green
+Write-Host "  C# Prototype Setup Complete!" -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "You can now run the application using:" -ForegroundColor Yellow
+Write-Host "You can now run the C# prototype using:" -ForegroundColor Yellow
 Write-Host "  cd AvorionLike" -ForegroundColor Cyan
 Write-Host "  dotnet run" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "Or build and run in release mode:" -ForegroundColor Yellow
 Write-Host "  cd AvorionLike" -ForegroundColor Cyan
 Write-Host "  dotnet run --configuration Release" -ForegroundColor Cyan
+Write-Host ""
+
+# ================================================================
+# C++ Engine Build (Visual Studio)
+# ================================================================
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  C++ Engine (Visual Studio)" -ForegroundColor Cyan
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
+
+# Check for Visual Studio MSBuild
+$msbuildPath = $null
+$vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+if (Test-Path $vswhere) {
+    $vsPath = & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath 2>$null
+    if ($vsPath) {
+        $msbuildPath = Join-Path $vsPath "MSBuild\Current\Bin\MSBuild.exe"
+        if (-not (Test-Path $msbuildPath)) { $msbuildPath = $null }
+    }
+}
+
+if ($msbuildPath) {
+    Write-Host "✓ Visual Studio C++ toolchain found" -ForegroundColor Green
+    Write-Host "  MSBuild: $msbuildPath" -ForegroundColor Gray
+    Write-Host ""
+
+    Write-Host "Building C++ engine (SubspaceEngine)..." -ForegroundColor Yellow
+    & $msbuildPath "$PSScriptRoot\AvorionLike.sln" /p:Configuration=Debug /p:Platform=x64 /t:SubspaceEngine /v:minimal
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "✓ C++ engine built successfully" -ForegroundColor Green
+    } else {
+        Write-Host "⚠️  C++ engine build had issues (this is optional)" -ForegroundColor Yellow
+    }
+
+    Write-Host ""
+    Write-Host "Building C++ tests (SubspaceTests)..." -ForegroundColor Yellow
+    & $msbuildPath "$PSScriptRoot\AvorionLike.sln" /p:Configuration=Debug /p:Platform=x64 /t:SubspaceTests /v:minimal
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "✓ C++ tests built successfully" -ForegroundColor Green
+        Write-Host ""
+        Write-Host "Running C++ tests..." -ForegroundColor Yellow
+        $testExe = "$PSScriptRoot\out\Debug\SubspaceTests.exe"
+        if (Test-Path $testExe) {
+            & $testExe
+        }
+    } else {
+        Write-Host "⚠️  C++ test build had issues (this is optional)" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "⚠️  Visual Studio C++ toolchain not found." -ForegroundColor Yellow
+    Write-Host "   The C++ engine requires Visual Studio 2022 with the" -ForegroundColor Yellow
+    Write-Host "   'Desktop development with C++' workload installed." -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "   The C# prototype will still work fine without it." -ForegroundColor Yellow
+    Write-Host ""
+    Write-Host "   To install:" -ForegroundColor White
+    Write-Host "   1. Open Visual Studio Installer" -ForegroundColor White
+    Write-Host "   2. Click 'Modify' on your VS 2022 installation" -ForegroundColor White
+    Write-Host "   3. Check 'Desktop development with C++'" -ForegroundColor White
+    Write-Host "   4. Click 'Modify' to install" -ForegroundColor White
+}
+
+Write-Host ""
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host "  All Done!" -ForegroundColor Green
+Write-Host "========================================" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Open AvorionLike.sln in Visual Studio to see both projects:" -ForegroundColor Yellow
+Write-Host "  - C# Prototype (AvorionLike) — existing gameplay prototype" -ForegroundColor Cyan
+Write-Host "  - C++ Engine (SubspaceEngine) — new block-based ship engine" -ForegroundColor Cyan
+Write-Host "  - C++ Game   (SubspaceGame)   — engine executable" -ForegroundColor Cyan
+Write-Host "  - C++ Tests  (SubspaceTests)  — 118 engine unit tests" -ForegroundColor Cyan
 Write-Host ""

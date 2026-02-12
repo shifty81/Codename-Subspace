@@ -3,6 +3,22 @@
 ##
 ## Get latest from `dotnet new gitignore`
 
+# C++ / CMake build artifacts
+engine/build/
+engine/_codeql_build_dir/
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+compile_commands.json
+*.a
+*.so
+*.dylib
+
+# VS C++ build output (shared output directories)
+out/
+obj/
+
 # dotenv files
 .env
 
@@ -484,3 +500,9 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# CMake build directories
+**/build/
+**/_codeql_build_dir/
+_codeql_detected_source_root
+compile_commands.json

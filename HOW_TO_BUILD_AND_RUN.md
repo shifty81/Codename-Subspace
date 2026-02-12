@@ -1,6 +1,9 @@
 # How to Build and Run Codename:Subspace
 
-This guide provides detailed instructions for building and running the Codename:Subspace game engine with the new integrated Player UI.
+This guide provides detailed instructions for building and running the Codename:Subspace project, which consists of two parts:
+
+- **C# Prototype** (`AvorionLike/`) — The original gameplay prototype with full OpenGL rendering
+- **C++ Engine** (`engine/`) — The new Avorion-style block ship building engine (in progress)
 
 ## Prerequisites
 
@@ -8,6 +11,12 @@ This guide provides detailed instructions for building and running the Codename:
 - **OpenGL-compatible graphics card** (for 3D rendering)
 - **Minimum 4GB RAM** recommended
 - **Operating System**: Windows, Linux, or macOS
+
+### For C++ Engine (optional)
+
+- **Windows**: Visual Studio 2022 with "Desktop development with C++" workload
+- **Linux**: `cmake`, `g++`, `libgl-dev` (`sudo apt install cmake build-essential libgl-dev`)
+- **macOS**: `cmake` (`brew install cmake`) and Xcode command-line tools
 
 ### Verify Prerequisites
 
@@ -19,7 +28,19 @@ dotnet --version
 
 ## Quick Start
 
-### Windows
+### Windows (Visual Studio — Recommended)
+
+The easiest way to build everything is to open `AvorionLike.sln` in **Visual Studio 2022**:
+
+1. Open `AvorionLike.sln` in Visual Studio 2022
+2. The Solution Explorer will show two folders:
+   - **C# Prototype** → AvorionLike (C#)
+   - **C++ Engine** → SubspaceEngine (static lib), SubspaceGame (exe), SubspaceTests (exe)
+3. Select your build configuration (Debug/Release, x64)
+4. Build → Build Solution (Ctrl+Shift+B)
+5. Right-click the project you want to run → Set as Startup Project → Start (F5)
+
+Alternatively, from the command line:
 
 ```powershell
 # 1. Clone or download the repository

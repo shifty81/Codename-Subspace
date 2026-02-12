@@ -1,10 +1,11 @@
 # Codename:Subspace - Advanced Space Game Engine
 
-A cutting-edge game engine for space exploration and combat, featuring real-time 3D graphics rendering with OpenGL. Built with C# and .NET 9.0, cross-platform compatible (Windows, Linux, macOS).
+A cutting-edge game engine for space exploration and combat, featuring real-time 3D graphics rendering with OpenGL. The project is transitioning to a **C++ / OpenGL** engine for the core block-based ship building system, while preserving the existing C# prototype.
 
 > **🎮 Project Status:** Early Development - Core systems operational & **NOW PLAYABLE!**
 > **🌌 Inspired by:** Avorion's gameplay mechanics
 > **🎯 Goal:** Create an extensible, moddable space game engine
+> **🔧 Engine Transition:** New C++ engine in `engine/` — see [Engine README](engine/README.md)
 
 > **🚀 New to Codename:Subspace?** Check out our [Quick Start Guide](QUICKSTART.md) for one-click setup!
 > 
