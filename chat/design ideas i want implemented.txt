@@ -17,6 +17,7 @@ Gameplay Ship
 Generation happens top-down:
 
 Decide what kind of ship this is
+
 Assemble modules into a valid structure
 
 Derive stats + visuals from the same data
