@@ -476,7 +476,13 @@ public class BlueprintInventoryComponent : IComponent, ISerializable
         if (string.IsNullOrWhiteSpace(blueprintName))
             return false;
         
-        return StoredBlueprints.Remove(blueprintName);
+        var index = StoredBlueprints.FindIndex(existing =>
+            string.Equals(existing, blueprintName, StringComparison.OrdinalIgnoreCase));
+        if (index < 0)
+            return false;
+        
+        StoredBlueprints.RemoveAt(index);
+        return true;
     }
     
     /// <summary>
@@ -497,9 +503,10 @@ public class BlueprintInventoryComponent : IComponent, ISerializable
     /// </summary>
     public void Deserialize(Dictionary<string, object> data)
     {
-        if (!Guid.TryParse(data["EntityId"].ToString(), out var entityId))
+        var entityIdValue = data["EntityId"].ToString();
+        if (!Guid.TryParse(entityIdValue, out var entityId))
         {
-            throw new InvalidOperationException("Failed to deserialize BlueprintInventoryComponent: Invalid EntityId format.");
+            throw new InvalidOperationException($"Failed to deserialize BlueprintInventoryComponent: Invalid EntityId format '{entityIdValue}'.");
         }
         
         EntityId = entityId;
