@@ -25,8 +25,12 @@ engine/
 │   │   ├── physics/            # Physics System (ported from C#)
 │   │   │   ├── PhysicsComponent.h # Newtonian physics properties
 │   │   │   └── PhysicsSystem.h    # Physics simulation & collision
-│   │   └── resources/          # Resource System (ported from C#)
-│   │       └── Inventory.h     # Resource inventory management
+│   │   ├── resources/          # Resource System (ported from C#)
+│   │   │   └── Inventory.h     # Resource inventory management
+│   │   ├── config/             # Configuration System (ported from C#)
+│   │   │   └── ConfigurationManager.h # Game settings singleton
+│   │   └── persistence/        # Save/Load System (ported from C#)
+│   │       └── SaveGameManager.h # Save game serialization
 │   │
 │   ├── ships/                  # Ship & block data model
 │   │   ├── Block.h             # Block, BlockShape, BlockType, MaterialType, MaterialDatabase
@@ -54,6 +58,12 @@ engine/
 │   ├── weapons/                # Weapon & turret system
 │   │   └── WeaponSystem.h      # 5 weapon archetypes, hardpoints, turrets
 │   │
+│   ├── combat/                 # Combat System (ported from C#)
+│   │   └── CombatSystem.h      # Damage, shields, projectiles, armor
+│   │
+│   ├── navigation/             # Navigation System (ported from C#)
+│   │   └── NavigationSystem.h  # Sectors, hyperdrive, security levels
+│   │
 │   ├── networking/             # Multiplayer determinism
 │   │   └── BuildCommand.h      # Deterministic build commands, replication
 │   │
@@ -65,7 +75,7 @@ engine/
 │   └── [mirrors include/ structure]
 │
 ├── tests/
-│   └── test_main.cpp           # 306 unit tests covering all systems
+│   └── test_main.cpp           # 416 unit tests covering all systems
 │
 ├── data/
 │   └── factions/               # JSON faction definitions
@@ -142,7 +152,7 @@ cmake --build build
 # Run the game
 ./build/subspace_game
 
-# Run tests (306 tests)
+# Run tests (416 tests)
 ./build/subspace_tests
 ```
 
@@ -225,6 +235,30 @@ Ships can be built from **modules** that snap together via **hardpoints** — co
 - Server validates, applies, broadcasts
 - Clients replay commands deterministically
 
+### Configuration Manager
+- Singleton settings manager with five categories: Graphics, Audio, Gameplay, Network, Development
+- Key-value file serialization (load/save)
+- Validation with range checks for all numeric settings
+- Reset to defaults support
+
+### Save/Load System
+- Text-based save file format with section markers (`[HEADER]`, `[GAMESTATE]`, `[ENTITY]`, `[COMPONENT]`)
+- Full entity/component serialization and deserialization
+- Directory listing, delete, and quicksave support
+- Uses `std::filesystem` for directory operations
+
+### Navigation System
+- **SectorCoordinate** — Galaxy grid coordinates with distance, tech level (1-7), and security level (HighSec/LowSec/NullSec) calculations
+- **HyperdriveComponent** — Jump charging, cooldown, and range management
+- **NavigationSystem** — Jump charge/execute/cancel workflow, fuel cost calculation, range validation
+
+### Combat System
+- **ShieldComponent** — Shield HP with absorption, regeneration with delay-after-hit mechanic
+- **CombatComponent** — Shield + armor + energy management per entity
+- **Projectile** — Position, velocity, lifetime, damage type tracking
+- **CombatSystem** — Projectile simulation, armor reduction by damage type, shield effectiveness multipliers
+- **Damage types:** Kinetic (50% armor), Energy (25% armor), Explosive (75% armor), Thermal (10% armor), EMP (0% armor, 120% shield damage)
+
 ## Ported from C# Prototype
 
 The following core systems have been ported from the C# prototype (`AvorionLike/`) to C++:
@@ -268,15 +302,15 @@ The following core systems have been ported from the C# prototype (`AvorionLike/
 | Logger | ✅ Ported | 4 tests |
 | Physics System | ✅ Ported | 19 tests |
 | Resource/Inventory | ✅ Ported | 21 tests |
-| Configuration Manager | ⏳ Planned | — |
-| Combat System | ⏳ Planned | — |
+| Configuration Manager | ✅ Ported | 22 tests |
+| Persistence/Save-Load | ✅ Ported | 19 tests |
+| Navigation/Hyperdrive | ✅ Ported | 33 tests |
+| Combat System | ✅ Ported | 36 tests |
 | Trading/Economy | ⏳ Planned | — |
-| Navigation/Hyperdrive | ⏳ Planned | — |
 | RPG/Progression | ⏳ Planned | — |
 | Fleet/Crew Management | ⏳ Planned | — |
 | AI Decision/Perception | ⏳ Planned | — |
 | Procedural Generation | ⏳ Planned | — |
-| Persistence/Save-Load | ⏳ Planned | — |
 | Networking (full) | ⏳ Planned | — |
 | Scripting/Lua | ⏳ Planned | — |
 | Quest System | ⏳ Planned | — |

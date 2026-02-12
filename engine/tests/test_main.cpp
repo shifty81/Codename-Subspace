@@ -34,6 +34,10 @@
 #include "core/physics/PhysicsComponent.h"
 #include "core/physics/PhysicsSystem.h"
 #include "core/resources/Inventory.h"
+#include "core/config/ConfigurationManager.h"
+#include "core/persistence/SaveGameManager.h"
+#include "navigation/NavigationSystem.h"
+#include "combat/CombatSystem.h"
 
 using namespace subspace;
 
@@ -1181,6 +1185,330 @@ static void TestInventory() {
 }
 
 // ===================================================================
+// 21. ConfigurationManager tests
+// ===================================================================
+static void TestConfigurationManager() {
+    std::cout << "[ConfigurationManager]\n";
+
+    auto& mgr = ConfigurationManager::Instance();
+
+    // Singleton returns same instance
+    auto& mgr2 = ConfigurationManager::Instance();
+    TEST("ConfigManager singleton same instance", &mgr == &mgr2);
+
+    // Reset to defaults
+    mgr.ResetToDefaults();
+    TEST("Default resolution width", mgr.GetGraphics().resolutionWidth == 1920);
+    TEST("Default resolution height", mgr.GetGraphics().resolutionHeight == 1080);
+    TEST("Default vsync", mgr.GetGraphics().vsync == true);
+    TEST("Default targetFPS", mgr.GetGraphics().targetFPS == 60);
+    TEST("Default masterVolume", ApproxEq(mgr.GetAudio().masterVolume, 0.8f));
+    TEST("Default musicVolume", ApproxEq(mgr.GetAudio().musicVolume, 0.6f));
+    TEST("Default playerName", mgr.GetGameplay().playerName == "Player");
+    TEST("Default difficulty", mgr.GetGameplay().difficulty == 1);
+    TEST("Default serverPort", mgr.GetNetwork().serverPort == 27015);
+    TEST("Default maxPlayers", mgr.GetNetwork().maxPlayers == 50);
+    TEST("Default debugMode", mgr.GetDevelopment().debugMode == false);
+    TEST("Default galaxySeed", mgr.GetDevelopment().galaxySeed == 12345);
+
+    // Validation passes for defaults
+    TEST("Defaults validate", mgr.ValidateConfiguration() == true);
+
+    // Modify to invalid and validate
+    mgr.GetMutableConfig().graphics.resolutionWidth = 100; // too low
+    TEST("Invalid width fails validation", mgr.ValidateConfiguration() == false);
+    mgr.ResetToDefaults();
+
+    mgr.GetMutableConfig().audio.masterVolume = 2.0f; // too high
+    TEST("Invalid volume fails validation", mgr.ValidateConfiguration() == false);
+    mgr.ResetToDefaults();
+
+    mgr.GetMutableConfig().network.serverPort = 80; // too low
+    TEST("Invalid port fails validation", mgr.ValidateConfiguration() == false);
+    mgr.ResetToDefaults();
+
+    // Save and load round-trip
+    mgr.GetMutableConfig().gameplay.playerName = "TestPilot";
+    mgr.GetMutableConfig().graphics.targetFPS = 144;
+    mgr.GetMutableConfig().development.galaxySeed = 99999;
+    TEST("Save succeeds", mgr.SaveConfiguration("/tmp/subspace_test_config.cfg") == true);
+
+    mgr.ResetToDefaults();
+    TEST("After reset playerName is Player", mgr.GetGameplay().playerName == "Player");
+
+    TEST("Load succeeds", mgr.LoadConfiguration("/tmp/subspace_test_config.cfg") == true);
+    TEST("Loaded playerName", mgr.GetGameplay().playerName == "TestPilot");
+    TEST("Loaded targetFPS", mgr.GetGraphics().targetFPS == 144);
+    TEST("Loaded galaxySeed", mgr.GetDevelopment().galaxySeed == 99999);
+
+    mgr.ResetToDefaults();
+}
+
+// ===================================================================
+// 22. SaveGameManager tests
+// ===================================================================
+static void TestSaveGameManager() {
+    std::cout << "[SaveGameManager]\n";
+
+    auto& mgr = SaveGameManager::Instance();
+    mgr.SetSaveDirectory("/tmp/subspace_test_saves");
+
+    // Singleton
+    auto& mgr2 = SaveGameManager::Instance();
+    TEST("SaveManager singleton same instance", &mgr == &mgr2);
+
+    // Create test save data
+    SaveGameData data;
+    data.saveName = "TestSave";
+    data.saveTime = "2026-02-12T00:00:00Z";
+    data.version = "1.0.0";
+    data.galaxySeed = 42;
+    data.gameState["playerHP"] = "100";
+    data.gameState["credits"] = "5000";
+
+    EntityData entity;
+    entity.entityId = 1001;
+    entity.entityName = "PlayerShip";
+    entity.isActive = true;
+
+    ComponentData comp;
+    comp.componentType = "PhysicsComponent";
+    comp.data["posX"] = "10.5";
+    comp.data["posY"] = "20.3";
+    entity.components.push_back(comp);
+    data.entities.push_back(entity);
+
+    // Save
+    TEST("SaveGame succeeds", mgr.SaveGame(data, "test_save_1") == true);
+
+    // Load
+    SaveGameData loaded;
+    TEST("LoadGame succeeds", mgr.LoadGame("test_save_1", loaded) == true);
+    TEST("Loaded saveName", loaded.saveName == "TestSave");
+    TEST("Loaded saveTime", loaded.saveTime == "2026-02-12T00:00:00Z");
+    TEST("Loaded version", loaded.version == "1.0.0");
+    TEST("Loaded galaxySeed", loaded.galaxySeed == 42);
+    TEST("Loaded gameState size", loaded.gameState.size() == 2);
+    TEST("Loaded playerHP", loaded.gameState["playerHP"] == "100");
+    TEST("Loaded entity count", loaded.entities.size() == 1);
+    TEST("Loaded entity id", loaded.entities[0].entityId == 1001);
+    TEST("Loaded entity name", loaded.entities[0].entityName == "PlayerShip");
+    TEST("Loaded entity active", loaded.entities[0].isActive == true);
+    TEST("Loaded component count", loaded.entities[0].components.size() == 1);
+    TEST("Loaded component type", loaded.entities[0].components[0].componentType == "PhysicsComponent");
+
+    // QuickSave
+    TEST("QuickSave succeeds", mgr.QuickSave(data) == true);
+
+    // List saves
+    auto saves = mgr.ListSaveGames();
+    TEST("ListSaveGames has entries", saves.size() >= 2);
+
+    // Delete
+    TEST("DeleteSave succeeds", mgr.DeleteSave("test_save_1") == true);
+
+    // Load deleted file fails
+    SaveGameData gone;
+    TEST("Load deleted fails", mgr.LoadGame("test_save_1", gone) == false);
+
+    // Clean up
+    mgr.DeleteSave("quicksave");
+}
+
+// ===================================================================
+// 23. NavigationSystem tests
+// ===================================================================
+static void TestNavigationSystem() {
+    std::cout << "[NavigationSystem]\n";
+
+    // SectorCoordinate basics
+    SectorCoordinate origin(0, 0, 0);
+    SectorCoordinate nearby(3, 4, 0);
+    SectorCoordinate farAway(50, 50, 50);
+
+    TEST("Sector origin distance from center", ApproxEq(origin.DistanceFromCenter(), 0.0f));
+    TEST("Sector distance 3-4-0", ApproxEq(nearby.DistanceTo(origin), 5.0f));
+    TEST("Sector in range", nearby.IsInRangeOf(origin, 6.0f));
+    TEST("Sector not in range", !nearby.IsInRangeOf(origin, 4.0f));
+    TEST("Sector equality", origin == SectorCoordinate(0, 0, 0));
+    TEST("Sector inequality", origin != nearby);
+
+    // Tech levels
+    TEST("Origin tech level 7", origin.GetTechLevel() == 7);
+    TEST("Nearby tech level", SectorCoordinate(3, 0, 0).GetTechLevel() == 6);
+    TEST("Mid tech level", SectorCoordinate(15, 0, 0).GetTechLevel() == 4);
+    TEST("Far tech level 1", SectorCoordinate(100, 0, 0).GetTechLevel() == 1);
+
+    // Security levels
+    TEST("Origin is HighSec", origin.GetSecurityLevel() == SecurityLevel::HighSec);
+    TEST("Nearby is LowSec", SectorCoordinate(15, 0, 0).GetSecurityLevel() == SecurityLevel::LowSec);
+    TEST("Far is NullSec", farAway.GetSecurityLevel() == SecurityLevel::NullSec);
+
+    // HyperdriveComponent
+    HyperdriveComponent drive;
+    TEST("Drive default jumpRange", ApproxEq(drive.jumpRange, 5.0f));
+    TEST("Drive default not charging", !drive.isCharging);
+    TEST("Drive not fully charged initially", !drive.IsFullyCharged());
+
+    // Start charge
+    drive.StartCharge(nearby);
+    TEST("Drive is charging after StartCharge", drive.isCharging);
+    TEST("Drive has target", drive.hasTarget);
+    TEST("Drive charge is 0", ApproxEq(drive.currentCharge, 0.0f));
+
+    // Cancel charge
+    drive.CancelCharge();
+    TEST("Drive not charging after cancel", !drive.isCharging);
+    TEST("Drive no target after cancel", !drive.hasTarget);
+
+    // NavigationSystem
+    NavigationSystem nav;
+    TEST("NavSystem name", nav.GetName() == "NavigationSystem");
+
+    // Jump range check
+    TEST("In jump range nearby", nav.IsInJumpRange(drive, origin, nearby));
+    TEST("Not in jump range far", !nav.IsInJumpRange(drive, origin, farAway));
+
+    // Fuel cost
+    float cost = nav.CalculateJumpFuelCost(origin, nearby);
+    TEST("Fuel cost positive", cost > 0.0f);
+    TEST("Fuel cost = dist * 10", ApproxEq(cost, 50.0f));
+
+    // Start jump charge
+    HyperdriveComponent drive2;
+    drive2.timeSinceLastJump = 100.0f; // cooldown satisfied
+    TEST("StartJumpCharge succeeds", nav.StartJumpCharge(drive2, nearby));
+    TEST("Drive2 is charging", drive2.isCharging);
+
+    // Can't start charge while already charging
+    TEST("StartJumpCharge fails while charging", !nav.StartJumpCharge(drive2, nearby));
+
+    // Execute jump (not ready yet - not fully charged)
+    SectorLocationComponent loc;
+    loc.currentSector = origin;
+    TEST("ExecuteJump fails when not charged", !nav.ExecuteJump(drive2, loc));
+
+    // Manually charge up
+    drive2.currentCharge = drive2.chargeTime;
+    drive2.isCharging = false;
+    TEST("ExecuteJump succeeds when charged", nav.ExecuteJump(drive2, loc));
+    TEST("Location updated after jump", loc.currentSector == nearby);
+    TEST("Cooldown reset after jump", ApproxEq(drive2.timeSinceLastJump, 0.0f));
+
+    // Cancel jump
+    HyperdriveComponent drive3;
+    nav.StartJumpCharge(drive3, nearby);
+    nav.CancelJump(drive3);
+    TEST("CancelJump stops charging", !drive3.isCharging);
+}
+
+// ===================================================================
+// 24. CombatSystem tests
+// ===================================================================
+static void TestCombatSystem() {
+    std::cout << "[CombatSystem]\n";
+
+    CombatSystem combat;
+    TEST("CombatSystem name", combat.GetName() == "CombatSystem");
+
+    // Shield component
+    ShieldComponent shield;
+    TEST("Shield default HP", ApproxEq(shield.maxShieldHP, 100.0f));
+    TEST("Shield percentage 100", ApproxEq(shield.GetShieldPercentage(), 100.0f));
+    TEST("Shield not depleted", !shield.IsShieldDepleted());
+
+    // Absorb damage within shield capacity
+    float overflow = shield.AbsorbDamage(30.0f);
+    TEST("Shield absorb no overflow", ApproxEq(overflow, 0.0f));
+    TEST("Shield HP after absorb", ApproxEq(shield.currentShieldHP, 70.0f));
+
+    // Absorb damage exceeding shield
+    overflow = shield.AbsorbDamage(80.0f);
+    TEST("Shield absorb overflow", ApproxEq(overflow, 10.0f));
+    TEST("Shield depleted after overflow", shield.IsShieldDepleted());
+
+    // CombatComponent energy
+    CombatComponent comp;
+    TEST("Has energy 50", comp.HasEnergy(50.0f));
+    TEST("Has energy 100", comp.HasEnergy(100.0f));
+    TEST("Not has energy 101", !comp.HasEnergy(101.0f));
+
+    TEST("Consume energy succeeds", comp.ConsumeEnergy(60.0f));
+    TEST("Energy after consume", ApproxEq(comp.currentEnergy, 40.0f));
+    TEST("Consume energy fails if insufficient", !comp.ConsumeEnergy(50.0f));
+
+    // Regenerate energy
+    comp.RegenerateEnergy(1.0f); // 20/sec * 1s = 20
+    TEST("Energy after regen", ApproxEq(comp.currentEnergy, 60.0f));
+
+    // Energy capped at capacity
+    comp.RegenerateEnergy(10.0f); // would be 260, capped at 100
+    TEST("Energy capped at capacity", ApproxEq(comp.currentEnergy, 100.0f));
+
+    // Shield regeneration
+    CombatComponent comp2;
+    comp2.shields.currentShieldHP = 50.0f;
+    comp2.shields.timeSinceLastHit = 0.0f;
+    comp2.RegenerateShields(1.0f); // delay not met
+    TEST("No shield regen during delay", ApproxEq(comp2.shields.currentShieldHP, 50.0f));
+
+    comp2.shields.timeSinceLastHit = 5.0f; // delay met
+    comp2.RegenerateShields(1.0f); // 10/sec * 1s = 10
+    TEST("Shield regen after delay", ApproxEq(comp2.shields.currentShieldHP, 60.0f));
+
+    // Armor reduction
+    TEST("Kinetic armor 50%", ApproxEq(CombatSystem::GetArmorReduction(10.0f, DamageType::Kinetic), 5.0f));
+    TEST("Energy armor 25%", ApproxEq(CombatSystem::GetArmorReduction(10.0f, DamageType::Energy), 2.5f));
+    TEST("Explosive armor 75%", ApproxEq(CombatSystem::GetArmorReduction(10.0f, DamageType::Explosive), 7.5f));
+    TEST("EMP armor 0%", ApproxEq(CombatSystem::GetArmorReduction(10.0f, DamageType::EMP), 0.0f));
+
+    // Shield effectiveness
+    TEST("Kinetic shield 80%", ApproxEq(CombatSystem::GetShieldEffectiveness(DamageType::Kinetic), 0.8f));
+    TEST("Energy shield 100%", ApproxEq(CombatSystem::GetShieldEffectiveness(DamageType::Energy), 1.0f));
+    TEST("EMP shield 120%", ApproxEq(CombatSystem::GetShieldEffectiveness(DamageType::EMP), 1.2f));
+
+    // CalculateDamage
+    DamageInfo info = combat.CalculateDamage(50.0f, DamageType::Kinetic, 10.0f);
+    TEST("Calculated damage reduced", ApproxEq(info.damage, 45.0f)); // 50 - 5
+
+    // Projectile management
+    Projectile proj;
+    proj.position = Vector3(0, 0, 0);
+    proj.velocity = Vector3(100, 0, 0);
+    proj.damage = 25.0f;
+    proj.lifetime = 2.0f;
+
+    combat.SpawnProjectile(proj);
+    TEST("1 active projectile", combat.GetActiveProjectileCount() == 1);
+
+    combat.UpdateProjectiles(0.5f);
+    TEST("Projectile moved", ApproxEq(combat.GetActiveProjectiles()[0].position.x, 50.0f));
+    TEST("Projectile lifetime decreased", ApproxEq(combat.GetActiveProjectiles()[0].lifetime, 1.5f));
+
+    // Expire projectile
+    combat.UpdateProjectiles(2.0f);
+    TEST("Expired projectile removed", combat.GetActiveProjectileCount() == 0);
+
+    // Spawn multiple and clear
+    combat.SpawnProjectile(proj);
+    combat.SpawnProjectile(proj);
+    TEST("2 active projectiles", combat.GetActiveProjectileCount() == 2);
+    combat.ClearAllProjectiles();
+    TEST("Cleared all projectiles", combat.GetActiveProjectileCount() == 0);
+
+    // ApplyDamageToTarget with shields
+    CombatComponent target;
+    target.shields.currentShieldHP = 50.0f;
+    target.armorRating = 10.0f;
+    DamageInfo dmg;
+    dmg.damage = 30.0f;
+    dmg.damageType = DamageType::Energy; // 100% shield effectiveness
+    float dealt = combat.ApplyDamageToTarget(target, dmg);
+    TEST("Damage dealt with shields", dealt > 0.0f);
+    TEST("Shields absorbed some damage", target.shields.currentShieldHP < 50.0f);
+}
+
+// ===================================================================
 // Main
 // ===================================================================
 int main() {
@@ -1207,6 +1535,10 @@ int main() {
     TestPhysicsComponent();
     TestPhysicsSystem();
     TestInventory();
+    TestConfigurationManager();
+    TestSaveGameManager();
+    TestNavigationSystem();
+    TestCombatSystem();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
               << testsFailed << " failed ===\n";

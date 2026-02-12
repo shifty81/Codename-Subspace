@@ -36,13 +36,17 @@ endif()
 # ---------------------------------------------------------------------------
 file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/ai/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/combat/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/core/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/core/config/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/core/ecs/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/core/events/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/core/logging/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/core/persistence/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/core/physics/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/core/resources/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/factions/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/navigation/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/networking/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/rendering/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/ship_editor/*.cpp"
