@@ -24,13 +24,15 @@ struct Color {
 
     /// Pack into 32-bit RGBA.
     uint32_t ToRGBA32() const {
-        auto clamp = [](float v) -> uint8_t {
-            return static_cast<uint8_t>(std::max(0.0f, std::min(1.0f, v)) * 255.0f);
-        };
-        return (static_cast<uint32_t>(clamp(r)) << 24) |
-               (static_cast<uint32_t>(clamp(g)) << 16) |
-               (static_cast<uint32_t>(clamp(b)) << 8)  |
-               (static_cast<uint32_t>(clamp(a)));
+        return (static_cast<uint32_t>(ClampToByte(r)) << 24) |
+               (static_cast<uint32_t>(ClampToByte(g)) << 16) |
+               (static_cast<uint32_t>(ClampToByte(b)) << 8)  |
+               (static_cast<uint32_t>(ClampToByte(a)));
+    }
+
+    /// Clamp a [0,1] float to [0,255] byte.
+    static uint8_t ClampToByte(float v) {
+        return static_cast<uint8_t>(std::max(0.0f, std::min(1.0f, v)) * 255.0f);
     }
 
     // Common colors

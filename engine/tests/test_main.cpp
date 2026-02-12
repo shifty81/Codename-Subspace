@@ -3179,19 +3179,30 @@ static void TestUISystem() {
     system.Render(renderer);
     TEST("Hidden panel no commands", renderer.GetCommandCount() == 0);
 
-    // Input handling
+    // Input handling — set button to known absolute position
     hud->SetVisible(true);
+    hud->ClearChildren();
     auto btn = std::make_shared<UIButton>();
     btn->SetId("test_btn");
-    btn->SetBounds({20, 30, 80, 25});
+    btn->SetBounds({20, 30, 80, 25});  // absolute position within panel
     bool btnClicked = false;
     btn->SetOnClick([&btnClicked]() { btnClicked = true; });
     hud->AddChild(btn);
-    hud->PerformLayout();
+    // Don't call PerformLayout — keep the absolute position
+    // Button is at (20, 30) to (100, 55)
 
-    system.HandleInput(25, 50, true);
-    // The button position depends on layout, but at a minimum the panel consumes the click
-    // within its bounds. Button may or may not be hit depending on layout.
+    system.HandleInput(50, 40, true);
+    TEST("HandleInput button click propagated", btnClicked);
+
+    // Click outside panel bounds — should not reach button
+    btnClicked = false;
+    system.HandleInput(500, 500, true);
+    TEST("HandleInput miss does not fire button", !btnClicked);
+
+    // No-click frame should not propagate
+    btnClicked = false;
+    system.HandleInput(50, 40, false);
+    TEST("HandleInput without click is no-op", !btnClicked);
 
     // Screen size
     system.SetScreenSize(2560, 1440);
