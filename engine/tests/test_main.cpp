@@ -44,6 +44,9 @@
 #include "power/PowerSystem.h"
 #include "mining/MiningSystem.h"
 #include "procedural/GalaxyGenerator.h"
+#include "quest/QuestSystem.h"
+#include "tutorial/TutorialSystem.h"
+#include "ai/AIDecisionSystem.h"
 
 using namespace subspace;
 
@@ -2109,6 +2112,622 @@ static void TestGalaxyGenerator() {
 }
 
 // ===================================================================
+// Quest System Tests
+// ===================================================================
+static void TestQuestObjective() {
+    std::cout << "[QuestObjective]\n";
+
+    QuestObjective obj;
+    obj.id = "obj1";
+    obj.type = ObjectiveType::Destroy;
+    obj.target = "pirate";
+    obj.requiredQuantity = 3;
+
+    TEST("Objective starts NotStarted", obj.status == ObjectiveStatus::NotStarted);
+    TEST("Initial progress is 0", obj.currentProgress == 0);
+    TEST("Not complete initially", !obj.IsComplete());
+    TEST("Completion is 0", ApproxEq(obj.GetCompletionPercentage(), 0.0f));
+
+    obj.Progress(1);
+    TEST("Progress activates objective", obj.status == ObjectiveStatus::Active);
+    TEST("Progress 1/3", obj.currentProgress == 1);
+    TEST("Completion ~33%", ApproxEq(obj.GetCompletionPercentage(), 1.0f / 3.0f));
+
+    obj.Progress(1);
+    TEST("Progress 2/3", obj.currentProgress == 2);
+
+    bool completed = obj.Progress(1);
+    TEST("Progress completes objective", completed);
+    TEST("Status is Completed", obj.status == ObjectiveStatus::Completed);
+    TEST("IsComplete true", obj.IsComplete());
+    TEST("Completion 100%", ApproxEq(obj.GetCompletionPercentage(), 1.0f));
+
+    // Cannot progress after completion
+    bool again = obj.Progress(1);
+    TEST("Cannot progress after completion", !again);
+
+    // Reset
+    obj.Reset();
+    TEST("Reset clears progress", obj.currentProgress == 0);
+    TEST("Reset restores NotStarted", obj.status == ObjectiveStatus::NotStarted);
+
+    // Fail
+    obj.Activate();
+    TEST("Activate sets Active", obj.status == ObjectiveStatus::Active);
+    obj.Fail();
+    TEST("Fail sets Failed", obj.status == ObjectiveStatus::Failed);
+    bool afterFail = obj.Progress(1);
+    TEST("Cannot progress after failure", !afterFail);
+}
+
+static void TestQuest() {
+    std::cout << "[Quest]\n";
+
+    Quest quest;
+    quest.id = "quest1";
+    quest.title = "Destroy Pirates";
+    quest.description = "Kill 3 pirates";
+
+    QuestObjective obj1;
+    obj1.id = "kill_pirates";
+    obj1.type = ObjectiveType::Destroy;
+    obj1.target = "pirate";
+    obj1.requiredQuantity = 3;
+
+    QuestObjective obj2;
+    obj2.id = "collect_loot";
+    obj2.type = ObjectiveType::Collect;
+    obj2.target = "pirate_loot";
+    obj2.requiredQuantity = 1;
+    obj2.isOptional = true;
+
+    quest.objectives.push_back(obj1);
+    quest.objectives.push_back(obj2);
+
+    QuestReward reward;
+    reward.type = RewardType::Credits;
+    reward.amount = 1000;
+    quest.rewards.push_back(reward);
+
+    TEST("Quest starts Available", quest.status == QuestStatus::Available);
+    TEST("Cannot complete before accepting", !quest.Complete());
+    TEST("Cannot turn in before completing", !quest.TurnIn());
+
+    bool accepted = quest.Accept();
+    TEST("Accept succeeds", accepted);
+    TEST("Quest is Active", quest.status == QuestStatus::Active);
+    TEST("Cannot accept again", !quest.Accept());
+
+    // Required objectives not complete
+    TEST("Required objectives not complete", !quest.AreRequiredObjectivesComplete());
+    TEST("No failed objective", !quest.HasFailedObjective());
+    TEST("Cannot complete early", !quest.Complete());
+
+    // Progress required objective
+    quest.objectives[0].Progress(3);
+    TEST("Required objectives complete", quest.AreRequiredObjectivesComplete());
+    TEST("Completion ignores optional", ApproxEq(quest.GetCompletionPercentage(), 1.0f));
+
+    bool completed = quest.Complete();
+    TEST("Complete succeeds", completed);
+    TEST("Quest is Completed", quest.status == QuestStatus::Completed);
+
+    bool turnedIn = quest.TurnIn();
+    TEST("TurnIn succeeds", turnedIn);
+    TEST("Quest is TurnedIn", quest.status == QuestStatus::TurnedIn);
+
+    // Reset
+    quest.Reset();
+    TEST("Reset restores Available", quest.status == QuestStatus::Available);
+    TEST("Reset clears objective progress", quest.objectives[0].currentProgress == 0);
+}
+
+static void TestQuestComponent() {
+    std::cout << "[QuestComponent]\n";
+
+    QuestComponent comp;
+    TEST("No quests initially", comp.quests.empty());
+    TEST("Active count 0", comp.GetActiveQuestCount() == 0);
+
+    Quest q1;
+    q1.id = "q1";
+    q1.title = "Quest 1";
+    comp.AddQuest(q1);
+    TEST("One quest after add", comp.quests.size() == 1);
+    TEST("Available count 1", comp.GetAvailableQuestCount() == 1);
+
+    Quest* found = comp.GetQuest("q1");
+    TEST("Find quest by id", found != nullptr);
+    TEST("Found correct quest", found != nullptr && found->id == "q1");
+
+    Quest* notFound = comp.GetQuest("nonexistent");
+    TEST("Nonexistent returns nullptr", notFound == nullptr);
+
+    bool accepted = comp.AcceptQuest("q1");
+    TEST("Accept quest via component", accepted);
+    TEST("Active count 1", comp.GetActiveQuestCount() == 1);
+    TEST("Available count 0", comp.GetAvailableQuestCount() == 0);
+
+    // Abandon
+    Quest q2;
+    q2.id = "q2";
+    q2.canAbandon = false;
+    comp.AddQuest(q2);
+    comp.AcceptQuest("q2");
+    bool abandoned = comp.AbandonQuest("q2");
+    TEST("Cannot abandon non-abandonable", !abandoned);
+
+    bool abandoned1 = comp.AbandonQuest("q1");
+    TEST("Can abandon abandonable quest", abandoned1);
+    TEST("Active count 1 after abandon", comp.GetActiveQuestCount() == 1);
+
+    // Remove
+    bool removed = comp.RemoveQuest("q1");
+    TEST("Remove quest succeeds", removed);
+    bool removedAgain = comp.RemoveQuest("q1");
+    TEST("Remove nonexistent fails", !removedAgain);
+
+    // Max active quests
+    comp.maxActiveQuests = 1;
+    Quest q3;
+    q3.id = "q3";
+    comp.AddQuest(q3);
+    bool accepted3 = comp.AcceptQuest("q3");
+    TEST("Cannot exceed max active quests", !accepted3);
+}
+
+static void TestQuestSystem() {
+    std::cout << "[QuestSystem]\n";
+
+    QuestSystem system;
+    TEST("System name", system.GetName() == "QuestSystem");
+    TEST("No templates initially", system.GetTemplateCount() == 0);
+
+    Quest tmpl;
+    tmpl.id = "tmpl_kill";
+    tmpl.title = "Kill Quest Template";
+    QuestObjective obj;
+    obj.id = "kill_obj";
+    obj.type = ObjectiveType::Destroy;
+    obj.target = "enemy";
+    obj.requiredQuantity = 5;
+    tmpl.objectives.push_back(obj);
+
+    system.AddQuestTemplate(tmpl);
+    TEST("One template after add", system.GetTemplateCount() == 1);
+
+    // Create from template
+    Quest created = system.CreateQuestFromTemplate("tmpl_kill");
+    TEST("Created quest has id", created.id == "tmpl_kill");
+    TEST("Created quest has objective", created.objectives.size() == 1);
+
+    Quest missing = system.CreateQuestFromTemplate("nonexistent");
+    TEST("Missing template returns empty", missing.id.empty());
+
+    // Give quest
+    QuestComponent comp;
+    bool given = system.GiveQuest(1, "tmpl_kill", comp);
+    TEST("GiveQuest succeeds", given);
+    TEST("Component has quest", comp.quests.size() == 1);
+
+    bool givenBad = system.GiveQuest(1, "nonexistent", comp);
+    TEST("GiveQuest with bad template fails", !givenBad);
+
+    // Accept and progress
+    comp.AcceptQuest("tmpl_kill");
+    system.ProgressObjective(comp, ObjectiveType::Destroy, "enemy", 3);
+    Quest* q = comp.GetQuest("tmpl_kill");
+    TEST("Progress applied", q != nullptr && q->objectives[0].currentProgress == 3);
+
+    system.ProgressObjective(comp, ObjectiveType::Destroy, "enemy", 2);
+    TEST("Quest auto-completed", q != nullptr && q->status == QuestStatus::Completed);
+
+    // Wrong type/target doesn't progress
+    Quest tmpl2;
+    tmpl2.id = "tmpl_mine";
+    QuestObjective obj2;
+    obj2.id = "mine_obj";
+    obj2.type = ObjectiveType::Mine;
+    obj2.target = "iron";
+    obj2.requiredQuantity = 10;
+    tmpl2.objectives.push_back(obj2);
+    system.AddQuestTemplate(tmpl2);
+    system.GiveQuest(1, "tmpl_mine", comp);
+    comp.AcceptQuest("tmpl_mine");
+    system.ProgressObjective(comp, ObjectiveType::Destroy, "iron", 5);
+    Quest* q2 = comp.GetQuest("tmpl_mine");
+    TEST("Wrong type doesn't progress", q2 != nullptr && q2->objectives[0].currentProgress == 0);
+    system.ProgressObjective(comp, ObjectiveType::Mine, "gold", 5);
+    TEST("Wrong target doesn't progress", q2 != nullptr && q2->objectives[0].currentProgress == 0);
+    system.ProgressObjective(comp, ObjectiveType::Mine, "iron", 5);
+    TEST("Correct type+target progresses", q2 != nullptr && q2->objectives[0].currentProgress == 5);
+}
+
+// ===================================================================
+// Tutorial System Tests
+// ===================================================================
+static void TestTutorialStep() {
+    std::cout << "[TutorialStep]\n";
+
+    TutorialStep step;
+    step.id = "step1";
+    step.type = TutorialStepType::Message;
+    step.title = "Welcome";
+    step.message = "Welcome to the game!";
+
+    TEST("Step starts NotStarted", step.status == TutorialStepStatus::NotStarted);
+
+    step.Start();
+    TEST("Start sets Active", step.status == TutorialStepStatus::Active);
+    TEST("Elapsed time reset", ApproxEq(step.elapsedTime, 0.0f));
+
+    step.Complete();
+    TEST("Complete sets Completed", step.status == TutorialStepStatus::Completed);
+
+    step.Reset();
+    TEST("Reset sets NotStarted", step.status == TutorialStepStatus::NotStarted);
+
+    step.Start();
+    step.Skip();
+    TEST("Skip sets Skipped", step.status == TutorialStepStatus::Skipped);
+
+    // WaitForTime
+    TutorialStep timeStep;
+    timeStep.type = TutorialStepType::WaitForTime;
+    timeStep.duration = 5.0f;
+    timeStep.Start();
+    TEST("Time not elapsed at start", !timeStep.IsTimeElapsed());
+    timeStep.elapsedTime = 4.9f;
+    TEST("Time not elapsed before duration", !timeStep.IsTimeElapsed());
+    timeStep.elapsedTime = 5.0f;
+    TEST("Time elapsed at duration", timeStep.IsTimeElapsed());
+    timeStep.elapsedTime = 6.0f;
+    TEST("Time elapsed past duration", timeStep.IsTimeElapsed());
+
+    // Non-WaitForTime type never reports time elapsed
+    TutorialStep msgStep;
+    msgStep.type = TutorialStepType::Message;
+    msgStep.duration = 1.0f;
+    msgStep.elapsedTime = 100.0f;
+    TEST("Message type never time-elapsed", !msgStep.IsTimeElapsed());
+}
+
+static void TestTutorial() {
+    std::cout << "[Tutorial]\n";
+
+    Tutorial tut;
+    tut.id = "tut1";
+    tut.title = "Basic Controls";
+
+    TutorialStep s1;
+    s1.id = "s1";
+    s1.type = TutorialStepType::Message;
+    s1.title = "Move";
+
+    TutorialStep s2;
+    s2.id = "s2";
+    s2.type = TutorialStepType::WaitForKey;
+    s2.requiredKey = "W";
+
+    TutorialStep s3;
+    s3.id = "s3";
+    s3.type = TutorialStepType::WaitForAction;
+    s3.requiredAction = "collect_resource";
+
+    tut.steps.push_back(s1);
+    tut.steps.push_back(s2);
+    tut.steps.push_back(s3);
+
+    TEST("Tutorial starts NotStarted", tut.status == TutorialStatus::NotStarted);
+    TEST("Cannot complete step before start", !tut.CompleteCurrentStep());
+
+    bool started = tut.Start();
+    TEST("Start succeeds", started);
+    TEST("Status is Active", tut.status == TutorialStatus::Active);
+    TEST("First step is active", tut.steps[0].status == TutorialStepStatus::Active);
+    TEST("Current step index 0", tut.currentStepIndex == 0);
+    TEST("Cannot start again", !tut.Start());
+
+    TEST("Completion 0%", ApproxEq(tut.GetCompletionPercentage(), 0.0f));
+
+    tut.CompleteCurrentStep();
+    TEST("Step 1 completed", tut.steps[0].status == TutorialStepStatus::Completed);
+    TEST("Step 2 started", tut.steps[1].status == TutorialStepStatus::Active);
+    TEST("Current step index 1", tut.currentStepIndex == 1);
+    TEST("Completion ~33%", ApproxEq(tut.GetCompletionPercentage(), 100.0f / 3.0f));
+
+    tut.CompleteCurrentStep();
+    TEST("Step 2 completed", tut.steps[1].status == TutorialStepStatus::Completed);
+    TEST("Completion ~67%", ApproxEq(tut.GetCompletionPercentage(), 200.0f / 3.0f));
+
+    tut.CompleteCurrentStep();
+    TEST("Tutorial completed", tut.status == TutorialStatus::Completed);
+    TEST("All steps complete", tut.AreAllStepsComplete());
+    TEST("Completion 100%", ApproxEq(tut.GetCompletionPercentage(), 100.0f));
+
+    // Reset
+    tut.Reset();
+    TEST("Reset restores NotStarted", tut.status == TutorialStatus::NotStarted);
+    TEST("Reset clears step index", tut.currentStepIndex == 0);
+
+    // Skip
+    tut.Start();
+    tut.Skip();
+    TEST("Skip sets Skipped", tut.status == TutorialStatus::Skipped);
+
+    // WaitForTime auto-complete
+    Tutorial timeTut;
+    timeTut.id = "tut_time";
+    TutorialStep ts;
+    ts.id = "ts1";
+    ts.type = TutorialStepType::WaitForTime;
+    ts.duration = 2.0f;
+    timeTut.steps.push_back(ts);
+    timeTut.Start();
+    timeTut.Update(1.0f);
+    TEST("Time step not done yet", timeTut.status == TutorialStatus::Active);
+    timeTut.Update(1.5f);
+    TEST("Time step auto-completes", timeTut.status == TutorialStatus::Completed);
+}
+
+static void TestTutorialSystem() {
+    std::cout << "[TutorialSystem]\n";
+
+    TutorialSystem system;
+    TEST("System name", system.GetName() == "TutorialSystem");
+    TEST("No templates initially", system.GetTemplateCount() == 0);
+
+    Tutorial tmpl;
+    tmpl.id = "basic_controls";
+    tmpl.title = "Basic Controls";
+    tmpl.autoStart = true;
+    TutorialStep s1;
+    s1.id = "s1";
+    s1.type = TutorialStepType::Message;
+    tmpl.steps.push_back(s1);
+    TutorialStep s2;
+    s2.id = "s2";
+    s2.type = TutorialStepType::WaitForAction;
+    s2.requiredAction = "move_forward";
+    tmpl.steps.push_back(s2);
+
+    system.AddTutorialTemplate(tmpl);
+    TEST("One template after add", system.GetTemplateCount() == 1);
+
+    // Start tutorial
+    TutorialComponent comp;
+    bool started = system.StartTutorial(1, "basic_controls", comp);
+    TEST("Start tutorial succeeds", started);
+    TEST("One active tutorial", comp.activeTutorials.size() == 1);
+    TEST("Tutorial is active", comp.activeTutorials[0].status == TutorialStatus::Active);
+
+    // Cannot start same tutorial twice
+    bool again = system.StartTutorial(1, "basic_controls", comp);
+    TEST("Cannot start duplicate", !again);
+
+    // Nonexistent template
+    bool bad = system.StartTutorial(1, "nonexistent", comp);
+    TEST("Nonexistent template fails", !bad);
+
+    // Complete step
+    system.CompleteCurrentStep(comp, "basic_controls");
+    TEST("Step 1 completed", comp.activeTutorials[0].steps[0].status == TutorialStepStatus::Completed);
+    TEST("Step 2 started", comp.activeTutorials[0].steps[1].status == TutorialStepStatus::Active);
+
+    // Complete action step
+    system.CompleteActionStep(comp, "wrong_action");
+    TEST("Wrong action doesn't complete", comp.activeTutorials[0].steps[1].status == TutorialStepStatus::Active);
+
+    system.CompleteActionStep(comp, "move_forward");
+    TEST("Correct action completes", comp.activeTutorials[0].status == TutorialStatus::Completed);
+    TEST("Tutorial marked completed", system.HasCompletedTutorial(comp, "basic_controls"));
+
+    // Prerequisites
+    Tutorial advanced;
+    advanced.id = "advanced_controls";
+    advanced.prerequisites.push_back("basic_controls");
+    TutorialStep as1;
+    as1.id = "as1";
+    advanced.steps.push_back(as1);
+    system.AddTutorialTemplate(advanced);
+
+    TutorialComponent comp2;
+    bool prereqFail = system.StartTutorial(1, "advanced_controls", comp2);
+    TEST("Prerequisites block start", !prereqFail);
+
+    comp2.completedTutorialIds.insert("basic_controls");
+    bool prereqPass = system.StartTutorial(1, "advanced_controls", comp2);
+    TEST("Prerequisites met allows start", prereqPass);
+
+    // Auto-start
+    TutorialComponent comp3;
+    system.CheckAutoStartTutorials(1, comp3);
+    TEST("Auto-start works (basic_controls)", comp3.activeTutorials.size() == 1);
+    TEST("Auto-started correct tutorial", comp3.activeTutorials[0].id == "basic_controls");
+
+    // Skip tutorial
+    TutorialComponent comp4;
+    system.StartTutorial(1, "basic_controls", comp4);
+    system.SkipTutorial(comp4, "basic_controls");
+    TEST("Skip sets Skipped", comp4.activeTutorials[0].status == TutorialStatus::Skipped);
+    TEST("Skip marks completed", system.HasCompletedTutorial(comp4, "basic_controls"));
+
+    // HasCompletedTutorial false case
+    TEST("Not completed returns false", !system.HasCompletedTutorial(comp4, "nonexistent"));
+}
+
+// ===================================================================
+// AI Decision System Tests
+// ===================================================================
+static void TestAIPerception() {
+    std::cout << "[AIPerception]\n";
+
+    AIPerception perception;
+    TEST("No threats initially", !perception.HasThreats());
+    TEST("Highest threat nullptr", perception.GetHighestThreat() == nullptr);
+
+    ThreatInfo t1;
+    t1.entityId = 1;
+    t1.priority = TargetPriority::Low;
+    t1.threatLevel = 10.0f;
+    perception.threats.push_back(t1);
+
+    TEST("Has threats after add", perception.HasThreats());
+
+    ThreatInfo t2;
+    t2.entityId = 2;
+    t2.priority = TargetPriority::High;
+    t2.threatLevel = 5.0f;
+    perception.threats.push_back(t2);
+
+    const ThreatInfo* highest = perception.GetHighestThreat();
+    TEST("Highest threat by priority", highest != nullptr && highest->entityId == 2);
+
+    // Tiebreak by threat level
+    ThreatInfo t3;
+    t3.entityId = 3;
+    t3.priority = TargetPriority::High;
+    t3.threatLevel = 20.0f;
+    perception.threats.push_back(t3);
+
+    highest = perception.GetHighestThreat();
+    TEST("Tiebreak by threat level", highest != nullptr && highest->entityId == 3);
+
+    perception.Clear();
+    TEST("Clear removes all", !perception.HasThreats());
+    TEST("Clear empties entities", perception.nearbyEntities.empty());
+}
+
+static void TestAIComponent() {
+    std::cout << "[AIComponent]\n";
+
+    AIComponent ai;
+    TEST("Default state Idle", ai.currentState == AIState::Idle);
+    TEST("Default personality Balanced", ai.personality == AIPersonality::Balanced);
+    TEST("Default flee threshold", ApproxEq(ai.fleeThreshold, 0.25f));
+    TEST("Default no target", ai.currentTarget == InvalidEntityId);
+    TEST("Not mining by default", !ai.canMine);
+    TEST("Enabled by default", ai.isEnabled);
+    TEST("Empty patrol waypoints", ai.patrolWaypoints.empty());
+}
+
+static void TestAIDecisionSystem() {
+    std::cout << "[AIDecisionSystem]\n";
+
+    AIDecisionSystem system;
+    TEST("System name", system.GetName() == "AIDecisionSystem");
+
+    // Idle with no perception
+    AIComponent ai;
+    AIState state = system.EvaluateState(ai);
+    TEST("Idle with no perception", state == AIState::Idle);
+
+    // Patrol with waypoints
+    ai.patrolWaypoints.push_back({0, 0, 0});
+    ai.patrolWaypoints.push_back({100, 0, 0});
+    state = system.EvaluateState(ai);
+    TEST("Patrol with waypoints", state == AIState::Patrol);
+
+    // Mining with asteroids nearby
+    ai.canMine = true;
+    ai.perception.nearbyAsteroids.push_back(42);
+    state = system.EvaluateState(ai);
+    TEST("Mining with available asteroids", state == AIState::Mining);
+
+    // Combat with threats (aggressive)
+    ai.personality = AIPersonality::Aggressive;
+    ThreatInfo threat;
+    threat.entityId = 99;
+    threat.priority = TargetPriority::Low;
+    threat.threatLevel = 5.0f;
+    ai.perception.threats.push_back(threat);
+    state = system.EvaluateState(ai);
+    TEST("Combat for aggressive with any threat", state == AIState::Combat);
+
+    // Coward doesn't enter combat
+    ai.personality = AIPersonality::Coward;
+    state = system.EvaluateState(ai);
+    TEST("Coward avoids combat", state != AIState::Combat);
+
+    // Balanced needs medium+ threat
+    ai.personality = AIPersonality::Balanced;
+    state = system.EvaluateState(ai);
+    TEST("Balanced ignores low threat", state != AIState::Combat);
+
+    ThreatInfo medThreat;
+    medThreat.entityId = 100;
+    medThreat.priority = TargetPriority::Medium;
+    medThreat.threatLevel = 15.0f;
+    ai.perception.threats.push_back(medThreat);
+    state = system.EvaluateState(ai);
+    TEST("Balanced enters combat on medium threat", state == AIState::Combat);
+
+    // ShouldFlee
+    TEST("Should flee at 20% hull", system.ShouldFlee(ai, 0.20f));
+    TEST("Should not flee at 30% hull", !system.ShouldFlee(ai, 0.30f));
+    TEST("Should not flee at 25% hull", !system.ShouldFlee(ai, 0.25f));
+
+    // ShouldReturnToBase
+    ai.homeBase = 50;
+    TEST("Return to base at 85% cargo", system.ShouldReturnToBase(ai, 0.85f));
+    TEST("Don't return at 50% cargo", !system.ShouldReturnToBase(ai, 0.50f));
+    ai.homeBase = InvalidEntityId;
+    TEST("No return without home base", !system.ShouldReturnToBase(ai, 0.99f));
+
+    // SelectTarget
+    EntityId target = system.SelectTarget(ai);
+    TEST("Select highest priority target", target == 100);
+
+    // Fleeing state persists
+    ai.currentState = AIState::Fleeing;
+    state = system.EvaluateState(ai);
+    TEST("Fleeing state persists", state == AIState::Fleeing);
+
+    // Disabled AI keeps current state
+    ai.isEnabled = false;
+    ai.currentState = AIState::Mining;
+    state = system.EvaluateState(ai);
+    TEST("Disabled keeps current state", state == AIState::Mining);
+    ai.isEnabled = true;
+
+    // EvaluateGatheringState
+    AIComponent miner;
+    miner.personality = AIPersonality::Miner;
+    miner.canMine = true;
+    miner.perception.nearbyAsteroids.push_back(1);
+    AIState gatherState = system.EvaluateGatheringState(miner);
+    TEST("Miner prefers mining", gatherState == AIState::Mining);
+
+    AIComponent salvager;
+    salvager.personality = AIPersonality::Salvager;
+    salvager.canSalvage = true;
+    gatherState = system.EvaluateGatheringState(salvager);
+    TEST("Salvager prefers salvaging", gatherState == AIState::Salvaging);
+
+    AIComponent noGather;
+    gatherState = system.EvaluateGatheringState(noGather);
+    TEST("No gathering when incapable", gatherState == AIState::Idle);
+
+    // CalculateActionPriority
+    AIComponent aggressive;
+    aggressive.personality = AIPersonality::Aggressive;
+    TEST("Combat high for aggressive", system.CalculateActionPriority(AIState::Combat, aggressive) > 0.8f);
+
+    AIComponent coward;
+    coward.personality = AIPersonality::Coward;
+    TEST("Combat low for coward", system.CalculateActionPriority(AIState::Combat, coward) < 0.4f);
+    TEST("Fleeing high for coward", system.CalculateActionPriority(AIState::Fleeing, coward) > 0.9f);
+
+    AIComponent minerAi;
+    minerAi.personality = AIPersonality::Miner;
+    TEST("Mining high for miner", system.CalculateActionPriority(AIState::Mining, minerAi) > 0.7f);
+
+    AIComponent traderAi;
+    traderAi.personality = AIPersonality::Trader;
+    TEST("Trading high for trader", system.CalculateActionPriority(AIState::Trading, traderAi) > 0.7f);
+}
+
+// ===================================================================
 // Main
 // ===================================================================
 int main() {
@@ -2146,6 +2765,16 @@ int main() {
     TestPowerSystem();
     TestMiningSystem();
     TestGalaxyGenerator();
+    TestQuestObjective();
+    TestQuest();
+    TestQuestComponent();
+    TestQuestSystem();
+    TestTutorialStep();
+    TestTutorial();
+    TestTutorialSystem();
+    TestAIPerception();
+    TestAIComponent();
+    TestAIDecisionSystem();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
               << testsFailed << " failed ===\n";
