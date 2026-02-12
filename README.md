@@ -1,33 +1,82 @@
-# Codename:Subspace - Advanced Space Game Engine
+# Codename:Subspace — Space Game Engine
 
-A cutting-edge game engine for space exploration and combat, featuring real-time 3D graphics rendering with OpenGL. The project is transitioning to a **C++ / OpenGL** engine for the core block-based ship building system, while preserving the existing C# prototype.
+An Avorion-inspired space exploration and combat game engine, actively transitioning to a **C++17 / OpenGL** core. The new C++ engine (`engine/`) implements high-performance block-based and modular ship construction, while the C# prototype (`AvorionLike/`) provides a playable reference with 19+ backend systems.
 
-> **🎮 Project Status:** Early Development - Core systems operational & **NOW PLAYABLE!**
-> **🌌 Inspired by:** Avorion's gameplay mechanics
-> **🎯 Goal:** Create an extensible, moddable space game engine
-> **🔧 Engine Transition:** New C++ engine in `engine/` — see [Engine README](engine/README.md)
+> **🎮 Project Status:** Active Development — C++ engine conversion in progress
+> **🌌 Inspired by:** Avorion, EVE Online, X4: Foundations
+> **🎯 Goal:** Performant, moddable space game with modular ship construction and salvage-driven gameplay
+> **🔧 C++ Engine:** `engine/` — see [Engine README](engine/README.md)
+> **📂 Documentation:** Reorganized into [`docs/`](docs/) — guides, architecture, implementation notes
 
-> **🚀 New to Codename:Subspace?** Check out our [Quick Start Guide](QUICKSTART.md) for one-click setup!
-> 
-> **✨ LATEST FEATURES:** 
-> - 🚀 **MODULAR SHIP SYSTEM** - New Star Sparrow-inspired modular ship design! Ships now built from pre-defined parts instead of voxels! ✨ **NEW!**
-> - 🔨 **VOXEL DAMAGE VISUALIZATION** - Voxels now used for damage/destruction effects on modular ships! ✨ **NEW!**
-> - 🎨 **ENHANCED VISUALS** - Fixed hollow-looking blocks, improved textures with panel lines and patterns!
-> - 🎮 **INTEGRATED PLAYER UI** - Full gameplay experience with player-controlled ships!
-> - 🕹️ **6DOF Ship Controls** - Realistic space flight with thrust, rotation, and braking
-> - 📊 **Player Status HUD** - Real-time ship stats, inventory, and mission tracking
-> - 🎭 **Stellaris-Style Faction System** - Dynamic faction politics with pops, policies, and influence
-> - 🎮 **Enhanced Lua Modding** - Comprehensive API, mod manager, and auto-discovery
-> - ⚡ **Power Management System** - Dynamic power distribution with priority controls
-> - 🌐 **Strategy Grid** - RTS-style fleet management with Octree spatial partitioning
-> - 🎨 **3D Graphics** - Real-time OpenGL rendering with PBR materials and starfield
-> - 🛡️ **Futuristic HUD** - Holographic-style interface with radar and ship status
+> **✨ LATEST (Feb 2026):**
+> - 🔧 **C++ MODULAR SHIP SYSTEM** — Hardpoint-based module assembly with 12 module types, 5 ship archetypes, and faction-aware procedural generation ✨ **NEW!**
+> - 🧪 **226 unit tests** passing across all C++ engine systems
+> - 📁 **Repository restructured** — docs, scripts, and assets organized into dedicated directories
+> - 🚀 **MODULAR SHIP SYSTEM** — Ships built from pre-defined modular parts with hardpoint attachment
+> - 🔨 **BLOCK-BASED CONSTRUCTION** — Voxel system for ship building, damage visualization, and mining
+> - 🎮 **C# PROTOTYPE PLAYABLE** — Full gameplay loop with mining, combat, trading, navigation
+> - 🎭 **5 Factions** — Iron Dominion, Nomad Continuum, Helix Covenant, Ashen Clades, Ascended Archive
 
-## 🎮 How to Play
+## 📁 Repository Structure
 
-**[See detailed build & run instructions](HOW_TO_BUILD_AND_RUN.md)**
+```
+Codename-Subspace/
+├── engine/              # C++ engine (primary development focus)
+│   ├── include/         #   Public headers (ships, rendering, factions, weapons, AI, networking)
+│   ├── src/             #   Implementations
+│   ├── tests/           #   226 unit tests
+│   ├── data/            #   JSON faction definitions
+│   └── CMakeLists.txt   #   CMake build configuration
+├── AvorionLike/         # C# prototype (playable reference)
+├── docs/                # Documentation
+│   ├── guides/          #   Feature guides and tutorials
+│   ├── architecture/    #   Architecture documents
+│   ├── implementation/  #   Implementation summaries
+│   ├── design/          #   Design documents and brainstorming
+│   └── images/          #   Screenshots and diagrams
+├── scripts/             # Build and test scripts
+├── assets/              # Game assets and module packs
+├── GameData/            # Game data files
+└── README.md            # This file
+```
 
-Quick start:
+## 🔧 C++ Engine (Primary Focus)
+
+The C++ engine implements high-performance ship systems with data-first design. See [engine/README.md](engine/README.md) for full details.
+
+### Building the C++ Engine
+
+```bash
+cd engine
+cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+
+# Run tests (226 tests)
+./build/subspace_tests
+
+# Run the game
+./build/subspace_game
+```
+
+### Key C++ Systems
+
+| System | Status | Description |
+|--------|--------|-------------|
+| Block-based Ships | ✅ Complete | Integer grid, 7 materials, 5 shapes, per-block damage |
+| **Modular Ships** | ✅ **New** | **Hardpoint-based modules, 12 module types, graph-based hierarchy** |
+| **Ship Archetypes** | ✅ **New** | **5 archetypes (Interceptor→Battleship), procedural BFS assembly** |
+| Ship Editor | ✅ Complete | Ghost preview, symmetry tools, state machine |
+| Weapon System | ✅ Complete | 5 weapon archetypes, hardpoint validation, turrets |
+| AI Ship Builder | ✅ Complete | Faction-aware procedural generation, tier-based scaling |
+| Faction System | ✅ Complete | 5 factions with silhouette profiles and shape language |
+| Blueprint System | ✅ Complete | JSON serialization, deterministic loading |
+| Rendering | ✅ Complete | Instanced batching, greedy meshing, chunk system |
+| Networking | ✅ Complete | Deterministic build commands for multiplayer replication |
+
+## 🎮 C# Prototype
+
+The C# prototype remains playable with 19+ backend systems. See [docs/guides/HOW_TO_BUILD_AND_RUN.md](docs/guides/HOW_TO_BUILD_AND_RUN.md).
+
 ```bash
 dotnet run
 # Select Option 1: NEW GAME - Start Full Gameplay Experience
@@ -37,26 +86,21 @@ dotnet run
 - **C** - Toggle between Camera and Ship Control
 - **WASD + Space/Shift** - Movement/Thrust
 - **Arrow Keys + Q/E** - Ship rotation
-- **M** - Galaxy Map (sector travel and navigation) ✨
-- **~** (Tilde) - In-Game Testing Console ✨
-- **TAB** - Player Status, **I** - Inventory, **B** - Ship Builder
-- **Mouse** - Free-look camera (hold ALT to show cursor for UI)
+- **M** - Galaxy Map | **~** - Testing Console
+- **TAB** - Player Status | **I** - Inventory | **B** - Ship Builder
 - **ESC** - Pause Menu
 
 ## 🌟 Overview
 
-Codename:Subspace is a powerful game engine designed for creating space games with **modular ship construction**. It features a modular architecture with support for dynamic ship building from pre-defined parts, Newtonian physics, procedural generation, multiplayer networking, extensive modding capabilities through Lua scripting, and **real-time 3D graphics visualization with integrated player UI**.
+Codename:Subspace features two parallel systems: a high-performance **C++ engine** for ship construction and a **C# prototype** for full gameplay. The C++ engine uses data-first design with integer math, deterministic builds, and GPU-optimized rendering. Ships are built from modular parts that snap together via hardpoints, enabling both player building and AI procedural generation.
 
-### Ship Design System
+### Ship Design Systems
 
-**Modular Ship Construction** (NEW): Ships are now built from pre-defined modular parts (cockpits, engines, wings, weapons, etc.) inspired by Unity Asset Store assets like Star Sparrow Modular Spaceship.
+**Modular Ship Construction (C++ Engine):** Ships assembled from modules (Core, Engine, Weapon, Hull, Cargo, Shield, Utility) connected via hardpoints. Supports procedural generation with faction-specific silhouettes.
 
-**Voxel Usage**: Voxels are NOW ONLY used for:
-- 🔥 Damage visualization on ships (showing holes and destroyed sections)
-- ⛏️ Asteroid mining and deformation
-- 💥 Destruction effects
+**Block-based Construction (C++ Engine):** Voxel grid system for fine-grained ship building with 7 material tiers (Iron → Avorion).
 
-For more information, see [MODULAR_SHIP_SYSTEM_GUIDE.md](MODULAR_SHIP_SYSTEM_GUIDE.md)
+For more information, see [docs/guides/MODULAR_SHIP_SYSTEM_GUIDE.md](docs/guides/MODULAR_SHIP_SYSTEM_GUIDE.md)
 
 ## Core Systems
 

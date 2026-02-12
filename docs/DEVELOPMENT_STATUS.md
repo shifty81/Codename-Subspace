@@ -1,40 +1,36 @@
 # Codename:Subspace - Development Status
 
-**Last Updated:** December 9, 2025  
-**Current Version:** v0.9.0  
-**Status:** ✅ **PLAYABLE** - Core gameplay functional
+**Last Updated:** February 12, 2026  
+**Current Version:** v0.10.0  
+**Status:** 🔧 **ACTIVE DEVELOPMENT** — C++ engine conversion in progress
 
 ---
 
 ## Quick Status Overview
 
-### ✅ What's Working Now
+### 🔧 C++ Engine (Primary Focus)
+- **Modular ship generation system** with hardpoint-based module assembly ✨ **NEW**
+- **12 module types** (Core, Engine, Weapon, Hull, Cargo, Shield, Utility)
+- **5 ship archetypes** (Interceptor, Frigate, Freighter, Cruiser, Battleship)
+- **Faction-aware procedural generation** using BFS assembly pipeline
+- **226/226 unit tests** passing across all engine systems
+- **10 subsystems** operational (blocks, modules, editor, weapons, factions, AI, rendering, blueprints, networking, damage)
+
+### ✅ C# Prototype (Playable Reference)
 - **Full gameplay loop** with player-controlled ships
 - **19+ backend systems** fully operational
 - **3D graphics rendering** with OpenGL/Silk.NET
 - **Complete UI/HUD** with ImGui integration
 - **All core mechanics**: Mining, combat, trading, building, navigation
-- **32/32 automated tests** passing
-- **0 security vulnerabilities** (CodeQL verified)
-
-### 🎮 Playability Status
-**YES, the game is playable!** You can:
-- Control a ship in 3D space with 6DOF movement
-- Mine asteroids for resources
-- Build and customize ships
-- Fight enemies with various weapons
-- Trade at stations
-- Navigate between sectors using hyperdrive
-- Manage inventory and crew
-- Use the in-game console for testing
 
 ### 📊 Completion Metrics
-- **Backend Systems:** 95% complete
-- **Frontend/UI:** 90% complete  
+- **C++ Engine Systems:** 65% complete (core ship systems done, game loop pending)
+- **C# Backend Systems:** 95% complete
+- **C# Frontend/UI:** 90% complete
 - **Gameplay Loop:** 85% complete
 - **Content:** 60% complete
 - **Polish:** 40% complete
-- **Overall:** ~80% complete
+- **Overall:** ~75% complete (weighted toward C++ engine work)
 
 ---
 

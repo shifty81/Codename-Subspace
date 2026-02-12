@@ -1,6 +1,6 @@
 # Codename: Subspace — C++ Engine
 
-The new C++ engine implements the Avorion-style block-based ship building system described in the design document (`chat/avorion ship.rtf`). It is built with **C++17** and **OpenGL**, using **CMake** as the build system.
+The new C++ engine implements Avorion-style block-based and modular ship building systems. It is built with **C++17** and **OpenGL**, using **CMake** as the build system. Design documents are in [`docs/design/`](../docs/design/).
 
 ## Architecture Overview
 
@@ -19,7 +19,9 @@ engine/
 │   │   ├── BlockPlacement.h    # Placement validation, adjacency, overlap checks
 │   │   ├── ShipStats.h         # Emergent stats from blocks (mass, thrust, power)
 │   │   ├── ShipDamage.h        # Per-block damage and destruction
-│   │   └── Blueprint.h         # JSON blueprint save/load
+│   │   ├── Blueprint.h         # JSON blueprint save/load
+│   │   ├── ModuleDef.h         # Modular ship modules, hardpoints, ModuleDatabase ✨ NEW
+│   │   └── ShipArchetype.h     # Ship archetypes, procedural generator ✨ NEW
 │   │
 │   ├── ship_editor/            # Ship editor UI logic
 │   │   ├── ShipEditorState.h   # Editor state machine (Place/Remove/Paint/Select)
@@ -48,7 +50,7 @@ engine/
 │   └── [mirrors include/ structure]
 │
 ├── tests/
-│   └── test_main.cpp           # 118 unit tests covering all systems
+│   └── test_main.cpp           # 226 unit tests covering all systems
 │
 ├── data/
 │   └── factions/               # JSON faction definitions
@@ -108,7 +110,7 @@ The engine integrates directly into the Visual Studio solution:
 2. In Solution Explorer, the **C++ Engine** folder contains:
    - **SubspaceEngine** — Static library with all engine systems
    - **SubspaceGame** — Game executable
-   - **SubspaceTests** — 118 unit tests
+   - **SubspaceTests** — 226 unit tests
 3. Select **Debug | x64** or **Release | x64**
 4. Build → Build Solution (Ctrl+Shift+B)
 5. Right-click SubspaceTests → Set as Startup Project → F5 to run tests
@@ -125,7 +127,7 @@ cmake --build build
 # Run the game
 ./build/subspace_game
 
-# Run tests (118 tests)
+# Run tests (226 tests)
 ./build/subspace_tests
 ```
 
@@ -142,6 +144,43 @@ cmake --build build
 ```
 
 ## Key Systems
+
+### Modular Ship System ✨ NEW
+
+Ships can be built from **modules** that snap together via **hardpoints** — connection points with position and direction.
+
+**Module Types:** Core, Engine, Weapon, Hull, Cargo, Shield, Utility
+
+| Module | Mass | HP | Special |
+|--------|------|----|---------|
+| Core (Small) | 5 | 200 | 10 power output, 4 hardpoints |
+| Core (Medium) | 12 | 400 | 25 power output, 6 hardpoints |
+| Engine (Small) | 3 | 80 | 50 thrust, 5 power draw |
+| Engine (Large) | 8 | 120 | 150 thrust, 12 power draw |
+| Weapon Turret | 4 | 60 | 8 power draw |
+| Weapon Railgun | 6 | 70 | 15 power draw |
+| Hull Plate | 2 | 150 | 4 hardpoints |
+| Cargo (Large) | 8 | 100 | 200 capacity, 4 hardpoints |
+| Shield Generator | 5 | 90 | 100 shield, 10 power draw |
+
+**Ship Archetypes** drive procedural generation:
+
+| Archetype | Modules | Weapons | Engines | Aggressiveness |
+|-----------|---------|---------|---------|----------------|
+| Interceptor | 4–8 | 1–2 | 2 | 0.6 |
+| Frigate | 8–14 | 2–4 | 2 | 0.7 |
+| Freighter | 6–12 | 0–1 | 1 | 0.1 |
+| Cruiser | 12–20 | 3–6 | 3 | 0.8 |
+| Battleship | 18–30 | 5–10 | 4 | 0.9 |
+
+**Generation Pipeline:** Core → BFS Hull Growth → Engines → Weapons → Fill (cargo/shields/utility)
+
+**Key Features:**
+- Graph-based module hierarchy (parent/child relationships)
+- Recursive destruction (destroying a module destroys its subtree)
+- Power balance validation (power generation ≥ power draw)
+- Faction-aware generation (weapon bias, archetype selection)
+- Deterministic seeded RNG for multiplayer-safe generation
 
 ### Block Placement System
 - Blocks snap to integer grid
