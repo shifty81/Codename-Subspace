@@ -58,6 +58,9 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/power/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/mining/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/procedural/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/quest/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/tutorial/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/*.cpp"
 )
 
 file(GLOB_RECURSE ENGINE_HEADERS CONFIGURE_DEPENDS

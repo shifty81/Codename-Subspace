@@ -85,15 +85,29 @@ engine/
 │   ├── networking/             # Multiplayer determinism
 │   │   └── BuildCommand.h      # Deterministic build commands, replication
 │   │
-│   └── ai/                     # AI ship generation
-│       └── AIShipBuilder.h     # Procedural faction ship generator
+│   ├── quest/                  # Quest System (ported from C#)
+│   │   └── QuestSystem.h       # Quests, objectives, rewards, progression
+│   │
+│   ├── tutorial/               # Tutorial System (ported from C#)
+│   │   └── TutorialSystem.h    # Step-based tutorials, prerequisites
+│   │
+│   ├── ui/                     # Custom UI Framework (replaces ImGui)
+│   │   ├── UITypes.h           # Color, Vec2, Rect, DrawCommand
+│   │   ├── UIElement.h         # Label, Button, ProgressBar, Checkbox, Separator
+│   │   ├── UIPanel.h           # Container panel with auto-layout
+│   │   ├── UIRenderer.h        # Data-driven draw command buffer
+│   │   └── UISystem.h          # Top-level panel manager
+│   │
+│   └── ai/                     # AI ship generation & decision making
+│       ├── AIShipBuilder.h     # Procedural faction ship generator
+│       └── AIDecisionSystem.h  # AI state, perception, decision logic
 │
 ├── src/                        # Implementations
 │   ├── main.cpp                # Entry point
 │   └── [mirrors include/ structure]
 │
 ├── tests/
-│   └── test_main.cpp           # 603 unit tests covering all systems
+│   └── test_main.cpp           # 892 unit tests covering all systems
 │
 ├── data/
 │   └── factions/               # JSON faction definitions
@@ -153,7 +167,7 @@ The engine integrates directly into the Visual Studio solution:
 2. In Solution Explorer, the **C++ Engine** folder contains:
    - **SubspaceEngine** — Static library with all engine systems
    - **SubspaceGame** — Game executable
-   - **SubspaceTests** — 226 unit tests
+   - **SubspaceTests** — 892 unit tests
 3. Select **Debug | x64** or **Release | x64**
 4. Build → Build Solution (Ctrl+Shift+B)
 5. Right-click SubspaceTests → Set as Startup Project → F5 to run tests
@@ -170,7 +184,7 @@ cmake --build build
 # Run the game
 ./build/subspace_game
 
-# Run tests (603 tests)
+# Run tests (892 tests)
 ./build/subspace_tests
 ```
 
@@ -323,6 +337,37 @@ Ships can be built from **modules** that snap together via **hardpoints** — co
 - Station names procedurally generated (prefix + suffix), wormhole designations (letter + 3 digits)
 - Equivalent to C# `GalaxyGenerator`, `GalaxySector`, sector data classes
 
+### Quest System
+- **QuestObjective** — Progress-tracked objective with 10 types (Destroy, Collect, Mine, Visit, Trade, Build, Escort, Scan, Deliver, Talk)
+- **Quest** — Quest container with objectives, rewards, prerequisites, difficulty, time limits, and repeatability
+- **QuestReward** — Reward data (Credits, Resource, Experience, Reputation, Item, Unlock)
+- **QuestComponent** — Per-entity quest inventory with max active quest limit
+- **QuestSystem** — Template-based quest management, objective progression, auto-completion on objective fulfillment
+- Equivalent to C# `Quest`, `QuestObjective`, `QuestComponent`, `QuestSystem`
+
+### Tutorial System
+- **TutorialStep** — 5 step types (Message, WaitForKey, WaitForAction, HighlightUI, WaitForTime) with skip support
+- **Tutorial** — Ordered step sequence with auto-start, prerequisites, and completion tracking
+- **TutorialComponent** — Per-entity active tutorials and completed tutorial ID tracking
+- **TutorialSystem** — Template-based tutorials, prerequisite checking, auto-start logic, action-based step completion
+- Equivalent to C# `Tutorial`, `TutorialStep`, `TutorialComponent`, `TutorialSystem`
+
+### AI Decision/Perception System
+- **AIComponent** — AI state machine (12 states), personality (8 types), combat tactics, patrol waypoints, perception data
+- **AIPerception** — Tracks nearby entities, asteroids, stations, and threats with priority ranking
+- **PerceivedEntity** — Perceived entity data (position, distance, hostility, shield/hull status)
+- **ThreatInfo** — Threat assessment with priority levels (None → Critical) and threat level scoring
+- **AIDecisionSystem** — Priority-based state evaluation (Flee > Combat > ReturnToBase > Gather > Patrol > Idle), personality-influenced combat entry, target selection
+- Equivalent to C# `AIComponent`, `AIDecisionSystem`, `AIPerceptionSystem`
+
+### Custom UI Framework
+- **UITypes** — Core types: `Color` (RGBA float, predefined palette, lerp), `Vec2` (2D position/size), `Rect` (axis-aligned bounds with hit-testing), `DrawCommand` (data-driven draw primitive)
+- **UIElement** — Base class for all widgets; concrete types: `UILabel` (text), `UIButton` (click callback), `UIProgressBar` (0–1 fill with auto-color), `UICheckbox` (toggle with callback), `UISeparator` (line)
+- **UIPanel** — Container with automatic vertical/horizontal layout, padding, spacing, title bar, background/border styling; child management (add/remove/find/clear); click propagation to children
+- **UIRenderer** — Data-driven draw command buffer; immediate-mode helpers for filled/outline rect, text, line, circle; no GPU calls — a platform backend reads the command list each frame
+- **UISystem** — Top-level manager: panel registration, ordered rendering, visibility toggle, input dispatch (reverse-order hit testing), per-frame layout update
+- Replaces ImGui dependency; custom solution designed for the project's needs
+
 ## Ported from C# Prototype
 
 The following core systems have been ported from the C# prototype (`AvorionLike/`) to C++:
@@ -392,9 +437,9 @@ The following core systems have been ported from the C# prototype (`AvorionLike/
 | Power System | ✅ Ported | 37 tests |
 | Mining/Salvaging | ✅ Ported | 27 tests |
 | Procedural Generation | ✅ Ported | 26 tests |
-| AI Decision/Perception | ⏳ Planned | — |
+| AI Decision/Perception | ✅ Ported | 39 tests |
 | Networking (full) | ⏳ Planned | — |
 | Scripting/Lua | ⏳ Planned | — |
-| Quest System | ⏳ Planned | — |
-| Tutorial System | ⏳ Planned | — |
-| Graphics/UI (ImGui) | ⏳ Planned | — |
+| Quest System | ✅ Ported | 65 tests |
+| Tutorial System | ✅ Ported | 53 tests |
+| Graphics/UI (Custom) | ✅ Ported | 132 tests |

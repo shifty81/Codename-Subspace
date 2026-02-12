@@ -44,6 +44,14 @@
 #include "power/PowerSystem.h"
 #include "mining/MiningSystem.h"
 #include "procedural/GalaxyGenerator.h"
+#include "quest/QuestSystem.h"
+#include "tutorial/TutorialSystem.h"
+#include "ai/AIDecisionSystem.h"
+#include "ui/UITypes.h"
+#include "ui/UIElement.h"
+#include "ui/UIPanel.h"
+#include "ui/UIRenderer.h"
+#include "ui/UISystem.h"
 
 using namespace subspace;
 
@@ -2109,6 +2117,1108 @@ static void TestGalaxyGenerator() {
 }
 
 // ===================================================================
+// Quest System Tests
+// ===================================================================
+static void TestQuestObjective() {
+    std::cout << "[QuestObjective]\n";
+
+    QuestObjective obj;
+    obj.id = "obj1";
+    obj.type = ObjectiveType::Destroy;
+    obj.target = "pirate";
+    obj.requiredQuantity = 3;
+
+    TEST("Objective starts NotStarted", obj.status == ObjectiveStatus::NotStarted);
+    TEST("Initial progress is 0", obj.currentProgress == 0);
+    TEST("Not complete initially", !obj.IsComplete());
+    TEST("Completion is 0", ApproxEq(obj.GetCompletionPercentage(), 0.0f));
+
+    obj.Progress(1);
+    TEST("Progress activates objective", obj.status == ObjectiveStatus::Active);
+    TEST("Progress 1/3", obj.currentProgress == 1);
+    TEST("Completion ~33%", ApproxEq(obj.GetCompletionPercentage(), 1.0f / 3.0f));
+
+    obj.Progress(1);
+    TEST("Progress 2/3", obj.currentProgress == 2);
+
+    bool completed = obj.Progress(1);
+    TEST("Progress completes objective", completed);
+    TEST("Status is Completed", obj.status == ObjectiveStatus::Completed);
+    TEST("IsComplete true", obj.IsComplete());
+    TEST("Completion 100%", ApproxEq(obj.GetCompletionPercentage(), 1.0f));
+
+    // Cannot progress after completion
+    bool again = obj.Progress(1);
+    TEST("Cannot progress after completion", !again);
+
+    // Reset
+    obj.Reset();
+    TEST("Reset clears progress", obj.currentProgress == 0);
+    TEST("Reset restores NotStarted", obj.status == ObjectiveStatus::NotStarted);
+
+    // Fail
+    obj.Activate();
+    TEST("Activate sets Active", obj.status == ObjectiveStatus::Active);
+    obj.Fail();
+    TEST("Fail sets Failed", obj.status == ObjectiveStatus::Failed);
+    bool afterFail = obj.Progress(1);
+    TEST("Cannot progress after failure", !afterFail);
+}
+
+static void TestQuest() {
+    std::cout << "[Quest]\n";
+
+    Quest quest;
+    quest.id = "quest1";
+    quest.title = "Destroy Pirates";
+    quest.description = "Kill 3 pirates";
+
+    QuestObjective obj1;
+    obj1.id = "kill_pirates";
+    obj1.type = ObjectiveType::Destroy;
+    obj1.target = "pirate";
+    obj1.requiredQuantity = 3;
+
+    QuestObjective obj2;
+    obj2.id = "collect_loot";
+    obj2.type = ObjectiveType::Collect;
+    obj2.target = "pirate_loot";
+    obj2.requiredQuantity = 1;
+    obj2.isOptional = true;
+
+    quest.objectives.push_back(obj1);
+    quest.objectives.push_back(obj2);
+
+    QuestReward reward;
+    reward.type = RewardType::Credits;
+    reward.amount = 1000;
+    quest.rewards.push_back(reward);
+
+    TEST("Quest starts Available", quest.status == QuestStatus::Available);
+    TEST("Cannot complete before accepting", !quest.Complete());
+    TEST("Cannot turn in before completing", !quest.TurnIn());
+
+    bool accepted = quest.Accept();
+    TEST("Accept succeeds", accepted);
+    TEST("Quest is Active", quest.status == QuestStatus::Active);
+    TEST("Cannot accept again", !quest.Accept());
+
+    // Required objectives not complete
+    TEST("Required objectives not complete", !quest.AreRequiredObjectivesComplete());
+    TEST("No failed objective", !quest.HasFailedObjective());
+    TEST("Cannot complete early", !quest.Complete());
+
+    // Progress required objective
+    quest.objectives[0].Progress(3);
+    TEST("Required objectives complete", quest.AreRequiredObjectivesComplete());
+    TEST("Completion ignores optional", ApproxEq(quest.GetCompletionPercentage(), 1.0f));
+
+    bool completed = quest.Complete();
+    TEST("Complete succeeds", completed);
+    TEST("Quest is Completed", quest.status == QuestStatus::Completed);
+
+    bool turnedIn = quest.TurnIn();
+    TEST("TurnIn succeeds", turnedIn);
+    TEST("Quest is TurnedIn", quest.status == QuestStatus::TurnedIn);
+
+    // Reset
+    quest.Reset();
+    TEST("Reset restores Available", quest.status == QuestStatus::Available);
+    TEST("Reset clears objective progress", quest.objectives[0].currentProgress == 0);
+}
+
+static void TestQuestComponent() {
+    std::cout << "[QuestComponent]\n";
+
+    QuestComponent comp;
+    TEST("No quests initially", comp.quests.empty());
+    TEST("Active count 0", comp.GetActiveQuestCount() == 0);
+
+    Quest q1;
+    q1.id = "q1";
+    q1.title = "Quest 1";
+    comp.AddQuest(q1);
+    TEST("One quest after add", comp.quests.size() == 1);
+    TEST("Available count 1", comp.GetAvailableQuestCount() == 1);
+
+    Quest* found = comp.GetQuest("q1");
+    TEST("Find quest by id", found != nullptr);
+    TEST("Found correct quest", found != nullptr && found->id == "q1");
+
+    Quest* notFound = comp.GetQuest("nonexistent");
+    TEST("Nonexistent returns nullptr", notFound == nullptr);
+
+    bool accepted = comp.AcceptQuest("q1");
+    TEST("Accept quest via component", accepted);
+    TEST("Active count 1", comp.GetActiveQuestCount() == 1);
+    TEST("Available count 0", comp.GetAvailableQuestCount() == 0);
+
+    // Abandon
+    Quest q2;
+    q2.id = "q2";
+    q2.canAbandon = false;
+    comp.AddQuest(q2);
+    comp.AcceptQuest("q2");
+    bool abandoned = comp.AbandonQuest("q2");
+    TEST("Cannot abandon non-abandonable", !abandoned);
+
+    bool abandoned1 = comp.AbandonQuest("q1");
+    TEST("Can abandon abandonable quest", abandoned1);
+    TEST("Active count 1 after abandon", comp.GetActiveQuestCount() == 1);
+
+    // Remove
+    bool removed = comp.RemoveQuest("q1");
+    TEST("Remove quest succeeds", removed);
+    bool removedAgain = comp.RemoveQuest("q1");
+    TEST("Remove nonexistent fails", !removedAgain);
+
+    // Max active quests
+    comp.maxActiveQuests = 1;
+    Quest q3;
+    q3.id = "q3";
+    comp.AddQuest(q3);
+    bool accepted3 = comp.AcceptQuest("q3");
+    TEST("Cannot exceed max active quests", !accepted3);
+}
+
+static void TestQuestSystem() {
+    std::cout << "[QuestSystem]\n";
+
+    QuestSystem system;
+    TEST("System name", system.GetName() == "QuestSystem");
+    TEST("No templates initially", system.GetTemplateCount() == 0);
+
+    Quest tmpl;
+    tmpl.id = "tmpl_kill";
+    tmpl.title = "Kill Quest Template";
+    QuestObjective obj;
+    obj.id = "kill_obj";
+    obj.type = ObjectiveType::Destroy;
+    obj.target = "enemy";
+    obj.requiredQuantity = 5;
+    tmpl.objectives.push_back(obj);
+
+    system.AddQuestTemplate(tmpl);
+    TEST("One template after add", system.GetTemplateCount() == 1);
+
+    // Create from template
+    Quest created = system.CreateQuestFromTemplate("tmpl_kill");
+    TEST("Created quest has id", created.id == "tmpl_kill");
+    TEST("Created quest has objective", created.objectives.size() == 1);
+
+    Quest missing = system.CreateQuestFromTemplate("nonexistent");
+    TEST("Missing template returns empty", missing.id.empty());
+
+    // Give quest
+    QuestComponent comp;
+    bool given = system.GiveQuest(1, "tmpl_kill", comp);
+    TEST("GiveQuest succeeds", given);
+    TEST("Component has quest", comp.quests.size() == 1);
+
+    bool givenBad = system.GiveQuest(1, "nonexistent", comp);
+    TEST("GiveQuest with bad template fails", !givenBad);
+
+    // Accept and progress
+    comp.AcceptQuest("tmpl_kill");
+    system.ProgressObjective(comp, ObjectiveType::Destroy, "enemy", 3);
+    Quest* q = comp.GetQuest("tmpl_kill");
+    TEST("Progress applied", q != nullptr && q->objectives[0].currentProgress == 3);
+
+    system.ProgressObjective(comp, ObjectiveType::Destroy, "enemy", 2);
+    TEST("Quest auto-completed", q != nullptr && q->status == QuestStatus::Completed);
+
+    // Wrong type/target doesn't progress
+    Quest tmpl2;
+    tmpl2.id = "tmpl_mine";
+    QuestObjective obj2;
+    obj2.id = "mine_obj";
+    obj2.type = ObjectiveType::Mine;
+    obj2.target = "iron";
+    obj2.requiredQuantity = 10;
+    tmpl2.objectives.push_back(obj2);
+    system.AddQuestTemplate(tmpl2);
+    system.GiveQuest(1, "tmpl_mine", comp);
+    comp.AcceptQuest("tmpl_mine");
+    system.ProgressObjective(comp, ObjectiveType::Destroy, "iron", 5);
+    Quest* q2 = comp.GetQuest("tmpl_mine");
+    TEST("Wrong type doesn't progress", q2 != nullptr && q2->objectives[0].currentProgress == 0);
+    system.ProgressObjective(comp, ObjectiveType::Mine, "gold", 5);
+    TEST("Wrong target doesn't progress", q2 != nullptr && q2->objectives[0].currentProgress == 0);
+    system.ProgressObjective(comp, ObjectiveType::Mine, "iron", 5);
+    TEST("Correct type+target progresses", q2 != nullptr && q2->objectives[0].currentProgress == 5);
+}
+
+// ===================================================================
+// Tutorial System Tests
+// ===================================================================
+static void TestTutorialStep() {
+    std::cout << "[TutorialStep]\n";
+
+    TutorialStep step;
+    step.id = "step1";
+    step.type = TutorialStepType::Message;
+    step.title = "Welcome";
+    step.message = "Welcome to the game!";
+
+    TEST("Step starts NotStarted", step.status == TutorialStepStatus::NotStarted);
+
+    step.Start();
+    TEST("Start sets Active", step.status == TutorialStepStatus::Active);
+    TEST("Elapsed time reset", ApproxEq(step.elapsedTime, 0.0f));
+
+    step.Complete();
+    TEST("Complete sets Completed", step.status == TutorialStepStatus::Completed);
+
+    step.Reset();
+    TEST("Reset sets NotStarted", step.status == TutorialStepStatus::NotStarted);
+
+    step.Start();
+    step.Skip();
+    TEST("Skip sets Skipped", step.status == TutorialStepStatus::Skipped);
+
+    // WaitForTime
+    TutorialStep timeStep;
+    timeStep.type = TutorialStepType::WaitForTime;
+    timeStep.duration = 5.0f;
+    timeStep.Start();
+    TEST("Time not elapsed at start", !timeStep.IsTimeElapsed());
+    timeStep.elapsedTime = 4.9f;
+    TEST("Time not elapsed before duration", !timeStep.IsTimeElapsed());
+    timeStep.elapsedTime = 5.0f;
+    TEST("Time elapsed at duration", timeStep.IsTimeElapsed());
+    timeStep.elapsedTime = 6.0f;
+    TEST("Time elapsed past duration", timeStep.IsTimeElapsed());
+
+    // Non-WaitForTime type never reports time elapsed
+    TutorialStep msgStep;
+    msgStep.type = TutorialStepType::Message;
+    msgStep.duration = 1.0f;
+    msgStep.elapsedTime = 100.0f;
+    TEST("Message type never time-elapsed", !msgStep.IsTimeElapsed());
+}
+
+static void TestTutorial() {
+    std::cout << "[Tutorial]\n";
+
+    Tutorial tut;
+    tut.id = "tut1";
+    tut.title = "Basic Controls";
+
+    TutorialStep s1;
+    s1.id = "s1";
+    s1.type = TutorialStepType::Message;
+    s1.title = "Move";
+
+    TutorialStep s2;
+    s2.id = "s2";
+    s2.type = TutorialStepType::WaitForKey;
+    s2.requiredKey = "W";
+
+    TutorialStep s3;
+    s3.id = "s3";
+    s3.type = TutorialStepType::WaitForAction;
+    s3.requiredAction = "collect_resource";
+
+    tut.steps.push_back(s1);
+    tut.steps.push_back(s2);
+    tut.steps.push_back(s3);
+
+    TEST("Tutorial starts NotStarted", tut.status == TutorialStatus::NotStarted);
+    TEST("Cannot complete step before start", !tut.CompleteCurrentStep());
+
+    bool started = tut.Start();
+    TEST("Start succeeds", started);
+    TEST("Status is Active", tut.status == TutorialStatus::Active);
+    TEST("First step is active", tut.steps[0].status == TutorialStepStatus::Active);
+    TEST("Current step index 0", tut.currentStepIndex == 0);
+    TEST("Cannot start again", !tut.Start());
+
+    TEST("Completion 0%", ApproxEq(tut.GetCompletionPercentage(), 0.0f));
+
+    tut.CompleteCurrentStep();
+    TEST("Step 1 completed", tut.steps[0].status == TutorialStepStatus::Completed);
+    TEST("Step 2 started", tut.steps[1].status == TutorialStepStatus::Active);
+    TEST("Current step index 1", tut.currentStepIndex == 1);
+    TEST("Completion ~33%", ApproxEq(tut.GetCompletionPercentage(), 100.0f / 3.0f));
+
+    tut.CompleteCurrentStep();
+    TEST("Step 2 completed", tut.steps[1].status == TutorialStepStatus::Completed);
+    TEST("Completion ~67%", ApproxEq(tut.GetCompletionPercentage(), 200.0f / 3.0f));
+
+    tut.CompleteCurrentStep();
+    TEST("Tutorial completed", tut.status == TutorialStatus::Completed);
+    TEST("All steps complete", tut.AreAllStepsComplete());
+    TEST("Completion 100%", ApproxEq(tut.GetCompletionPercentage(), 100.0f));
+
+    // Reset
+    tut.Reset();
+    TEST("Reset restores NotStarted", tut.status == TutorialStatus::NotStarted);
+    TEST("Reset clears step index", tut.currentStepIndex == 0);
+
+    // Skip
+    tut.Start();
+    tut.Skip();
+    TEST("Skip sets Skipped", tut.status == TutorialStatus::Skipped);
+
+    // WaitForTime auto-complete
+    Tutorial timeTut;
+    timeTut.id = "tut_time";
+    TutorialStep ts;
+    ts.id = "ts1";
+    ts.type = TutorialStepType::WaitForTime;
+    ts.duration = 2.0f;
+    timeTut.steps.push_back(ts);
+    timeTut.Start();
+    timeTut.Update(1.0f);
+    TEST("Time step not done yet", timeTut.status == TutorialStatus::Active);
+    timeTut.Update(1.5f);
+    TEST("Time step auto-completes", timeTut.status == TutorialStatus::Completed);
+}
+
+static void TestTutorialSystem() {
+    std::cout << "[TutorialSystem]\n";
+
+    TutorialSystem system;
+    TEST("System name", system.GetName() == "TutorialSystem");
+    TEST("No templates initially", system.GetTemplateCount() == 0);
+
+    Tutorial tmpl;
+    tmpl.id = "basic_controls";
+    tmpl.title = "Basic Controls";
+    tmpl.autoStart = true;
+    TutorialStep s1;
+    s1.id = "s1";
+    s1.type = TutorialStepType::Message;
+    tmpl.steps.push_back(s1);
+    TutorialStep s2;
+    s2.id = "s2";
+    s2.type = TutorialStepType::WaitForAction;
+    s2.requiredAction = "move_forward";
+    tmpl.steps.push_back(s2);
+
+    system.AddTutorialTemplate(tmpl);
+    TEST("One template after add", system.GetTemplateCount() == 1);
+
+    // Start tutorial
+    TutorialComponent comp;
+    bool started = system.StartTutorial(1, "basic_controls", comp);
+    TEST("Start tutorial succeeds", started);
+    TEST("One active tutorial", comp.activeTutorials.size() == 1);
+    TEST("Tutorial is active", comp.activeTutorials[0].status == TutorialStatus::Active);
+
+    // Cannot start same tutorial twice
+    bool again = system.StartTutorial(1, "basic_controls", comp);
+    TEST("Cannot start duplicate", !again);
+
+    // Nonexistent template
+    bool bad = system.StartTutorial(1, "nonexistent", comp);
+    TEST("Nonexistent template fails", !bad);
+
+    // Complete step
+    system.CompleteCurrentStep(comp, "basic_controls");
+    TEST("Step 1 completed", comp.activeTutorials[0].steps[0].status == TutorialStepStatus::Completed);
+    TEST("Step 2 started", comp.activeTutorials[0].steps[1].status == TutorialStepStatus::Active);
+
+    // Complete action step
+    system.CompleteActionStep(comp, "wrong_action");
+    TEST("Wrong action doesn't complete", comp.activeTutorials[0].steps[1].status == TutorialStepStatus::Active);
+
+    system.CompleteActionStep(comp, "move_forward");
+    TEST("Correct action completes", comp.activeTutorials[0].status == TutorialStatus::Completed);
+    TEST("Tutorial marked completed", system.HasCompletedTutorial(comp, "basic_controls"));
+
+    // Prerequisites
+    Tutorial advanced;
+    advanced.id = "advanced_controls";
+    advanced.prerequisites.push_back("basic_controls");
+    TutorialStep as1;
+    as1.id = "as1";
+    advanced.steps.push_back(as1);
+    system.AddTutorialTemplate(advanced);
+
+    TutorialComponent comp2;
+    bool prereqFail = system.StartTutorial(1, "advanced_controls", comp2);
+    TEST("Prerequisites block start", !prereqFail);
+
+    comp2.completedTutorialIds.insert("basic_controls");
+    bool prereqPass = system.StartTutorial(1, "advanced_controls", comp2);
+    TEST("Prerequisites met allows start", prereqPass);
+
+    // Auto-start
+    TutorialComponent comp3;
+    system.CheckAutoStartTutorials(1, comp3);
+    TEST("Auto-start works (basic_controls)", comp3.activeTutorials.size() == 1);
+    TEST("Auto-started correct tutorial", comp3.activeTutorials[0].id == "basic_controls");
+
+    // Skip tutorial
+    TutorialComponent comp4;
+    system.StartTutorial(1, "basic_controls", comp4);
+    system.SkipTutorial(comp4, "basic_controls");
+    TEST("Skip sets Skipped", comp4.activeTutorials[0].status == TutorialStatus::Skipped);
+    TEST("Skip marks completed", system.HasCompletedTutorial(comp4, "basic_controls"));
+
+    // HasCompletedTutorial false case
+    TEST("Not completed returns false", !system.HasCompletedTutorial(comp4, "nonexistent"));
+}
+
+// ===================================================================
+// AI Decision System Tests
+// ===================================================================
+static void TestAIPerception() {
+    std::cout << "[AIPerception]\n";
+
+    AIPerception perception;
+    TEST("No threats initially", !perception.HasThreats());
+    TEST("Highest threat nullptr", perception.GetHighestThreat() == nullptr);
+
+    ThreatInfo t1;
+    t1.entityId = 1;
+    t1.priority = TargetPriority::Low;
+    t1.threatLevel = 10.0f;
+    perception.threats.push_back(t1);
+
+    TEST("Has threats after add", perception.HasThreats());
+
+    ThreatInfo t2;
+    t2.entityId = 2;
+    t2.priority = TargetPriority::High;
+    t2.threatLevel = 5.0f;
+    perception.threats.push_back(t2);
+
+    const ThreatInfo* highest = perception.GetHighestThreat();
+    TEST("Highest threat by priority", highest != nullptr && highest->entityId == 2);
+
+    // Tiebreak by threat level
+    ThreatInfo t3;
+    t3.entityId = 3;
+    t3.priority = TargetPriority::High;
+    t3.threatLevel = 20.0f;
+    perception.threats.push_back(t3);
+
+    highest = perception.GetHighestThreat();
+    TEST("Tiebreak by threat level", highest != nullptr && highest->entityId == 3);
+
+    perception.Clear();
+    TEST("Clear removes all", !perception.HasThreats());
+    TEST("Clear empties entities", perception.nearbyEntities.empty());
+}
+
+static void TestAIComponent() {
+    std::cout << "[AIComponent]\n";
+
+    AIComponent ai;
+    TEST("Default state Idle", ai.currentState == AIState::Idle);
+    TEST("Default personality Balanced", ai.personality == AIPersonality::Balanced);
+    TEST("Default flee threshold", ApproxEq(ai.fleeThreshold, 0.25f));
+    TEST("Default no target", ai.currentTarget == InvalidEntityId);
+    TEST("Not mining by default", !ai.canMine);
+    TEST("Enabled by default", ai.isEnabled);
+    TEST("Empty patrol waypoints", ai.patrolWaypoints.empty());
+}
+
+static void TestAIDecisionSystem() {
+    std::cout << "[AIDecisionSystem]\n";
+
+    AIDecisionSystem system;
+    TEST("System name", system.GetName() == "AIDecisionSystem");
+
+    // Idle with no perception
+    AIComponent ai;
+    AIState state = system.EvaluateState(ai);
+    TEST("Idle with no perception", state == AIState::Idle);
+
+    // Patrol with waypoints
+    ai.patrolWaypoints.push_back({0, 0, 0});
+    ai.patrolWaypoints.push_back({100, 0, 0});
+    state = system.EvaluateState(ai);
+    TEST("Patrol with waypoints", state == AIState::Patrol);
+
+    // Mining with asteroids nearby
+    ai.canMine = true;
+    ai.perception.nearbyAsteroids.push_back(42);
+    state = system.EvaluateState(ai);
+    TEST("Mining with available asteroids", state == AIState::Mining);
+
+    // Combat with threats (aggressive)
+    ai.personality = AIPersonality::Aggressive;
+    ThreatInfo threat;
+    threat.entityId = 99;
+    threat.priority = TargetPriority::Low;
+    threat.threatLevel = 5.0f;
+    ai.perception.threats.push_back(threat);
+    state = system.EvaluateState(ai);
+    TEST("Combat for aggressive with any threat", state == AIState::Combat);
+
+    // Coward doesn't enter combat
+    ai.personality = AIPersonality::Coward;
+    state = system.EvaluateState(ai);
+    TEST("Coward avoids combat", state != AIState::Combat);
+
+    // Balanced needs medium+ threat
+    ai.personality = AIPersonality::Balanced;
+    state = system.EvaluateState(ai);
+    TEST("Balanced ignores low threat", state != AIState::Combat);
+
+    ThreatInfo medThreat;
+    medThreat.entityId = 100;
+    medThreat.priority = TargetPriority::Medium;
+    medThreat.threatLevel = 15.0f;
+    ai.perception.threats.push_back(medThreat);
+    state = system.EvaluateState(ai);
+    TEST("Balanced enters combat on medium threat", state == AIState::Combat);
+
+    // ShouldFlee
+    TEST("Should flee at 20% hull", system.ShouldFlee(ai, 0.20f));
+    TEST("Should not flee at 30% hull", !system.ShouldFlee(ai, 0.30f));
+    TEST("Should not flee at 25% hull", !system.ShouldFlee(ai, 0.25f));
+
+    // ShouldReturnToBase
+    ai.homeBase = 50;
+    TEST("Return to base at 85% cargo", system.ShouldReturnToBase(ai, 0.85f));
+    TEST("Don't return at 50% cargo", !system.ShouldReturnToBase(ai, 0.50f));
+    ai.homeBase = InvalidEntityId;
+    TEST("No return without home base", !system.ShouldReturnToBase(ai, 0.99f));
+
+    // SelectTarget
+    EntityId target = system.SelectTarget(ai);
+    TEST("Select highest priority target", target == 100);
+
+    // Fleeing state persists
+    ai.currentState = AIState::Fleeing;
+    state = system.EvaluateState(ai);
+    TEST("Fleeing state persists", state == AIState::Fleeing);
+
+    // Disabled AI keeps current state
+    ai.isEnabled = false;
+    ai.currentState = AIState::Mining;
+    state = system.EvaluateState(ai);
+    TEST("Disabled keeps current state", state == AIState::Mining);
+    ai.isEnabled = true;
+
+    // EvaluateGatheringState
+    AIComponent miner;
+    miner.personality = AIPersonality::Miner;
+    miner.canMine = true;
+    miner.perception.nearbyAsteroids.push_back(1);
+    AIState gatherState = system.EvaluateGatheringState(miner);
+    TEST("Miner prefers mining", gatherState == AIState::Mining);
+
+    AIComponent salvager;
+    salvager.personality = AIPersonality::Salvager;
+    salvager.canSalvage = true;
+    gatherState = system.EvaluateGatheringState(salvager);
+    TEST("Salvager prefers salvaging", gatherState == AIState::Salvaging);
+
+    AIComponent noGather;
+    gatherState = system.EvaluateGatheringState(noGather);
+    TEST("No gathering when incapable", gatherState == AIState::Idle);
+
+    // CalculateActionPriority
+    AIComponent aggressive;
+    aggressive.personality = AIPersonality::Aggressive;
+    TEST("Combat high for aggressive", system.CalculateActionPriority(AIState::Combat, aggressive) > 0.8f);
+
+    AIComponent coward;
+    coward.personality = AIPersonality::Coward;
+    TEST("Combat low for coward", system.CalculateActionPriority(AIState::Combat, coward) < 0.4f);
+    TEST("Fleeing high for coward", system.CalculateActionPriority(AIState::Fleeing, coward) > 0.9f);
+
+    AIComponent minerAi;
+    minerAi.personality = AIPersonality::Miner;
+    TEST("Mining high for miner", system.CalculateActionPriority(AIState::Mining, minerAi) > 0.7f);
+
+    AIComponent traderAi;
+    traderAi.personality = AIPersonality::Trader;
+    TEST("Trading high for trader", system.CalculateActionPriority(AIState::Trading, traderAi) > 0.7f);
+}
+
+// ===================================================================
+// UI Types Tests
+// ===================================================================
+static void TestUITypes() {
+    std::cout << "[UITypes]\n";
+
+    // Color
+    Color c(0.5f, 0.25f, 0.75f, 1.0f);
+    TEST("Color construction", ApproxEq(c.r, 0.5f) && ApproxEq(c.g, 0.25f));
+    TEST("Color equality", Color::White() == Color(1, 1, 1, 1));
+    TEST("Color inequality", Color::White() != Color::Black());
+
+    uint32_t rgba = Color(1, 0, 0, 1).ToRGBA32();
+    TEST("Color ToRGBA32 red", (rgba >> 24) == 255 && ((rgba >> 16) & 0xFF) == 0);
+
+    Color lerped = Color::Lerp(Color::Black(), Color::White(), 0.5f);
+    TEST("Color Lerp midpoint", ApproxEq(lerped.r, 0.5f) && ApproxEq(lerped.g, 0.5f));
+
+    Color lerpClamped = Color::Lerp(Color::Black(), Color::White(), 2.0f);
+    TEST("Color Lerp clamp high", ApproxEq(lerpClamped.r, 1.0f));
+
+    // Vec2
+    Vec2 a(3, 4);
+    Vec2 b(1, 2);
+    Vec2 sum = a + b;
+    TEST("Vec2 add", ApproxEq(sum.x, 4.0f) && ApproxEq(sum.y, 6.0f));
+    Vec2 diff = a - b;
+    TEST("Vec2 sub", ApproxEq(diff.x, 2.0f) && ApproxEq(diff.y, 2.0f));
+    Vec2 scaled = a * 2.0f;
+    TEST("Vec2 scale", ApproxEq(scaled.x, 6.0f) && ApproxEq(scaled.y, 8.0f));
+    TEST("Vec2 equality", a == Vec2(3, 4));
+    TEST("Vec2 inequality", a != b);
+
+    // Rect
+    Rect r(10, 20, 100, 50);
+    TEST("Rect Left", ApproxEq(r.Left(), 10.0f));
+    TEST("Rect Top", ApproxEq(r.Top(), 20.0f));
+    TEST("Rect Right", ApproxEq(r.Right(), 110.0f));
+    TEST("Rect Bottom", ApproxEq(r.Bottom(), 70.0f));
+    TEST("Rect Center", ApproxEq(r.Center().x, 60.0f) && ApproxEq(r.Center().y, 45.0f));
+    TEST("Rect Contains inside", r.Contains(50, 40));
+    TEST("Rect Contains corner", r.Contains(10, 20));
+    TEST("Rect not Contains outside", !r.Contains(5, 40));
+    TEST("Rect Contains Vec2", r.Contains(Vec2(50, 40)));
+}
+
+// ===================================================================
+// UI Element Tests
+// ===================================================================
+static void TestUILabel() {
+    std::cout << "[UILabel]\n";
+
+    UILabel label;
+    TEST("Label type", label.GetType() == UIElementType::Label);
+    TEST("Label default visible", label.IsVisible());
+    TEST("Label default enabled", label.IsEnabled());
+
+    label.SetText("Hello World");
+    label.SetColor(Color::Green());
+    label.SetFontSize(20);
+    label.SetBounds({10, 20, 200, 30});
+
+    TEST("Label text", label.GetText() == "Hello World");
+    TEST("Label color", label.GetColor() == Color::Green());
+    TEST("Label font size", label.GetFontSize() == 20);
+
+    std::vector<DrawCommand> cmds;
+    label.Render(cmds);
+    TEST("Label renders 1 command", cmds.size() == 1);
+    TEST("Label command type text", cmds[0].type == DrawCommandType::Text);
+    TEST("Label command has text", cmds[0].text == "Hello World");
+
+    // Empty label renders nothing
+    UILabel emptyLabel;
+    cmds.clear();
+    emptyLabel.Render(cmds);
+    TEST("Empty label renders 0 commands", cmds.empty());
+
+    // Hidden label renders nothing
+    label.SetVisible(false);
+    cmds.clear();
+    label.Render(cmds);
+    TEST("Hidden label renders 0 commands", cmds.empty());
+}
+
+static void TestUIButton() {
+    std::cout << "[UIButton]\n";
+
+    UIButton button;
+    TEST("Button type", button.GetType() == UIElementType::Button);
+
+    button.SetLabel("Click Me");
+    button.SetBounds({50, 50, 120, 30});
+    button.SetBackgroundColor(Color::Blue());
+    button.SetTextColor(Color::Yellow());
+
+    TEST("Button label", button.GetLabel() == "Click Me");
+    TEST("Button bg color", button.GetBackgroundColor() == Color::Blue());
+
+    std::vector<DrawCommand> cmds;
+    button.Render(cmds);
+    TEST("Button renders 3 commands (bg+border+text)", cmds.size() == 3);
+    TEST("Button first cmd filled rect", cmds[0].type == DrawCommandType::FilledRect);
+    TEST("Button second cmd outline", cmds[1].type == DrawCommandType::OutlineRect);
+    TEST("Button third cmd text", cmds[2].type == DrawCommandType::Text);
+
+    // Click handling
+    bool clicked = false;
+    button.SetOnClick([&clicked]() { clicked = true; });
+    bool consumed = button.HandleClick(60, 60);
+    TEST("Button click inside consumed", consumed);
+    TEST("Button click callback fired", clicked);
+
+    clicked = false;
+    consumed = button.HandleClick(0, 0);
+    TEST("Button click outside not consumed", !consumed);
+    TEST("Button click outside no callback", !clicked);
+
+    // Disabled button
+    button.SetEnabled(false);
+    clicked = false;
+    consumed = button.HandleClick(60, 60);
+    TEST("Disabled button not consumed", !consumed);
+    TEST("Disabled button no callback", !clicked);
+}
+
+static void TestUIProgressBar() {
+    std::cout << "[UIProgressBar]\n";
+
+    UIProgressBar bar;
+    TEST("ProgressBar type", bar.GetType() == UIElementType::ProgressBar);
+    TEST("ProgressBar default value 0", ApproxEq(bar.GetValue(), 0.0f));
+
+    bar.SetValue(0.75f);
+    TEST("ProgressBar set value", ApproxEq(bar.GetValue(), 0.75f));
+
+    bar.SetValue(-0.5f);
+    TEST("ProgressBar clamp low", ApproxEq(bar.GetValue(), 0.0f));
+
+    bar.SetValue(2.0f);
+    TEST("ProgressBar clamp high", ApproxEq(bar.GetValue(), 1.0f));
+
+    bar.SetValue(0.5f);
+    bar.SetFillColor(Color::Cyan());
+    bar.SetLabel("HP: 50%");
+    bar.SetBounds({10, 10, 200, 20});
+
+    std::vector<DrawCommand> cmds;
+    bar.Render(cmds);
+    TEST("ProgressBar renders 4 commands (bg+fill+border+label)", cmds.size() == 4);
+    TEST("ProgressBar fill cmd", cmds[1].type == DrawCommandType::FilledRect);
+    // Fill width should be half of 200 = 100
+    TEST("ProgressBar fill width", ApproxEq(cmds[1].rect.width, 100.0f));
+
+    // Zero value: no fill command
+    bar.SetValue(0.0f);
+    bar.SetLabel("");
+    cmds.clear();
+    bar.Render(cmds);
+    TEST("ProgressBar 0 renders 2 commands (bg+border)", cmds.size() == 2);
+
+    // Auto-color
+    bar.SetAutoColor(true);
+    bar.SetValue(0.8f);
+    cmds.clear();
+    bar.Render(cmds);
+    TEST("AutoColor green at 0.8", cmds[1].color == Color::Green());
+
+    bar.SetValue(0.5f);
+    cmds.clear();
+    bar.Render(cmds);
+    TEST("AutoColor yellow at 0.5", cmds[1].color == Color::Yellow());
+
+    bar.SetValue(0.2f);
+    cmds.clear();
+    bar.Render(cmds);
+    TEST("AutoColor red at 0.2", cmds[1].color == Color::Red());
+}
+
+static void TestUISeparator() {
+    std::cout << "[UISeparator]\n";
+
+    UISeparator sep;
+    TEST("Separator type", sep.GetType() == UIElementType::Separator);
+
+    sep.SetBounds({0, 0, 200, 2});
+    std::vector<DrawCommand> cmds;
+    sep.Render(cmds);
+    TEST("Separator renders 1 line command", cmds.size() == 1);
+    TEST("Separator command type", cmds[0].type == DrawCommandType::Line);
+}
+
+static void TestUICheckbox() {
+    std::cout << "[UICheckbox]\n";
+
+    UICheckbox cb;
+    TEST("Checkbox type", cb.GetType() == UIElementType::Checkbox);
+    TEST("Checkbox default unchecked", !cb.IsChecked());
+
+    cb.SetChecked(true);
+    TEST("Checkbox set checked", cb.IsChecked());
+
+    cb.SetLabel("Enable Sounds");
+    cb.SetBounds({10, 10, 200, 20});
+
+    std::vector<DrawCommand> cmds;
+    cb.Render(cmds);
+    // bg + border + check + label = 4
+    TEST("Checked checkbox renders 4 commands", cmds.size() == 4);
+
+    cb.SetChecked(false);
+    cmds.clear();
+    cb.Render(cmds);
+    // bg + border + label = 3
+    TEST("Unchecked checkbox renders 3 commands", cmds.size() == 3);
+
+    // Click toggles
+    bool newState = false;
+    cb.SetOnChange([&newState](bool v) { newState = v; });
+    cb.HandleClick(15, 15);
+    TEST("Checkbox click toggles on", cb.IsChecked());
+    TEST("Checkbox onChange fired", newState == true);
+
+    cb.HandleClick(15, 15);
+    TEST("Checkbox click toggles off", !cb.IsChecked());
+}
+
+// ===================================================================
+// UI Panel Tests
+// ===================================================================
+static void TestUIPanel() {
+    std::cout << "[UIPanel]\n";
+
+    UIPanel panel;
+    TEST("Panel type", panel.GetType() == UIElementType::Panel);
+    TEST("Panel no children initially", panel.GetChildCount() == 0);
+
+    auto label = std::make_shared<UILabel>();
+    label->SetId("lbl1");
+    label->SetText("Test");
+    label->SetBounds({0, 0, 100, 20});
+
+    UIElement* added = panel.AddChild(label);
+    TEST("AddChild returns pointer", added != nullptr);
+    TEST("Panel has 1 child", panel.GetChildCount() == 1);
+
+    UIElement* found = panel.FindChild("lbl1");
+    TEST("FindChild succeeds", found != nullptr);
+    TEST("FindChild returns correct element", found == added);
+
+    UIElement* notFound = panel.FindChild("nonexistent");
+    TEST("FindChild not found", notFound == nullptr);
+
+    // Add a button
+    auto btn = std::make_shared<UIButton>();
+    btn->SetId("btn1");
+    btn->SetLabel("OK");
+    btn->SetBounds({0, 0, 80, 25});
+    panel.AddChild(btn);
+    TEST("Panel has 2 children", panel.GetChildCount() == 2);
+
+    // Remove child
+    bool removed = panel.RemoveChild("lbl1");
+    TEST("RemoveChild succeeds", removed);
+    TEST("Panel has 1 child after remove", panel.GetChildCount() == 1);
+
+    bool removedAgain = panel.RemoveChild("lbl1");
+    TEST("RemoveChild not found", !removedAgain);
+
+    // Clear
+    panel.ClearChildren();
+    TEST("ClearChildren empties", panel.GetChildCount() == 0);
+
+    // Layout
+    panel.SetBounds({100, 100, 300, 400});
+    panel.SetPadding(10.0f);
+    panel.SetSpacing(5.0f);
+
+    auto lbl1 = std::make_shared<UILabel>();
+    lbl1->SetId("l1");
+    lbl1->SetBounds({0, 0, 0, 20});
+    panel.AddChild(lbl1);
+
+    auto lbl2 = std::make_shared<UILabel>();
+    lbl2->SetId("l2");
+    lbl2->SetBounds({0, 0, 0, 20});
+    panel.AddChild(lbl2);
+
+    panel.PerformLayout();
+    TEST("Layout child1 x", ApproxEq(lbl1->GetBounds().x, 110.0f)); // 100 + 10 padding
+    TEST("Layout child1 y", ApproxEq(lbl1->GetBounds().y, 110.0f)); // 100 + 10 padding
+    TEST("Layout child1 width fills", ApproxEq(lbl1->GetBounds().width, 280.0f)); // 300 - 2*10
+    TEST("Layout child2 y", ApproxEq(lbl2->GetBounds().y, 135.0f)); // 110 + 20 + 5 spacing
+
+    // Rendering
+    panel.SetTitle("Test Panel");
+    std::vector<DrawCommand> cmds;
+    panel.Render(cmds);
+    TEST("Panel renders multiple commands", cmds.size() > 2);
+    TEST("Panel first cmd is bg", cmds[0].type == DrawCommandType::FilledRect);
+
+    // Click propagation
+    auto clickBtn = std::make_shared<UIButton>();
+    clickBtn->SetId("click_btn");
+    clickBtn->SetBounds({110, 150, 80, 25});
+    bool wasClicked = false;
+    clickBtn->SetOnClick([&wasClicked]() { wasClicked = true; });
+    panel.ClearChildren();
+    panel.AddChild(clickBtn);
+
+    bool consumed = panel.HandleClick(120, 160);
+    TEST("Panel click propagates to button", consumed);
+    TEST("Button received click", wasClicked);
+
+    // Click outside children but inside panel
+    wasClicked = false;
+    consumed = panel.HandleClick(105, 105);
+    TEST("Panel consumes click even outside children", consumed);
+    TEST("Button not clicked when miss", !wasClicked);
+}
+
+// ===================================================================
+// UI Renderer Tests
+// ===================================================================
+static void TestUIRenderer() {
+    std::cout << "[UIRenderer]\n";
+
+    UIRenderer renderer;
+    renderer.BeginFrame(1920.0f, 1080.0f);
+    TEST("Renderer screen width", ApproxEq(renderer.GetScreenWidth(), 1920.0f));
+    TEST("Renderer screen height", ApproxEq(renderer.GetScreenHeight(), 1080.0f));
+    TEST("Renderer empty after begin", renderer.GetCommandCount() == 0);
+
+    renderer.DrawFilledRect({0, 0, 100, 50}, Color::Red());
+    TEST("Renderer 1 command after draw", renderer.GetCommandCount() == 1);
+
+    renderer.DrawOutlineRect({0, 0, 100, 50}, Color::White(), 2.0f);
+    renderer.DrawText("Hello", {10, 10}, Color::Green(), 16);
+    renderer.DrawLine({0, 0}, {100, 100}, Color::Blue());
+    renderer.DrawCircle({50, 50}, 25.0f, Color::Yellow());
+    renderer.DrawFilledCircle({50, 50}, 10.0f, Color::Cyan());
+    TEST("Renderer 6 commands total", renderer.GetCommandCount() == 6);
+
+    const auto& cmds = renderer.GetCommands();
+    TEST("Command 0 FilledRect", cmds[0].type == DrawCommandType::FilledRect);
+    TEST("Command 1 OutlineRect", cmds[1].type == DrawCommandType::OutlineRect);
+    TEST("Command 2 Text", cmds[2].type == DrawCommandType::Text);
+    TEST("Command 3 Line", cmds[3].type == DrawCommandType::Line);
+    TEST("Command 4 Circle", cmds[4].type == DrawCommandType::Circle);
+    TEST("Command 5 FilledCircle", cmds[5].type == DrawCommandType::FilledCircle);
+
+    // Verify properties
+    TEST("Text content correct", cmds[2].text == "Hello");
+    TEST("Text color correct", cmds[2].color == Color::Green());
+    TEST("Line width correct", cmds[1].lineWidth == 2.0f);
+
+    // Submit batch
+    std::vector<DrawCommand> extra;
+    DrawCommand extraCmd;
+    extraCmd.type = DrawCommandType::FilledRect;
+    extra.push_back(extraCmd);
+    extra.push_back(extraCmd);
+    renderer.Submit(extra);
+    TEST("Submit adds commands", renderer.GetCommandCount() == 8);
+
+    // BeginFrame clears
+    renderer.BeginFrame(800, 600);
+    TEST("BeginFrame clears commands", renderer.GetCommandCount() == 0);
+    TEST("BeginFrame updates size", ApproxEq(renderer.GetScreenWidth(), 800.0f));
+
+    renderer.EndFrame();
+    TEST("EndFrame does not crash", true);
+}
+
+// ===================================================================
+// UI System Tests
+// ===================================================================
+static void TestUISystem() {
+    std::cout << "[UISystem]\n";
+
+    UISystem system;
+    TEST("UISystem name", system.GetName() == "UISystem");
+    TEST("UISystem no panels initially", system.GetPanelCount() == 0);
+
+    // Add panels
+    auto hudPanel = std::make_shared<UIPanel>();
+    hudPanel->SetBounds({10, 10, 200, 300});
+    hudPanel->SetTitle("HUD");
+
+    auto menuPanel = std::make_shared<UIPanel>();
+    menuPanel->SetBounds({400, 200, 300, 400});
+    menuPanel->SetTitle("Menu");
+
+    UIPanel* hud = system.AddPanel("hud", hudPanel);
+    TEST("AddPanel returns pointer", hud != nullptr);
+    TEST("System has 1 panel", system.GetPanelCount() == 1);
+
+    system.AddPanel("menu", menuPanel);
+    TEST("System has 2 panels", system.GetPanelCount() == 2);
+
+    // Get panel
+    UIPanel* got = system.GetPanel("hud");
+    TEST("GetPanel finds hud", got != nullptr);
+    TEST("GetPanel returns correct panel", got == hud);
+
+    UIPanel* notFound = system.GetPanel("nonexistent");
+    TEST("GetPanel not found", notFound == nullptr);
+
+    // Toggle panel
+    bool visible = system.TogglePanel("hud");
+    TEST("Toggle hides", !visible);
+    TEST("Panel is hidden", !hud->IsVisible());
+
+    visible = system.TogglePanel("hud");
+    TEST("Toggle shows", visible);
+    TEST("Panel is visible", hud->IsVisible());
+
+    bool toggleBad = system.TogglePanel("nonexistent");
+    TEST("Toggle nonexistent returns false", !toggleBad);
+
+    // Remove panel
+    bool removed = system.RemovePanel("menu");
+    TEST("RemovePanel succeeds", removed);
+    TEST("System has 1 panel", system.GetPanelCount() == 1);
+
+    bool removedAgain = system.RemovePanel("menu");
+    TEST("RemovePanel not found", !removedAgain);
+
+    // Rendering
+    auto label = std::make_shared<UILabel>();
+    label->SetId("lbl");
+    label->SetText("Score: 100");
+    label->SetBounds({0, 0, 150, 20});
+    hud->AddChild(label);
+
+    UIRenderer renderer;
+    renderer.BeginFrame(1920, 1080);
+    system.Update(0.016f);
+    system.Render(renderer);
+    TEST("Rendered commands exist", renderer.GetCommandCount() > 0);
+
+    // Hidden panel produces no commands
+    hud->SetVisible(false);
+    renderer.BeginFrame(1920, 1080);
+    system.Render(renderer);
+    TEST("Hidden panel no commands", renderer.GetCommandCount() == 0);
+
+    // Input handling — set button to known absolute position
+    hud->SetVisible(true);
+    hud->ClearChildren();
+    auto btn = std::make_shared<UIButton>();
+    btn->SetId("test_btn");
+    btn->SetBounds({20, 30, 80, 25});  // absolute position within panel
+    bool btnClicked = false;
+    btn->SetOnClick([&btnClicked]() { btnClicked = true; });
+    hud->AddChild(btn);
+    // Don't call PerformLayout — keep the absolute position
+    // Button is at (20, 30) to (100, 55)
+
+    system.HandleInput(50, 40, true);
+    TEST("HandleInput button click propagated", btnClicked);
+
+    // Click outside panel bounds — should not reach button
+    btnClicked = false;
+    system.HandleInput(500, 500, true);
+    TEST("HandleInput miss does not fire button", !btnClicked);
+
+    // No-click frame should not propagate
+    btnClicked = false;
+    system.HandleInput(50, 40, false);
+    TEST("HandleInput without click is no-op", !btnClicked);
+
+    // Screen size
+    system.SetScreenSize(2560, 1440);
+    TEST("Screen width updated", ApproxEq(system.GetScreenWidth(), 2560.0f));
+    TEST("Screen height updated", ApproxEq(system.GetScreenHeight(), 1440.0f));
+
+    // Replace panel
+    auto newHud = std::make_shared<UIPanel>();
+    newHud->SetTitle("New HUD");
+    system.AddPanel("hud", newHud);
+    TEST("Replace panel same count", system.GetPanelCount() == 1);
+    UIPanel* replaced = system.GetPanel("hud");
+    TEST("Replaced panel is new", replaced == newHud.get());
+}
+
+// ===================================================================
 // Main
 // ===================================================================
 int main() {
@@ -2146,6 +3256,25 @@ int main() {
     TestPowerSystem();
     TestMiningSystem();
     TestGalaxyGenerator();
+    TestQuestObjective();
+    TestQuest();
+    TestQuestComponent();
+    TestQuestSystem();
+    TestTutorialStep();
+    TestTutorial();
+    TestTutorialSystem();
+    TestAIPerception();
+    TestAIComponent();
+    TestAIDecisionSystem();
+    TestUITypes();
+    TestUILabel();
+    TestUIButton();
+    TestUIProgressBar();
+    TestUISeparator();
+    TestUICheckbox();
+    TestUIPanel();
+    TestUIRenderer();
+    TestUISystem();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
               << testsFailed << " failed ===\n";
