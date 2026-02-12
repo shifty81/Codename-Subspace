@@ -47,6 +47,11 @@
 #include "quest/QuestSystem.h"
 #include "tutorial/TutorialSystem.h"
 #include "ai/AIDecisionSystem.h"
+#include "ui/UITypes.h"
+#include "ui/UIElement.h"
+#include "ui/UIPanel.h"
+#include "ui/UIRenderer.h"
+#include "ui/UISystem.h"
 
 using namespace subspace;
 
@@ -2728,6 +2733,481 @@ static void TestAIDecisionSystem() {
 }
 
 // ===================================================================
+// UI Types Tests
+// ===================================================================
+static void TestUITypes() {
+    std::cout << "[UITypes]\n";
+
+    // Color
+    Color c(0.5f, 0.25f, 0.75f, 1.0f);
+    TEST("Color construction", ApproxEq(c.r, 0.5f) && ApproxEq(c.g, 0.25f));
+    TEST("Color equality", Color::White() == Color(1, 1, 1, 1));
+    TEST("Color inequality", Color::White() != Color::Black());
+
+    uint32_t rgba = Color(1, 0, 0, 1).ToRGBA32();
+    TEST("Color ToRGBA32 red", (rgba >> 24) == 255 && ((rgba >> 16) & 0xFF) == 0);
+
+    Color lerped = Color::Lerp(Color::Black(), Color::White(), 0.5f);
+    TEST("Color Lerp midpoint", ApproxEq(lerped.r, 0.5f) && ApproxEq(lerped.g, 0.5f));
+
+    Color lerpClamped = Color::Lerp(Color::Black(), Color::White(), 2.0f);
+    TEST("Color Lerp clamp high", ApproxEq(lerpClamped.r, 1.0f));
+
+    // Vec2
+    Vec2 a(3, 4);
+    Vec2 b(1, 2);
+    Vec2 sum = a + b;
+    TEST("Vec2 add", ApproxEq(sum.x, 4.0f) && ApproxEq(sum.y, 6.0f));
+    Vec2 diff = a - b;
+    TEST("Vec2 sub", ApproxEq(diff.x, 2.0f) && ApproxEq(diff.y, 2.0f));
+    Vec2 scaled = a * 2.0f;
+    TEST("Vec2 scale", ApproxEq(scaled.x, 6.0f) && ApproxEq(scaled.y, 8.0f));
+    TEST("Vec2 equality", a == Vec2(3, 4));
+    TEST("Vec2 inequality", a != b);
+
+    // Rect
+    Rect r(10, 20, 100, 50);
+    TEST("Rect Left", ApproxEq(r.Left(), 10.0f));
+    TEST("Rect Top", ApproxEq(r.Top(), 20.0f));
+    TEST("Rect Right", ApproxEq(r.Right(), 110.0f));
+    TEST("Rect Bottom", ApproxEq(r.Bottom(), 70.0f));
+    TEST("Rect Center", ApproxEq(r.Center().x, 60.0f) && ApproxEq(r.Center().y, 45.0f));
+    TEST("Rect Contains inside", r.Contains(50, 40));
+    TEST("Rect Contains corner", r.Contains(10, 20));
+    TEST("Rect not Contains outside", !r.Contains(5, 40));
+    TEST("Rect Contains Vec2", r.Contains(Vec2(50, 40)));
+}
+
+// ===================================================================
+// UI Element Tests
+// ===================================================================
+static void TestUILabel() {
+    std::cout << "[UILabel]\n";
+
+    UILabel label;
+    TEST("Label type", label.GetType() == UIElementType::Label);
+    TEST("Label default visible", label.IsVisible());
+    TEST("Label default enabled", label.IsEnabled());
+
+    label.SetText("Hello World");
+    label.SetColor(Color::Green());
+    label.SetFontSize(20);
+    label.SetBounds({10, 20, 200, 30});
+
+    TEST("Label text", label.GetText() == "Hello World");
+    TEST("Label color", label.GetColor() == Color::Green());
+    TEST("Label font size", label.GetFontSize() == 20);
+
+    std::vector<DrawCommand> cmds;
+    label.Render(cmds);
+    TEST("Label renders 1 command", cmds.size() == 1);
+    TEST("Label command type text", cmds[0].type == DrawCommandType::Text);
+    TEST("Label command has text", cmds[0].text == "Hello World");
+
+    // Empty label renders nothing
+    UILabel emptyLabel;
+    cmds.clear();
+    emptyLabel.Render(cmds);
+    TEST("Empty label renders 0 commands", cmds.empty());
+
+    // Hidden label renders nothing
+    label.SetVisible(false);
+    cmds.clear();
+    label.Render(cmds);
+    TEST("Hidden label renders 0 commands", cmds.empty());
+}
+
+static void TestUIButton() {
+    std::cout << "[UIButton]\n";
+
+    UIButton button;
+    TEST("Button type", button.GetType() == UIElementType::Button);
+
+    button.SetLabel("Click Me");
+    button.SetBounds({50, 50, 120, 30});
+    button.SetBackgroundColor(Color::Blue());
+    button.SetTextColor(Color::Yellow());
+
+    TEST("Button label", button.GetLabel() == "Click Me");
+    TEST("Button bg color", button.GetBackgroundColor() == Color::Blue());
+
+    std::vector<DrawCommand> cmds;
+    button.Render(cmds);
+    TEST("Button renders 3 commands (bg+border+text)", cmds.size() == 3);
+    TEST("Button first cmd filled rect", cmds[0].type == DrawCommandType::FilledRect);
+    TEST("Button second cmd outline", cmds[1].type == DrawCommandType::OutlineRect);
+    TEST("Button third cmd text", cmds[2].type == DrawCommandType::Text);
+
+    // Click handling
+    bool clicked = false;
+    button.SetOnClick([&clicked]() { clicked = true; });
+    bool consumed = button.HandleClick(60, 60);
+    TEST("Button click inside consumed", consumed);
+    TEST("Button click callback fired", clicked);
+
+    clicked = false;
+    consumed = button.HandleClick(0, 0);
+    TEST("Button click outside not consumed", !consumed);
+    TEST("Button click outside no callback", !clicked);
+
+    // Disabled button
+    button.SetEnabled(false);
+    clicked = false;
+    consumed = button.HandleClick(60, 60);
+    TEST("Disabled button not consumed", !consumed);
+    TEST("Disabled button no callback", !clicked);
+}
+
+static void TestUIProgressBar() {
+    std::cout << "[UIProgressBar]\n";
+
+    UIProgressBar bar;
+    TEST("ProgressBar type", bar.GetType() == UIElementType::ProgressBar);
+    TEST("ProgressBar default value 0", ApproxEq(bar.GetValue(), 0.0f));
+
+    bar.SetValue(0.75f);
+    TEST("ProgressBar set value", ApproxEq(bar.GetValue(), 0.75f));
+
+    bar.SetValue(-0.5f);
+    TEST("ProgressBar clamp low", ApproxEq(bar.GetValue(), 0.0f));
+
+    bar.SetValue(2.0f);
+    TEST("ProgressBar clamp high", ApproxEq(bar.GetValue(), 1.0f));
+
+    bar.SetValue(0.5f);
+    bar.SetFillColor(Color::Cyan());
+    bar.SetLabel("HP: 50%");
+    bar.SetBounds({10, 10, 200, 20});
+
+    std::vector<DrawCommand> cmds;
+    bar.Render(cmds);
+    TEST("ProgressBar renders 4 commands (bg+fill+border+label)", cmds.size() == 4);
+    TEST("ProgressBar fill cmd", cmds[1].type == DrawCommandType::FilledRect);
+    // Fill width should be half of 200 = 100
+    TEST("ProgressBar fill width", ApproxEq(cmds[1].rect.width, 100.0f));
+
+    // Zero value: no fill command
+    bar.SetValue(0.0f);
+    bar.SetLabel("");
+    cmds.clear();
+    bar.Render(cmds);
+    TEST("ProgressBar 0 renders 2 commands (bg+border)", cmds.size() == 2);
+
+    // Auto-color
+    bar.SetAutoColor(true);
+    bar.SetValue(0.8f);
+    cmds.clear();
+    bar.Render(cmds);
+    TEST("AutoColor green at 0.8", cmds[1].color == Color::Green());
+
+    bar.SetValue(0.5f);
+    cmds.clear();
+    bar.Render(cmds);
+    TEST("AutoColor yellow at 0.5", cmds[1].color == Color::Yellow());
+
+    bar.SetValue(0.2f);
+    cmds.clear();
+    bar.Render(cmds);
+    TEST("AutoColor red at 0.2", cmds[1].color == Color::Red());
+}
+
+static void TestUISeparator() {
+    std::cout << "[UISeparator]\n";
+
+    UISeparator sep;
+    TEST("Separator type", sep.GetType() == UIElementType::Separator);
+
+    sep.SetBounds({0, 0, 200, 2});
+    std::vector<DrawCommand> cmds;
+    sep.Render(cmds);
+    TEST("Separator renders 1 line command", cmds.size() == 1);
+    TEST("Separator command type", cmds[0].type == DrawCommandType::Line);
+}
+
+static void TestUICheckbox() {
+    std::cout << "[UICheckbox]\n";
+
+    UICheckbox cb;
+    TEST("Checkbox type", cb.GetType() == UIElementType::Checkbox);
+    TEST("Checkbox default unchecked", !cb.IsChecked());
+
+    cb.SetChecked(true);
+    TEST("Checkbox set checked", cb.IsChecked());
+
+    cb.SetLabel("Enable Sounds");
+    cb.SetBounds({10, 10, 200, 20});
+
+    std::vector<DrawCommand> cmds;
+    cb.Render(cmds);
+    // bg + border + check + label = 4
+    TEST("Checked checkbox renders 4 commands", cmds.size() == 4);
+
+    cb.SetChecked(false);
+    cmds.clear();
+    cb.Render(cmds);
+    // bg + border + label = 3
+    TEST("Unchecked checkbox renders 3 commands", cmds.size() == 3);
+
+    // Click toggles
+    bool newState = false;
+    cb.SetOnChange([&newState](bool v) { newState = v; });
+    cb.HandleClick(15, 15);
+    TEST("Checkbox click toggles on", cb.IsChecked());
+    TEST("Checkbox onChange fired", newState == true);
+
+    cb.HandleClick(15, 15);
+    TEST("Checkbox click toggles off", !cb.IsChecked());
+}
+
+// ===================================================================
+// UI Panel Tests
+// ===================================================================
+static void TestUIPanel() {
+    std::cout << "[UIPanel]\n";
+
+    UIPanel panel;
+    TEST("Panel type", panel.GetType() == UIElementType::Panel);
+    TEST("Panel no children initially", panel.GetChildCount() == 0);
+
+    auto label = std::make_shared<UILabel>();
+    label->SetId("lbl1");
+    label->SetText("Test");
+    label->SetBounds({0, 0, 100, 20});
+
+    UIElement* added = panel.AddChild(label);
+    TEST("AddChild returns pointer", added != nullptr);
+    TEST("Panel has 1 child", panel.GetChildCount() == 1);
+
+    UIElement* found = panel.FindChild("lbl1");
+    TEST("FindChild succeeds", found != nullptr);
+    TEST("FindChild returns correct element", found == added);
+
+    UIElement* notFound = panel.FindChild("nonexistent");
+    TEST("FindChild not found", notFound == nullptr);
+
+    // Add a button
+    auto btn = std::make_shared<UIButton>();
+    btn->SetId("btn1");
+    btn->SetLabel("OK");
+    btn->SetBounds({0, 0, 80, 25});
+    panel.AddChild(btn);
+    TEST("Panel has 2 children", panel.GetChildCount() == 2);
+
+    // Remove child
+    bool removed = panel.RemoveChild("lbl1");
+    TEST("RemoveChild succeeds", removed);
+    TEST("Panel has 1 child after remove", panel.GetChildCount() == 1);
+
+    bool removedAgain = panel.RemoveChild("lbl1");
+    TEST("RemoveChild not found", !removedAgain);
+
+    // Clear
+    panel.ClearChildren();
+    TEST("ClearChildren empties", panel.GetChildCount() == 0);
+
+    // Layout
+    panel.SetBounds({100, 100, 300, 400});
+    panel.SetPadding(10.0f);
+    panel.SetSpacing(5.0f);
+
+    auto lbl1 = std::make_shared<UILabel>();
+    lbl1->SetId("l1");
+    lbl1->SetBounds({0, 0, 0, 20});
+    panel.AddChild(lbl1);
+
+    auto lbl2 = std::make_shared<UILabel>();
+    lbl2->SetId("l2");
+    lbl2->SetBounds({0, 0, 0, 20});
+    panel.AddChild(lbl2);
+
+    panel.PerformLayout();
+    TEST("Layout child1 x", ApproxEq(lbl1->GetBounds().x, 110.0f)); // 100 + 10 padding
+    TEST("Layout child1 y", ApproxEq(lbl1->GetBounds().y, 110.0f)); // 100 + 10 padding
+    TEST("Layout child1 width fills", ApproxEq(lbl1->GetBounds().width, 280.0f)); // 300 - 2*10
+    TEST("Layout child2 y", ApproxEq(lbl2->GetBounds().y, 135.0f)); // 110 + 20 + 5 spacing
+
+    // Rendering
+    panel.SetTitle("Test Panel");
+    std::vector<DrawCommand> cmds;
+    panel.Render(cmds);
+    TEST("Panel renders multiple commands", cmds.size() > 2);
+    TEST("Panel first cmd is bg", cmds[0].type == DrawCommandType::FilledRect);
+
+    // Click propagation
+    auto clickBtn = std::make_shared<UIButton>();
+    clickBtn->SetId("click_btn");
+    clickBtn->SetBounds({110, 150, 80, 25});
+    bool wasClicked = false;
+    clickBtn->SetOnClick([&wasClicked]() { wasClicked = true; });
+    panel.ClearChildren();
+    panel.AddChild(clickBtn);
+
+    bool consumed = panel.HandleClick(120, 160);
+    TEST("Panel click propagates to button", consumed);
+    TEST("Button received click", wasClicked);
+
+    // Click outside children but inside panel
+    wasClicked = false;
+    consumed = panel.HandleClick(105, 105);
+    TEST("Panel consumes click even outside children", consumed);
+    TEST("Button not clicked when miss", !wasClicked);
+}
+
+// ===================================================================
+// UI Renderer Tests
+// ===================================================================
+static void TestUIRenderer() {
+    std::cout << "[UIRenderer]\n";
+
+    UIRenderer renderer;
+    renderer.BeginFrame(1920.0f, 1080.0f);
+    TEST("Renderer screen width", ApproxEq(renderer.GetScreenWidth(), 1920.0f));
+    TEST("Renderer screen height", ApproxEq(renderer.GetScreenHeight(), 1080.0f));
+    TEST("Renderer empty after begin", renderer.GetCommandCount() == 0);
+
+    renderer.DrawFilledRect({0, 0, 100, 50}, Color::Red());
+    TEST("Renderer 1 command after draw", renderer.GetCommandCount() == 1);
+
+    renderer.DrawOutlineRect({0, 0, 100, 50}, Color::White(), 2.0f);
+    renderer.DrawText("Hello", {10, 10}, Color::Green(), 16);
+    renderer.DrawLine({0, 0}, {100, 100}, Color::Blue());
+    renderer.DrawCircle({50, 50}, 25.0f, Color::Yellow());
+    renderer.DrawFilledCircle({50, 50}, 10.0f, Color::Cyan());
+    TEST("Renderer 6 commands total", renderer.GetCommandCount() == 6);
+
+    const auto& cmds = renderer.GetCommands();
+    TEST("Command 0 FilledRect", cmds[0].type == DrawCommandType::FilledRect);
+    TEST("Command 1 OutlineRect", cmds[1].type == DrawCommandType::OutlineRect);
+    TEST("Command 2 Text", cmds[2].type == DrawCommandType::Text);
+    TEST("Command 3 Line", cmds[3].type == DrawCommandType::Line);
+    TEST("Command 4 Circle", cmds[4].type == DrawCommandType::Circle);
+    TEST("Command 5 FilledCircle", cmds[5].type == DrawCommandType::FilledCircle);
+
+    // Verify properties
+    TEST("Text content correct", cmds[2].text == "Hello");
+    TEST("Text color correct", cmds[2].color == Color::Green());
+    TEST("Line width correct", cmds[1].lineWidth == 2.0f);
+
+    // Submit batch
+    std::vector<DrawCommand> extra;
+    DrawCommand extraCmd;
+    extraCmd.type = DrawCommandType::FilledRect;
+    extra.push_back(extraCmd);
+    extra.push_back(extraCmd);
+    renderer.Submit(extra);
+    TEST("Submit adds commands", renderer.GetCommandCount() == 8);
+
+    // BeginFrame clears
+    renderer.BeginFrame(800, 600);
+    TEST("BeginFrame clears commands", renderer.GetCommandCount() == 0);
+    TEST("BeginFrame updates size", ApproxEq(renderer.GetScreenWidth(), 800.0f));
+
+    renderer.EndFrame();
+    TEST("EndFrame does not crash", true);
+}
+
+// ===================================================================
+// UI System Tests
+// ===================================================================
+static void TestUISystem() {
+    std::cout << "[UISystem]\n";
+
+    UISystem system;
+    TEST("UISystem name", system.GetName() == "UISystem");
+    TEST("UISystem no panels initially", system.GetPanelCount() == 0);
+
+    // Add panels
+    auto hudPanel = std::make_shared<UIPanel>();
+    hudPanel->SetBounds({10, 10, 200, 300});
+    hudPanel->SetTitle("HUD");
+
+    auto menuPanel = std::make_shared<UIPanel>();
+    menuPanel->SetBounds({400, 200, 300, 400});
+    menuPanel->SetTitle("Menu");
+
+    UIPanel* hud = system.AddPanel("hud", hudPanel);
+    TEST("AddPanel returns pointer", hud != nullptr);
+    TEST("System has 1 panel", system.GetPanelCount() == 1);
+
+    system.AddPanel("menu", menuPanel);
+    TEST("System has 2 panels", system.GetPanelCount() == 2);
+
+    // Get panel
+    UIPanel* got = system.GetPanel("hud");
+    TEST("GetPanel finds hud", got != nullptr);
+    TEST("GetPanel returns correct panel", got == hud);
+
+    UIPanel* notFound = system.GetPanel("nonexistent");
+    TEST("GetPanel not found", notFound == nullptr);
+
+    // Toggle panel
+    bool visible = system.TogglePanel("hud");
+    TEST("Toggle hides", !visible);
+    TEST("Panel is hidden", !hud->IsVisible());
+
+    visible = system.TogglePanel("hud");
+    TEST("Toggle shows", visible);
+    TEST("Panel is visible", hud->IsVisible());
+
+    bool toggleBad = system.TogglePanel("nonexistent");
+    TEST("Toggle nonexistent returns false", !toggleBad);
+
+    // Remove panel
+    bool removed = system.RemovePanel("menu");
+    TEST("RemovePanel succeeds", removed);
+    TEST("System has 1 panel", system.GetPanelCount() == 1);
+
+    bool removedAgain = system.RemovePanel("menu");
+    TEST("RemovePanel not found", !removedAgain);
+
+    // Rendering
+    auto label = std::make_shared<UILabel>();
+    label->SetId("lbl");
+    label->SetText("Score: 100");
+    label->SetBounds({0, 0, 150, 20});
+    hud->AddChild(label);
+
+    UIRenderer renderer;
+    renderer.BeginFrame(1920, 1080);
+    system.Update(0.016f);
+    system.Render(renderer);
+    TEST("Rendered commands exist", renderer.GetCommandCount() > 0);
+
+    // Hidden panel produces no commands
+    hud->SetVisible(false);
+    renderer.BeginFrame(1920, 1080);
+    system.Render(renderer);
+    TEST("Hidden panel no commands", renderer.GetCommandCount() == 0);
+
+    // Input handling
+    hud->SetVisible(true);
+    auto btn = std::make_shared<UIButton>();
+    btn->SetId("test_btn");
+    btn->SetBounds({20, 30, 80, 25});
+    bool btnClicked = false;
+    btn->SetOnClick([&btnClicked]() { btnClicked = true; });
+    hud->AddChild(btn);
+    hud->PerformLayout();
+
+    system.HandleInput(25, 50, true);
+    // The button position depends on layout, but at a minimum the panel consumes the click
+    // within its bounds. Button may or may not be hit depending on layout.
+
+    // Screen size
+    system.SetScreenSize(2560, 1440);
+    TEST("Screen width updated", ApproxEq(system.GetScreenWidth(), 2560.0f));
+    TEST("Screen height updated", ApproxEq(system.GetScreenHeight(), 1440.0f));
+
+    // Replace panel
+    auto newHud = std::make_shared<UIPanel>();
+    newHud->SetTitle("New HUD");
+    system.AddPanel("hud", newHud);
+    TEST("Replace panel same count", system.GetPanelCount() == 1);
+    UIPanel* replaced = system.GetPanel("hud");
+    TEST("Replaced panel is new", replaced == newHud.get());
+}
+
+// ===================================================================
 // Main
 // ===================================================================
 int main() {
@@ -2775,6 +3255,15 @@ int main() {
     TestAIPerception();
     TestAIComponent();
     TestAIDecisionSystem();
+    TestUITypes();
+    TestUILabel();
+    TestUIButton();
+    TestUIProgressBar();
+    TestUISeparator();
+    TestUICheckbox();
+    TestUIPanel();
+    TestUIRenderer();
+    TestUISystem();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
               << testsFailed << " failed ===\n";

@@ -91,6 +91,13 @@ engine/
 │   ├── tutorial/               # Tutorial System (ported from C#)
 │   │   └── TutorialSystem.h    # Step-based tutorials, prerequisites
 │   │
+│   ├── ui/                     # Custom UI Framework (replaces ImGui)
+│   │   ├── UITypes.h           # Color, Vec2, Rect, DrawCommand
+│   │   ├── UIElement.h         # Label, Button, ProgressBar, Checkbox, Separator
+│   │   ├── UIPanel.h           # Container panel with auto-layout
+│   │   ├── UIRenderer.h        # Data-driven draw command buffer
+│   │   └── UISystem.h          # Top-level panel manager
+│   │
 │   └── ai/                     # AI ship generation & decision making
 │       ├── AIShipBuilder.h     # Procedural faction ship generator
 │       └── AIDecisionSystem.h  # AI state, perception, decision logic
@@ -100,7 +107,7 @@ engine/
 │   └── [mirrors include/ structure]
 │
 ├── tests/
-│   └── test_main.cpp           # 760 unit tests covering all systems
+│   └── test_main.cpp           # 889 unit tests covering all systems
 │
 ├── data/
 │   └── factions/               # JSON faction definitions
@@ -160,7 +167,7 @@ The engine integrates directly into the Visual Studio solution:
 2. In Solution Explorer, the **C++ Engine** folder contains:
    - **SubspaceEngine** — Static library with all engine systems
    - **SubspaceGame** — Game executable
-   - **SubspaceTests** — 760 unit tests
+   - **SubspaceTests** — 889 unit tests
 3. Select **Debug | x64** or **Release | x64**
 4. Build → Build Solution (Ctrl+Shift+B)
 5. Right-click SubspaceTests → Set as Startup Project → F5 to run tests
@@ -177,7 +184,7 @@ cmake --build build
 # Run the game
 ./build/subspace_game
 
-# Run tests (760 tests)
+# Run tests (889 tests)
 ./build/subspace_tests
 ```
 
@@ -353,6 +360,14 @@ Ships can be built from **modules** that snap together via **hardpoints** — co
 - **AIDecisionSystem** — Priority-based state evaluation (Flee > Combat > ReturnToBase > Gather > Patrol > Idle), personality-influenced combat entry, target selection
 - Equivalent to C# `AIComponent`, `AIDecisionSystem`, `AIPerceptionSystem`
 
+### Custom UI Framework
+- **UITypes** — Core types: `Color` (RGBA float, predefined palette, lerp), `Vec2` (2D position/size), `Rect` (axis-aligned bounds with hit-testing), `DrawCommand` (data-driven draw primitive)
+- **UIElement** — Base class for all widgets; concrete types: `UILabel` (text), `UIButton` (click callback), `UIProgressBar` (0–1 fill with auto-color), `UICheckbox` (toggle with callback), `UISeparator` (line)
+- **UIPanel** — Container with automatic vertical/horizontal layout, padding, spacing, title bar, background/border styling; child management (add/remove/find/clear); click propagation to children
+- **UIRenderer** — Data-driven draw command buffer; immediate-mode helpers for filled/outline rect, text, line, circle; no GPU calls — a platform backend reads the command list each frame
+- **UISystem** — Top-level manager: panel registration, ordered rendering, visibility toggle, input dispatch (reverse-order hit testing), per-frame layout update
+- Replaces ImGui dependency; custom solution designed for the project's needs
+
 ## Ported from C# Prototype
 
 The following core systems have been ported from the C# prototype (`AvorionLike/`) to C++:
@@ -427,4 +442,4 @@ The following core systems have been ported from the C# prototype (`AvorionLike/
 | Scripting/Lua | ⏳ Planned | — |
 | Quest System | ✅ Ported | 65 tests |
 | Tutorial System | ✅ Ported | 53 tests |
-| Graphics/UI (ImGui) | ⏳ Planned | — |
+| Graphics/UI (Custom) | ✅ Ported | 129 tests |
