@@ -73,6 +73,15 @@ engine/
 │   ├── crew/                   # Crew Management System (ported from C#)
 │   │   └── CrewSystem.h        # Pilots, crew, ship staffing, efficiency
 │   │
+│   ├── power/                  # Power System (ported from C#)
+│   │   └── PowerSystem.h       # Power generation, distribution, priorities
+│   │
+│   ├── mining/                 # Mining & Salvaging System (ported from C#)
+│   │   └── MiningSystem.h      # Asteroid mining, wreckage salvaging
+│   │
+│   ├── procedural/             # Procedural Generation (ported from C#)
+│   │   └── GalaxyGenerator.h   # Deterministic sector generation
+│   │
 │   ├── networking/             # Multiplayer determinism
 │   │   └── BuildCommand.h      # Deterministic build commands, replication
 │   │
@@ -84,7 +93,7 @@ engine/
 │   └── [mirrors include/ structure]
 │
 ├── tests/
-│   └── test_main.cpp           # 512 unit tests covering all systems
+│   └── test_main.cpp           # 603 unit tests covering all systems
 │
 ├── data/
 │   └── factions/               # JSON faction definitions
@@ -161,7 +170,7 @@ cmake --build build
 # Run the game
 ./build/subspace_game
 
-# Run tests (416 tests)
+# Run tests (603 tests)
 ./build/subspace_tests
 ```
 
@@ -289,6 +298,31 @@ Ships can be built from **modules** that snap together via **hardpoints** — co
 - Pilot assignment with exclusivity check (one ship per pilot)
 - Equivalent to C# `Pilot`, `CrewComponent`
 
+### Power System
+- **PowerComponent** — Power generation, consumption, storage, efficiency, and per-system enable/disable state
+- **PowerSystem** — Calculates generation from generators, consumption from engines/thrusters/shields/weapons, priority-based distribution on deficit, storage charging from excess
+- Power priorities: Shields (1) > Weapons (2) > Engines (3) > Systems (4) — lowest-priority disabled first
+- Storage capacity: 50W per generator, charge rate 10W/sec
+- Consumption rates: Engine 5W, Thruster 3W, Gyro 2W, Shield 10W, Weapon 8W, Systems 5W fixed
+- Equivalent to C# `PowerComponent`, `PowerSystem`
+
+### Mining & Salvaging System
+- **MiningComponent** — Mining power (10 res/sec default), range (50m), target tracking
+- **SalvagingComponent** — Salvage power (8 res/sec default), range (50m), target tracking
+- **Asteroid** — Mineable asteroid with position, size, resource type, remaining resources (size × 10)
+- **Wreckage** — Salvageable wreckage with multi-resource inventory
+- **MiningSystem** — Range-checked mining/salvaging initiation, per-tick extraction with inventory integration, automatic depletion and cleanup
+- Equivalent to C# `MiningComponent`, `SalvagingComponent`, `Asteroid`, `Wreckage`, `MiningSystem`
+
+### Procedural Generation
+- **GalaxyGenerator** — Deterministic seeded galaxy sector generation
+- **GalaxySector** — Sector data container with asteroids, station, ships, wormholes
+- **AsteroidData / StationData / ShipData / WormholeData** — Sector content data structs
+- Deterministic: same seed + coordinates = same sector (uses coordinate hashing + mt19937)
+- Configurable: asteroid count (5–20), station probability (20%), wormhole probability (5%)
+- Station names procedurally generated (prefix + suffix), wormhole designations (letter + 3 digits)
+- Equivalent to C# `GalaxyGenerator`, `GalaxySector`, sector data classes
+
 ## Ported from C# Prototype
 
 The following core systems have been ported from the C# prototype (`AvorionLike/`) to C++:
@@ -355,8 +389,10 @@ The following core systems have been ported from the C# prototype (`AvorionLike/
 | Trading/Economy | ✅ Ported | 22 tests |
 | RPG/Progression | ✅ Ported | 27 tests |
 | Fleet/Crew Management | ✅ Ported | 47 tests |
+| Power System | ✅ Ported | 37 tests |
+| Mining/Salvaging | ✅ Ported | 27 tests |
+| Procedural Generation | ✅ Ported | 26 tests |
 | AI Decision/Perception | ⏳ Planned | — |
-| Procedural Generation | ⏳ Planned | — |
 | Networking (full) | ⏳ Planned | — |
 | Scripting/Lua | ⏳ Planned | — |
 | Quest System | ⏳ Planned | — |

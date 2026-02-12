@@ -41,6 +41,9 @@
 #include "trading/TradingSystem.h"
 #include "rpg/ProgressionSystem.h"
 #include "crew/CrewSystem.h"
+#include "power/PowerSystem.h"
+#include "mining/MiningSystem.h"
+#include "procedural/GalaxyGenerator.h"
 
 using namespace subspace;
 
@@ -1771,6 +1774,341 @@ static void TestCrewSystem() {
 }
 
 // ===================================================================
+// 28. Power System tests
+// ===================================================================
+static void TestPowerComponent() {
+    std::cout << "[PowerComponent]\n";
+
+    PowerComponent pc;
+    TEST("Default no generation", pc.maxPowerGeneration == 0.0f);
+    TEST("Default storage 100", ApproxEq(pc.currentStoredPower, 100.0f));
+    TEST("Default all enabled", pc.weaponsEnabled && pc.shieldsEnabled && pc.enginesEnabled && pc.systemsEnabled);
+
+    // Setup some consumption
+    pc.currentPowerGeneration = 100.0f;
+    pc.weaponsPowerConsumption = 30.0f;
+    pc.shieldsPowerConsumption = 25.0f;
+    pc.enginesPowerConsumption = 20.0f;
+    pc.systemsPowerConsumption = 5.0f;
+    pc.UpdateTotalConsumption();
+
+    TEST("Total consumption 80", ApproxEq(pc.totalPowerConsumption, 80.0f));
+    TEST("Available power 20", ApproxEq(pc.GetAvailablePower(), 20.0f));
+    TEST("No deficit", ApproxEq(pc.GetPowerDeficit(), 0.0f));
+    TEST("Not low power", !pc.IsLowPower());
+    TEST("Has enough for 15", pc.HasEnoughPower(15.0f));
+    TEST("Not enough for 25", !pc.HasEnoughPower(25.0f));
+
+    // Toggle weapons off
+    pc.ToggleSystem(PowerSystemType::Weapons);
+    TEST("Weapons disabled", !pc.weaponsEnabled);
+    TEST("Consumption now 50", ApproxEq(pc.totalPowerConsumption, 50.0f));
+    TEST("Available power 50", ApproxEq(pc.GetAvailablePower(), 50.0f));
+
+    // Toggle weapons back on
+    pc.ToggleSystem(PowerSystemType::Weapons);
+    TEST("Weapons re-enabled", pc.weaponsEnabled);
+    TEST("Consumption back to 80", ApproxEq(pc.totalPowerConsumption, 80.0f));
+
+    // Low power scenario
+    pc.currentPowerGeneration = 40.0f;
+    TEST("Deficit 40", ApproxEq(pc.GetPowerDeficit(), 40.0f));
+    TEST("Is low power", pc.IsLowPower());
+
+    // Efficiency < 1
+    pc.currentPowerGeneration = 100.0f;
+    pc.efficiency = 0.5f;
+    TEST("Half efficiency deficit 30", ApproxEq(pc.GetPowerDeficit(), 30.0f));
+
+    // Priority defaults
+    TEST("Shields priority 1", pc.shieldsPriority == 1);
+    TEST("Weapons priority 2", pc.weaponsPriority == 2);
+    TEST("Engines priority 3", pc.enginesPriority == 3);
+    TEST("Systems priority 4", pc.systemsPriority == 4);
+}
+
+static void TestPowerSystem() {
+    std::cout << "[PowerSystem]\n";
+
+    PowerSystem sys;
+    TEST("System name", sys.GetName() == "PowerSystem");
+
+    // CalculatePowerGeneration sets storage capacity
+    PowerComponent pc;
+    sys.CalculatePowerGeneration(pc, 4);
+    TEST("Storage capacity 200", ApproxEq(pc.maxStoredPower, 200.0f));
+
+    sys.CalculatePowerGeneration(pc, 0);
+    TEST("Zero generators zero storage", ApproxEq(pc.maxStoredPower, 0.0f));
+
+    // CalculatePowerConsumption
+    PowerComponent pc2;
+    pc2.currentPowerGeneration = 200.0f;
+    sys.CalculatePowerConsumption(pc2, 2, 3, 1, 2, 3);
+    // engines: 2*5 + 3*3 + 1*2 = 21
+    TEST("Engines consumption 21", ApproxEq(pc2.enginesPowerConsumption, 21.0f));
+    // shields: 2*10 = 20
+    TEST("Shields consumption 20", ApproxEq(pc2.shieldsPowerConsumption, 20.0f));
+    // weapons: 3*8 = 24
+    TEST("Weapons consumption 24", ApproxEq(pc2.weaponsPowerConsumption, 24.0f));
+    // systems: 5
+    TEST("Systems consumption 5", ApproxEq(pc2.systemsPowerConsumption, 5.0f));
+    // total: 21+20+24+5 = 70
+    TEST("Total consumption 70", ApproxEq(pc2.totalPowerConsumption, 70.0f));
+
+    // DistributePower — no deficit
+    TEST("No systems disabled with surplus", sys.DistributePower(pc2) == 0);
+
+    // DistributePower — deficit uses stored power first
+    PowerComponent pc3;
+    pc3.currentPowerGeneration = 10.0f;
+    pc3.weaponsPowerConsumption = 20.0f;
+    pc3.UpdateTotalConsumption();
+    pc3.currentStoredPower = 50.0f;
+    int disabled = sys.DistributePower(pc3);
+    TEST("Stored power used, none disabled", disabled == 0);
+    TEST("Stored power reduced", pc3.currentStoredPower < 50.0f);
+
+    // DistributePower — no stored power, systems disabled by priority
+    PowerComponent pc4;
+    pc4.currentPowerGeneration = 10.0f;
+    pc4.weaponsPowerConsumption = 20.0f;
+    pc4.shieldsPowerConsumption = 15.0f;
+    pc4.enginesPowerConsumption = 10.0f;
+    pc4.systemsPowerConsumption = 5.0f;
+    pc4.UpdateTotalConsumption(); // total 50, gen 10, deficit 40
+    pc4.currentStoredPower = 0.0f;
+    disabled = sys.DistributePower(pc4);
+    TEST("Systems disabled > 0", disabled > 0);
+    // Systems (priority 4) should be disabled first, then engines (3), then weapons (2)
+    TEST("Systems subsystem disabled", !pc4.systemsEnabled);
+
+    // ChargePowerStorage
+    PowerComponent pc5;
+    pc5.currentPowerGeneration = 100.0f;
+    pc5.weaponsPowerConsumption = 20.0f;
+    pc5.UpdateTotalConsumption();
+    pc5.maxStoredPower = 200.0f;
+    pc5.currentStoredPower = 50.0f;
+    sys.ChargePowerStorage(pc5, 1.0f);
+    TEST("Storage charged", pc5.currentStoredPower > 50.0f);
+    TEST("Storage not over max", pc5.currentStoredPower <= 200.0f);
+
+    // ChargePowerStorage — full storage stays full
+    pc5.currentStoredPower = 200.0f;
+    sys.ChargePowerStorage(pc5, 1.0f);
+    TEST("Full storage unchanged", ApproxEq(pc5.currentStoredPower, 200.0f));
+
+    // ChargePowerStorage — no excess, no charge
+    PowerComponent pc6;
+    pc6.currentPowerGeneration = 50.0f;
+    pc6.weaponsPowerConsumption = 50.0f;
+    pc6.UpdateTotalConsumption();
+    pc6.maxStoredPower = 100.0f;
+    pc6.currentStoredPower = 10.0f;
+    sys.ChargePowerStorage(pc6, 1.0f);
+    TEST("No excess, no charge", ApproxEq(pc6.currentStoredPower, 10.0f));
+}
+
+// ===================================================================
+// 29. Mining System tests
+// ===================================================================
+static void TestMiningSystem() {
+    std::cout << "[MiningSystem]\n";
+
+    MiningSystem sys;
+    TEST("System name", sys.GetName() == "MiningSystem");
+    TEST("Empty asteroids", sys.GetAsteroidCount() == 0);
+    TEST("Empty wreckage", sys.GetWreckageCount() == 0);
+
+    // Add asteroid
+    Asteroid a1;
+    a1.id = 100;
+    a1.position = {0.0f, 0.0f, 0.0f};
+    a1.size = 10.0f;
+    a1.resourceType = ResourceType::Iron;
+    a1.remainingResources = 100.0f;
+    sys.AddAsteroid(a1);
+    TEST("Asteroid added", sys.GetAsteroidCount() == 1);
+
+    // Add wreckage
+    Wreckage w1;
+    w1.id = 200;
+    w1.position = {10.0f, 0.0f, 0.0f};
+    w1.resources = {{ResourceType::Titanium, 50}, {ResourceType::Iron, 30}};
+    sys.AddWreckage(w1);
+    TEST("Wreckage added", sys.GetWreckageCount() == 1);
+
+    // Start mining — in range
+    MiningComponent mc;
+    mc.miningPower = 10.0f;
+    mc.miningRange = 100.0f;
+    MiningPosition minerPos = {5.0f, 0.0f, 0.0f};
+    TEST("Start mining succeeds", sys.StartMining(mc, 100, minerPos));
+    TEST("Is mining", mc.isMining);
+    TEST("Target set", mc.targetAsteroidId == 100);
+
+    // Start mining — out of range
+    MiningComponent mc2;
+    mc2.miningRange = 1.0f;
+    MiningPosition farPos = {1000.0f, 0.0f, 0.0f};
+    TEST("Out of range fails", !sys.StartMining(mc2, 100, farPos));
+    TEST("Not mining", !mc2.isMining);
+
+    // Start mining — invalid asteroid
+    TEST("Invalid asteroid fails", !sys.StartMining(mc2, 999, minerPos));
+
+    // Process mining
+    Inventory inv;
+    inv.SetMaxCapacity(10000);
+    float extracted = sys.ProcessMining(mc, inv, 5.0f); // 10 * 5 = 50
+    TEST("Extracted 50", ApproxEq(extracted, 50.0f));
+    TEST("Iron in inventory", inv.GetResourceAmount(ResourceType::Iron) == 50);
+
+    // Continue mining until depleted
+    extracted = sys.ProcessMining(mc, inv, 10.0f); // wants 100, only 50 left
+    TEST("Extracted remaining 50", ApproxEq(extracted, 50.0f));
+    TEST("Asteroid depleted", sys.GetAsteroidCount() == 0);
+    TEST("Mining stopped", !mc.isMining);
+
+    // Process mining when not mining
+    MiningComponent mc3;
+    extracted = sys.ProcessMining(mc3, inv, 1.0f);
+    TEST("Not mining returns 0", ApproxEq(extracted, 0.0f));
+
+    // Start salvaging — in range
+    SalvagingComponent sc;
+    sc.salvagePower = 8.0f;
+    sc.salvageRange = 100.0f;
+    MiningPosition salvagerPos = {10.0f, 0.0f, 0.0f};
+    TEST("Start salvaging succeeds", sys.StartSalvaging(sc, 200, salvagerPos));
+    TEST("Is salvaging", sc.isSalvaging);
+    TEST("Target set", sc.targetWreckageId == 200);
+
+    // Start salvaging — out of range
+    SalvagingComponent sc2;
+    sc2.salvageRange = 1.0f;
+    TEST("Out of range salvage fails", !sys.StartSalvaging(sc2, 200, farPos));
+
+    // Process salvaging
+    Inventory inv2;
+    inv2.SetMaxCapacity(10000);
+    int salvaged = sys.ProcessSalvaging(sc, inv2, 10.0f); // 8*10 = 80 per resource
+    TEST("Salvaged something", salvaged > 0);
+
+    // Continue salvaging until depleted
+    for (int i = 0; i < 10; ++i) {
+        sys.ProcessSalvaging(sc, inv2, 100.0f);
+    }
+    TEST("Wreckage depleted", sys.GetWreckageCount() == 0);
+    TEST("Salvaging stopped", !sc.isSalvaging);
+
+    // Stop mining/salvaging manually
+    MiningComponent mc4;
+    mc4.isMining = true;
+    mc4.targetAsteroidId = 42;
+    sys.StopMining(mc4);
+    TEST("Stop mining works", !mc4.isMining);
+    TEST("Target cleared", mc4.targetAsteroidId == InvalidEntityId);
+
+    SalvagingComponent sc3;
+    sc3.isSalvaging = true;
+    sc3.targetWreckageId = 42;
+    sys.StopSalvaging(sc3);
+    TEST("Stop salvaging works", !sc3.isSalvaging);
+    TEST("Salvage target cleared", sc3.targetWreckageId == InvalidEntityId);
+}
+
+// ===================================================================
+// 30. Procedural Generation tests
+// ===================================================================
+static void TestGalaxyGenerator() {
+    std::cout << "[GalaxyGenerator]\n";
+
+    // Deterministic generation with fixed seed
+    GalaxyGenerator gen(42);
+    TEST("Seed stored", gen.GetSeed() == 42);
+
+    // Generate a sector
+    GalaxySector sector = gen.GenerateSector(0, 0, 0);
+    TEST("Sector coords x", sector.x == 0);
+    TEST("Sector coords y", sector.y == 0);
+    TEST("Sector coords z", sector.z == 0);
+    TEST("Has asteroids", !sector.asteroids.empty());
+    TEST("Asteroid count in range", (int)sector.asteroids.size() >= 5 && (int)sector.asteroids.size() <= 20);
+
+    // Verify asteroid data
+    const auto& first = sector.asteroids[0];
+    TEST("Asteroid has size", first.size >= 10.0f && first.size <= 60.0f);
+    TEST("Asteroid in bounds X", first.position.x >= -5000.0f && first.position.x <= 5000.0f);
+
+    // Deterministic: same seed, same coordinates → same result
+    GalaxySector sector2 = gen.GenerateSector(0, 0, 0);
+    TEST("Deterministic asteroid count", sector.asteroids.size() == sector2.asteroids.size());
+    TEST("Deterministic first size", ApproxEq(sector.asteroids[0].size, sector2.asteroids[0].size));
+    TEST("Deterministic station presence", sector.hasStation == sector2.hasStation);
+    if (sector.hasStation && sector2.hasStation) {
+        TEST("Deterministic station name", sector.station.name == sector2.station.name);
+        TEST("Deterministic station type", sector.station.stationType == sector2.station.stationType);
+    }
+
+    // Different coordinates → different sector (highly likely)
+    GalaxySector sector3 = gen.GenerateSector(100, -50, 200);
+    // At minimum the asteroid data should differ
+    bool different = sector3.asteroids.size() != sector.asteroids.size();
+    if (!different && !sector.asteroids.empty() && !sector3.asteroids.empty()) {
+        different = !ApproxEq(sector.asteroids[0].size, sector3.asteroids[0].size);
+    }
+    TEST("Different coords differ", different);
+
+    // Different seed → different sector
+    GalaxyGenerator gen2(999);
+    GalaxySector sector4 = gen2.GenerateSector(0, 0, 0);
+    bool seedDiff = sector4.asteroids.size() != sector.asteroids.size();
+    if (!seedDiff && !sector.asteroids.empty() && !sector4.asteroids.empty()) {
+        seedDiff = !ApproxEq(sector.asteroids[0].size, sector4.asteroids[0].size);
+    }
+    TEST("Different seed differs", seedDiff);
+
+    // Custom parameters
+    GalaxyGenerator gen3(42);
+    gen3.stationProbability = 1.0f;  // Always spawn station
+    gen3.wormholeProbability = 1.0f; // Always spawn wormhole
+    gen3.minAsteroids = 1;
+    gen3.maxAsteroids = 1;
+    GalaxySector sector5 = gen3.GenerateSector(0, 0, 0);
+    TEST("Custom: 1 asteroid", sector5.asteroids.size() == 1);
+    TEST("Custom: has station", sector5.hasStation);
+    TEST("Custom: station has name", !sector5.station.name.empty());
+    TEST("Custom: station has type", !sector5.station.stationType.empty());
+    TEST("Custom: has wormhole", !sector5.wormholes.empty());
+    if (!sector5.wormholes.empty()) {
+        TEST("Wormhole has designation", !sector5.wormholes[0].designation.empty());
+        TEST("Wormhole class 1-6", sector5.wormholes[0].wormholeClass >= 1 && sector5.wormholes[0].wormholeClass <= 6);
+    }
+
+    // No station/wormhole with 0 probability
+    GalaxyGenerator gen4(42);
+    gen4.stationProbability = 0.0f;
+    gen4.wormholeProbability = 0.0f;
+    GalaxySector sector6 = gen4.GenerateSector(0, 0, 0);
+    TEST("No station with 0 prob", !sector6.hasStation);
+    TEST("No wormhole with 0 prob", sector6.wormholes.empty());
+
+    // Default seed (non-zero)
+    GalaxyGenerator genDefault(0);
+    TEST("Default seed non-zero", genDefault.GetSeed() != 0);
+
+    // Generate many sectors to verify no crashes
+    for (int i = -5; i <= 5; ++i) {
+        for (int j = -5; j <= 5; ++j) {
+            gen.GenerateSector(i, j, 0);
+        }
+    }
+    TEST("Bulk generation no crash", true);
+}
+
+// ===================================================================
 // Main
 // ===================================================================
 int main() {
@@ -1804,6 +2142,10 @@ int main() {
     TestTradingSystem();
     TestProgressionSystem();
     TestCrewSystem();
+    TestPowerComponent();
+    TestPowerSystem();
+    TestMiningSystem();
+    TestGalaxyGenerator();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
               << testsFailed << " failed ===\n";

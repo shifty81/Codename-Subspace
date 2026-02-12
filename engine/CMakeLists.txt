@@ -55,6 +55,9 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/trading/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/rpg/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/crew/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/power/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/mining/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/procedural/*.cpp"
 )
 
 file(GLOB_RECURSE ENGINE_HEADERS CONFIGURE_DEPENDS
