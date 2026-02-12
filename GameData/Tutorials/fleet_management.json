@@ -1,0 +1,51 @@
+{
+  "Id": "tutorial_fleet_management",
+  "Title": "Fleet Management",
+  "Description": "Learn how to build and manage a fleet of ships to expand your operations.",
+  "AutoStart": false,
+  "Prerequisites": ["tutorial_basic_controls", "tutorial_ship_building"],
+  "Steps": [
+    {
+      "Type": "Message",
+      "Title": "Introduction to Fleets",
+      "Message": "As you grow more powerful, you'll want to command multiple ships. Fleet management allows you to control a small armada!",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Building Your Fleet",
+      "Message": "To create a fleet:\n• Build or acquire additional ships\n• Assign captains to ships (requires crew quarters)\n• Group ships into a fleet formation\n• Designate a flagship (usually your strongest ship)\n• Set fleet orders and tactics",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Crew System",
+      "Message": "Each ship in your fleet needs crew:\n• Hire crew at stations (Engineers, Pilots, Gunners, etc.)\n• Pay regular salaries from your credits\n• Crew skills improve over time\n• Crew quarters required on ship for crew capacity\n• Better crew = better ship performance",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Captain Commands",
+      "Message": "Captains can execute various commands:\n• MINE - Autonomous mining operations\n• TRADE - Automated trading routes\n• PATROL - Defend a sector\n• ESCORT - Protect your flagship\n• ATTACK - Engage hostile targets\n• SALVAGE - Collect wreckage and debris",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Fleet Formations",
+      "Message": "Fleet formations provide tactical advantages:\n• WEDGE - Offensive formation\n• LINE - Defensive formation\n• CIRCLE - Protect a central ship\n• SCATTERED - Maximize coverage\n\nFormations affect combat effectiveness and movement speed.",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Fleet Strategy",
+      "Message": "Effective fleet management:\n• Specialize ships (miners, fighters, traders)\n• Balance fleet composition\n• Manage crew wages to avoid bankruptcy\n• Upgrade flagship first for best ROI\n• Use AI captains to automate routine tasks\n• Keep fleet together for mutual support",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Fleet Management Complete!",
+      "Message": "You now understand fleet management! Build your armada and dominate the galaxy!",
+      "CanSkip": false
+    }
+  ]
+}
