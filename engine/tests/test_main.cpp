@@ -2414,7 +2414,7 @@ static void TestQuestSystemTradeVisitBuild() {
     system.GiveQuest(1, "tmpl_visit", comp);
     comp.AcceptQuest("tmpl_visit");
 
-    system.ProgressObjective(comp, ObjectiveType::Visit, "wrong_sector", 1);
+    system.ProgressObjective(comp, ObjectiveType::Visit, "Sector_99_99", 1);
     Quest* qv = comp.GetQuest("tmpl_visit");
     TEST("Visit wrong target no progress", qv != nullptr && qv->status == QuestStatus::Active);
 
