@@ -38,6 +38,9 @@
 #include "core/persistence/SaveGameManager.h"
 #include "navigation/NavigationSystem.h"
 #include "combat/CombatSystem.h"
+#include "trading/TradingSystem.h"
+#include "rpg/ProgressionSystem.h"
+#include "crew/CrewSystem.h"
 
 using namespace subspace;
 
@@ -1509,6 +1512,265 @@ static void TestCombatSystem() {
 }
 
 // ===================================================================
+// 25. TradingSystem tests
+// ===================================================================
+static void TestTradingSystem() {
+    std::cout << "[TradingSystem]\n";
+
+    TradingSystem trading;
+    TEST("TradingSystem name", trading.GetName() == "TradingSystem");
+
+    // Base prices
+    TEST("Iron base price", ApproxEq(trading.GetBasePrice(ResourceType::Iron), 10.0f));
+    TEST("Titanium base price", ApproxEq(trading.GetBasePrice(ResourceType::Titanium), 25.0f));
+    TEST("Naonite base price", ApproxEq(trading.GetBasePrice(ResourceType::Naonite), 50.0f));
+    TEST("Trinium base price", ApproxEq(trading.GetBasePrice(ResourceType::Trinium), 100.0f));
+    TEST("Xanion base price", ApproxEq(trading.GetBasePrice(ResourceType::Xanion), 200.0f));
+    TEST("Ogonite base price", ApproxEq(trading.GetBasePrice(ResourceType::Ogonite), 400.0f));
+    TEST("Avorion base price", ApproxEq(trading.GetBasePrice(ResourceType::Avorion), 800.0f));
+
+    // Buy price = base * amount * 1.2
+    TEST("Buy 10 Iron", trading.GetBuyPrice(ResourceType::Iron, 10) == 120);
+    TEST("Buy 1 Avorion", trading.GetBuyPrice(ResourceType::Avorion, 1) == 960);
+
+    // Sell price = base * amount * 0.8
+    TEST("Sell 10 Iron", trading.GetSellPrice(ResourceType::Iron, 10) == 80);
+    TEST("Sell 1 Avorion", trading.GetSellPrice(ResourceType::Avorion, 1) == 640);
+
+    // Buy/sell spread: buy > sell
+    TEST("Buy price > sell price", trading.GetBuyPrice(ResourceType::Iron, 10) > trading.GetSellPrice(ResourceType::Iron, 10));
+
+    // BuyResource with sufficient credits
+    Inventory inv;
+    inv.SetMaxCapacity(100000);
+    inv.AddResource(ResourceType::Credits, 5000);
+    TEST("BuyResource succeeds", trading.BuyResource(ResourceType::Iron, 10, inv));
+    TEST("Iron added after buy", inv.GetResourceAmount(ResourceType::Iron) == 10);
+    TEST("Credits deducted after buy", inv.GetResourceAmount(ResourceType::Credits) == 5000 - 120);
+
+    // BuyResource with insufficient credits
+    Inventory inv2;
+    inv2.SetMaxCapacity(100000);
+    inv2.AddResource(ResourceType::Credits, 50);
+    TEST("BuyResource fails low credits", !trading.BuyResource(ResourceType::Avorion, 1, inv2));
+
+    // SellResource
+    Inventory inv3;
+    inv3.SetMaxCapacity(100000);
+    inv3.AddResource(ResourceType::Iron, 100);
+    inv3.AddResource(ResourceType::Credits, 0);
+    TEST("SellResource succeeds", trading.SellResource(ResourceType::Iron, 50, inv3));
+    TEST("Iron removed after sell", inv3.GetResourceAmount(ResourceType::Iron) == 50);
+    TEST("Credits received after sell", inv3.GetResourceAmount(ResourceType::Credits) == trading.GetSellPrice(ResourceType::Iron, 50));
+
+    // SellResource with insufficient resources
+    TEST("SellResource fails low stock", !trading.SellResource(ResourceType::Avorion, 1, inv3));
+
+    // Round-trip: buy and sell same amount yields less credits
+    Inventory inv4;
+    inv4.SetMaxCapacity(100000);
+    inv4.AddResource(ResourceType::Credits, 10000);
+    int beforeCredits = inv4.GetResourceAmount(ResourceType::Credits);
+    trading.BuyResource(ResourceType::Titanium, 10, inv4);
+    trading.SellResource(ResourceType::Titanium, 10, inv4);
+    int afterCredits = inv4.GetResourceAmount(ResourceType::Credits);
+    TEST("Round-trip loses credits (spread)", afterCredits < beforeCredits);
+
+    // BuyResource fails due to inventory capacity limit
+    Inventory inv5;
+    inv5.SetMaxCapacity(5); // very small capacity
+    inv5.AddResource(ResourceType::Credits, 50000);
+    TEST("BuyResource fails at capacity", !trading.BuyResource(ResourceType::Iron, 10, inv5));
+}
+
+// ===================================================================
+// 26. ProgressionSystem tests
+// ===================================================================
+static void TestProgressionSystem() {
+    std::cout << "[ProgressionSystem]\n";
+
+    // ProgressionComponent defaults
+    ProgressionComponent prog;
+    TEST("Prog default level 1", prog.level == 1);
+    TEST("Prog default XP 0", prog.experience == 0);
+    TEST("Prog default XP needed 100", prog.experienceToNextLevel == 100);
+    TEST("Prog default skill points 0", prog.skillPoints == 0);
+
+    // Add XP without level up
+    bool leveled = prog.AddExperience(50);
+    TEST("No level up at 50 XP", !leveled);
+    TEST("XP is 50", prog.experience == 50);
+    TEST("Still level 1", prog.level == 1);
+
+    // Add XP to trigger level up
+    leveled = prog.AddExperience(60);
+    TEST("Level up at 110 XP", leveled);
+    TEST("Now level 2", prog.level == 2);
+    TEST("Overflow XP correct", prog.experience == 10); // 110 - 100 = 10
+    TEST("XP to next level scaled", prog.experienceToNextLevel == 150); // 100 * 1.5
+    TEST("3 skill points gained", prog.skillPoints == 3);
+
+    // Multiple level ups from large XP
+    ProgressionComponent prog2;
+    prog2.AddExperience(100); // level 1->2
+    TEST("Level 2 after 100 XP", prog2.level == 2);
+    prog2.AddExperience(150); // level 2->3
+    TEST("Level 3 after another 150 XP", prog2.level == 3);
+    TEST("6 skill points after 2 level ups", prog2.skillPoints == 6);
+
+    // FactionComponent defaults
+    FactionComponent fac;
+    TEST("Faction default name", fac.factionName == "Neutral");
+    TEST("Unknown faction rep 0", fac.GetReputation("Pirates") == 0);
+    TEST("Not friendly with unknown", !fac.IsFriendly("Pirates"));
+    TEST("Not hostile with unknown", !fac.IsHostile("Pirates"));
+
+    // Modify reputation
+    fac.ModifyReputation("Traders", 60);
+    TEST("Traders rep 60", fac.GetReputation("Traders") == 60);
+    TEST("Friendly with Traders", fac.IsFriendly("Traders"));
+    TEST("Not hostile with Traders", !fac.IsHostile("Traders"));
+
+    // Negative reputation
+    fac.ModifyReputation("Pirates", -70);
+    TEST("Pirates rep -70", fac.GetReputation("Pirates") == -70);
+    TEST("Not friendly with Pirates", !fac.IsFriendly("Pirates"));
+    TEST("Hostile with Pirates", fac.IsHostile("Pirates"));
+
+    // Clamping
+    fac.ModifyReputation("Traders", 200); // should clamp to 100
+    TEST("Rep clamped to 100", fac.GetReputation("Traders") == 100);
+
+    fac.ModifyReputation("Pirates", -200); // should clamp to -100
+    TEST("Rep clamped to -100", fac.GetReputation("Pirates") == -100);
+
+    // Boundary checks
+    FactionComponent fac2;
+    fac2.ModifyReputation("Neutral", 50);
+    TEST("Rep 50 is friendly", fac2.IsFriendly("Neutral"));
+    fac2.ModifyReputation("Neutral", -100); // 50 + (-100) = -50
+    TEST("Rep -50 is hostile", fac2.IsHostile("Neutral"));
+
+    // Multiple factions tracked independently
+    FactionComponent fac3;
+    fac3.ModifyReputation("A", 30);
+    fac3.ModifyReputation("B", -40);
+    TEST("Faction A rep 30", fac3.GetReputation("A") == 30);
+    TEST("Faction B rep -40", fac3.GetReputation("B") == -40);
+}
+
+// ===================================================================
+// 27. CrewSystem tests
+// ===================================================================
+static void TestCrewSystem() {
+    std::cout << "[CrewSystem]\n";
+
+    // Pilot defaults
+    Pilot pilot;
+    pilot.name = "Test Pilot";
+    TEST("Pilot default level 1", pilot.level == 1);
+    TEST("Pilot default XP 0", pilot.experience == 0);
+    TEST("Pilot not assigned", !pilot.IsAssigned());
+    TEST("Pilot overall skill", ApproxEq(pilot.GetOverallSkill(), 0.5f));
+
+    // Pilot with custom skills
+    Pilot pilot2;
+    pilot2.name = "Skilled Pilot";
+    pilot2.combatSkill = 0.8f;
+    pilot2.navigationSkill = 0.6f;
+    pilot2.engineeringSkill = 0.4f;
+    TEST("Custom overall skill", ApproxEq(pilot2.GetOverallSkill(), 0.6f));
+
+    // Pilot experience and level up
+    Pilot pilot3;
+    pilot3.name = "Rookie";
+    bool leveled = pilot3.AddExperience(400);
+    TEST("No level up at 400 XP (needs 500)", !leveled);
+    TEST("Pilot XP 400", pilot3.experience == 400);
+    leveled = pilot3.AddExperience(100);
+    TEST("Level up at 500 XP", leveled);
+    TEST("Pilot now level 2", pilot3.level == 2);
+    TEST("Pilot overflow XP 0", pilot3.experience == 0);
+
+    // Level 2 needs 1000 XP
+    leveled = pilot3.AddExperience(999);
+    TEST("No level up at 999/1000 XP", !leveled);
+    leveled = pilot3.AddExperience(1);
+    TEST("Level up at 1000 XP", leveled);
+    TEST("Pilot now level 3", pilot3.level == 3);
+
+    // CrewComponent defaults
+    CrewComponent crew;
+    crew.entityId = 42;
+    TEST("Crew min 1", crew.minimumCrew == 1);
+    TEST("Crew current 0", crew.currentCrew == 0);
+    TEST("Crew max 10", crew.maxCrew == 10);
+    TEST("Not sufficient crew", !crew.HasSufficientCrew());
+    TEST("No pilot", !crew.HasPilot());
+    TEST("Not operational", !crew.IsOperational());
+
+    // Add crew
+    TEST("Add 5 crew succeeds", crew.AddCrew(5));
+    TEST("Current crew 5", crew.currentCrew == 5);
+    TEST("Has sufficient crew", crew.HasSufficientCrew());
+    TEST("Crew efficiency > 1 (overmanned)", crew.GetCrewEfficiency() > 1.0f);
+
+    // Add crew beyond max fails
+    TEST("Add 6 more fails", !crew.AddCrew(6));
+    TEST("Still 5 crew", crew.currentCrew == 5);
+
+    // Remove crew
+    TEST("Remove 3 crew succeeds", crew.RemoveCrew(3));
+    TEST("Current crew 2", crew.currentCrew == 2);
+    TEST("Still sufficient crew", crew.HasSufficientCrew());
+
+    // Remove too many fails
+    TEST("Remove 5 fails", !crew.RemoveCrew(5));
+
+    // Assign pilot
+    Pilot pilotA;
+    pilotA.name = "Captain Alpha";
+    TEST("Assign pilot succeeds", crew.AssignPilot(pilotA));
+    TEST("Has pilot now", crew.HasPilot());
+    TEST("Is operational", crew.IsOperational());
+    TEST("Pilot assigned ship set", pilotA.assignedShipId == 42);
+
+    // Can't assign already-assigned pilot
+    CrewComponent crew2;
+    crew2.entityId = 99;
+    crew2.AddCrew(5);
+    TEST("Assign same pilot fails", !crew2.AssignPilot(pilotA));
+
+    // Remove pilot
+    Pilot removedPilot;
+    TEST("Remove pilot succeeds", crew.RemovePilot(removedPilot));
+    TEST("Removed pilot name", removedPilot.name == "Captain Alpha");
+    TEST("Removed pilot unassigned", !removedPilot.IsAssigned());
+    TEST("No pilot after removal", !crew.HasPilot());
+    TEST("Not operational without pilot", !crew.IsOperational());
+
+    // Remove pilot when none assigned
+    Pilot dummy;
+    TEST("Remove from empty fails", !crew.RemovePilot(dummy));
+
+    // Crew efficiency: undermanned
+    CrewComponent crew3;
+    crew3.minimumCrew = 10;
+    crew3.maxCrew = 20;
+    crew3.AddCrew(5);
+    TEST("Undermanned efficiency 0.5", ApproxEq(crew3.GetCrewEfficiency(), 0.5f));
+
+    // Crew efficiency: exactly manned
+    crew3.AddCrew(5); // now 10
+    TEST("Exact efficiency 1.0", ApproxEq(crew3.GetCrewEfficiency(), 1.0f));
+
+    // Crew efficiency: overmanned (bonus capped at 0.2)
+    crew3.AddCrew(10); // now 20
+    float expected = 1.0f + std::min(0.2f, (20 - 10) * 0.02f);
+    TEST("Overmanned efficiency", ApproxEq(crew3.GetCrewEfficiency(), expected));
+}
+
+// ===================================================================
 // Main
 // ===================================================================
 int main() {
@@ -1539,6 +1801,9 @@ int main() {
     TestSaveGameManager();
     TestNavigationSystem();
     TestCombatSystem();
+    TestTradingSystem();
+    TestProgressionSystem();
+    TestCrewSystem();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
               << testsFailed << " failed ===\n";

@@ -52,6 +52,9 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/ship_editor/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/ships/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/weapons/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/trading/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/rpg/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/crew/*.cpp"
 )
 
 file(GLOB_RECURSE ENGINE_HEADERS CONFIGURE_DEPENDS
