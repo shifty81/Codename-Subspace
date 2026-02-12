@@ -82,8 +82,12 @@ engine/
 │   ├── procedural/             # Procedural Generation (ported from C#)
 │   │   └── GalaxyGenerator.h   # Deterministic sector generation
 │   │
-│   ├── networking/             # Multiplayer determinism
-│   │   └── BuildCommand.h      # Deterministic build commands, replication
+│   ├── networking/             # Multiplayer networking (ported from C#)
+│   │   ├── BuildCommand.h      # Deterministic build commands, replication
+│   │   └── NetworkSystem.h     # Messages, clients, sectors, game server
+│   │
+│   ├── scripting/              # Scripting & Mod System (ported from C#)
+│   │   └── ScriptingSystem.h   # Script engine, function registry, mod manager
 │   │
 │   ├── quest/                  # Quest System (ported from C#)
 │   │   └── QuestSystem.h       # Quests, objectives, rewards, progression
@@ -107,7 +111,7 @@ engine/
 │   └── [mirrors include/ structure]
 │
 ├── tests/
-│   └── test_main.cpp           # 892 unit tests covering all systems
+│   └── test_main.cpp           # 1049 unit tests covering all systems
 │
 ├── data/
 │   └── factions/               # JSON faction definitions
@@ -167,7 +171,7 @@ The engine integrates directly into the Visual Studio solution:
 2. In Solution Explorer, the **C++ Engine** folder contains:
    - **SubspaceEngine** — Static library with all engine systems
    - **SubspaceGame** — Game executable
-   - **SubspaceTests** — 892 unit tests
+   - **SubspaceTests** — 1049 unit tests
 3. Select **Debug | x64** or **Release | x64**
 4. Build → Build Solution (Ctrl+Shift+B)
 5. Right-click SubspaceTests → Set as Startup Project → F5 to run tests
@@ -184,7 +188,7 @@ cmake --build build
 # Run the game
 ./build/subspace_game
 
-# Run tests (892 tests)
+# Run tests (1049 tests)
 ./build/subspace_tests
 ```
 
@@ -266,6 +270,19 @@ Ships can be built from **modules** that snap together via **hardpoints** — co
 - Build commands (Place/Remove/Paint) for replication
 - Server validates, applies, broadcasts
 - Clients replay commands deterministically
+- **NetworkMessage** — Binary-serialized message with type, data, and timestamp
+- **ClientConnection** — Transport-agnostic client with inbox/outbox message queues, sector tracking
+- **SectorServer** — Sector-scoped client management with broadcast (optional sender exclusion)
+- **GameServer** — Main server: client connection/disconnection, sector routing (JoinSector/LeaveSector/EntityUpdate/ChatMessage), message processing via `Update()` loop
+- **MessageType** — JoinSector, LeaveSector, EntityUpdate, SectorJoined, ChatMessage
+- Equivalent to C# `GameServer`, `ClientConnection`, `SectorServer`, `NetworkMessage`
+
+### Scripting & Mod System
+- **ScriptResult** — Execution result with success flag, output, and error message
+- **ScriptingEngine** — Function registry with named C++ callbacks, line-by-line script execution, global variable storage, execution log
+- **ModInfo** — Mod metadata: id, name, version, author, description, main script, dependencies
+- **ModManager** — Mod registration, topological dependency sort with circular dependency detection, ordered loading/unloading, reload support
+- Equivalent to C# `ScriptingEngine`, `LuaAPI`, `ModManager`, `ModInfo`
 
 ### Configuration Manager
 - Singleton settings manager with five categories: Graphics, Audio, Gameplay, Network, Development
@@ -438,8 +455,8 @@ The following core systems have been ported from the C# prototype (`AvorionLike/
 | Mining/Salvaging | ✅ Ported | 27 tests |
 | Procedural Generation | ✅ Ported | 26 tests |
 | AI Decision/Perception | ✅ Ported | 39 tests |
-| Networking (full) | ⏳ Planned | — |
-| Scripting/Lua | ⏳ Planned | — |
+| Networking (full) | ✅ Ported | 90 tests |
+| Scripting/Lua | ✅ Ported | 67 tests |
 | Quest System | ✅ Ported | 65 tests |
 | Tutorial System | ✅ Ported | 53 tests |
 | Graphics/UI (Custom) | ✅ Ported | 132 tests |

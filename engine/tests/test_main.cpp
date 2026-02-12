@@ -52,6 +52,8 @@
 #include "ui/UIPanel.h"
 #include "ui/UIRenderer.h"
 #include "ui/UISystem.h"
+#include "networking/NetworkSystem.h"
+#include "scripting/ScriptingSystem.h"
 
 using namespace subspace;
 
@@ -3219,6 +3221,575 @@ static void TestUISystem() {
 }
 
 // ===================================================================
+// Networking Tests
+// ===================================================================
+
+static void TestNetworkMessage() {
+    std::cout << "[NetworkMessage]\n";
+
+    // Default constructor
+    NetworkMessage msg;
+    TEST("Default type is ChatMessage", msg.type == MessageType::ChatMessage);
+    TEST("Default data is empty", msg.data.empty());
+    TEST("Default timestamp > 0", msg.timestamp > 0.0);
+
+    // Parameterized constructor
+    NetworkMessage msg2(MessageType::JoinSector, "sector_alpha");
+    TEST("Type set correctly", msg2.type == MessageType::JoinSector);
+    TEST("Data set correctly", msg2.data == "sector_alpha");
+    TEST("Timestamp set", msg2.timestamp > 0.0);
+
+    // Serialize / Deserialize round-trip
+    auto bytes = msg2.Serialize();
+    TEST("Serialized bytes non-empty", !bytes.empty());
+
+    NetworkMessage deserialized = NetworkMessage::Deserialize(bytes);
+    TEST("Deserialized type matches", deserialized.type == msg2.type);
+    TEST("Deserialized data matches", deserialized.data == msg2.data);
+    TEST("Deserialized timestamp matches", ApproxEq(static_cast<float>(deserialized.timestamp),
+                                                     static_cast<float>(msg2.timestamp)));
+
+    // Empty data round-trip
+    NetworkMessage emptyMsg(MessageType::LeaveSector, "");
+    auto emptyBytes = emptyMsg.Serialize();
+    NetworkMessage emptyDeser = NetworkMessage::Deserialize(emptyBytes);
+    TEST("Empty data round-trip type", emptyDeser.type == MessageType::LeaveSector);
+    TEST("Empty data round-trip data", emptyDeser.data.empty());
+
+    // Deserialize too-short buffer
+    std::vector<uint8_t> tooShort = {0, 0};
+    NetworkMessage badMsg = NetworkMessage::Deserialize(tooShort);
+    TEST("Short buffer returns default type", badMsg.type == MessageType::ChatMessage);
+}
+
+static void TestClientConnection() {
+    std::cout << "[ClientConnection]\n";
+
+    ClientConnection client(42, "Player1");
+    TEST("ID correct", client.GetId() == 42);
+    TEST("Name correct", client.GetName() == "Player1");
+    TEST("Initially connected", client.IsConnected());
+    TEST("Current sector empty", client.GetCurrentSector().empty());
+
+    // Sector tracking
+    client.SetCurrentSector("sector_1");
+    TEST("Sector set", client.GetCurrentSector() == "sector_1");
+
+    // Outbox
+    client.QueueMessage(NetworkMessage(MessageType::ChatMessage, "hello"));
+    client.QueueMessage(NetworkMessage(MessageType::EntityUpdate, "data"));
+    auto outbox = client.FlushOutbox();
+    TEST("Outbox has 2 messages", outbox.size() == 2);
+    TEST("Outbox first is ChatMessage", outbox[0].type == MessageType::ChatMessage);
+    TEST("Outbox first data", outbox[0].data == "hello");
+    auto outbox2 = client.FlushOutbox();
+    TEST("Outbox empty after flush", outbox2.empty());
+
+    // Inbox
+    client.ReceiveMessage(NetworkMessage(MessageType::SectorJoined, "sector_1"));
+    auto inbox = client.FlushInbox();
+    TEST("Inbox has 1 message", inbox.size() == 1);
+    TEST("Inbox message type", inbox[0].type == MessageType::SectorJoined);
+    auto inbox2 = client.FlushInbox();
+    TEST("Inbox empty after flush", inbox2.empty());
+
+    // Disconnect
+    client.Disconnect();
+    TEST("Disconnected", !client.IsConnected());
+}
+
+static void TestSectorServer() {
+    std::cout << "[SectorServer]\n";
+
+    SectorServer sector("alpha");
+    TEST("Sector ID", sector.GetId() == "alpha");
+    TEST("No clients initially", sector.GetClientCount() == 0);
+
+    auto c1 = std::make_shared<ClientConnection>(1, "P1");
+    auto c2 = std::make_shared<ClientConnection>(2, "P2");
+    auto c3 = std::make_shared<ClientConnection>(3, "P3");
+
+    sector.AddClient(c1);
+    TEST("1 client", sector.GetClientCount() == 1);
+    TEST("HasClient 1", sector.HasClient(1));
+    TEST("Not HasClient 2", !sector.HasClient(2));
+
+    // Duplicate add
+    sector.AddClient(c1);
+    TEST("Still 1 client after dup", sector.GetClientCount() == 1);
+
+    sector.AddClient(c2);
+    sector.AddClient(c3);
+    TEST("3 clients", sector.GetClientCount() == 3);
+
+    // GetClient
+    auto found = sector.GetClient(2);
+    TEST("GetClient found", found != nullptr);
+    TEST("GetClient correct", found->GetName() == "P2");
+    TEST("GetClient not found", sector.GetClient(99) == nullptr);
+
+    // Broadcast
+    sector.Broadcast(NetworkMessage(MessageType::ChatMessage, "hi"), 1);
+    auto out1 = c1->FlushOutbox();
+    auto out2 = c2->FlushOutbox();
+    auto out3 = c3->FlushOutbox();
+    TEST("Excluded client gets nothing", out1.empty());
+    TEST("Client 2 gets broadcast", out2.size() == 1);
+    TEST("Client 3 gets broadcast", out3.size() == 1);
+    TEST("Broadcast data correct", out2[0].data == "hi");
+
+    // Broadcast to disconnected client
+    c2->Disconnect();
+    sector.Broadcast(NetworkMessage(MessageType::ChatMessage, "test"), 0);
+    auto out2b = c2->FlushOutbox();
+    TEST("Disconnected client skipped", out2b.empty());
+
+    // Remove
+    sector.RemoveClient(2);
+    TEST("2 clients after remove", sector.GetClientCount() == 2);
+    TEST("Client 2 removed", !sector.HasClient(2));
+
+    // GetClients
+    auto all = sector.GetClients();
+    TEST("GetClients returns 2", all.size() == 2);
+}
+
+static void TestGameServer() {
+    std::cout << "[GameServer]\n";
+
+    GameServer server(27015);
+    TEST("Port correct", server.GetPort() == 27015);
+    TEST("Not running initially", !server.IsRunning());
+    TEST("No clients initially", server.GetClientCount() == 0);
+    TEST("No sectors initially", server.GetSectorCount() == 0);
+
+    // Can't connect when not running
+    auto noClient = server.ConnectClient("Player");
+    TEST("Connect fails when stopped", noClient == nullptr);
+
+    server.Start();
+    TEST("Running after start", server.IsRunning());
+
+    // Double start is safe
+    server.Start();
+    TEST("Still running after double start", server.IsRunning());
+
+    // Connect clients
+    auto c1 = server.ConnectClient("Alice");
+    TEST("Client 1 connected", c1 != nullptr);
+    TEST("Client 1 name", c1->GetName() == "Alice");
+    TEST("1 client", server.GetClientCount() == 1);
+
+    auto c2 = server.ConnectClient("Bob");
+    auto c3 = server.ConnectClient("Charlie");
+    TEST("3 clients", server.GetClientCount() == 3);
+
+    // Get client
+    auto found = server.GetClient(c1->GetId());
+    TEST("GetClient found", found != nullptr);
+    TEST("GetClient correct", found->GetId() == c1->GetId());
+    TEST("GetClient not found", server.GetClient(999) == nullptr);
+
+    // Join sector via ProcessMessage
+    server.ProcessMessage(c1->GetId(), NetworkMessage(MessageType::JoinSector, "sector_a"));
+    TEST("Sector created", server.GetSectorCount() == 1);
+    auto sectorA = server.GetSector("sector_a");
+    TEST("Sector a exists", sectorA != nullptr);
+    TEST("Sector has client 1", sectorA->HasClient(c1->GetId()));
+    TEST("Client 1 in sector_a", c1->GetCurrentSector() == "sector_a");
+
+    // Client gets SectorJoined confirmation
+    auto c1out = c1->FlushOutbox();
+    TEST("Client 1 got SectorJoined", c1out.size() == 1);
+    TEST("SectorJoined type", c1out[0].type == MessageType::SectorJoined);
+    TEST("SectorJoined data", c1out[0].data == "sector_a");
+
+    // Second client joins same sector
+    server.ProcessMessage(c2->GetId(), NetworkMessage(MessageType::JoinSector, "sector_a"));
+    TEST("Sector has 2 clients", sectorA->GetClientCount() == 2);
+
+    // Entity update broadcast
+    server.ProcessMessage(c1->GetId(), NetworkMessage(MessageType::EntityUpdate, "pos_update"));
+    auto c2out = c2->FlushOutbox();
+    // c2 gets both: SectorJoined + EntityUpdate
+    TEST("Client 2 got entity update", c2out.size() == 2);
+    TEST("Entity update data", c2out[1].data == "pos_update");
+    // c1 shouldn't get the broadcast back
+    auto c1out2 = c1->FlushOutbox();
+    TEST("Sender excluded from broadcast", c1out2.empty());
+
+    // Chat message broadcast
+    server.ProcessMessage(c2->GetId(), NetworkMessage(MessageType::ChatMessage, "hello!"));
+    auto c1chat = c1->FlushOutbox();
+    TEST("Client 1 got chat", c1chat.size() == 1);
+    TEST("Chat data", c1chat[0].data == "hello!");
+
+    // Leave sector
+    server.ProcessMessage(c1->GetId(), NetworkMessage(MessageType::LeaveSector, "sector_a"));
+    TEST("Sector down to 1", sectorA->GetClientCount() == 1);
+    TEST("Client 1 sector cleared", c1->GetCurrentSector().empty());
+
+    // Join different sector moves client
+    server.ProcessMessage(c2->GetId(), NetworkMessage(MessageType::JoinSector, "sector_b"));
+    TEST("2 sectors", server.GetSectorCount() == 2);
+    TEST("sector_a has 0", sectorA->GetClientCount() == 0);
+    TEST("Client 2 in sector_b", c2->GetCurrentSector() == "sector_b");
+
+    // Empty data messages are ignored
+    server.ProcessMessage(c1->GetId(), NetworkMessage(MessageType::JoinSector, ""));
+    TEST("Empty join ignored", c1->GetCurrentSector().empty());
+
+    // Entity update without sector is ignored
+    server.ProcessMessage(c1->GetId(), NetworkMessage(MessageType::EntityUpdate, "data"));
+    // no crash
+
+    // Disconnect client
+    server.DisconnectClient(c1->GetId());
+    TEST("2 clients after disconnect", server.GetClientCount() == 2);
+    TEST("Disconnected client removed", server.GetClient(c1->GetId()) == nullptr);
+
+    // GetOrCreateSector
+    auto sectorC = server.GetOrCreateSector("sector_c");
+    TEST("Created sector_c", sectorC != nullptr);
+    TEST("3 sectors", server.GetSectorCount() == 3);
+    auto sectorC2 = server.GetOrCreateSector("sector_c");
+    TEST("Get existing sector", sectorC2 == sectorC);
+
+    // Stop
+    server.Stop();
+    TEST("Stopped", !server.IsRunning());
+    TEST("Clients cleared", server.GetClientCount() == 0);
+    TEST("Sectors cleared", server.GetSectorCount() == 0);
+
+    // Double stop is safe
+    server.Stop();
+    TEST("Double stop ok", !server.IsRunning());
+}
+
+static void TestGameServerUpdate() {
+    std::cout << "[GameServer Update]\n";
+
+    GameServer server;
+    server.Start();
+
+    auto c1 = server.ConnectClient("P1");
+    auto c2 = server.ConnectClient("P2");
+
+    // Join sector via inbox
+    c1->ReceiveMessage(NetworkMessage(MessageType::JoinSector, "lobby"));
+    c2->ReceiveMessage(NetworkMessage(MessageType::JoinSector, "lobby"));
+    server.Update(0.016f);
+
+    TEST("Both in lobby", server.GetSector("lobby")->GetClientCount() == 2);
+
+    // Flush join confirmations
+    c1->FlushOutbox();
+    c2->FlushOutbox();
+
+    // Chat via inbox
+    c1->ReceiveMessage(NetworkMessage(MessageType::ChatMessage, "hey"));
+    server.Update(0.016f);
+
+    auto c2msgs = c2->FlushOutbox();
+    TEST("C2 received chat via Update", c2msgs.size() == 1);
+    TEST("Chat content", c2msgs[0].data == "hey");
+
+    // Update when stopped is no-op
+    server.Stop();
+    server.Update(0.016f);
+    TEST("Update after stop ok", true);
+}
+
+// ===================================================================
+// Scripting Tests
+// ===================================================================
+
+static void TestScriptingEngine() {
+    std::cout << "[ScriptingEngine]\n";
+
+    ScriptingEngine engine;
+    TEST("No functions initially", engine.GetFunctionCount() == 0);
+    TEST("Log empty initially", engine.GetLog().empty());
+
+    // Register function
+    engine.RegisterFunction("greet", [](const std::vector<std::string>& args) -> std::string {
+        if (args.empty()) return "Hello, World!";
+        return "Hello, " + args[0] + "!";
+    });
+    TEST("1 function registered", engine.GetFunctionCount() == 1);
+    TEST("Has greet", engine.HasFunction("greet"));
+    TEST("Not has unknown", !engine.HasFunction("unknown"));
+
+    // Call function
+    auto result = engine.CallFunction("greet", {});
+    TEST("Call success", result.success);
+    TEST("Call output", result.output == "Hello, World!");
+    TEST("Log has 1 entry", engine.GetLog().size() == 1);
+
+    auto result2 = engine.CallFunction("greet", {"Alice"});
+    TEST("Call with args success", result2.success);
+    TEST("Call with args output", result2.output == "Hello, Alice!");
+
+    // Call unknown function
+    auto result3 = engine.CallFunction("nonexistent");
+    TEST("Unknown function fails", !result3.success);
+    TEST("Unknown function error", !result3.error.empty());
+
+    // Register function that throws
+    engine.RegisterFunction("bomb", [](const std::vector<std::string>&) -> std::string {
+        throw std::runtime_error("boom!");
+    });
+    auto result4 = engine.CallFunction("bomb");
+    TEST("Exception caught", !result4.success);
+    TEST("Exception error message", result4.error.find("boom!") != std::string::npos);
+
+    // Unregister
+    bool unreg = engine.UnregisterFunction("greet");
+    TEST("Unregister success", unreg);
+    TEST("0 functions after unregister", engine.GetFunctionCount() == 1); // bomb remains
+    TEST("greet gone", !engine.HasFunction("greet"));
+
+    bool unreg2 = engine.UnregisterFunction("nonexistent");
+    TEST("Unregister nonexistent fails", !unreg2);
+
+    // GetRegisteredFunctions
+    engine.RegisterFunction("add", [](const std::vector<std::string>& args) -> std::string {
+        if (args.size() < 2) return "0";
+        return std::to_string(std::stoi(args[0]) + std::stoi(args[1]));
+    });
+    auto funcs = engine.GetRegisteredFunctions();
+    TEST("GetRegisteredFunctions count", funcs.size() == 2);
+
+    // Globals
+    TEST("No global initially", !engine.HasGlobal("version"));
+    TEST("Get nonexistent global empty", engine.GetGlobal("version").empty());
+
+    engine.SetGlobal("version", "1.0.0");
+    TEST("Has global", engine.HasGlobal("version"));
+    TEST("Get global", engine.GetGlobal("version") == "1.0.0");
+
+    engine.SetGlobal("version", "2.0.0");
+    TEST("Overwrite global", engine.GetGlobal("version") == "2.0.0");
+
+    // Clear log
+    engine.ClearLog();
+    TEST("Log cleared", engine.GetLog().empty());
+}
+
+static void TestScriptExecution() {
+    std::cout << "[ScriptExecution]\n";
+
+    ScriptingEngine engine;
+    engine.RegisterFunction("echo", [](const std::vector<std::string>& args) -> std::string {
+        std::string result;
+        for (size_t i = 0; i < args.size(); ++i) {
+            if (i > 0) result += " ";
+            result += args[i];
+        }
+        return result;
+    });
+    engine.RegisterFunction("add", [](const std::vector<std::string>& args) -> std::string {
+        if (args.size() < 2) return "0";
+        return std::to_string(std::stoi(args[0]) + std::stoi(args[1]));
+    });
+
+    // Execute multi-line script
+    auto result = engine.ExecuteScript("echo hello world\nadd 3 4");
+    TEST("Script success", result.success);
+    TEST("Script output", result.output == "hello world\n7");
+
+    // Empty lines and comments skipped
+    auto result2 = engine.ExecuteScript("# comment\n\necho test\n");
+    TEST("Comments skipped", result2.success);
+    TEST("Comments output", result2.output == "test");
+
+    // Script with unknown function fails
+    auto result3 = engine.ExecuteScript("echo ok\nunknown_func\n");
+    TEST("Script fails on unknown func", !result3.success);
+    TEST("Script error set", !result3.error.empty());
+
+    // Empty script succeeds
+    auto result4 = engine.ExecuteScript("");
+    TEST("Empty script success", result4.success);
+    TEST("Empty script output", result4.output.empty());
+}
+
+static void TestModManager() {
+    std::cout << "[ModManager]\n";
+
+    ScriptingEngine engine;
+    ModManager mgr(engine, "/mods");
+    TEST("Mods directory", mgr.GetModsDirectory() == "/mods");
+    TEST("No mods initially", mgr.GetRegisteredMods().empty());
+    TEST("No loaded mods", mgr.GetLoadedModCount() == 0);
+
+    // Register mods
+    ModInfo modA;
+    modA.id = "mod_a";
+    modA.name = "Mod A";
+    modA.version = "1.0.0";
+    modA.author = "Author A";
+
+    ModInfo modB;
+    modB.id = "mod_b";
+    modB.name = "Mod B";
+    modB.version = "2.0.0";
+    modB.dependencies = {"mod_a"};
+
+    ModInfo modC;
+    modC.id = "mod_c";
+    modC.name = "Mod C";
+    modC.dependencies = {"mod_b"};
+
+    mgr.RegisterMod(modA);
+    mgr.RegisterMod(modB);
+    mgr.RegisterMod(modC);
+    TEST("3 mods registered", mgr.GetRegisteredMods().size() == 3);
+
+    // GetModInfo
+    const ModInfo* infoA = mgr.GetModInfo("mod_a");
+    TEST("ModInfo found", infoA != nullptr);
+    TEST("ModInfo name", infoA->name == "Mod A");
+    TEST("ModInfo version", infoA->version == "1.0.0");
+    TEST("ModInfo not found", mgr.GetModInfo("nonexistent") == nullptr);
+
+    // Discover mods (returns registered mods in abstraction)
+    auto discovered = mgr.DiscoverMods();
+    TEST("Discovered 3 mods", discovered.size() == 3);
+
+    // Resolve dependencies
+    auto order = mgr.ResolveDependencies();
+    TEST("Resolve order has 3", order.size() == 3);
+    // mod_a must come before mod_b, mod_b before mod_c
+    auto posA = std::find(order.begin(), order.end(), "mod_a") - order.begin();
+    auto posB = std::find(order.begin(), order.end(), "mod_b") - order.begin();
+    auto posC = std::find(order.begin(), order.end(), "mod_c") - order.begin();
+    TEST("A before B", posA < posB);
+    TEST("B before C", posB < posC);
+
+    // Load single mod
+    bool loaded = mgr.LoadMod("mod_a");
+    TEST("Load mod_a success", loaded);
+    TEST("mod_a is loaded", mgr.IsModLoaded("mod_a"));
+    TEST("1 loaded mod", mgr.GetLoadedModCount() == 1);
+
+    // Load mod with dependency
+    bool loadedB = mgr.LoadMod("mod_b");
+    TEST("Load mod_b success (dep already loaded)", loadedB);
+    TEST("mod_b is loaded", mgr.IsModLoaded("mod_b"));
+
+    // Load all (mod_c remaining)
+    bool allLoaded = mgr.LoadAllMods();
+    TEST("LoadAllMods success", allLoaded);
+    TEST("3 loaded mods", mgr.GetLoadedModCount() == 3);
+
+    // Load order
+    auto loadOrder = mgr.GetLoadOrder();
+    TEST("Load order has 3", loadOrder.size() == 3);
+
+    // Already loaded mod returns true
+    bool reloadA = mgr.LoadMod("mod_a");
+    TEST("Already loaded returns true", reloadA);
+    TEST("Still 3 loaded", mgr.GetLoadedModCount() == 3);
+
+    // Unload
+    bool unloaded = mgr.UnloadMod("mod_c");
+    TEST("Unload success", unloaded);
+    TEST("mod_c not loaded", !mgr.IsModLoaded("mod_c"));
+    TEST("2 loaded mods", mgr.GetLoadedModCount() == 2);
+
+    // Unload not-loaded mod
+    bool unloadAgain = mgr.UnloadMod("mod_c");
+    TEST("Unload not-loaded fails", !unloadAgain);
+
+    // Unload nonexistent
+    bool unloadBad = mgr.UnloadMod("nonexistent");
+    TEST("Unload nonexistent fails", !unloadBad);
+
+    // Load nonexistent
+    bool loadBad = mgr.LoadMod("nonexistent");
+    TEST("Load nonexistent fails", !loadBad);
+}
+
+static void TestModDependencyCycle() {
+    std::cout << "[ModDependencyCycle]\n";
+
+    ScriptingEngine engine;
+    ModManager mgr(engine);
+
+    // Create circular dependency: X -> Y -> Z -> X
+    ModInfo modX;
+    modX.id = "mod_x";
+    modX.name = "Mod X";
+    modX.dependencies = {"mod_z"};
+
+    ModInfo modY;
+    modY.id = "mod_y";
+    modY.name = "Mod Y";
+    modY.dependencies = {"mod_x"};
+
+    ModInfo modZ;
+    modZ.id = "mod_z";
+    modZ.name = "Mod Z";
+    modZ.dependencies = {"mod_y"};
+
+    mgr.RegisterMod(modX);
+    mgr.RegisterMod(modY);
+    mgr.RegisterMod(modZ);
+
+    // Resolve should detect cycle
+    auto order = mgr.ResolveDependencies();
+    TEST("Circular dependency returns empty", order.empty());
+
+    // LoadAllMods should fail
+    bool loaded = mgr.LoadAllMods();
+    TEST("LoadAllMods fails with cycle", !loaded);
+}
+
+static void TestModMissingDependency() {
+    std::cout << "[ModMissingDependency]\n";
+
+    ScriptingEngine engine;
+    ModManager mgr(engine);
+
+    ModInfo mod;
+    mod.id = "mod_orphan";
+    mod.name = "Orphan Mod";
+    mod.dependencies = {"nonexistent_dep"};
+
+    mgr.RegisterMod(mod);
+
+    // Resolve should fail due to missing dependency
+    auto order = mgr.ResolveDependencies();
+    TEST("Missing dep returns empty", order.empty());
+}
+
+static void TestModReload() {
+    std::cout << "[ModReload]\n";
+
+    ScriptingEngine engine;
+    ModManager mgr(engine);
+
+    ModInfo modA;
+    modA.id = "mod_a";
+    modA.name = "Mod A";
+
+    ModInfo modB;
+    modB.id = "mod_b";
+    modB.name = "Mod B";
+    modB.dependencies = {"mod_a"};
+
+    mgr.RegisterMod(modA);
+    mgr.RegisterMod(modB);
+    mgr.LoadAllMods();
+    TEST("2 loaded before reload", mgr.GetLoadedModCount() == 2);
+
+    bool reloaded = mgr.ReloadAllMods();
+    TEST("Reload success", reloaded);
+    TEST("2 loaded after reload", mgr.GetLoadedModCount() == 2);
+}
+
+// ===================================================================
 // Main
 // ===================================================================
 int main() {
@@ -3275,6 +3846,17 @@ int main() {
     TestUIPanel();
     TestUIRenderer();
     TestUISystem();
+    TestNetworkMessage();
+    TestClientConnection();
+    TestSectorServer();
+    TestGameServer();
+    TestGameServerUpdate();
+    TestScriptingEngine();
+    TestScriptExecution();
+    TestModManager();
+    TestModDependencyCycle();
+    TestModMissingDependency();
+    TestModReload();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
               << testsFailed << " failed ===\n";
