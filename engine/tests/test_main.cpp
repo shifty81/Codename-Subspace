@@ -2351,6 +2351,105 @@ static void TestQuestSystem() {
     TEST("Correct type+target progresses", q2 != nullptr && q2->objectives[0].currentProgress == 5);
 }
 
+static void TestQuestSystemTradeVisitBuild() {
+    std::cout << "[QuestSystem Trade/Visit/Build]\n";
+
+    QuestSystem system;
+
+    // Trade objective
+    Quest tradeTmpl;
+    tradeTmpl.id = "tmpl_trade";
+    tradeTmpl.title = "Trade Quest";
+    QuestObjective tradeObj;
+    tradeObj.id = "trade_obj";
+    tradeObj.type = ObjectiveType::Trade;
+    tradeObj.target = "Iron";
+    tradeObj.requiredQuantity = 50;
+    tradeTmpl.objectives.push_back(tradeObj);
+    system.AddQuestTemplate(tradeTmpl);
+
+    QuestComponent comp;
+    system.GiveQuest(1, "tmpl_trade", comp);
+    comp.AcceptQuest("tmpl_trade");
+
+    system.ProgressObjective(comp, ObjectiveType::Trade, "Iron", 30);
+    Quest* qt = comp.GetQuest("tmpl_trade");
+    TEST("Trade progress applied", qt != nullptr && qt->objectives[0].currentProgress == 30);
+    TEST("Trade quest still active", qt != nullptr && qt->status == QuestStatus::Active);
+
+    system.ProgressObjective(comp, ObjectiveType::Trade, "Iron", 20);
+    TEST("Trade quest auto-completed", qt != nullptr && qt->status == QuestStatus::Completed);
+
+    // Build objective
+    Quest buildTmpl;
+    buildTmpl.id = "tmpl_build";
+    buildTmpl.title = "Build Quest";
+    QuestObjective buildObj;
+    buildObj.id = "build_obj";
+    buildObj.type = ObjectiveType::Build;
+    buildObj.target = "Hull";
+    buildObj.requiredQuantity = 10;
+    buildTmpl.objectives.push_back(buildObj);
+    system.AddQuestTemplate(buildTmpl);
+
+    system.GiveQuest(1, "tmpl_build", comp);
+    comp.AcceptQuest("tmpl_build");
+
+    system.ProgressObjective(comp, ObjectiveType::Build, "Hull", 10);
+    Quest* qb = comp.GetQuest("tmpl_build");
+    TEST("Build quest auto-completed", qb != nullptr && qb->status == QuestStatus::Completed);
+
+    // Visit objective
+    Quest visitTmpl;
+    visitTmpl.id = "tmpl_visit";
+    visitTmpl.title = "Visit Quest";
+    QuestObjective visitObj;
+    visitObj.id = "visit_obj";
+    visitObj.type = ObjectiveType::Visit;
+    visitObj.target = "Sector_5_3";
+    visitObj.requiredQuantity = 1;
+    visitTmpl.objectives.push_back(visitObj);
+    system.AddQuestTemplate(visitTmpl);
+
+    system.GiveQuest(1, "tmpl_visit", comp);
+    comp.AcceptQuest("tmpl_visit");
+
+    system.ProgressObjective(comp, ObjectiveType::Visit, "wrong_sector", 1);
+    Quest* qv = comp.GetQuest("tmpl_visit");
+    TEST("Visit wrong target no progress", qv != nullptr && qv->status == QuestStatus::Active);
+
+    system.ProgressObjective(comp, ObjectiveType::Visit, "Sector_5_3", 1);
+    TEST("Visit quest auto-completed", qv != nullptr && qv->status == QuestStatus::Completed);
+
+    // Mixed quest with Trade + Build objectives
+    Quest mixedTmpl;
+    mixedTmpl.id = "tmpl_mixed";
+    mixedTmpl.title = "Mixed Quest";
+    QuestObjective mixObj1;
+    mixObj1.id = "mix_trade";
+    mixObj1.type = ObjectiveType::Trade;
+    mixObj1.target = "Titanium";
+    mixObj1.requiredQuantity = 5;
+    QuestObjective mixObj2;
+    mixObj2.id = "mix_build";
+    mixObj2.type = ObjectiveType::Build;
+    mixObj2.target = "Engine";
+    mixObj2.requiredQuantity = 3;
+    mixedTmpl.objectives.push_back(mixObj1);
+    mixedTmpl.objectives.push_back(mixObj2);
+    system.AddQuestTemplate(mixedTmpl);
+
+    system.GiveQuest(1, "tmpl_mixed", comp);
+    comp.AcceptQuest("tmpl_mixed");
+
+    system.ProgressObjective(comp, ObjectiveType::Trade, "Titanium", 5);
+    Quest* qm = comp.GetQuest("tmpl_mixed");
+    TEST("Mixed quest still active after one obj", qm != nullptr && qm->status == QuestStatus::Active);
+
+    system.ProgressObjective(comp, ObjectiveType::Build, "Engine", 3);
+    TEST("Mixed quest completed after both objs", qm != nullptr && qm->status == QuestStatus::Completed);
+}
+
 // ===================================================================
 // Tutorial System Tests
 // ===================================================================
@@ -4022,6 +4121,7 @@ int main() {
     TestQuest();
     TestQuestComponent();
     TestQuestSystem();
+    TestQuestSystemTradeVisitBuild();
     TestTutorialStep();
     TestTutorial();
     TestTutorialSystem();

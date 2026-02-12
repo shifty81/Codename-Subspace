@@ -33,6 +33,9 @@ public class QuestSystem : SystemBase
         _eventSystem.Subscribe("EntityDestroyed", OnEntityDestroyed);
         _eventSystem.Subscribe(GameEvents.ResourceCollected, OnResourceCollected);
         _eventSystem.Subscribe("ResourceMined", OnResourceMined);
+        _eventSystem.Subscribe(GameEvents.TradeCompleted, OnTradeCompleted);
+        _eventSystem.Subscribe(GameEvents.VoxelBlockAdded, OnVoxelBlockAdded);
+        _eventSystem.Subscribe(GameEvents.SectorEntered, OnSectorEntered);
     }
     
     /// <summary>
@@ -373,6 +376,33 @@ public class QuestSystem : SystemBase
             
         ProgressObjective(resourceEvent.EntityId, ObjectiveType.Mine, 
             resourceEvent.ResourceType, resourceEvent.Amount);
+    }
+    
+    private void OnTradeCompleted(GameEvent eventData)
+    {
+        if (eventData is not TradeEvent tradeEvent)
+            return;
+            
+        ProgressObjective(tradeEvent.EntityId, ObjectiveType.Trade, 
+            tradeEvent.ResourceType, tradeEvent.Amount);
+    }
+    
+    private void OnVoxelBlockAdded(GameEvent eventData)
+    {
+        if (eventData is not VoxelBlockEvent blockEvent)
+            return;
+            
+        ProgressObjective(blockEvent.EntityId, ObjectiveType.Build, 
+            blockEvent.BlockType, blockEvent.Count);
+    }
+    
+    private void OnSectorEntered(GameEvent eventData)
+    {
+        if (eventData is not SectorEvent sectorEvent)
+            return;
+            
+        ProgressObjective(sectorEvent.EntityId, ObjectiveType.Visit, 
+            sectorEvent.SectorName, 1);
     }
     
     /// <summary>

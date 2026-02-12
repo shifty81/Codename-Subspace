@@ -117,3 +117,32 @@ public class ProgressionEvent : GameEvent
     public int Experience { get; set; }
     public int SkillPoints { get; set; }
 }
+
+/// <summary>
+/// Trade event data
+/// </summary>
+public class TradeEvent : GameEvent
+{
+    public Guid EntityId { get; set; }
+    public string ResourceType { get; set; } = "";
+    public int Amount { get; set; }
+}
+
+/// <summary>
+/// Voxel block event data
+/// </summary>
+public class VoxelBlockEvent : GameEvent
+{
+    public Guid EntityId { get; set; }
+    public string BlockType { get; set; } = "";
+    public int Count { get; set; } = 1;
+}
+
+/// <summary>
+/// Sector event data
+/// </summary>
+public class SectorEvent : GameEvent
+{
+    public Guid EntityId { get; set; }
+    public string SectorName { get; set; } = "";
+}
