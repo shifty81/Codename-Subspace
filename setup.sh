@@ -143,8 +143,8 @@ if command_exists cmake; then
     if command_exists g++ || command_exists clang++; then
         echo -e "${YELLOW}Building C++ engine...${NC}"
         cd "$SCRIPT_DIR/engine"
-        cmake -B build -DCMAKE_BUILD_TYPE=Debug 2>&1
-        if cmake --build build 2>&1; then
+        cmake -B build -DCMAKE_BUILD_TYPE=Debug
+        if cmake --build build; then
             echo -e "${GREEN}✓ C++ engine built successfully${NC}"
             echo ""
 

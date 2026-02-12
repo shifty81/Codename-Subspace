@@ -147,7 +147,7 @@ if ($msbuildPath) {
     Write-Host ""
 
     Write-Host "Building C++ engine (SubspaceEngine)..." -ForegroundColor Yellow
-    & $msbuildPath "$PSScriptRoot\AvorionLike.sln" /p:Configuration=Debug /p:Platform=x64 /t:SubspaceEngine /v:minimal 2>&1
+    & $msbuildPath "$PSScriptRoot\AvorionLike.sln" /p:Configuration=Debug /p:Platform=x64 /t:SubspaceEngine /v:minimal
     if ($LASTEXITCODE -eq 0) {
         Write-Host "✓ C++ engine built successfully" -ForegroundColor Green
     } else {
@@ -156,7 +156,7 @@ if ($msbuildPath) {
 
     Write-Host ""
     Write-Host "Building C++ tests (SubspaceTests)..." -ForegroundColor Yellow
-    & $msbuildPath "$PSScriptRoot\AvorionLike.sln" /p:Configuration=Debug /p:Platform=x64 /t:SubspaceTests /v:minimal 2>&1
+    & $msbuildPath "$PSScriptRoot\AvorionLike.sln" /p:Configuration=Debug /p:Platform=x64 /t:SubspaceTests /v:minimal
     if ($LASTEXITCODE -eq 0) {
         Write-Host "✓ C++ tests built successfully" -ForegroundColor Green
         Write-Host ""
