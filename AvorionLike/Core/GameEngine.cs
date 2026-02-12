@@ -412,6 +412,7 @@ public class GameEngine
                 SerializeComponent<ShipClassComponent>(entity, entityData);
                 SerializeComponent<CrewComponent>(entity, entityData);
                 SerializeComponent<SubsystemInventoryComponent>(entity, entityData);
+                SerializeComponent<BlueprintInventoryComponent>(entity, entityData);
                 SerializeComponent<QuestComponent>(entity, entityData);
                 SerializeComponent<TutorialComponent>(entity, entityData);
 
@@ -650,6 +651,12 @@ public class GameEngine
                     var subsystemInventoryComponent = new SubsystemInventoryComponent();
                     subsystemInventoryComponent.Deserialize(componentData.Data);
                     EntityManager.AddComponent(entityId, subsystemInventoryComponent);
+                    break;
+                    
+                case "AvorionLike.Core.Fleet.BlueprintInventoryComponent":
+                    var blueprintInventoryComponent = new BlueprintInventoryComponent();
+                    blueprintInventoryComponent.Deserialize(componentData.Data);
+                    EntityManager.AddComponent(entityId, blueprintInventoryComponent);
                     break;
 
                 case "AvorionLike.Core.Quest.QuestComponent":
