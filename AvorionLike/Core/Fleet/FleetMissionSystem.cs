@@ -460,7 +460,7 @@ public class BlueprintInventoryComponent : IComponent, ISerializable
         if (StoredBlueprints.Count >= MaxStorage)
             return false;
         
-        if (StoredBlueprints.Contains(blueprintName))
+        if (StoredBlueprints.Any(existing => string.Equals(existing, blueprintName, StringComparison.OrdinalIgnoreCase)))
             return false;
         
         StoredBlueprints.Add(blueprintName);
@@ -497,7 +497,12 @@ public class BlueprintInventoryComponent : IComponent, ISerializable
     /// </summary>
     public void Deserialize(Dictionary<string, object> data)
     {
-        EntityId = Guid.Parse(data["EntityId"].ToString()!);
+        if (!Guid.TryParse(data["EntityId"].ToString(), out var entityId))
+        {
+            throw new InvalidOperationException("Failed to deserialize BlueprintInventoryComponent: Invalid EntityId format.");
+        }
+        
+        EntityId = entityId;
         MaxStorage = Convert.ToInt32(data["MaxStorage"]);
         
         StoredBlueprints.Clear();
