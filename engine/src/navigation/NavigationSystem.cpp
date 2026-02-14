@@ -84,10 +84,23 @@ NavigationSystem::NavigationSystem()
 {
 }
 
-void NavigationSystem::Update(float /*deltaTime*/)
+NavigationSystem::NavigationSystem(EntityManager& entityManager)
+    : SystemBase("NavigationSystem")
+    , _entityManager(&entityManager)
 {
-    // TODO: iterate over all HyperdriveComponent instances via a component
-    // registry and update charging / cooldown timers each frame.
+}
+
+void NavigationSystem::Update(float deltaTime)
+{
+    if (!_entityManager) return;
+
+    auto drives = _entityManager->GetAllComponents<HyperdriveComponent>();
+    for (auto* drive : drives) {
+        if (drive->isCharging) {
+            drive->currentCharge += deltaTime;
+        }
+        drive->timeSinceLastJump += deltaTime;
+    }
 }
 
 bool NavigationSystem::StartJumpCharge(HyperdriveComponent& drive, const SectorCoordinate& target)

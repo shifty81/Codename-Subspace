@@ -58,9 +58,22 @@ void CombatComponent::RegenerateShields(float deltaTime) {
 // ---------------------------------------------------------------------------
 CombatSystem::CombatSystem() : SystemBase("CombatSystem") {}
 
+CombatSystem::CombatSystem(EntityManager& entityManager)
+    : SystemBase("CombatSystem")
+    , _entityManager(&entityManager)
+{
+}
+
 void CombatSystem::Update(float deltaTime) {
     UpdateProjectiles(deltaTime);
-    // TODO: iterate CombatComponents for regen once ECS integration is in place
+
+    if (_entityManager) {
+        auto combatComponents = _entityManager->GetAllComponents<CombatComponent>();
+        for (auto* comp : combatComponents) {
+            comp->RegenerateEnergy(deltaTime);
+            comp->RegenerateShields(deltaTime);
+        }
+    }
 }
 
 void CombatSystem::SpawnProjectile(const Projectile& proj) {
