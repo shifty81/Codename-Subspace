@@ -2,6 +2,7 @@
 
 #include "core/ecs/EntityManager.h"
 #include "procedural/GalaxyGenerator.h"
+#include "ui/UIRenderer.h"
 
 #include <chrono>
 #include <cstdint>
@@ -85,6 +86,9 @@ public:
     GalaxyGenerator&       GetGalaxyGenerator()       { return _galaxyGenerator; }
     const GalaxyGenerator& GetGalaxyGenerator() const { return _galaxyGenerator; }
 
+    UIRenderer&       GetUIRenderer()       { return _uiRenderer; }
+    const UIRenderer& GetUIRenderer() const { return _uiRenderer; }
+
     // ----- metrics -----
 
     /// Frames processed since Initialize().
@@ -112,11 +116,14 @@ public:
 
 private:
     void RegisterSystems();
+    void RenderFrame();
 
     EngineState _state = EngineState::Uninitialized;
 
     EntityManager    _entityManager;
     GalaxyGenerator  _galaxyGenerator;
+    UIRenderer       _uiRenderer;
+    UISystem*        _uiSystem = nullptr;   // non-owning; owned by EntityManager
 
     // Timing
     using Clock = std::chrono::steady_clock;

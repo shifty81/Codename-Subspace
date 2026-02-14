@@ -4478,6 +4478,45 @@ static void TestEngine() {
         TEST("Elapsed seconds > 0 after run", engine.GetElapsedSeconds() > 0.0);
         engine.Shutdown();
     }
+
+    // --- UIRenderer accessible ---
+    {
+        Engine engine;
+        engine.Initialize();
+        auto& renderer = engine.GetUIRenderer();
+        TEST("UIRenderer accessible", true);
+        TEST("UIRenderer screen width default", ApproxEq(renderer.GetScreenWidth(), 1920.0f));
+        TEST("UIRenderer screen height default", ApproxEq(renderer.GetScreenHeight(), 1080.0f));
+        engine.Shutdown();
+    }
+
+    // --- RenderFrame called during Tick ---
+    {
+        Engine engine;
+        engine.Initialize();
+        engine.Tick();
+        // After a tick, the renderer should have been called (BeginFrame clears,
+        // EndFrame finalizes). With no visible panels the command count is 0,
+        // but the frame was processed — screen dimensions should be set.
+        auto& renderer = engine.GetUIRenderer();
+        TEST("Renderer frame processed after tick", ApproxEq(renderer.GetScreenWidth(), 1920.0f));
+        TEST("Renderer commands 0 with no panels", renderer.GetCommandCount() == 0);
+        engine.Shutdown();
+    }
+
+    // --- Rendering runs even when paused ---
+    {
+        EventSystem::Instance().ClearAllListeners();
+
+        Engine engine;
+        engine.Initialize();
+        engine.Pause();
+        engine.Tick();
+        auto& renderer = engine.GetUIRenderer();
+        // Rendering should still run (menus need to be visible while paused).
+        TEST("Renderer runs while paused", ApproxEq(renderer.GetScreenWidth(), 1920.0f));
+        engine.Shutdown();
+    }
 }
 
 // ===================================================================

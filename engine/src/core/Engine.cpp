@@ -115,6 +115,10 @@ void Engine::Tick()
         _entityManager.UpdateSystems(dt);
     }
 
+    // 3. Render the frame (UI draw commands are collected even while paused
+    //    so that menus remain visible).
+    RenderFrame();
+
     ++_frameCount;
 }
 
@@ -190,9 +194,29 @@ void Engine::RegisterSystems()
     _entityManager.RegisterSystem(std::make_unique<MiningSystem>());
     _entityManager.RegisterSystem(std::make_unique<QuestSystem>());
     _entityManager.RegisterSystem(std::make_unique<TutorialSystem>());
-    _entityManager.RegisterSystem(std::make_unique<UISystem>());
+
+    auto uiSystemPtr = std::make_unique<UISystem>();
+    _uiSystem = uiSystemPtr.get();
+    _entityManager.RegisterSystem(std::move(uiSystemPtr));
 
     Logger::Instance().Debug(kLogCategory, "All systems registered.");
+}
+
+// ---------------------------------------------------------------------------
+// Rendering
+// ---------------------------------------------------------------------------
+
+void Engine::RenderFrame()
+{
+    _uiRenderer.BeginFrame(
+        _uiSystem ? _uiSystem->GetScreenWidth()  : 1920.0f,
+        _uiSystem ? _uiSystem->GetScreenHeight() : 1080.0f);
+
+    if (_uiSystem) {
+        _uiSystem->Render(_uiRenderer);
+    }
+
+    _uiRenderer.EndFrame();
 }
 
 // ---------------------------------------------------------------------------
