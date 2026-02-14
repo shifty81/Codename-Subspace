@@ -15,7 +15,7 @@
 - **12 module types** (Core, Engine, Weapon, Hull, Cargo, Shield, Utility)
 - **5 ship archetypes** (Interceptor, Frigate, Freighter, Cruiser, Battleship)
 - **Faction-aware procedural generation** using BFS assembly pipeline
-- **1087/1087 unit tests** passing across all engine systems
+- **1158/1158 unit tests** passing across all engine systems
 - **12 subsystems** operational (blocks, modules, editor, weapons, factions, AI, rendering, blueprints, networking, damage, scripting, UI)
 
 ### ✅ C# Prototype (Playable Reference)

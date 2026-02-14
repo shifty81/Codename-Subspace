@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **C++ Engine: ECS Integration for CombatSystem** — CombatSystem now iterates all CombatComponents via EntityManager to automatically regenerate energy and shields each frame (2026-02-14)
+- **C++ Engine: ECS Integration for NavigationSystem** — NavigationSystem now iterates all HyperdriveComponents via EntityManager to update hyperdrive charge and cooldown timers each frame (2026-02-14)
+- **C++ Engine: 18 new unit tests** for ECS-integrated CombatSystem and NavigationSystem (1140 → 1158 total tests)
 - **Galaxy Map UI** - Interactive navigation and exploration interface (2025-11-10)
   - 2D sector grid visualization with tech level coloring (Iron to Avorion)
   - Zoom (0.2x to 5x) and pan controls for galaxy exploration

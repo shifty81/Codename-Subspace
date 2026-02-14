@@ -111,7 +111,7 @@ engine/
 │   └── [mirrors include/ structure]
 │
 ├── tests/
-│   └── test_main.cpp           # 1049 unit tests covering all systems
+│   └── test_main.cpp           # 1158 unit tests covering all systems
 │
 ├── data/
 │   └── factions/               # JSON faction definitions
@@ -171,7 +171,7 @@ The engine integrates directly into the Visual Studio solution:
 2. In Solution Explorer, the **C++ Engine** folder contains:
    - **SubspaceEngine** — Static library with all engine systems
    - **SubspaceGame** — Game executable
-   - **SubspaceTests** — 1049 unit tests
+   - **SubspaceTests** — 1158 unit tests
 3. Select **Debug | x64** or **Release | x64**
 4. Build → Build Solution (Ctrl+Shift+B)
 5. Right-click SubspaceTests → Set as Startup Project → F5 to run tests
@@ -188,7 +188,7 @@ cmake --build build
 # Run the game
 ./build/subspace_game
 
-# Run tests (1049 tests)
+# Run tests (1158 tests)
 ./build/subspace_tests
 ```
 
@@ -446,8 +446,8 @@ The following core systems have been ported from the C# prototype (`AvorionLike/
 | Resource/Inventory | ✅ Ported | 21 tests |
 | Configuration Manager | ✅ Ported | 22 tests |
 | Persistence/Save-Load | ✅ Ported | 19 tests |
-| Navigation/Hyperdrive | ✅ Ported | 33 tests |
-| Combat System | ✅ Ported | 36 tests |
+| Navigation/Hyperdrive | ✅ Ported | 41 tests |
+| Combat System | ✅ Ported | 46 tests |
 | Trading/Economy | ✅ Ported | 22 tests |
 | RPG/Progression | ✅ Ported | 27 tests |
 | Fleet/Crew Management | ✅ Ported | 47 tests |
