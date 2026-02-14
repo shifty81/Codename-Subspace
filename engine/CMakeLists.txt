@@ -10,6 +10,24 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # ---------------------------------------------------------------------------
+# Put all build outputs directly into the build directory so that the
+# executables are at  build/subspace_game(.exe)  regardless of generator
+# (Visual Studio, Ninja, Make, etc.).
+# ---------------------------------------------------------------------------
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}")
+
+# Per-configuration overrides keep multi-config generators (Visual Studio,
+# Xcode) from appending a Debug/ or Release/ subdirectory.
+foreach(_cfg DEBUG RELEASE RELWITHDEBINFO MINSIZEREL)
+    string(TOUPPER "${_cfg}" _cfg_upper)
+    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${_cfg_upper} "${CMAKE_BINARY_DIR}")
+    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${_cfg_upper} "${CMAKE_BINARY_DIR}")
+    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${_cfg_upper} "${CMAKE_BINARY_DIR}")
+endforeach()
+
+# ---------------------------------------------------------------------------
 # Options
 # ---------------------------------------------------------------------------
 option(SUBSPACE_BUILD_TESTS "Build the test suite" ON)

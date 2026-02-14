@@ -178,7 +178,7 @@ The engine integrates directly into the Visual Studio solution:
 
 **Requirements**: Visual Studio 2022 with "Desktop development with C++" workload.
 
-### Build with CMake (Linux/macOS)
+### Build with CMake (all platforms)
 
 ```bash
 cd engine
@@ -186,11 +186,16 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 
 # Run the game
-./build/subspace_game
+./build/subspace_game        # Linux / macOS
+.\build\subspace_game.exe    # Windows (PowerShell)
 
 # Run tests (1158 tests)
-./build/subspace_tests
+./build/subspace_tests       # Linux / macOS
+.\build\subspace_tests.exe   # Windows (PowerShell)
 ```
+
+> **Note:** On Windows with Visual Studio, you may also build a specific
+> configuration with `cmake --build build --config Release`.
 
 ### Optional: GLFW for windowing
 
