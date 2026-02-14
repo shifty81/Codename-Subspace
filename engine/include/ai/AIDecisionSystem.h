@@ -100,6 +100,7 @@ struct AIComponent : public IComponent {
     bool canSalvage = false;
     bool canTrade = false;
     bool isEnabled = true;
+    float wanderAngle = 0.0f;
     AIPerception perception;
 };
 

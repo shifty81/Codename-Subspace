@@ -69,8 +69,7 @@ void AISteeringSystem::Update(float deltaTime)
 
         case AIState::Exploring: {
             // Use Wander for exploration-style movement
-            float wanderAngle = 0.0f; // placeholder; ideally stored in AIComponent
-            steering = Wander(physics->velocity, wanderAngle, physics->maxThrust);
+            steering = Wander(physics->velocity, ai->wanderAngle, physics->maxThrust);
             break;
         }
 

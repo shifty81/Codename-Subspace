@@ -2994,17 +2994,19 @@ static void TestAISteeringSystem() {
         std::vector<std::array<float, 3>> waypoints = {
             {0, 0, 0}, {100, 0, 0}, {100, 100, 0}
         };
+        // Starting at origin which is within threshold of waypoint 0 => should advance to 1
         int idx = 0;
         auto s = AISteeringSystem::Patrol(
             Vector3(0, 0, 0), waypoints, idx, 50.0f, 5.0f);
-        TEST("Patrol initial waypoint idx 0", idx == 0 || idx == 1);
-        // At waypoint 0, should advance and head to waypoint 1
-        // If very close, idx advances
+        TEST("Patrol at wp0 advances to 1", idx == 1);
+        TEST("Patrol steers toward wp1 X", s.linear.x > 0.0f);
+
+        // Starting far from waypoint 0 => stays at 0
         int idx2 = 0;
         auto s2 = AISteeringSystem::Patrol(
-            Vector3(0.5f, 0.0f, 0.0f), waypoints, idx2, 50.0f, 5.0f);
-        TEST("Patrol advances at waypoint", idx2 == 1);
-        TEST("Patrol steers to next waypoint", s2.linear.x > 0.0f);
+            Vector3(-100.0f, 0.0f, 0.0f), waypoints, idx2, 50.0f, 5.0f);
+        TEST("Patrol far from wp0 stays at 0", idx2 == 0);
+        TEST("Patrol steers toward wp0", s2.linear.x > 0.0f);
     }
 
     // Test Patrol with empty waypoints
@@ -3016,13 +3018,15 @@ static void TestAISteeringSystem() {
         TEST("Patrol empty waypoints no force", ApproxEq(s.linear.length(), 0.0f));
     }
 
-    // Test Wander produces non-zero force
+    // Test Wander produces non-zero force and predictable angle change
     {
         float angle = 0.0f;
+        float wanderJitter = 0.5f; // default
         auto s = AISteeringSystem::Wander(
-            Vector3(1, 0, 0), angle, 50.0f);
+            Vector3(1, 0, 0), angle, 50.0f, 10.0f, wanderJitter);
         TEST("Wander produces force", s.linear.length() > 0.0f);
-        TEST("Wander updates angle", !ApproxEq(angle, 0.0f));
+        float expectedAngle = wanderJitter * 0.5f;
+        TEST("Wander angle increases by jitter*0.5", ApproxEq(angle, expectedAngle));
     }
 
     // Test system name
