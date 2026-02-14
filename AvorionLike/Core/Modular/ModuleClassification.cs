@@ -185,13 +185,26 @@ public static class ModuleClassificationHelper
     {
         return modules.Where(m => 
         {
-            // Check if module has classification info
-            if (m.Tags.Contains("class_info"))
+            // Look for class restriction tags in the format "class:ClassName"
+            var classTags = m.Tags
+                .Where(t => t.StartsWith("class:", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            
+            if (classTags.Count == 0)
+                return true; // No class restriction — compatible with all
+            
+            // Parse each class tag and check if any matches the requested ship class
+            foreach (var tag in classTags)
             {
-                // Parse classification from tags or use default
-                return true; // TODO: Implement proper tag parsing
+                var className = tag.Substring(6); // skip "class:"
+                if (Enum.TryParse<ShipClass>(className, ignoreCase: true, out var parsed)
+                    && (shipClass & parsed) != 0)
+                {
+                    return true;
+                }
             }
-            return true; // Default: all modules compatible
+            
+            return false;
         }).ToList();
     }
     

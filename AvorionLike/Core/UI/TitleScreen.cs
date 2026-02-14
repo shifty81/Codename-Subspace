@@ -14,15 +14,30 @@ public class TitleScreen
     private float _titlePulse = 0f;
     private readonly string[] _stars = new string[] { "⭐", "✨", "🌟", "💫" };
     private readonly Random _random = new();
+    private bool _showSettings = false;
+    
+    // Settings values (read from config on construction)
+    private float _masterVolume;
+    private float _musicVolume;
+    private float _sfxVolume;
+    private int _targetFPS = 60;
+    private bool _vsync = true;
     
     public bool IsActive => _isActive;
     
     // Callback for when new game is requested
     public Action? OnNewGameRequested { get; set; }
     
+    // Callback for when settings menu is requested
+    public Action? OnSettingsRequested { get; set; }
+    
     public TitleScreen(GameEngine gameEngine)
     {
         _gameEngine = gameEngine;
+        var config = Configuration.ConfigurationManager.Instance.Config;
+        _masterVolume = config.Audio.MasterVolume;
+        _musicVolume = config.Audio.MusicVolume;
+        _sfxVolume = config.Audio.SfxVolume;
     }
     
     public void Update(float deltaTime)
@@ -117,7 +132,8 @@ public class TitleScreen
             ImGui.SetCursorPos(new Vector2(centerX - buttonWidth * 0.5f, centerY + 50 + buttonHeight + buttonSpacing));
             if (ImGui.Button("⚙️ SETTINGS", new Vector2(buttonWidth, buttonHeight)))
             {
-                // TODO: Open settings menu
+                _showSettings = true;
+                OnSettingsRequested?.Invoke();
             }
             
             // Exit button
@@ -140,6 +156,90 @@ public class TitleScreen
             var creditsSize = ImGui.CalcTextSize(creditsText);
             ImGui.SetCursorPos(new Vector2(centerX - creditsSize.X * 0.5f, io.DisplaySize.Y - 50));
             ImGui.TextColored(new Vector4(0.4f, 0.4f, 0.5f, 0.7f), creditsText);
+        }
+        ImGui.End();
+        
+        if (_showSettings)
+        {
+            RenderSettingsPanel();
+        }
+    }
+    
+    private void RenderSettingsPanel()
+    {
+        var io = ImGui.GetIO();
+        ImGui.SetNextWindowPos(new Vector2(io.DisplaySize.X * 0.5f, io.DisplaySize.Y * 0.5f),
+            ImGuiCond.Always, new Vector2(0.5f, 0.5f));
+        ImGui.SetNextWindowSize(new Vector2(500, 450), ImGuiCond.FirstUseEver);
+        
+        if (ImGui.Begin("Settings", ref _showSettings))
+        {
+            if (ImGui.BeginTabBar("TitleSettingsTabs"))
+            {
+                if (ImGui.BeginTabItem("Video"))
+                {
+                    ImGui.Dummy(new Vector2(0, 10));
+                    ImGui.Checkbox("VSync", ref _vsync);
+                    ImGui.Dummy(new Vector2(0, 10));
+                    ImGui.Text($"Target FPS: {_targetFPS}");
+                    ImGui.SliderInt("##TargetFPS", ref _targetFPS, 30, 144);
+                    ImGui.EndTabItem();
+                }
+                
+                if (ImGui.BeginTabItem("Audio"))
+                {
+                    ImGui.Dummy(new Vector2(0, 10));
+                    ImGui.Text($"Master Volume: {_masterVolume * 100:F0}%");
+                    ImGui.SliderFloat("##MasterVol", ref _masterVolume, 0.0f, 1.0f);
+                    ImGui.Dummy(new Vector2(0, 10));
+                    ImGui.Text($"Music Volume: {_musicVolume * 100:F0}%");
+                    ImGui.SliderFloat("##MusicVol", ref _musicVolume, 0.0f, 1.0f);
+                    ImGui.Dummy(new Vector2(0, 10));
+                    ImGui.Text($"SFX Volume: {_sfxVolume * 100:F0}%");
+                    ImGui.SliderFloat("##SfxVol", ref _sfxVolume, 0.0f, 1.0f);
+                    ImGui.Dummy(new Vector2(0, 10));
+                    ImGui.TextWrapped("Audio playback will be implemented in future updates.");
+                    ImGui.EndTabItem();
+                }
+                
+                if (ImGui.BeginTabItem("Controls"))
+                {
+                    ImGui.Dummy(new Vector2(0, 10));
+                    ImGui.Text("Camera Controls:");
+                    ImGui.BulletText("WASD - Move horizontally");
+                    ImGui.BulletText("Space - Move up");
+                    ImGui.BulletText("Shift - Move down");
+                    ImGui.BulletText("Mouse - Look around");
+                    ImGui.Dummy(new Vector2(0, 10));
+                    ImGui.Text("UI Controls:");
+                    ImGui.BulletText("ESC - Pause Menu");
+                    ImGui.BulletText("F1 - Debug Info");
+                    ImGui.BulletText("H - Tutorial Overlay");
+                    ImGui.BulletText("J - Quest Log");
+                    ImGui.EndTabItem();
+                }
+                
+                ImGui.EndTabBar();
+            }
+            
+            ImGui.Dummy(new Vector2(0, 15));
+            
+            float buttonWidth = 120f;
+            float totalWidth = buttonWidth * 2 + 10;
+            ImGui.SetCursorPosX((ImGui.GetWindowWidth() - totalWidth) * 0.5f);
+            
+            if (ImGui.Button("Apply", new Vector2(buttonWidth, 30)))
+            {
+                var config = Configuration.ConfigurationManager.Instance.Config;
+                config.Audio.MasterVolume = _masterVolume;
+                config.Audio.MusicVolume = _musicVolume;
+                config.Audio.SfxVolume = _sfxVolume;
+            }
+            ImGui.SameLine(0, 10);
+            if (ImGui.Button("Back", new Vector2(buttonWidth, 30)))
+            {
+                _showSettings = false;
+            }
         }
         ImGui.End();
     }

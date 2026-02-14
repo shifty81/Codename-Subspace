@@ -16,12 +16,16 @@ public class TutorialUI
     private bool _showTutorialOverlay = true;
     private bool _showTutorialList = false;
     
+    // Contextual tooltips keyed by UI element identifier
+    private readonly Dictionary<string, ContextualTooltip> _tooltips = new();
+    
     // Colors
     private static readonly Vector4 ColorTitle = new(1.0f, 0.85f, 0.3f, 1.0f);      // Gold
     private static readonly Vector4 ColorMessage = new(0.95f, 0.95f, 0.95f, 1.0f);  // White
     private static readonly Vector4 ColorHint = new(0.6f, 0.8f, 1.0f, 1.0f);        // Light blue
     private static readonly Vector4 ColorProgress = new(0.3f, 1.0f, 0.3f, 1.0f);    // Green
     private static readonly Vector4 ColorBackground = new(0.05f, 0.05f, 0.1f, 0.92f); // Dark blue-black
+    private static readonly Vector4 ColorTooltipBg = new(0.08f, 0.12f, 0.2f, 0.95f);  // Tooltip background
     
     public TutorialUI(TutorialSystem tutorialSystem)
     {
@@ -66,6 +70,47 @@ public class TutorialUI
         {
             RenderTutorialList();
         }
+        
+        RenderContextualTooltips();
+    }
+    
+    /// <summary>
+    /// Register a contextual tooltip for a UI element.
+    /// The tooltip is shown when the user hovers over the element during an active tutorial.
+    /// </summary>
+    /// <param name="elementId">Unique identifier matching TutorialStep.UIElementId</param>
+    /// <param name="title">Short tooltip title</param>
+    /// <param name="description">Detailed description shown in the tooltip body</param>
+    public void RegisterTooltip(string elementId, string title, string description)
+    {
+        _tooltips[elementId] = new ContextualTooltip(elementId, title, description);
+    }
+    
+    /// <summary>
+    /// Remove a previously registered tooltip
+    /// </summary>
+    public void UnregisterTooltip(string elementId)
+    {
+        _tooltips.Remove(elementId);
+    }
+    
+    /// <summary>
+    /// Show a contextual tooltip for the last ImGui item if a matching tooltip is registered.
+    /// Call this immediately after rendering a UI element that should have a tooltip.
+    /// </summary>
+    /// <param name="elementId">The element identifier to look up</param>
+    public void ShowTooltipIfRegistered(string elementId)
+    {
+        if (!_showTutorialOverlay)
+            return;
+        
+        if (!_tooltips.TryGetValue(elementId, out var tooltip))
+            return;
+        
+        if (!ImGui.IsItemHovered())
+            return;
+        
+        RenderTooltipPopup(tooltip);
     }
     
     /// <summary>
@@ -263,5 +308,109 @@ public class TutorialUI
             }
         }
         ImGui.End();
+    }
+    
+    /// <summary>
+    /// Render contextual tooltips for the current tutorial step's highlighted UI element
+    /// </summary>
+    private void RenderContextualTooltips()
+    {
+        var activeTutorials = _tutorialSystem.GetActiveTutorials(_playerEntityId);
+        if (activeTutorials.Count == 0)
+            return;
+        
+        var currentTutorial = activeTutorials.FirstOrDefault(t => t.Status == TutorialStatus.Active);
+        if (currentTutorial?.CurrentStep == null)
+            return;
+        
+        var step = currentTutorial.CurrentStep;
+        
+        // Show tooltip indicator when the step highlights a specific UI element
+        if (step.Type == TutorialStepType.HighlightUI &&
+            !string.IsNullOrEmpty(step.UIElementId) &&
+            _tooltips.TryGetValue(step.UIElementId, out var tooltip))
+        {
+            RenderFloatingTooltip(tooltip, step.Message);
+        }
+    }
+    
+    /// <summary>
+    /// Render a floating tooltip anchored to the bottom-right of the screen
+    /// </summary>
+    private void RenderFloatingTooltip(ContextualTooltip tooltip, string stepMessage)
+    {
+        var viewport = ImGui.GetMainViewport();
+        var tooltipWidth = 350f;
+        var posX = viewport.WorkSize.X - tooltipWidth - 20f;
+        var posY = viewport.WorkSize.Y - 160f;
+        
+        ImGui.SetNextWindowPos(new Vector2(posX, posY), ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new Vector2(tooltipWidth, 0), ImGuiCond.Always);
+        
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(12, 10));
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, 6);
+        ImGui.PushStyleColor(ImGuiCol.WindowBg, ColorTooltipBg);
+        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0.4f, 0.7f, 1.0f, 0.7f));
+        
+        var flags = ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize |
+                    ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoCollapse |
+                    ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoFocusOnAppearing;
+        
+        bool open = true;
+        if (ImGui.Begin("ContextualTooltip", ref open, flags))
+        {
+            ImGui.TextColored(ColorTitle, $"💡 {tooltip.Title}");
+            ImGui.Separator();
+            ImGui.Spacing();
+            ImGui.PushTextWrapPos(ImGui.GetContentRegionAvail().X);
+            ImGui.TextColored(ColorMessage, tooltip.Description);
+            if (!string.IsNullOrEmpty(stepMessage))
+            {
+                ImGui.Spacing();
+                ImGui.TextColored(ColorHint, stepMessage);
+            }
+            ImGui.PopTextWrapPos();
+        }
+        ImGui.End();
+        
+        ImGui.PopStyleColor(2);
+        ImGui.PopStyleVar(2);
+    }
+    
+    /// <summary>
+    /// Render a tooltip popup for the last hovered item
+    /// </summary>
+    private void RenderTooltipPopup(ContextualTooltip tooltip)
+    {
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(10, 8));
+        ImGui.PushStyleColor(ImGuiCol.PopupBg, ColorTooltipBg);
+        
+        ImGui.BeginTooltip();
+        ImGui.TextColored(ColorTitle, $"💡 {tooltip.Title}");
+        ImGui.Separator();
+        ImGui.PushTextWrapPos(300f);
+        ImGui.TextColored(ColorMessage, tooltip.Description);
+        ImGui.PopTextWrapPos();
+        ImGui.EndTooltip();
+        
+        ImGui.PopStyleColor();
+        ImGui.PopStyleVar();
+    }
+}
+
+/// <summary>
+/// Represents a contextual tooltip that can be shown during tutorials
+/// </summary>
+public class ContextualTooltip
+{
+    public string ElementId { get; }
+    public string Title { get; }
+    public string Description { get; }
+    
+    public ContextualTooltip(string elementId, string title, string description)
+    {
+        ElementId = elementId;
+        Title = title;
+        Description = description;
     }
 }
