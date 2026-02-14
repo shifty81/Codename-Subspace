@@ -3,6 +3,7 @@
 #include "core/ecs/Entity.h"
 #include "core/ecs/IComponent.h"
 #include "core/ecs/SystemBase.h"
+#include "core/ecs/EntityManager.h"
 #include "core/Math.h"
 
 #include <algorithm>
@@ -81,6 +82,7 @@ struct CombatComponent : public IComponent {
 class CombatSystem : public SystemBase {
 public:
     CombatSystem();
+    explicit CombatSystem(EntityManager& entityManager);
 
     /// Update projectiles and regeneration each frame.
     void Update(float deltaTime) override;
@@ -110,6 +112,7 @@ public:
 
 private:
     std::vector<Projectile> _activeProjectiles;
+    EntityManager* _entityManager = nullptr;
 };
 
 } // namespace subspace

@@ -2,6 +2,7 @@
 
 #include "core/ecs/IComponent.h"
 #include "core/ecs/SystemBase.h"
+#include "core/ecs/EntityManager.h"
 #include "core/Math.h"
 
 #include <cmath>
@@ -72,6 +73,7 @@ struct SectorLocationComponent : IComponent {
 class NavigationSystem : public SystemBase {
 public:
     NavigationSystem();
+    explicit NavigationSystem(EntityManager& entityManager);
 
     void Update(float deltaTime) override;
 
@@ -89,6 +91,9 @@ public:
 
     /// Check whether a jump between two sectors is within drive range.
     bool IsInJumpRange(const HyperdriveComponent& drive, const SectorCoordinate& from, const SectorCoordinate& to) const;
+
+private:
+    EntityManager* _entityManager = nullptr;
 };
 
 } // namespace subspace

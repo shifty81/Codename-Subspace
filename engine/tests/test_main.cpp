@@ -1528,6 +1528,116 @@ static void TestCombatSystem() {
 }
 
 // ===================================================================
+// 24b. CombatSystem ECS integration tests
+// ===================================================================
+static void TestCombatSystemECS() {
+    std::cout << "[CombatSystem ECS]\n";
+
+    EntityManager em;
+
+    // Create entities with CombatComponents
+    auto& e1 = em.CreateEntity("Ship1");
+    auto* c1 = em.AddComponent<CombatComponent>(e1.id, std::make_unique<CombatComponent>());
+    c1->currentEnergy = 50.0f;
+    c1->energyRegenRate = 20.0f;
+    c1->shields.currentShieldHP = 60.0f;
+    c1->shields.maxShieldHP = 100.0f;
+    c1->shields.shieldRegenRate = 10.0f;
+    c1->shields.shieldRechargeDelay = 5.0f;
+    c1->shields.timeSinceLastHit = 10.0f; // delay met
+
+    auto& e2 = em.CreateEntity("Ship2");
+    auto* c2 = em.AddComponent<CombatComponent>(e2.id, std::make_unique<CombatComponent>());
+    c2->currentEnergy = 80.0f;
+    c2->energyRegenRate = 10.0f;
+    c2->shields.currentShieldHP = 30.0f;
+    c2->shields.maxShieldHP = 100.0f;
+    c2->shields.shieldRegenRate = 5.0f;
+    c2->shields.shieldRechargeDelay = 3.0f;
+    c2->shields.timeSinceLastHit = 0.5f; // delay NOT met
+
+    // Create CombatSystem with EntityManager
+    CombatSystem combat(em);
+    TEST("CombatSystem ECS name", combat.GetName() == "CombatSystem");
+
+    // Run Update for 1 second
+    combat.Update(1.0f);
+
+    // Ship1: energy 50 + 20 = 70, shield 60 + 10 = 70 (delay met)
+    TEST("Ship1 energy regen", ApproxEq(c1->currentEnergy, 70.0f));
+    TEST("Ship1 shield regen (delay met)", ApproxEq(c1->shields.currentShieldHP, 70.0f));
+
+    // Ship2: energy 80 + 10 = 90, shield unchanged (delay not met: 0.5 + 1 = 1.5 < 3.0)
+    TEST("Ship2 energy regen", ApproxEq(c2->currentEnergy, 90.0f));
+    TEST("Ship2 shield no regen (delay not met)", ApproxEq(c2->shields.currentShieldHP, 30.0f));
+
+    // Run Update for 2 more seconds: Ship2 delay now met (1.5 + 2 = 3.5 >= 3.0)
+    combat.Update(2.0f);
+
+    // Ship1: energy 70 + 40 = 100 (capped), shield 70 + 20 = 90
+    TEST("Ship1 energy capped", ApproxEq(c1->currentEnergy, 100.0f));
+    TEST("Ship1 shield continued regen", ApproxEq(c1->shields.currentShieldHP, 90.0f));
+
+    // Ship2: energy 90 + 20 = 100 (capped), shield 30 + 10 = 40 (delay met partway)
+    TEST("Ship2 energy capped", ApproxEq(c2->currentEnergy, 100.0f));
+    TEST("Ship2 shield regen after delay met", ApproxEq(c2->shields.currentShieldHP, 40.0f));
+
+    // Default constructor (no EntityManager) still works without crashing
+    CombatSystem combatNoECS;
+    combatNoECS.Update(1.0f);
+    TEST("No-ECS combat update doesn't crash", true);
+}
+
+// ===================================================================
+// 24c. NavigationSystem ECS integration tests
+// ===================================================================
+static void TestNavigationSystemECS() {
+    std::cout << "[NavigationSystem ECS]\n";
+
+    EntityManager em;
+
+    // Create entity with HyperdriveComponent
+    auto& e1 = em.CreateEntity("Ship1");
+    auto* h1 = em.AddComponent<HyperdriveComponent>(e1.id, std::make_unique<HyperdriveComponent>());
+    h1->isCharging = true;
+    h1->currentCharge = 0.0f;
+    h1->chargeTime = 5.0f;
+    h1->timeSinceLastJump = 2.0f;
+
+    auto& e2 = em.CreateEntity("Ship2");
+    auto* h2 = em.AddComponent<HyperdriveComponent>(e2.id, std::make_unique<HyperdriveComponent>());
+    h2->isCharging = false;
+    h2->currentCharge = 0.0f;
+    h2->timeSinceLastJump = 8.0f;
+
+    NavigationSystem nav(em);
+    TEST("NavSystem ECS name", nav.GetName() == "NavigationSystem");
+
+    // Update for 1 second
+    nav.Update(1.0f);
+
+    // Ship1 is charging: charge should increase
+    TEST("Ship1 charge increased", ApproxEq(h1->currentCharge, 1.0f));
+    // Ship1 cooldown also ticks
+    TEST("Ship1 cooldown ticks", ApproxEq(h1->timeSinceLastJump, 3.0f));
+
+    // Ship2 is not charging: charge stays 0
+    TEST("Ship2 charge unchanged (not charging)", ApproxEq(h2->currentCharge, 0.0f));
+    // Ship2 cooldown still ticks
+    TEST("Ship2 cooldown ticks", ApproxEq(h2->timeSinceLastJump, 9.0f));
+
+    // Update for 4 more seconds - Ship1 should be fully charged (5.0)
+    nav.Update(4.0f);
+    TEST("Ship1 fully charged", ApproxEq(h1->currentCharge, 5.0f));
+    TEST("Ship1 fully charged check", h1->IsFullyCharged());
+
+    // Default constructor (no EntityManager) still works without crashing
+    NavigationSystem navNoECS;
+    navNoECS.Update(1.0f);
+    TEST("No-ECS nav update doesn't crash", true);
+}
+
+// ===================================================================
 // 25. TradingSystem tests
 // ===================================================================
 static void TestTradingSystem() {
@@ -4401,6 +4511,8 @@ int main() {
     TestSaveGameManager();
     TestNavigationSystem();
     TestCombatSystem();
+    TestCombatSystemECS();
+    TestNavigationSystemECS();
     TestTradingSystem();
     TestProgressionSystem();
     TestCrewSystem();
