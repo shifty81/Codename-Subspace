@@ -96,7 +96,7 @@
 - [x] Implement step-by-step instructions
 - [x] Integrate TutorialSystem into GameEngine
 - [x] Integrate TutorialUI into GraphicsWindow (H key)
-- [ ] Add contextual tooltips
+- [x] Add contextual tooltips
 - [ ] Build interactive practice scenarios
 
 ### Medium Priority: Sound/Music
