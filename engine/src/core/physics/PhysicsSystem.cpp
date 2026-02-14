@@ -1,12 +1,15 @@
 #include "core/physics/PhysicsSystem.h"
 
 #include <cmath>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace subspace {
 
 PhysicsSystem::PhysicsSystem(EntityManager& entityManager)
     : SystemBase("PhysicsSystem")
     , _entityManager(entityManager)
+    , _spatialHash(kDefaultCellSize)
 {
 }
 
@@ -73,19 +76,55 @@ void PhysicsSystem::InterpolatePhysics(float alpha)
     }
 }
 
+void PhysicsSystem::RebuildSpatialHash(std::vector<PhysicsComponent*>& components)
+{
+    _spatialHash.Clear();
+    for (auto* comp : components) {
+        _spatialHash.Insert(comp->entityId, comp->position, comp->collisionRadius);
+    }
+}
+
 void PhysicsSystem::DetectCollisions(std::vector<PhysicsComponent*>& components)
 {
-    for (size_t i = 0; i < components.size(); ++i) {
-        for (size_t j = i + 1; j < components.size(); ++j) {
-            auto* comp1 = components[i];
-            auto* comp2 = components[j];
+    // Rebuild spatial hash each frame with updated positions
+    RebuildSpatialHash(components);
 
-            Vector3 diff = comp2->position - comp1->position;
+    // Build a lookup from entityId to component pointer
+    std::unordered_map<EntityId, PhysicsComponent*> byId;
+    byId.reserve(components.size());
+    for (auto* comp : components) {
+        byId[comp->entityId] = comp;
+    }
+
+    // Use spatial hash for broad-phase: only check nearby pairs
+    // Track checked pairs to avoid duplicate collision handling
+    std::unordered_set<uint64_t> checkedPairs;
+
+    for (auto* comp : components) {
+        float queryRadius = comp->collisionRadius * 2.0f;
+        auto nearby = _spatialHash.QueryNearby(comp->position, queryRadius);
+
+        for (EntityId otherId : nearby) {
+            if (otherId == comp->entityId) continue;
+
+            // Create a canonical pair key to avoid checking A-B and B-A
+            EntityId lo = std::min(comp->entityId, otherId);
+            EntityId hi = std::max(comp->entityId, otherId);
+            uint64_t pairKey = (static_cast<uint64_t>(lo) << 32) | static_cast<uint64_t>(hi);
+
+            if (checkedPairs.count(pairKey)) continue;
+            checkedPairs.insert(pairKey);
+
+            auto otherIt = byId.find(otherId);
+            if (otherIt == byId.end()) continue;
+            auto* other = otherIt->second;
+
+            Vector3 diff = other->position - comp->position;
             float distance = diff.length();
-            float minDistance = comp1->collisionRadius + comp2->collisionRadius;
+            float minDistance = comp->collisionRadius + other->collisionRadius;
 
             if (distance < minDistance && distance > 0.0f) {
-                HandleCollision(*comp1, *comp2);
+                HandleCollision(*comp, *other);
             }
         }
     }

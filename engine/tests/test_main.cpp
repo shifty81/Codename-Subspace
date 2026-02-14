@@ -47,6 +47,8 @@
 #include "quest/QuestSystem.h"
 #include "tutorial/TutorialSystem.h"
 #include "ai/AIDecisionSystem.h"
+#include "ai/AISteeringSystem.h"
+#include "core/physics/SpatialHash.h"
 #include "ui/UITypes.h"
 #include "ui/UIElement.h"
 #include "ui/UIPanel.h"
@@ -2835,6 +2837,291 @@ static void TestAIDecisionSystem() {
 }
 
 // ===================================================================
+// SpatialHash Tests
+// ===================================================================
+static void TestSpatialHash() {
+    std::cout << "[SpatialHash]\n";
+
+    SpatialHash hash(50.0f);
+    TEST("SpatialHash cell size", ApproxEq(hash.GetCellSize(), 50.0f));
+    TEST("SpatialHash empty initially", hash.GetEntityCount() == 0);
+    TEST("SpatialHash no cells initially", hash.GetCellCount() == 0);
+
+    // Insert entity
+    hash.Insert(1, Vector3(10.0f, 0.0f, 0.0f), 5.0f);
+    TEST("SpatialHash entity count 1", hash.GetEntityCount() == 1);
+    TEST("SpatialHash cell count >= 1", hash.GetCellCount() >= 1);
+
+    // Query nearby
+    auto nearby = hash.QueryNearby(Vector3(10.0f, 0.0f, 0.0f), 10.0f);
+    TEST("SpatialHash query finds entity", nearby.size() == 1 && nearby[0] == 1);
+
+    // Query far away
+    auto faraway = hash.QueryNearby(Vector3(500.0f, 500.0f, 500.0f), 5.0f);
+    TEST("SpatialHash query misses distant", faraway.empty());
+
+    // Insert second entity nearby
+    hash.Insert(2, Vector3(20.0f, 0.0f, 0.0f), 5.0f);
+    nearby = hash.QueryNearby(Vector3(15.0f, 0.0f, 0.0f), 50.0f);
+    TEST("SpatialHash query finds two", nearby.size() == 2);
+
+    // Remove entity
+    hash.Remove(1);
+    TEST("SpatialHash entity count after remove", hash.GetEntityCount() == 1);
+    nearby = hash.QueryNearby(Vector3(10.0f, 0.0f, 0.0f), 50.0f);
+    bool foundRemoved = false;
+    for (auto id : nearby) { if (id == 1) foundRemoved = true; }
+    TEST("SpatialHash removed entity not found", !foundRemoved);
+
+    // Clear
+    hash.Clear();
+    TEST("SpatialHash empty after clear", hash.GetEntityCount() == 0);
+    TEST("SpatialHash no cells after clear", hash.GetCellCount() == 0);
+
+    // Multiple entities in different cells
+    SpatialHash hash2(10.0f);
+    hash2.Insert(10, Vector3(5.0f, 5.0f, 5.0f), 1.0f);
+    hash2.Insert(20, Vector3(50.0f, 50.0f, 50.0f), 1.0f);
+    hash2.Insert(30, Vector3(100.0f, 100.0f, 100.0f), 1.0f);
+    TEST("SpatialHash 3 entities", hash2.GetEntityCount() == 3);
+
+    auto near10 = hash2.QueryNearby(Vector3(5.0f, 5.0f, 5.0f), 5.0f);
+    bool found10 = false;
+    bool found20in10 = false;
+    for (auto id : near10) {
+        if (id == 10) found10 = true;
+        if (id == 20) found20in10 = true;
+    }
+    TEST("SpatialHash locality entity 10 found", found10);
+    TEST("SpatialHash locality entity 20 not near 10", !found20in10);
+
+    // Re-insert (update position)
+    hash2.Insert(10, Vector3(49.0f, 50.0f, 50.0f), 1.0f);
+    auto nearUpdated = hash2.QueryNearby(Vector3(50.0f, 50.0f, 50.0f), 5.0f);
+    bool foundUpdated10 = false;
+    for (auto id : nearUpdated) { if (id == 10) foundUpdated10 = true; }
+    TEST("SpatialHash re-insert updates position", foundUpdated10);
+
+    // Entity spanning multiple cells
+    SpatialHash hash3(10.0f);
+    hash3.Insert(1, Vector3(0.0f, 0.0f, 0.0f), 15.0f); // radius > cell size
+    TEST("SpatialHash large radius multi-cell", hash3.GetCellCount() > 1);
+}
+
+// ===================================================================
+// AISteeringSystem Tests
+// ===================================================================
+static void TestAISteeringSystem() {
+    std::cout << "[AISteeringSystem]\n";
+
+    // Test Seek
+    {
+        auto s = AISteeringSystem::Seek(
+            Vector3(0, 0, 0), Vector3(100, 0, 0), 50.0f);
+        TEST("Seek force direction X", s.linear.x > 0.0f);
+        TEST("Seek force magnitude", ApproxEq(s.linear.length(), 50.0f));
+        TEST("Seek zero Y force", ApproxEq(s.linear.y, 0.0f));
+    }
+
+    // Test Seek toward self (zero distance)
+    {
+        auto s = AISteeringSystem::Seek(
+            Vector3(10, 10, 10), Vector3(10, 10, 10), 50.0f);
+        TEST("Seek at target zero force", ApproxEq(s.linear.length(), 0.0f));
+    }
+
+    // Test Flee
+    {
+        auto s = AISteeringSystem::Flee(
+            Vector3(0, 0, 0), Vector3(100, 0, 0), 50.0f);
+        TEST("Flee force opposite direction", s.linear.x < 0.0f);
+        TEST("Flee force magnitude", ApproxEq(s.linear.length(), 50.0f));
+    }
+
+    // Test Arrive far from target
+    {
+        auto s = AISteeringSystem::Arrive(
+            Vector3(0, 0, 0), Vector3(200, 0, 0), 100.0f, 20.0f);
+        TEST("Arrive far full force", ApproxEq(s.linear.length(), 100.0f));
+    }
+
+    // Test Arrive within slow radius
+    {
+        auto s = AISteeringSystem::Arrive(
+            Vector3(0, 0, 0), Vector3(10, 0, 0), 100.0f, 20.0f);
+        float expectedForce = 100.0f * (10.0f / 20.0f);
+        TEST("Arrive slow radius scaled", ApproxEq(s.linear.length(), expectedForce));
+    }
+
+    // Test Arrive at target
+    {
+        auto s = AISteeringSystem::Arrive(
+            Vector3(5, 5, 5), Vector3(5, 5, 5), 100.0f, 20.0f);
+        TEST("Arrive at target zero force", ApproxEq(s.linear.length(), 0.0f));
+    }
+
+    // Test Pursue (stationary target = seek)
+    {
+        auto s = AISteeringSystem::Pursue(
+            Vector3(0, 0, 0),
+            Vector3(100, 0, 0), Vector3(0, 0, 0),
+            50.0f);
+        TEST("Pursue stationary = seek", s.linear.x > 0.0f);
+        TEST("Pursue stationary magnitude", ApproxEq(s.linear.length(), 50.0f));
+    }
+
+    // Test Pursue moving target (leads ahead)
+    {
+        auto s = AISteeringSystem::Pursue(
+            Vector3(0, 0, 0),
+            Vector3(100, 0, 0), Vector3(0, 50, 0),
+            50.0f, 2.0f);
+        TEST("Pursue moving target Y component", s.linear.y > 0.0f);
+    }
+
+    // Test Evade (opposite of Pursue)
+    {
+        auto s = AISteeringSystem::Evade(
+            Vector3(0, 0, 0),
+            Vector3(50, 0, 0), Vector3(0, 0, 0),
+            100.0f);
+        TEST("Evade direction away", s.linear.x < 0.0f);
+        TEST("Evade magnitude", ApproxEq(s.linear.length(), 100.0f));
+    }
+
+    // Test Patrol
+    {
+        std::vector<std::array<float, 3>> waypoints = {
+            {0, 0, 0}, {100, 0, 0}, {100, 100, 0}
+        };
+        int idx = 0;
+        auto s = AISteeringSystem::Patrol(
+            Vector3(0, 0, 0), waypoints, idx, 50.0f, 5.0f);
+        TEST("Patrol initial waypoint idx 0", idx == 0 || idx == 1);
+        // At waypoint 0, should advance and head to waypoint 1
+        // If very close, idx advances
+        int idx2 = 0;
+        auto s2 = AISteeringSystem::Patrol(
+            Vector3(0.5f, 0.0f, 0.0f), waypoints, idx2, 50.0f, 5.0f);
+        TEST("Patrol advances at waypoint", idx2 == 1);
+        TEST("Patrol steers to next waypoint", s2.linear.x > 0.0f);
+    }
+
+    // Test Patrol with empty waypoints
+    {
+        std::vector<std::array<float, 3>> empty;
+        int idx = 0;
+        auto s = AISteeringSystem::Patrol(
+            Vector3(0, 0, 0), empty, idx, 50.0f);
+        TEST("Patrol empty waypoints no force", ApproxEq(s.linear.length(), 0.0f));
+    }
+
+    // Test Wander produces non-zero force
+    {
+        float angle = 0.0f;
+        auto s = AISteeringSystem::Wander(
+            Vector3(1, 0, 0), angle, 50.0f);
+        TEST("Wander produces force", s.linear.length() > 0.0f);
+        TEST("Wander updates angle", !ApproxEq(angle, 0.0f));
+    }
+
+    // Test system name
+    {
+        EntityManager em;
+        AISteeringSystem system(em);
+        TEST("AISteeringSystem name", system.GetName() == "AISteeringSystem");
+    }
+
+    // Test Update applies forces
+    {
+        EntityManager em;
+        AISteeringSystem steer(em);
+
+        auto& ent = em.CreateEntity("AIShip");
+        auto aiComp = std::make_unique<AIComponent>();
+        aiComp->currentState = AIState::Patrol;
+        aiComp->patrolWaypoints = {{100, 0, 0}, {200, 0, 0}};
+        aiComp->currentWaypointIndex = 0;
+        em.AddComponent<AIComponent>(ent.id, std::move(aiComp));
+
+        auto physComp = std::make_unique<PhysicsComponent>();
+        physComp->position = Vector3(0, 0, 0);
+        physComp->maxThrust = 100.0f;
+        auto* pc = em.AddComponent<PhysicsComponent>(ent.id, std::move(physComp));
+
+        steer.Update(0.016f);
+        TEST("Steering Update applies force X", pc->appliedForce.x > 0.0f);
+    }
+}
+
+// ===================================================================
+// PhysicsSystem SpatialHash Integration Tests
+// ===================================================================
+static void TestPhysicsSystemSpatialHash() {
+    std::cout << "[PhysicsSystemSpatialHash]\n";
+
+    // Collision detection still works with spatial hash
+    EntityManager em;
+    PhysicsSystem physSys(em);
+
+    auto& obj1 = em.CreateEntity("Obj1");
+    auto c1 = std::make_unique<PhysicsComponent>();
+    c1->mass = 100.0f;
+    c1->drag = 0.0f;
+    c1->angularDrag = 0.0f;
+    c1->position = Vector3(0.0f, 0.0f, 0.0f);
+    c1->velocity = Vector3(5.0f, 0.0f, 0.0f);
+    c1->collisionRadius = 5.0f;
+    auto* pc1 = em.AddComponent<PhysicsComponent>(obj1.id, std::move(c1));
+
+    auto& obj2 = em.CreateEntity("Obj2");
+    auto c2 = std::make_unique<PhysicsComponent>();
+    c2->mass = 100.0f;
+    c2->drag = 0.0f;
+    c2->angularDrag = 0.0f;
+    c2->position = Vector3(8.0f, 0.0f, 0.0f);
+    c2->velocity = Vector3(-5.0f, 0.0f, 0.0f);
+    c2->collisionRadius = 5.0f;
+    auto* pc2 = em.AddComponent<PhysicsComponent>(obj2.id, std::move(c2));
+
+    physSys.Update(0.001f);
+    TEST("SpatialHash collision obj1 vel changed", !ApproxEq(pc1->velocity.x, 5.0f));
+    TEST("SpatialHash collision obj2 vel changed", !ApproxEq(pc2->velocity.x, -5.0f));
+
+    // Distant objects should not collide
+    EntityManager em2;
+    PhysicsSystem physSys2(em2);
+
+    auto& far1 = em2.CreateEntity("Far1");
+    auto fc1 = std::make_unique<PhysicsComponent>();
+    fc1->mass = 100.0f;
+    fc1->drag = 0.0f;
+    fc1->angularDrag = 0.0f;
+    fc1->position = Vector3(0.0f, 0.0f, 0.0f);
+    fc1->velocity = Vector3(10.0f, 0.0f, 0.0f);
+    fc1->collisionRadius = 5.0f;
+    auto* fpc1 = em2.AddComponent<PhysicsComponent>(far1.id, std::move(fc1));
+
+    auto& far2 = em2.CreateEntity("Far2");
+    auto fc2 = std::make_unique<PhysicsComponent>();
+    fc2->mass = 100.0f;
+    fc2->drag = 0.0f;
+    fc2->angularDrag = 0.0f;
+    fc2->position = Vector3(500.0f, 500.0f, 500.0f);
+    fc2->velocity = Vector3(-10.0f, 0.0f, 0.0f);
+    fc2->collisionRadius = 5.0f;
+    auto* fpc2 = em2.AddComponent<PhysicsComponent>(far2.id, std::move(fc2));
+
+    physSys2.Update(0.001f);
+    TEST("SpatialHash distant no collision obj1", ApproxEq(fpc1->velocity.x, 10.0f));
+    TEST("SpatialHash distant no collision obj2", ApproxEq(fpc2->velocity.x, -10.0f));
+
+    // Spatial hash is accessible
+    const auto& sh = physSys.GetSpatialHash();
+    TEST("SpatialHash accessible from PhysicsSystem", sh.GetEntityCount() >= 0);
+}
+
+// ===================================================================
 // UI Types Tests
 // ===================================================================
 static void TestUITypes() {
@@ -4128,6 +4415,9 @@ int main() {
     TestAIPerception();
     TestAIComponent();
     TestAIDecisionSystem();
+    TestSpatialHash();
+    TestAISteeringSystem();
+    TestPhysicsSystemSpatialHash();
     TestUITypes();
     TestUILabel();
     TestUIButton();
