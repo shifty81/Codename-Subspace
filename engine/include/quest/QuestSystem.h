@@ -3,6 +3,7 @@
 #include "core/ecs/Entity.h"
 #include "core/ecs/IComponent.h"
 #include "core/ecs/SystemBase.h"
+#include "core/persistence/SaveGameManager.h"
 
 #include <algorithm>
 #include <string>
@@ -127,6 +128,12 @@ struct QuestComponent : public IComponent {
 
     /// Number of quests with Completed or TurnedIn status.
     int GetCompletedQuestCount() const;
+
+    /// Serialize quest state into a ComponentData for save-game persistence.
+    ComponentData Serialize() const;
+
+    /// Restore quest state from a previously serialized ComponentData.
+    void Deserialize(const ComponentData& data);
 };
 
 /// System that manages quest templates and quest progression.

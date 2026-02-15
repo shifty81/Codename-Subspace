@@ -3,6 +3,7 @@
 #include "core/ecs/Entity.h"
 #include "core/ecs/IComponent.h"
 #include "core/ecs/SystemBase.h"
+#include "core/persistence/SaveGameManager.h"
 
 #include <set>
 #include <string>
@@ -66,6 +67,12 @@ public:
 struct TutorialComponent : public IComponent {
     std::vector<Tutorial> activeTutorials;
     std::set<std::string> completedTutorialIds;
+
+    /// Serialize tutorial state into a ComponentData for save-game persistence.
+    ComponentData Serialize() const;
+
+    /// Restore tutorial state from a previously serialized ComponentData.
+    void Deserialize(const ComponentData& data);
 };
 
 /// System that manages tutorial templates and drives tutorial progression.
