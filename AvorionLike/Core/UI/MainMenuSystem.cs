@@ -1308,9 +1308,45 @@ public class MainMenuSystem
     
     private void RefreshServerList()
     {
-        // TODO: Implement server discovery/listing
-        // For now, just show placeholder
         _serverList.Clear();
-        _serverList.Add("Local Server - 127.0.0.1:27015 (2/16 players)");
+
+        // Always list the loopback server entry if one can be reached
+        var portsToProbe = new List<(string host, int port)>
+        {
+            ("127.0.0.1", _serverPort),
+        };
+
+        // Include the configured address when it differs from loopback
+        if (_serverAddress != "127.0.0.1" && _serverAddress != "localhost"
+            && !string.IsNullOrWhiteSpace(_serverAddress))
+        {
+            portsToProbe.Add((_serverAddress, _serverPort));
+        }
+
+        foreach (var (host, port) in portsToProbe)
+        {
+            try
+            {
+                using var probe = new System.Net.Sockets.TcpClient();
+                bool connected = probe.ConnectAsync(host, port)
+                    .Wait(TimeSpan.FromMilliseconds(500));
+                if (connected && probe.Connected)
+                {
+                    string label = host == "127.0.0.1" || host == "localhost"
+                        ? "Local Server"
+                        : host;
+                    _serverList.Add($"{label} - {host}:{port} (online)");
+                }
+            }
+            catch
+            {
+                // Host unreachable – skip
+            }
+        }
+
+        if (_serverList.Count == 0)
+        {
+            _serverList.Add("No servers found – start one or enter an address below");
+        }
     }
 }

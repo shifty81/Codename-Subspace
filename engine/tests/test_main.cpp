@@ -2563,6 +2563,133 @@ static void TestQuestSystemTradeVisitBuild() {
 }
 
 // ===================================================================
+// QuestComponent Serialization Tests
+// ===================================================================
+static void TestQuestComponentSerialization() {
+    std::cout << "[QuestComponent Serialization]\n";
+
+    // Build a component with varied quest state
+    QuestComponent comp;
+    comp.maxActiveQuests = 5;
+
+    Quest q1;
+    q1.id = "quest_mine";
+    q1.title = "Mine Iron";
+    q1.status = QuestStatus::Active;
+    q1.canAbandon = true;
+    q1.isRepeatable = false;
+    q1.timeLimit = 300;
+
+    QuestObjective obj1;
+    obj1.id = "obj_mine_iron";
+    obj1.type = ObjectiveType::Mine;
+    obj1.target = "Iron";
+    obj1.requiredQuantity = 10;
+    obj1.currentProgress = 4;
+    obj1.status = ObjectiveStatus::Active;
+    obj1.isOptional = false;
+    obj1.isHidden = false;
+    q1.objectives.push_back(obj1);
+
+    QuestObjective obj2;
+    obj2.id = "obj_bonus";
+    obj2.type = ObjectiveType::Collect;
+    obj2.target = "Crystal";
+    obj2.requiredQuantity = 5;
+    obj2.currentProgress = 5;
+    obj2.status = ObjectiveStatus::Completed;
+    obj2.isOptional = true;
+    obj2.isHidden = true;
+    q1.objectives.push_back(obj2);
+
+    Quest q2;
+    q2.id = "quest_done";
+    q2.title = "Trading";
+    q2.status = QuestStatus::TurnedIn;
+    q2.canAbandon = false;
+    q2.isRepeatable = true;
+    q2.timeLimit = 0;
+    comp.quests.push_back(q1);
+    comp.quests.push_back(q2);
+
+    // Serialize
+    ComponentData cd = comp.Serialize();
+    TEST("Serialize type", cd.componentType == "QuestComponent");
+    TEST("Serialize questCount", cd.data.at("questCount") == "2");
+    TEST("Serialize maxActiveQuests", cd.data.at("maxActiveQuests") == "5");
+    TEST("Serialize quest0 id", cd.data.at("quest_0_id") == "quest_mine");
+    TEST("Serialize quest0 status", cd.data.at("quest_0_status") == "Active");
+    TEST("Serialize quest0 obj0 progress", cd.data.at("quest_0_obj_0_progress") == "4");
+    TEST("Serialize quest1 status", cd.data.at("quest_1_status") == "TurnedIn");
+
+    // Deserialize into fresh component
+    QuestComponent comp2;
+    comp2.Deserialize(cd);
+    TEST("Deserialized maxActiveQuests", comp2.maxActiveQuests == 5);
+    TEST("Deserialized quest count", comp2.quests.size() == 2);
+    TEST("Deserialized quest0 id", comp2.quests[0].id == "quest_mine");
+    TEST("Deserialized quest0 title", comp2.quests[0].title == "Mine Iron");
+    TEST("Deserialized quest0 status", comp2.quests[0].status == QuestStatus::Active);
+    TEST("Deserialized quest0 canAbandon", comp2.quests[0].canAbandon == true);
+    TEST("Deserialized quest0 timeLimit", comp2.quests[0].timeLimit == 300);
+    TEST("Deserialized quest0 obj count", comp2.quests[0].objectives.size() == 2);
+    TEST("Deserialized obj0 type", comp2.quests[0].objectives[0].type == ObjectiveType::Mine);
+    TEST("Deserialized obj0 target", comp2.quests[0].objectives[0].target == "Iron");
+    TEST("Deserialized obj0 required", comp2.quests[0].objectives[0].requiredQuantity == 10);
+    TEST("Deserialized obj0 progress", comp2.quests[0].objectives[0].currentProgress == 4);
+    TEST("Deserialized obj0 status", comp2.quests[0].objectives[0].status == ObjectiveStatus::Active);
+    TEST("Deserialized obj0 optional", comp2.quests[0].objectives[0].isOptional == false);
+    TEST("Deserialized obj1 optional", comp2.quests[0].objectives[1].isOptional == true);
+    TEST("Deserialized obj1 hidden", comp2.quests[0].objectives[1].isHidden == true);
+    TEST("Deserialized obj1 status", comp2.quests[0].objectives[1].status == ObjectiveStatus::Completed);
+    TEST("Deserialized quest1 id", comp2.quests[1].id == "quest_done");
+    TEST("Deserialized quest1 status", comp2.quests[1].status == QuestStatus::TurnedIn);
+    TEST("Deserialized quest1 canAbandon", comp2.quests[1].canAbandon == false);
+    TEST("Deserialized quest1 isRepeatable", comp2.quests[1].isRepeatable == true);
+
+    // Empty component round-trip
+    QuestComponent empty;
+    ComponentData emptyCD = empty.Serialize();
+    QuestComponent empty2;
+    empty2.Deserialize(emptyCD);
+    TEST("Empty roundtrip quest count", empty2.quests.size() == 0);
+    TEST("Empty roundtrip maxActive", empty2.maxActiveQuests == 10);
+
+    // Full SaveGameManager round-trip with QuestComponent
+    {
+        auto& mgr = SaveGameManager::Instance();
+        mgr.SetSaveDirectory("/tmp/subspace_quest_ser_test");
+
+        SaveGameData saveData;
+        saveData.saveName = "QuestTest";
+        saveData.saveTime = "2026-02-15T00:00:00Z";
+        saveData.version = "1.0.0";
+
+        EntityData ent;
+        ent.entityId = 42;
+        ent.entityName = "Player";
+        ent.isActive = true;
+        ent.components.push_back(comp.Serialize());
+        saveData.entities.push_back(ent);
+
+        TEST("Save quest data", mgr.SaveGame(saveData, "quest_ser_test") == true);
+
+        SaveGameData loadedData;
+        TEST("Load quest data", mgr.LoadGame("quest_ser_test", loadedData) == true);
+        TEST("Loaded entity has quest comp", loadedData.entities.size() == 1 &&
+             loadedData.entities[0].components.size() == 1);
+
+        QuestComponent loadedComp;
+        loadedComp.Deserialize(loadedData.entities[0].components[0]);
+        TEST("Saved+loaded quest count", loadedComp.quests.size() == 2);
+        TEST("Saved+loaded quest0 id", loadedComp.quests[0].id == "quest_mine");
+        TEST("Saved+loaded obj0 progress", loadedComp.quests[0].objectives[0].currentProgress == 4);
+
+        mgr.DeleteSave("quest_ser_test");
+    }
+}
+
+// ===================================================================
 // Tutorial System Tests
 // ===================================================================
 static void TestTutorialStep() {
@@ -2773,6 +2900,116 @@ static void TestTutorialSystem() {
 
     // HasCompletedTutorial false case
     TEST("Not completed returns false", !system.HasCompletedTutorial(comp4, "nonexistent"));
+}
+
+// ===================================================================
+// TutorialComponent Serialization Tests
+// ===================================================================
+static void TestTutorialComponentSerialization() {
+    std::cout << "[TutorialComponent Serialization]\n";
+
+    // Build a component with some active and completed tutorials
+    TutorialComponent comp;
+
+    Tutorial tut1;
+    tut1.id = "basic_controls";
+    tut1.title = "Basic Controls";
+    tut1.status = TutorialStatus::Active;
+    tut1.currentStepIndex = 1;
+    tut1.autoStart = true;
+
+    TutorialStep s1;
+    s1.id = "move";
+    s1.type = TutorialStepType::WaitForKey;
+    s1.status = TutorialStepStatus::Completed;
+    s1.requiredAction = "";
+    s1.canSkip = true;
+    tut1.steps.push_back(s1);
+
+    TutorialStep s2;
+    s2.id = "shoot";
+    s2.type = TutorialStepType::WaitForAction;
+    s2.status = TutorialStepStatus::Active;
+    s2.requiredAction = "fire_weapon";
+    s2.canSkip = false;
+    tut1.steps.push_back(s2);
+
+    comp.activeTutorials.push_back(tut1);
+    comp.completedTutorialIds.insert("intro");
+    comp.completedTutorialIds.insert("mining");
+
+    // Serialize
+    ComponentData cd = comp.Serialize();
+    TEST("Serialize type", cd.componentType == "TutorialComponent");
+    TEST("Serialize activeTutorialCount", cd.data.at("activeTutorialCount") == "1");
+    TEST("Serialize completedCount", cd.data.at("completedCount") == "2");
+    TEST("Serialize tut0 id", cd.data.at("tut_0_id") == "basic_controls");
+    TEST("Serialize tut0 status", cd.data.at("tut_0_status") == "Active");
+    TEST("Serialize tut0 currentStep", cd.data.at("tut_0_currentStep") == "1");
+    TEST("Serialize tut0 autoStart", cd.data.at("tut_0_autoStart") == "true");
+    TEST("Serialize step0 id", cd.data.at("tut_0_step_0_id") == "move");
+    TEST("Serialize step0 type", cd.data.at("tut_0_step_0_type") == "WaitForKey");
+    TEST("Serialize step0 status", cd.data.at("tut_0_step_0_status") == "Completed");
+    TEST("Serialize step1 requiredAction", cd.data.at("tut_0_step_1_requiredAction") == "fire_weapon");
+    TEST("Serialize step1 canSkip", cd.data.at("tut_0_step_1_canSkip") == "false");
+
+    // Deserialize
+    TutorialComponent comp2;
+    comp2.Deserialize(cd);
+    TEST("Deserialized active tutorial count", comp2.activeTutorials.size() == 1);
+    TEST("Deserialized tut0 id", comp2.activeTutorials[0].id == "basic_controls");
+    TEST("Deserialized tut0 title", comp2.activeTutorials[0].title == "Basic Controls");
+    TEST("Deserialized tut0 status", comp2.activeTutorials[0].status == TutorialStatus::Active);
+    TEST("Deserialized tut0 currentStep", comp2.activeTutorials[0].currentStepIndex == 1);
+    TEST("Deserialized tut0 autoStart", comp2.activeTutorials[0].autoStart == true);
+    TEST("Deserialized step count", comp2.activeTutorials[0].steps.size() == 2);
+    TEST("Deserialized step0 type", comp2.activeTutorials[0].steps[0].type == TutorialStepType::WaitForKey);
+    TEST("Deserialized step0 status", comp2.activeTutorials[0].steps[0].status == TutorialStepStatus::Completed);
+    TEST("Deserialized step1 type", comp2.activeTutorials[0].steps[1].type == TutorialStepType::WaitForAction);
+    TEST("Deserialized step1 action", comp2.activeTutorials[0].steps[1].requiredAction == "fire_weapon");
+    TEST("Deserialized step1 canSkip", comp2.activeTutorials[0].steps[1].canSkip == false);
+    TEST("Deserialized completed count", comp2.completedTutorialIds.size() == 2);
+    TEST("Deserialized has intro", comp2.completedTutorialIds.count("intro") == 1);
+    TEST("Deserialized has mining", comp2.completedTutorialIds.count("mining") == 1);
+
+    // Empty component round-trip
+    TutorialComponent empty;
+    ComponentData emptyCD = empty.Serialize();
+    TutorialComponent empty2;
+    empty2.Deserialize(emptyCD);
+    TEST("Empty roundtrip active count", empty2.activeTutorials.size() == 0);
+    TEST("Empty roundtrip completed count", empty2.completedTutorialIds.size() == 0);
+
+    // Full SaveGameManager round-trip
+    {
+        auto& mgr = SaveGameManager::Instance();
+        mgr.SetSaveDirectory("/tmp/subspace_tut_ser_test");
+
+        SaveGameData saveData;
+        saveData.saveName = "TutorialTest";
+        saveData.saveTime = "2026-02-15T00:00:00Z";
+        saveData.version = "1.0.0";
+
+        EntityData ent;
+        ent.entityId = 99;
+        ent.entityName = "Player";
+        ent.isActive = true;
+        ent.components.push_back(comp.Serialize());
+        saveData.entities.push_back(ent);
+
+        TEST("Save tutorial data", mgr.SaveGame(saveData, "tut_ser_test") == true);
+
+        SaveGameData loadedData;
+        TEST("Load tutorial data", mgr.LoadGame("tut_ser_test", loadedData) == true);
+
+        TutorialComponent loadedComp;
+        loadedComp.Deserialize(loadedData.entities[0].components[0]);
+        TEST("Saved+loaded active tut count", loadedComp.activeTutorials.size() == 1);
+        TEST("Saved+loaded tut0 id", loadedComp.activeTutorials[0].id == "basic_controls");
+        TEST("Saved+loaded completed count", loadedComp.completedTutorialIds.size() == 2);
+
+        mgr.DeleteSave("tut_ser_test");
+    }
 }
 
 // ===================================================================
@@ -4564,9 +4801,11 @@ int main() {
     TestQuestComponent();
     TestQuestSystem();
     TestQuestSystemTradeVisitBuild();
+    TestQuestComponentSerialization();
     TestTutorialStep();
     TestTutorial();
     TestTutorialSystem();
+    TestTutorialComponentSerialization();
     TestAIPerception();
     TestAIComponent();
     TestAIDecisionSystem();

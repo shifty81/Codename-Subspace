@@ -183,6 +183,151 @@ int QuestComponent::GetCompletedQuestCount() const {
     return count;
 }
 
+// --- QuestComponent serialization helpers ---
+
+static std::string QuestStatusToString(QuestStatus s) {
+    switch (s) {
+    case QuestStatus::Available: return "Available";
+    case QuestStatus::Active:    return "Active";
+    case QuestStatus::Completed: return "Completed";
+    case QuestStatus::Failed:    return "Failed";
+    case QuestStatus::TurnedIn:  return "TurnedIn";
+    }
+    return "Available";
+}
+
+static QuestStatus QuestStatusFromString(const std::string& s) {
+    if (s == "Active")    return QuestStatus::Active;
+    if (s == "Completed") return QuestStatus::Completed;
+    if (s == "Failed")    return QuestStatus::Failed;
+    if (s == "TurnedIn")  return QuestStatus::TurnedIn;
+    return QuestStatus::Available;
+}
+
+static std::string ObjectiveStatusToString(ObjectiveStatus s) {
+    switch (s) {
+    case ObjectiveStatus::NotStarted: return "NotStarted";
+    case ObjectiveStatus::Active:     return "Active";
+    case ObjectiveStatus::Completed:  return "Completed";
+    case ObjectiveStatus::Failed:     return "Failed";
+    }
+    return "NotStarted";
+}
+
+static ObjectiveStatus ObjectiveStatusFromString(const std::string& s) {
+    if (s == "Active")    return ObjectiveStatus::Active;
+    if (s == "Completed") return ObjectiveStatus::Completed;
+    if (s == "Failed")    return ObjectiveStatus::Failed;
+    return ObjectiveStatus::NotStarted;
+}
+
+static std::string ObjectiveTypeToString(ObjectiveType t) {
+    switch (t) {
+    case ObjectiveType::Destroy: return "Destroy";
+    case ObjectiveType::Collect: return "Collect";
+    case ObjectiveType::Mine:    return "Mine";
+    case ObjectiveType::Visit:   return "Visit";
+    case ObjectiveType::Trade:   return "Trade";
+    case ObjectiveType::Build:   return "Build";
+    case ObjectiveType::Escort:  return "Escort";
+    case ObjectiveType::Scan:    return "Scan";
+    case ObjectiveType::Deliver: return "Deliver";
+    case ObjectiveType::Talk:    return "Talk";
+    }
+    return "Destroy";
+}
+
+static ObjectiveType ObjectiveTypeFromString(const std::string& s) {
+    if (s == "Collect") return ObjectiveType::Collect;
+    if (s == "Mine")    return ObjectiveType::Mine;
+    if (s == "Visit")   return ObjectiveType::Visit;
+    if (s == "Trade")   return ObjectiveType::Trade;
+    if (s == "Build")   return ObjectiveType::Build;
+    if (s == "Escort")  return ObjectiveType::Escort;
+    if (s == "Scan")    return ObjectiveType::Scan;
+    if (s == "Deliver") return ObjectiveType::Deliver;
+    if (s == "Talk")    return ObjectiveType::Talk;
+    return ObjectiveType::Destroy;
+}
+
+ComponentData QuestComponent::Serialize() const {
+    ComponentData cd;
+    cd.componentType = "QuestComponent";
+    cd.data["questCount"] = std::to_string(quests.size());
+    cd.data["maxActiveQuests"] = std::to_string(maxActiveQuests);
+
+    for (size_t i = 0; i < quests.size(); ++i) {
+        const auto& q = quests[i];
+        std::string prefix = "quest_" + std::to_string(i) + "_";
+        cd.data[prefix + "id"] = q.id;
+        cd.data[prefix + "title"] = q.title;
+        cd.data[prefix + "status"] = QuestStatusToString(q.status);
+        cd.data[prefix + "canAbandon"] = q.canAbandon ? "true" : "false";
+        cd.data[prefix + "isRepeatable"] = q.isRepeatable ? "true" : "false";
+        cd.data[prefix + "timeLimit"] = std::to_string(q.timeLimit);
+
+        cd.data[prefix + "objectiveCount"] = std::to_string(q.objectives.size());
+        for (size_t j = 0; j < q.objectives.size(); ++j) {
+            const auto& obj = q.objectives[j];
+            std::string oprefix = prefix + "obj_" + std::to_string(j) + "_";
+            cd.data[oprefix + "id"] = obj.id;
+            cd.data[oprefix + "type"] = ObjectiveTypeToString(obj.type);
+            cd.data[oprefix + "target"] = obj.target;
+            cd.data[oprefix + "required"] = std::to_string(obj.requiredQuantity);
+            cd.data[oprefix + "progress"] = std::to_string(obj.currentProgress);
+            cd.data[oprefix + "status"] = ObjectiveStatusToString(obj.status);
+            cd.data[oprefix + "optional"] = obj.isOptional ? "true" : "false";
+            cd.data[oprefix + "hidden"] = obj.isHidden ? "true" : "false";
+        }
+    }
+    return cd;
+}
+
+void QuestComponent::Deserialize(const ComponentData& data) {
+    quests.clear();
+
+    auto getStr = [&](const std::string& key) -> std::string {
+        auto it = data.data.find(key);
+        return it != data.data.end() ? it->second : "";
+    };
+    auto getInt = [&](const std::string& key, int def = 0) -> int {
+        auto it = data.data.find(key);
+        if (it == data.data.end()) return def;
+        try { return std::stoi(it->second); } catch (...) { return def; }
+    };
+
+    maxActiveQuests = getInt("maxActiveQuests", 10);
+    int questCount = getInt("questCount", 0);
+
+    for (int i = 0; i < questCount; ++i) {
+        std::string prefix = "quest_" + std::to_string(i) + "_";
+        Quest q;
+        q.id = getStr(prefix + "id");
+        q.title = getStr(prefix + "title");
+        q.status = QuestStatusFromString(getStr(prefix + "status"));
+        q.canAbandon = getStr(prefix + "canAbandon") != "false";
+        q.isRepeatable = getStr(prefix + "isRepeatable") == "true";
+        q.timeLimit = getInt(prefix + "timeLimit", 0);
+
+        int objCount = getInt(prefix + "objectiveCount", 0);
+        for (int j = 0; j < objCount; ++j) {
+            std::string oprefix = prefix + "obj_" + std::to_string(j) + "_";
+            QuestObjective obj;
+            obj.id = getStr(oprefix + "id");
+            obj.type = ObjectiveTypeFromString(getStr(oprefix + "type"));
+            obj.target = getStr(oprefix + "target");
+            obj.requiredQuantity = getInt(oprefix + "required", 1);
+            obj.currentProgress = getInt(oprefix + "progress", 0);
+            obj.status = ObjectiveStatusFromString(getStr(oprefix + "status"));
+            obj.isOptional = getStr(oprefix + "optional") == "true";
+            obj.isHidden = getStr(oprefix + "hidden") == "true";
+            q.objectives.push_back(std::move(obj));
+        }
+
+        quests.push_back(std::move(q));
+    }
+}
+
 // --- QuestSystem ---
 
 QuestSystem::QuestSystem() : SystemBase("QuestSystem") {}

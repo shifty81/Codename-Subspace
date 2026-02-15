@@ -15,7 +15,7 @@
 - **12 module types** (Core, Engine, Weapon, Hull, Cargo, Shield, Utility)
 - **5 ship archetypes** (Interceptor, Frigate, Freighter, Cruiser, Battleship)
 - **Faction-aware procedural generation** using BFS assembly pipeline
-- **1158/1158 unit tests** passing across all engine systems
+- **1234/1234 unit tests** passing across all engine systems
 - **12 subsystems** operational (blocks, modules, editor, weapons, factions, AI, rendering, blueprints, networking, damage, scripting, UI)
 
 ### ✅ C# Prototype (Playable Reference)
@@ -97,6 +97,7 @@
 - [x] Integrate TutorialSystem into GameEngine
 - [x] Integrate TutorialUI into GraphicsWindow (H key)
 - [x] Add contextual tooltips
+- [x] Add tutorial state persistence (save/load)
 - [ ] Build interactive practice scenarios
 
 ### Medium Priority: Sound/Music
@@ -223,7 +224,7 @@
 - **Lines of Code:** ~35,000+
 - **Systems:** 19+ major systems
 - **Components:** 40+ component types
-- **C++ Test Pass Rate:** 100% (1087/1087)
+- **C++ Test Pass Rate:** 100% (1234/1234)
 - **C# Test Pass Rate:** 100% (32/32)
 
 ### Quality Metrics
