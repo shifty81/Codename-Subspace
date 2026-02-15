@@ -1328,8 +1328,8 @@ public class MainMenuSystem
             try
             {
                 using var probe = new System.Net.Sockets.TcpClient();
-                var result = probe.BeginConnect(host, port, null, null);
-                bool connected = result.AsyncWaitHandle.WaitOne(TimeSpan.FromMilliseconds(500));
+                bool connected = probe.ConnectAsync(host, port)
+                    .Wait(TimeSpan.FromMilliseconds(500));
                 if (connected && probe.Connected)
                 {
                     string label = host == "127.0.0.1" || host == "localhost"
@@ -1337,7 +1337,6 @@ public class MainMenuSystem
                         : host;
                     _serverList.Add($"{label} - {host}:{port} (online)");
                 }
-                probe.Close();
             }
             catch
             {

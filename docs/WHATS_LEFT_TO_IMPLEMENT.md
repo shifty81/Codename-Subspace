@@ -43,6 +43,7 @@ Based on comprehensive analysis of project documentation (ROADMAP_STATUS.md, NEX
 - ✅ Event integration - Mining, Combat, Resource Collection, Trading, Building, Visit tracked
 - ✅ Full reward distribution to InventoryComponent/ProgressionComponent/FactionComponent
 - ✅ Quest persistence (QuestComponent implements ISerializable, integrated with save/load)
+- ✅ C++ Engine: QuestComponent Serialize/Deserialize for save-game round-trips
 
 **What's Missing (2%):**
 - ⚠️ Dynamic quest generation (all quests are currently static JSON)
@@ -79,6 +80,7 @@ Based on comprehensive analysis of project documentation (ROADMAP_STATUS.md, NEX
 - ✅ Graphics window integration (TutorialUI rendering in GraphicsWindow)
 - ✅ Key bindings (H key for toggling tutorial overlay)
 - ✅ Auto-start for basic_controls tutorial
+- ✅ C++ Engine: TutorialComponent Serialize/Deserialize for save-game round-trips
 - ✅ Complete tutorial coverage:
   - basic_controls (auto-start for new players)
   - mining_basics (prerequisite: basic_controls)
@@ -180,7 +182,7 @@ Based on comprehensive analysis of project documentation (ROADMAP_STATUS.md, NEX
 
 ---
 
-### 5. Multiplayer Client UI - **10% Complete**
+### 5. Multiplayer Client UI - **15% Complete**
 **Priority:** Medium  
 **Estimated Time:** 2-3 weeks  
 **Impact:** Enables multiplayer gameplay
@@ -189,11 +191,10 @@ Based on comprehensive analysis of project documentation (ROADMAP_STATUS.md, NEX
 - ✅ Server infrastructure complete
 - ✅ Basic client connection code exists
 - ✅ Network protocol functional
+- ✅ Server discovery via TCP probe (local and configured addresses)
 
 **What's Missing:**
-- Server browser UI
-- Server list and filtering
-- Connection dialog
+- Server list filtering
 - Lobby system
 - Player list display
 - Chat system
