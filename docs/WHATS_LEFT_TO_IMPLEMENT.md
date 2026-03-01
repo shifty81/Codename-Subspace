@@ -245,20 +245,20 @@ Based on comprehensive analysis of project documentation (ROADMAP_STATUS.md, NEX
 
 ---
 
-### 2. Advanced Rendering - **90% Complete**
+### 2. Advanced Rendering - **92% Complete**
 **What's Working:**
 - ✅ Real-time 3D OpenGL rendering
 - ✅ PBR materials with emission
 - ✅ Phong lighting model
 - ✅ Voxel mesh optimization (greedy meshing)
 - ✅ Starfield background
+- ✅ Particle system with 5 effect presets (Explosion, Engine Thrust, Shield Hit, Mining, Hyperdrive)
 
 **What's Missing:**
 - Shadows (shadow mapping)
 - Post-processing effects (bloom, HDR, etc.)
 - Advanced lighting (global illumination)
 - Texture atlas system (partially implemented)
-- Particle system (partially implemented)
 
 **Why It Matters:**
 - Visual polish
@@ -369,7 +369,7 @@ Based on impact and dependencies:
 |----------|------------|--------|
 | **Core Systems** | 100% | ✅ Complete |
 | **Backend Infrastructure** | 100% | ✅ Complete |
-| **3D Graphics & Rendering** | 90% | ⚠️ Polish needed |
+| **3D Graphics & Rendering** | 92% | ⚠️ Particle system added, shadows/post-processing needed |
 | **UI/HUD** | 100% | ✅ Complete |
 | **Gameplay Mechanics** | 100% | ✅ Complete |
 | **AI System** | 100% | ✅ Complete |
@@ -378,12 +378,14 @@ Based on impact and dependencies:
 | **Quest System** | 100% | ✅ Complete |
 | **Tutorial System** | 100% | ✅ Complete |
 | **Audio System** | 20% | ⚠️ Engine framework done, needs platform backend |
+| **Achievement System** | 100% | ✅ Complete (system, criteria, serialization, templates) |
+| **Particle System** | 100% | ✅ Complete (emitters, presets, component integration) |
 | **Steam Integration** | 0% | ❌ Not started |
 | **Content (ships, weapons)** | 60% | ⚠️ Expansion needed |
 | **Polish & QoL** | 40% | ⚠️ Ongoing |
 | **Documentation** | 95% | ⚠️ Updates needed |
 | | | |
-| **OVERALL** | **~90%** | **✅ Playable with audio framework and complete quests!** |
+| **OVERALL** | **~91%** | **✅ Playable with particle effects and achievement tracking!** |
 
 ---
 
@@ -446,10 +448,8 @@ Despite missing features, the game is fully playable:
 - Use debug console and testing tools
 
 ❌ **Not Available Yet:**
-- No guided missions/quests
-- No tutorial for new players
-- No audio/music
-- No multiplayer client (server-only)
+- No audio/music playback (framework exists, needs platform backend)
+- No multiplayer client UI (server-only)
 - Limited ship/weapon variety
 
 ---
@@ -458,9 +458,10 @@ Despite missing features, the game is fully playable:
 
 **Question:** What is left to implement?
 
-**Answer:** The game is **80% complete and playable**. What's left:
-- 5 major features not started (quests, tutorial, audio, Steam, multiplayer UI)
-- 3 features need final polish (client integration, advanced rendering, docs)
+**Answer:** The game is **91% complete and playable**. What's left:
+- 2 major features not started (Steam, multiplayer client UI)
+- Audio system needs platform backend integration
+- 2 features need final polish (advanced rendering, docs)
 - Content expansion (more ships, weapons, stations)
 - Polish and optimization
 

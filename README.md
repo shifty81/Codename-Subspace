@@ -8,10 +8,12 @@ An Avorion-inspired space exploration and combat game engine, actively transitio
 > **🔧 C++ Engine:** `engine/` — see [Engine README](engine/README.md)
 > **📂 Documentation:** Reorganized into [`docs/`](docs/) — guides, architecture, implementation notes
 
-> **✨ LATEST (Feb 2026):**
-> - 🔧 **C++ MODULAR SHIP SYSTEM** — Hardpoint-based module assembly with 12 module types, 5 ship archetypes, and faction-aware procedural generation ✨ **NEW!**
-> - 🧪 **1393 unit tests** passing across all C++ engine systems
+> **✨ LATEST (Mar 2026):**
+> - 🎆 **C++ PARTICLE SYSTEM** — Configurable emitters with 5 effect presets (Explosion, Engine Thrust, Shield Hit, Mining, Hyperdrive) ✨ **NEW!**
+> - 🏆 **C++ ACHIEVEMENT SYSTEM** — Event-driven milestones with criteria tracking, serialization, and 8 template achievements ✨ **NEW!**
+> - 🧪 **1563 unit tests** passing across all C++ engine systems
 > - 📁 **Repository restructured** — docs, scripts, and assets organized into dedicated directories
+> - 🔧 **C++ MODULAR SHIP SYSTEM** — Hardpoint-based module assembly with 12 module types, 5 ship archetypes, and faction-aware procedural generation
 > - 🚀 **MODULAR SHIP SYSTEM** — Ships built from pre-defined modular parts with hardpoint attachment
 > - 🔨 **BLOCK-BASED CONSTRUCTION** — Voxel system for ship building, damage visualization, and mining
 > - 🎮 **C# PROTOTYPE PLAYABLE** — Full gameplay loop with mining, combat, trading, navigation
@@ -24,7 +26,7 @@ Codename-Subspace/
 ├── engine/              # C++ engine (primary development focus)
 │   ├── include/         #   Public headers (ships, rendering, factions, weapons, AI, networking)
 │   ├── src/             #   Implementations
-│   ├── tests/           #   1393 unit tests
+│   ├── tests/           #   1563 unit tests
 │   ├── data/            #   JSON faction definitions
 │   └── CMakeLists.txt   #   CMake build configuration
 ├── AvorionLike/         # C# prototype (playable reference)
@@ -51,7 +53,7 @@ cd engine
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 
-# Run tests (1393 tests)
+# Run tests (1563 tests)
 ./build/subspace_tests
 
 # Run the game
@@ -72,6 +74,8 @@ cmake --build build
 | Blueprint System | ✅ Complete | JSON serialization, deterministic loading |
 | Rendering | ✅ Complete | Instanced batching, greedy meshing, chunk system |
 | Networking | ✅ Complete | Deterministic build commands for multiplayer replication |
+| **Particle System** | ✅ **New** | **Configurable emitters, 4 shapes, 5 effect presets, gravity, color interpolation** |
+| **Achievement System** | ✅ **New** | **Event-driven criteria tracking, save-game persistence, 8 template achievements** |
 
 ## 🎮 C# Prototype
 
