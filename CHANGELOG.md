@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **C++ Engine: Audio System** — New `AudioSystem`, `AudioComponent`, `AudioClip`, `AudioSource`, and `MusicPlaylist` classes provide clip management, 2D/3D sound playback, fade in/out, music playlists, volume mixing via `AudioSettings`, and save-game serialization (2026-03-01)
+- **C++ Engine: Dynamic Quest Generation** — New `QuestGenerator` class creates procedural quests scaled by player level and sector security, with deterministic seeding and batch generation (2026-03-01)
+- **C++ Engine: Audio events** — `GameEvents` namespace now includes `SoundPlayed`, `SoundStopped`, `MusicStarted`, `MusicStopped`, and `MusicTrackChanged` event constants (2026-03-01)
+- **C++ Engine: 159 new unit tests** for AudioSystem, AudioComponent serialization, MusicPlaylist, fade/volume logic, and QuestGenerator (1234 → 1393 total tests)
 - **Title Screen Settings Menu** — Settings button on the title screen now opens a tabbed settings panel (Video, Audio, Controls) for pre-game configuration (2026-02-14)
 - **Module Class Tag Parsing** — `FilterByShipClass` now properly parses `class:ClassName` tags to enforce ship-class module restrictions (2026-02-14)
 - **Tutorial Contextual Tooltips** — New `ContextualTooltip` system in TutorialUI supports registering and rendering hover tooltips and floating hint panels during tutorials (2026-02-14)

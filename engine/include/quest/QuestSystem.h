@@ -167,4 +167,33 @@ private:
     std::unordered_map<std::string, Quest> _questTemplates;
 };
 
+/// Procedural quest generator that creates quests from randomized parameters.
+class QuestGenerator {
+public:
+    /// Seed the generator for deterministic output (0 = use default).
+    void SetSeed(unsigned int seed);
+
+    /// Generate a quest appropriate for the given player level and sector
+    /// security level.  The quest is fully formed but NOT registered as a
+    /// template — callers may add it to a QuestComponent directly or register
+    /// it with QuestSystem::AddQuestTemplate.
+    Quest Generate(int playerLevel, int sectorSecurityLevel = 5);
+
+    /// Generate N quests.
+    std::vector<Quest> GenerateBatch(int count, int playerLevel,
+                                      int sectorSecurityLevel = 5);
+
+    /// Number of quests this generator has produced so far.
+    int GetGeneratedCount() const;
+
+private:
+    /// Simple deterministic pseudo-random number generator (LCG).
+    unsigned int NextRandom();
+    int RandomRange(int lo, int hi);
+    float RandomFloat();
+
+    unsigned int _seed = 12345;
+    int _generatedCount = 0;
+};
+
 } // namespace subspace

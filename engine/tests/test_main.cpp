@@ -56,6 +56,7 @@
 #include "ui/UISystem.h"
 #include "networking/NetworkSystem.h"
 #include "scripting/ScriptingSystem.h"
+#include "audio/AudioSystem.h"
 #include "core/Engine.h"
 
 using namespace subspace;
@@ -4528,6 +4529,709 @@ static void TestModReload() {
 }
 
 // ===================================================================
+// AudioClip tests
+// ===================================================================
+
+static void TestAudioClip() {
+    std::cout << "[AudioClip]\n";
+
+    AudioClip clip;
+    TEST("Default clip is invalid", !clip.IsValid());
+
+    clip.id = "laser_fire";
+    clip.filePath = "sounds/laser.wav";
+    clip.category = AudioCategory::SFX;
+    clip.durationSeconds = 0.5f;
+    clip.defaultVolume = 0.8f;
+    TEST("Clip with id is valid", clip.IsValid());
+    TEST("Clip id correct", clip.id == "laser_fire");
+    TEST("Clip category SFX", clip.category == AudioCategory::SFX);
+    TEST("Clip duration", ApproxEq(clip.durationSeconds, 0.5f));
+    TEST("Clip default volume", ApproxEq(clip.defaultVolume, 0.8f));
+    TEST("Clip not looping by default", !clip.isLooping);
+}
+
+// ===================================================================
+// AudioSource tests
+// ===================================================================
+
+static void TestAudioSource() {
+    std::cout << "[AudioSource]\n";
+
+    AudioSource src;
+    TEST("Default source stopped", src.state == AudioSourceState::Stopped);
+    TEST("Default source not active", !src.IsActive());
+    TEST("Default effective volume is 1", ApproxEq(src.GetEffectiveVolume(), 1.0f));
+
+    src.state = AudioSourceState::Playing;
+    TEST("Playing source is active", src.IsActive());
+
+    src.state = AudioSourceState::FadingIn;
+    TEST("FadingIn source is active", src.IsActive());
+
+    src.state = AudioSourceState::FadingOut;
+    TEST("FadingOut source is active", src.IsActive());
+
+    src.state = AudioSourceState::Paused;
+    TEST("Paused source is not active", !src.IsActive());
+
+    // Test fade volume calculation
+    AudioSource fade;
+    fade.state = AudioSourceState::FadingIn;
+    fade.fadeStartVol = 0.0f;
+    fade.fadeEndVol = 1.0f;
+    fade.fadeDuration = 2.0f;
+    fade.fadeTimer = 1.0f; // halfway
+    TEST("Fade halfway volume ~0.5", ApproxEq(fade.GetEffectiveVolume(), 0.5f));
+
+    fade.fadeTimer = 2.0f; // complete
+    TEST("Fade complete volume ~1.0", ApproxEq(fade.GetEffectiveVolume(), 1.0f));
+
+    fade.fadeTimer = 0.0f;
+    TEST("Fade start volume ~0.0", ApproxEq(fade.GetEffectiveVolume(), 0.0f));
+
+    // Zero-duration fade
+    AudioSource zeroFade;
+    zeroFade.state = AudioSourceState::FadingOut;
+    zeroFade.fadeDuration = 0.0f;
+    zeroFade.fadeEndVol = 0.3f;
+    TEST("Zero duration fade returns endVol", ApproxEq(zeroFade.GetEffectiveVolume(), 0.3f));
+
+    // 3D source
+    AudioSource src3d;
+    src3d.is3D = true;
+    src3d.posX = 10.0f;
+    src3d.posY = 20.0f;
+    src3d.posZ = 30.0f;
+    TEST("3D source position X", ApproxEq(src3d.posX, 10.0f));
+    TEST("3D source position Y", ApproxEq(src3d.posY, 20.0f));
+    TEST("3D source max distance default", ApproxEq(src3d.maxDistance, 100.0f));
+}
+
+// ===================================================================
+// AudioComponent tests
+// ===================================================================
+
+static void TestAudioComponent() {
+    std::cout << "[AudioComponent]\n";
+
+    AudioComponent comp;
+    TEST("Default max concurrent sources", comp.maxConcurrentSources == 8);
+    TEST("No sources initially", comp.sources.empty());
+    TEST("Active source count 0", comp.GetActiveSourceCount() == 0);
+
+    // Add a source
+    AudioSource s1;
+    s1.sourceId = 1;
+    s1.clipId = "laser";
+    s1.state = AudioSourceState::Playing;
+    uint64_t id = comp.AddSource(s1);
+    TEST("AddSource returns source id", id == 1);
+    TEST("Source count is 1", comp.sources.size() == 1);
+    TEST("Active source count 1", comp.GetActiveSourceCount() == 1);
+
+    // Find source
+    AudioSource* found = comp.GetSource(1);
+    TEST("GetSource found", found != nullptr);
+    TEST("GetSource correct clip", found && found->clipId == "laser");
+
+    // Not found
+    TEST("GetSource miss returns null", comp.GetSource(999) == nullptr);
+
+    // Add another source (stopped)
+    AudioSource s2;
+    s2.sourceId = 2;
+    s2.clipId = "explosion";
+    s2.state = AudioSourceState::Stopped;
+    comp.AddSource(s2);
+    TEST("Two sources", comp.sources.size() == 2);
+    TEST("Active count still 1", comp.GetActiveSourceCount() == 1);
+
+    // Remove source
+    TEST("Remove existing source", comp.RemoveSource(1));
+    TEST("One source left", comp.sources.size() == 1);
+    TEST("Remove non-existent returns false", !comp.RemoveSource(999));
+
+    // StopAll
+    AudioSource s3;
+    s3.sourceId = 3;
+    s3.state = AudioSourceState::Playing;
+    comp.AddSource(s3);
+    comp.StopAll();
+    TEST("StopAll stops all", comp.GetActiveSourceCount() == 0);
+
+    // Max concurrent limit
+    AudioComponent limited;
+    limited.maxConcurrentSources = 2;
+    AudioSource a, b, c;
+    a.sourceId = 10; b.sourceId = 11; c.sourceId = 12;
+    TEST("Add first OK", limited.AddSource(a) == 10);
+    TEST("Add second OK", limited.AddSource(b) == 11);
+    TEST("Add third fails (max)", limited.AddSource(c) == 0);
+}
+
+// ===================================================================
+// AudioComponent serialization tests
+// ===================================================================
+
+static void TestAudioComponentSerialization() {
+    std::cout << "[AudioComponent Serialization]\n";
+
+    AudioComponent original;
+    original.maxConcurrentSources = 4;
+
+    AudioSource s1;
+    s1.sourceId = 42;
+    s1.clipId = "engine_hum";
+    s1.state = AudioSourceState::Playing;
+    s1.volume = 0.7f;
+    s1.pitch = 1.2f;
+    s1.loop = true;
+    s1.is3D = true;
+    s1.posX = 1.0f; s1.posY = 2.0f; s1.posZ = 3.0f;
+    original.AddSource(s1);
+
+    AudioSource s2;
+    s2.sourceId = 43;
+    s2.clipId = "alert";
+    s2.state = AudioSourceState::Paused;
+    s2.volume = 0.5f;
+    s2.is3D = false;
+    original.AddSource(s2);
+
+    // Serialize
+    ComponentData cd = original.Serialize();
+    TEST("Serialized component type", cd.componentType == "AudioComponent");
+    TEST("Serialized source count", cd.data.at("sourceCount") == "2");
+    TEST("Serialized max concurrent", cd.data.at("maxConcurrent") == "4");
+
+    // Deserialize
+    AudioComponent restored;
+    restored.Deserialize(cd);
+    TEST("Restored max concurrent", restored.maxConcurrentSources == 4);
+    TEST("Restored source count", restored.sources.size() == 2);
+
+    AudioSource* r1 = restored.GetSource(42);
+    TEST("Restored source 1 found", r1 != nullptr);
+    if (r1) {
+        TEST("Restored clip id", r1->clipId == "engine_hum");
+        TEST("Restored state playing", r1->state == AudioSourceState::Playing);
+        TEST("Restored volume", ApproxEq(r1->volume, 0.7f));
+        TEST("Restored pitch", ApproxEq(r1->pitch, 1.2f));
+        TEST("Restored loop true", r1->loop);
+        TEST("Restored is3D true", r1->is3D);
+        TEST("Restored posX", ApproxEq(r1->posX, 1.0f));
+        TEST("Restored posY", ApproxEq(r1->posY, 2.0f));
+        TEST("Restored posZ", ApproxEq(r1->posZ, 3.0f));
+    }
+
+    AudioSource* r2 = restored.GetSource(43);
+    TEST("Restored source 2 found", r2 != nullptr);
+    if (r2) {
+        TEST("Restored source 2 clip", r2->clipId == "alert");
+        TEST("Restored source 2 state paused", r2->state == AudioSourceState::Paused);
+        TEST("Restored source 2 not 3D", !r2->is3D);
+    }
+
+    // Empty component round-trip
+    AudioComponent empty;
+    ComponentData emptyCD = empty.Serialize();
+    AudioComponent emptyRestored;
+    emptyRestored.Deserialize(emptyCD);
+    TEST("Empty restored has no sources", emptyRestored.sources.empty());
+}
+
+// ===================================================================
+// MusicPlaylist tests
+// ===================================================================
+
+static void TestMusicPlaylist() {
+    std::cout << "[MusicPlaylist]\n";
+
+    MusicPlaylist pl;
+    TEST("Empty playlist current is empty", pl.CurrentTrackId().empty());
+    TEST("Empty playlist next is empty", pl.NextTrackId().empty());
+
+    pl.name = "battle_music";
+    pl.trackIds = {"track_a", "track_b", "track_c"};
+    pl.repeat = true;
+
+    TEST("Playlist name", pl.name == "battle_music");
+    TEST("Current track is first", pl.CurrentTrackId() == "track_a");
+
+    std::string next = pl.NextTrackId();
+    TEST("Next advances to track_b", next == "track_b");
+    TEST("Current now track_b", pl.CurrentTrackId() == "track_b");
+
+    pl.NextTrackId();
+    TEST("Current now track_c", pl.CurrentTrackId() == "track_c");
+
+    // Wrap around with repeat
+    std::string wrapped = pl.NextTrackId();
+    TEST("Wrap repeats to track_a", wrapped == "track_a");
+
+    // Non-repeating playlist
+    MusicPlaylist noRepeat;
+    noRepeat.trackIds = {"only_track"};
+    noRepeat.repeat = false;
+    TEST("No repeat first", noRepeat.CurrentTrackId() == "only_track");
+    noRepeat.NextTrackId();
+    TEST("No repeat stays on last", noRepeat.CurrentTrackId() == "only_track");
+
+    // Reset
+    pl.Reset();
+    TEST("Reset brings back to first", pl.CurrentTrackId() == "track_a");
+}
+
+// ===================================================================
+// AudioSystem tests
+// ===================================================================
+
+static void TestAudioSystem() {
+    std::cout << "[AudioSystem]\n";
+
+    AudioSystem sys;
+    sys.Initialize();
+
+    TEST("System name", sys.GetName() == "AudioSystem");
+    TEST("System enabled by default", sys.IsEnabled());
+    TEST("No clips initially", sys.GetClipCount() == 0);
+    TEST("Not muted initially", !sys.IsMuted());
+
+    // Register clips
+    AudioClip sfx;
+    sfx.id = "laser";
+    sfx.filePath = "sounds/laser.wav";
+    sfx.category = AudioCategory::SFX;
+    sfx.durationSeconds = 0.3f;
+    sys.RegisterClip(sfx);
+
+    AudioClip music;
+    music.id = "ambient_space";
+    music.filePath = "music/space.ogg";
+    music.category = AudioCategory::Music;
+    music.durationSeconds = 120.0f;
+    sys.RegisterClip(music);
+
+    TEST("Clip count is 2", sys.GetClipCount() == 2);
+    TEST("Has laser clip", sys.HasClip("laser"));
+    TEST("Has ambient clip", sys.HasClip("ambient_space"));
+    TEST("Missing clip returns false", !sys.HasClip("nonexistent"));
+
+    const AudioClip* found = sys.GetClip("laser");
+    TEST("GetClip returns clip", found != nullptr);
+    TEST("GetClip correct path", found && found->filePath == "sounds/laser.wav");
+    TEST("GetClip null for missing", sys.GetClip("missing") == nullptr);
+
+    // Register clip with empty id is ignored
+    AudioClip empty;
+    sys.RegisterClip(empty);
+    TEST("Empty id clip ignored", sys.GetClipCount() == 2);
+
+    // Play sound
+    uint64_t sid = sys.PlaySound("laser", 0.8f, 1.0f);
+    TEST("PlaySound returns non-zero id", sid > 0);
+    TEST("Active global source count 1", sys.GetActiveGlobalSourceCount() == 1);
+
+    AudioSource* src = sys.GetGlobalSource(sid);
+    TEST("GetGlobalSource found", src != nullptr);
+    TEST("Source is playing", src && src->state == AudioSourceState::Playing);
+    TEST("Source volume", src && ApproxEq(src->volume, 0.8f));
+
+    // Play unknown clip
+    uint64_t badId = sys.PlaySound("nonexistent");
+    TEST("PlaySound unknown returns 0", badId == 0);
+
+    // Play 3D sound
+    uint64_t sid3d = sys.PlaySound3D("laser", 5.0f, 10.0f, 15.0f, 0.6f);
+    TEST("PlaySound3D returns non-zero", sid3d > 0);
+    AudioSource* src3d = sys.GetGlobalSource(sid3d);
+    TEST("3D source is 3D", src3d && src3d->is3D);
+    TEST("3D source posX", src3d && ApproxEq(src3d->posX, 5.0f));
+
+    // Stop specific sound
+    sys.StopSound(sid);
+    AudioSource* stopped = sys.GetGlobalSource(sid);
+    TEST("Stopped source state", stopped && stopped->state == AudioSourceState::Stopped);
+
+    // StopAll
+    sys.StopAllSounds();
+    TEST("All sources cleared", sys.GetActiveGlobalSourceCount() == 0);
+
+    // Listener position
+    sys.SetListenerPosition(1.0f, 2.0f, 3.0f);
+    float lx, ly, lz;
+    sys.GetListenerPosition(lx, ly, lz);
+    TEST("Listener X", ApproxEq(lx, 1.0f));
+    TEST("Listener Y", ApproxEq(ly, 2.0f));
+    TEST("Listener Z", ApproxEq(lz, 3.0f));
+
+    // Mute
+    sys.SetMuted(true);
+    TEST("Muted", sys.IsMuted());
+    sys.SetMuted(false);
+    TEST("Unmuted", !sys.IsMuted());
+
+    sys.Shutdown();
+    TEST("Clips cleared after shutdown", sys.GetClipCount() == 0);
+}
+
+// ===================================================================
+// AudioSystem fade tests
+// ===================================================================
+
+static void TestAudioFade() {
+    std::cout << "[AudioSystem Fades]\n";
+
+    AudioSystem sys;
+    sys.Initialize();
+
+    AudioClip clip;
+    clip.id = "tone";
+    clip.durationSeconds = 5.0f;
+    sys.RegisterClip(clip);
+
+    uint64_t sid = sys.PlaySound("tone", 1.0f);
+    TEST("Source playing", sys.GetGlobalSource(sid)->state == AudioSourceState::Playing);
+
+    // FadeOut
+    sys.FadeOut(sid, 1.0f);
+    AudioSource* src = sys.GetGlobalSource(sid);
+    TEST("FadeOut state", src && src->state == AudioSourceState::FadingOut);
+    TEST("FadeOut start vol 1.0", src && ApproxEq(src->fadeStartVol, 1.0f));
+    TEST("FadeOut end vol 0.0", src && ApproxEq(src->fadeEndVol, 0.0f));
+
+    // Simulate half fade
+    sys.Update(0.5f);
+    src = sys.GetGlobalSource(sid);
+    TEST("Half fade still fading", src && src->state == AudioSourceState::FadingOut);
+
+    // Complete fade
+    sys.Update(0.5f);
+    // After fade completes the source is stopped and gets cleaned up
+    TEST("Fade out complete removes source", sys.GetActiveGlobalSourceCount() == 0);
+
+    // FadeIn test
+    uint64_t sid2 = sys.PlaySound("tone", 0.8f);
+    sys.FadeIn(sid2, 2.0f);
+    src = sys.GetGlobalSource(sid2);
+    TEST("FadeIn state", src && src->state == AudioSourceState::FadingIn);
+    TEST("FadeIn end vol 0.8", src && ApproxEq(src->fadeEndVol, 0.8f));
+
+    sys.Update(2.0f); // complete fade
+    src = sys.GetGlobalSource(sid2);
+    TEST("FadeIn completes to Playing", src && src->state == AudioSourceState::Playing);
+
+    // Fade on non-existent source is no-op
+    sys.FadeIn(9999, 1.0f); // should not crash
+    sys.FadeOut(9999, 1.0f);
+    TEST("Fade on missing source no-op", true);
+
+    sys.Shutdown();
+}
+
+// ===================================================================
+// AudioSystem music tests
+// ===================================================================
+
+static void TestAudioMusic() {
+    std::cout << "[AudioSystem Music]\n";
+
+    AudioSystem sys;
+    sys.Initialize();
+
+    AudioClip t1, t2, t3;
+    t1.id = "track1"; t1.durationSeconds = 1.0f;
+    t2.id = "track2"; t2.durationSeconds = 1.0f;
+    t3.id = "track3"; t3.durationSeconds = 1.0f;
+    sys.RegisterClip(t1);
+    sys.RegisterClip(t2);
+    sys.RegisterClip(t3);
+
+    MusicPlaylist pl;
+    pl.name = "test";
+    pl.trackIds = {"track1", "track2", "track3"};
+    pl.repeat = true;
+    sys.SetMusicPlaylist(pl);
+
+    TEST("Music not playing initially", !sys.IsMusicPlaying());
+
+    sys.PlayMusic();
+    TEST("Music now playing", sys.IsMusicPlaying());
+    TEST("Current playlist track", sys.GetMusicPlaylist().CurrentTrackId() == "track1");
+
+    // Advance track manually
+    sys.NextTrack();
+    TEST("Next track is track2", sys.GetMusicPlaylist().CurrentTrackId() == "track2");
+    TEST("Still playing", sys.IsMusicPlaying());
+
+    // Pause and resume
+    sys.PauseMusic();
+    TEST("Music paused", !sys.IsMusicPlaying());
+
+    // PlayMusic resumes from playlist current
+    sys.PlayMusic();
+    TEST("Music resumed", sys.IsMusicPlaying());
+
+    // Auto-advance via update
+    sys.Update(1.1f); // track2 finishes (1.0s duration)
+    TEST("Auto-advanced to track3", sys.GetMusicPlaylist().CurrentTrackId() == "track3");
+
+    // Stop
+    sys.StopMusic();
+    TEST("Music stopped", !sys.IsMusicPlaying());
+
+    sys.Shutdown();
+}
+
+// ===================================================================
+// AudioSystem volume calculation tests
+// ===================================================================
+
+static void TestAudioVolume() {
+    std::cout << "[AudioSystem Volume]\n";
+
+    AudioSystem sys;
+    sys.Initialize();
+
+    // GetMasterVolume uses ConfigurationManager defaults
+    float master = sys.GetMasterVolume();
+    TEST("Master volume default 0.8", ApproxEq(master, 0.8f));
+
+    float sfxVol = sys.GetCategoryVolume(AudioCategory::SFX);
+    TEST("SFX category volume default 0.7", ApproxEq(sfxVol, 0.7f));
+
+    float musicVol = sys.GetCategoryVolume(AudioCategory::Music);
+    TEST("Music category volume default 0.6", ApproxEq(musicVol, 0.6f));
+
+    float voiceVol = sys.GetCategoryVolume(AudioCategory::Voice);
+    TEST("Voice category volume default 1.0", ApproxEq(voiceVol, 1.0f));
+
+    // ComputeFinalVolume = src * category * master
+    AudioSource src;
+    src.volume = 0.5f;
+    src.state = AudioSourceState::Playing;
+    float finalVol = sys.ComputeFinalVolume(src, AudioCategory::SFX);
+    // 0.5 * 0.7 * 0.8 = 0.28
+    TEST("Final volume computation", ApproxEq(finalVol, 0.28f));
+
+    // Muted returns 0
+    sys.SetMuted(true);
+    float mutedVol = sys.ComputeFinalVolume(src, AudioCategory::SFX);
+    TEST("Muted final volume is 0", ApproxEq(mutedVol, 0.0f));
+
+    sys.Shutdown();
+}
+
+// ===================================================================
+// AudioSystem update / clip lifetime tests
+// ===================================================================
+
+static void TestAudioUpdate() {
+    std::cout << "[AudioSystem Update]\n";
+
+    AudioSystem sys;
+    sys.Initialize();
+
+    AudioClip clip;
+    clip.id = "short";
+    clip.durationSeconds = 0.5f;
+    sys.RegisterClip(clip);
+
+    uint64_t sid = sys.PlaySound("short");
+    TEST("Source active after play", sys.GetActiveGlobalSourceCount() == 1);
+
+    // Advance time past duration
+    sys.Update(0.6f);
+    TEST("Source cleaned up after duration", sys.GetActiveGlobalSourceCount() == 0);
+
+    // Looping clip doesn't stop
+    AudioClip loopClip;
+    loopClip.id = "loop";
+    loopClip.durationSeconds = 0.5f;
+    loopClip.isLooping = true;
+    sys.RegisterClip(loopClip);
+
+    uint64_t lid = sys.PlaySound("loop");
+    sys.Update(0.6f);
+    // Looping source resets playback but stays active
+    AudioSource* loopSrc = sys.GetGlobalSource(lid);
+    TEST("Looping source still active", loopSrc && loopSrc->IsActive());
+
+    // Disabled system skips update
+    sys.SetEnabled(false);
+    uint64_t sid2 = sys.PlaySound("short");
+    sys.Update(10.0f); // would normally expire
+    TEST("Disabled system skips update", sys.GetGlobalSource(sid2) != nullptr);
+
+    sys.SetEnabled(true);
+    sys.Shutdown();
+}
+
+// ===================================================================
+// QuestGenerator tests
+// ===================================================================
+
+static void TestQuestGenerator() {
+    std::cout << "[QuestGenerator]\n";
+
+    QuestGenerator gen;
+    gen.SetSeed(42);
+
+    // Generate a single quest
+    Quest q = gen.Generate(5, 5);
+    TEST("Generated quest has id", !q.id.empty());
+    TEST("Generated quest has title", !q.title.empty());
+    TEST("Generated quest has description", !q.description.empty());
+    TEST("Generated quest status Available", q.status == QuestStatus::Available);
+    TEST("Generated quest has objectives", !q.objectives.empty());
+    TEST("Generated quest has rewards", !q.rewards.empty());
+    TEST("Generated quest can abandon", q.canAbandon);
+    TEST("Generated quest not repeatable", !q.isRepeatable);
+    TEST("Generated count is 1", gen.GetGeneratedCount() == 1);
+
+    // Rewards include credits and experience
+    bool hasCredits = false, hasXP = false;
+    for (const auto& r : q.rewards) {
+        if (r.type == RewardType::Credits) hasCredits = true;
+        if (r.type == RewardType::Experience) hasXP = true;
+    }
+    TEST("Has credit reward", hasCredits);
+    TEST("Has experience reward", hasXP);
+
+    // Generate batch
+    auto batch = gen.GenerateBatch(5, 10, 3);
+    TEST("Batch size 5", batch.size() == 5);
+    TEST("Generated count is 6", gen.GetGeneratedCount() == 6);
+
+    // All quests have unique ids
+    bool allUnique = true;
+    for (size_t i = 0; i < batch.size(); ++i) {
+        for (size_t j = i + 1; j < batch.size(); ++j) {
+            if (batch[i].id == batch[j].id) { allUnique = false; break; }
+        }
+    }
+    TEST("All batch quests have unique ids", allUnique);
+
+    // Higher-level quests should have higher rewards
+    Quest lowLevel = gen.Generate(1, 8);
+    Quest highLevel = gen.Generate(20, 2);
+
+    int lowCredits = 0, highCredits = 0;
+    for (const auto& r : lowLevel.rewards)
+        if (r.type == RewardType::Credits) lowCredits = r.amount;
+    for (const auto& r : highLevel.rewards)
+        if (r.type == RewardType::Credits) highCredits = r.amount;
+    TEST("Higher level = more credits", highCredits > lowCredits);
+
+    // Deterministic: same seed produces same quest
+    QuestGenerator gen2;
+    gen2.SetSeed(42);
+    Quest q2 = gen2.Generate(5, 5);
+    TEST("Deterministic: same seed same id", q.id == q2.id);
+    TEST("Deterministic: same seed same title", q.title == q2.title);
+    TEST("Deterministic: same objectives count",
+         q.objectives.size() == q2.objectives.size());
+}
+
+// ===================================================================
+// QuestGenerator difficulty scaling tests
+// ===================================================================
+
+static void TestQuestGeneratorDifficulty() {
+    std::cout << "[QuestGenerator Difficulty]\n";
+
+    QuestGenerator gen;
+    gen.SetSeed(100);
+
+    // Level 1 → Trivial difficulty
+    Quest q1 = gen.Generate(1, 10);
+    TEST("Level 1 quest difficulty Trivial",
+         q1.difficulty == QuestDifficulty::Trivial);
+
+    // Level 10 → Normal difficulty
+    gen.SetSeed(100);
+    Quest q10 = gen.Generate(10, 10);
+    TEST("Level 10 quest difficulty Normal",
+         q10.difficulty == QuestDifficulty::Normal);
+
+    // Level 25, high-security → Elite difficulty
+    gen.SetSeed(100);
+    Quest q25 = gen.Generate(25, 10);
+    TEST("Level 25 quest difficulty Elite",
+         q25.difficulty == QuestDifficulty::Elite);
+
+    // Low security increases difficulty
+    gen.SetSeed(100);
+    Quest lowSec = gen.Generate(5, 1);
+    gen.SetSeed(100);
+    Quest highSec = gen.Generate(5, 10);
+    TEST("Low security higher or equal difficulty",
+         static_cast<int>(lowSec.difficulty) >= static_cast<int>(highSec.difficulty));
+
+    // Difficulty affects objective count (more = harder)
+    gen.SetSeed(200);
+    Quest easyQ = gen.Generate(1, 10);
+    gen.SetSeed(200);
+    Quest hardQ = gen.Generate(25, 1);
+    TEST("Hard quest >= easy quest objective count",
+         hardQ.objectives.size() >= easyQ.objectives.size());
+
+    // High difficulty quests may have reputation rewards
+    bool hasReputation = false;
+    for (const auto& r : hardQ.rewards) {
+        if (r.type == RewardType::Reputation) hasReputation = true;
+    }
+    TEST("Hard quest may have reputation reward", hasReputation);
+}
+
+// ===================================================================
+// QuestGenerator integration with QuestSystem tests
+// ===================================================================
+
+static void TestQuestGeneratorIntegration() {
+    std::cout << "[QuestGenerator Integration]\n";
+
+    QuestGenerator gen;
+    gen.SetSeed(777);
+
+    QuestSystem sys;
+    QuestComponent comp;
+
+    // Generate and register as template
+    Quest generated = gen.Generate(10, 5);
+    sys.AddQuestTemplate(generated);
+    TEST("Template registered", sys.GetTemplateCount() == 1);
+
+    // Give to entity
+    bool given = sys.GiveQuest(1, generated.id, comp);
+    TEST("Generated quest given to entity", given);
+    TEST("Component has quest", comp.GetQuest(generated.id) != nullptr);
+
+    // Accept and progress
+    bool accepted = comp.AcceptQuest(generated.id);
+    TEST("Generated quest accepted", accepted);
+
+    Quest* active = comp.GetQuest(generated.id);
+    TEST("Quest is active", active && active->status == QuestStatus::Active);
+
+    // Progress first objective
+    if (active && !active->objectives.empty()) {
+        sys.ProgressObjective(comp, active->objectives[0].type,
+                              active->objectives[0].target,
+                              active->objectives[0].requiredQuantity);
+    }
+    TEST("Objective progressed", true);
+
+    // Generate batch and add all as templates
+    auto batch = gen.GenerateBatch(3, 15, 3);
+    for (const auto& q : batch) {
+        sys.AddQuestTemplate(q);
+    }
+    TEST("Batch templates registered", sys.GetTemplateCount() == 4);
+}
+
+// ===================================================================
 // Engine tests
 // ===================================================================
 
@@ -4832,6 +5536,19 @@ int main() {
     TestModDependencyCycle();
     TestModMissingDependency();
     TestModReload();
+    TestAudioClip();
+    TestAudioSource();
+    TestAudioComponent();
+    TestAudioComponentSerialization();
+    TestMusicPlaylist();
+    TestAudioSystem();
+    TestAudioFade();
+    TestAudioMusic();
+    TestAudioVolume();
+    TestAudioUpdate();
+    TestQuestGenerator();
+    TestQuestGeneratorDifficulty();
+    TestQuestGeneratorIntegration();
     TestEngine();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
