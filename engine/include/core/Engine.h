@@ -20,6 +20,8 @@ class PowerSystem;
 class AIDecisionSystem;
 class MiningSystem;
 class UISystem;
+class ParticleSystem;
+class AchievementSystem;
 
 /// Engine state machine.
 enum class EngineState { Uninitialized, Running, Paused, ShuttingDown, Stopped };

@@ -57,6 +57,8 @@
 #include "networking/NetworkSystem.h"
 #include "scripting/ScriptingSystem.h"
 #include "audio/AudioSystem.h"
+#include "rendering/ParticleSystem.h"
+#include "achievement/AchievementSystem.h"
 #include "core/Engine.h"
 
 using namespace subspace;
@@ -5232,6 +5234,858 @@ static void TestQuestGeneratorIntegration() {
 }
 
 // ===================================================================
+// Particle System tests
+// ===================================================================
+
+static void TestParticle() {
+    std::cout << "[Particle]\n";
+
+    // Default particle
+    {
+        Particle p;
+        TEST("Particle default alive", p.IsAlive());
+        TEST("Particle default age 0", ApproxEq(p.age, 0.0f));
+        TEST("Particle default normalized age 0", ApproxEq(p.GetNormalizedAge(), 0.0f));
+    }
+
+    // Dead particle
+    {
+        Particle p;
+        p.lifetime = 1.0f;
+        p.age = 1.5f;
+        TEST("Particle dead after lifetime", !p.IsAlive());
+        TEST("Particle normalized age clamped to 1", ApproxEq(p.GetNormalizedAge(), 1.0f));
+    }
+
+    // Normalized age mid-life
+    {
+        Particle p;
+        p.lifetime = 2.0f;
+        p.age = 1.0f;
+        TEST("Particle half-life normalized age", ApproxEq(p.GetNormalizedAge(), 0.5f));
+    }
+
+    // Color interpolation
+    {
+        Particle p;
+        p.colorR = 1.0f; p.colorG = 0.0f; p.colorB = 0.0f; p.colorA = 1.0f;
+        p.endColorR = 0.0f; p.endColorG = 1.0f; p.endColorB = 0.0f; p.endColorA = 0.0f;
+        p.lifetime = 1.0f;
+
+        // At birth
+        p.age = 0.0f;
+        float r, g, b, a;
+        p.GetCurrentColor(r, g, b, a);
+        TEST("Particle start color R", ApproxEq(r, 1.0f));
+        TEST("Particle start color G", ApproxEq(g, 0.0f));
+        TEST("Particle start color A", ApproxEq(a, 1.0f));
+
+        // At death
+        p.age = 1.0f;
+        p.GetCurrentColor(r, g, b, a);
+        TEST("Particle end color R", ApproxEq(r, 0.0f));
+        TEST("Particle end color G", ApproxEq(g, 1.0f));
+        TEST("Particle end color A", ApproxEq(a, 0.0f));
+
+        // At half-life
+        p.age = 0.5f;
+        p.GetCurrentColor(r, g, b, a);
+        TEST("Particle mid color R", ApproxEq(r, 0.5f));
+        TEST("Particle mid color G", ApproxEq(g, 0.5f));
+        TEST("Particle mid color A", ApproxEq(a, 0.5f));
+    }
+
+    // Zero lifetime
+    {
+        Particle p;
+        p.lifetime = 0.0f;
+        TEST("Particle zero lifetime normalized age 1", ApproxEq(p.GetNormalizedAge(), 1.0f));
+    }
+}
+
+static void TestParticleEmitterConfig() {
+    std::cout << "[ParticleEmitterConfig]\n";
+
+    ParticleEmitterConfig cfg;
+    TEST("Default shape is Point", cfg.shape == EmitterShape::Point);
+    TEST("Default emit rate", ApproxEq(cfg.emitRate, 10.0f));
+    TEST("Default max particles", cfg.maxParticles == 200);
+    TEST("Default min lifetime", ApproxEq(cfg.minLifetime, 0.5f));
+    TEST("Default max lifetime", ApproxEq(cfg.maxLifetime, 2.0f));
+    TEST("Default gravity", ApproxEq(cfg.gravityY, 0.0f));
+    TEST("Default start alpha", ApproxEq(cfg.startA, 1.0f));
+    TEST("Default end alpha", ApproxEq(cfg.endA, 0.0f));
+}
+
+static void TestParticleEmitter() {
+    std::cout << "[ParticleEmitter]\n";
+
+    // Construction
+    {
+        ParticleEmitter emitter("test_emitter");
+        TEST("Emitter id", emitter.GetId() == "test_emitter");
+        TEST("Emitter active by default", emitter.IsActive());
+        TEST("Emitter starts with 0 particles", emitter.GetAliveCount() == 0);
+    }
+
+    // Position
+    {
+        ParticleEmitter emitter("pos_test");
+        emitter.SetPosition(1.0f, 2.0f, 3.0f);
+        float x, y, z;
+        emitter.GetPosition(x, y, z);
+        TEST("Emitter position X", ApproxEq(x, 1.0f));
+        TEST("Emitter position Y", ApproxEq(y, 2.0f));
+        TEST("Emitter position Z", ApproxEq(z, 3.0f));
+    }
+
+    // Burst emit
+    {
+        ParticleEmitterConfig cfg;
+        cfg.emitRate = 0.0f;
+        cfg.maxParticles = 50;
+        cfg.minLifetime = 1.0f;
+        cfg.maxLifetime = 2.0f;
+        ParticleEmitter emitter("burst_test", cfg);
+        emitter.Emit(10);
+        TEST("Burst emit 10 particles", emitter.GetAliveCount() == 10);
+    }
+
+    // Max particles cap
+    {
+        ParticleEmitterConfig cfg;
+        cfg.emitRate = 0.0f;
+        cfg.maxParticles = 5;
+        cfg.minLifetime = 10.0f;
+        cfg.maxLifetime = 10.0f;
+        ParticleEmitter emitter("cap_test", cfg);
+        emitter.Emit(20);
+        TEST("Max particles capped", emitter.GetAliveCount() == 5);
+    }
+
+    // Active/inactive toggle
+    {
+        ParticleEmitter emitter("toggle_test");
+        TEST("Emitter active initially", emitter.IsActive());
+        emitter.SetActive(false);
+        TEST("Emitter deactivated", !emitter.IsActive());
+        emitter.SetActive(true);
+        TEST("Emitter reactivated", emitter.IsActive());
+    }
+
+    // Continuous emission via update
+    {
+        ParticleEmitterConfig cfg;
+        cfg.emitRate = 100.0f;  // 100 per second
+        cfg.maxParticles = 500;
+        cfg.minLifetime = 5.0f;
+        cfg.maxLifetime = 5.0f;
+        ParticleEmitter emitter("continuous_test", cfg);
+        emitter.Update(1.0f); // 1 second
+        TEST("Continuous emit ~100 particles", emitter.GetAliveCount() >= 90 && emitter.GetAliveCount() <= 110);
+    }
+
+    // Particles die after lifetime
+    {
+        ParticleEmitterConfig cfg;
+        cfg.emitRate = 0.0f;
+        cfg.maxParticles = 100;
+        cfg.minLifetime = 0.5f;
+        cfg.maxLifetime = 0.5f;
+        ParticleEmitter emitter("die_test", cfg);
+        emitter.Emit(10);
+        TEST("10 particles before aging", emitter.GetAliveCount() == 10);
+        emitter.Update(0.6f);
+        TEST("0 particles after lifetime", emitter.GetAliveCount() == 0);
+    }
+
+    // Reset
+    {
+        ParticleEmitterConfig cfg;
+        cfg.emitRate = 0.0f;
+        cfg.maxParticles = 100;
+        cfg.minLifetime = 10.0f;
+        cfg.maxLifetime = 10.0f;
+        ParticleEmitter emitter("reset_test", cfg);
+        emitter.Emit(20);
+        TEST("20 particles before reset", emitter.GetAliveCount() == 20);
+        emitter.Reset();
+        TEST("0 particles after reset", emitter.GetAliveCount() == 0);
+    }
+
+    // Config change
+    {
+        ParticleEmitter emitter("cfg_test");
+        ParticleEmitterConfig cfg;
+        cfg.emitRate = 42.0f;
+        emitter.SetConfig(cfg);
+        TEST("Config updated", ApproxEq(emitter.GetConfig().emitRate, 42.0f));
+    }
+
+    // Deterministic with seed
+    {
+        ParticleEmitterConfig cfg;
+        cfg.emitRate = 0.0f;
+        cfg.maxParticles = 100;
+        cfg.minLifetime = 5.0f;
+        cfg.maxLifetime = 5.0f;
+        cfg.minSpeed = 1.0f;
+        cfg.maxSpeed = 10.0f;
+
+        ParticleEmitter emitter1("det1", cfg);
+        emitter1.SetSeed(42);
+        emitter1.Emit(5);
+
+        ParticleEmitter emitter2("det2", cfg);
+        emitter2.SetSeed(42);
+        emitter2.Emit(5);
+
+        const auto& p1 = emitter1.GetParticles();
+        const auto& p2 = emitter2.GetParticles();
+        bool match = true;
+        for (int i = 0; i < 5 && match; ++i) {
+            if (!ApproxEq(p1[i].posX, p2[i].posX) ||
+                !ApproxEq(p1[i].posY, p2[i].posY) ||
+                !ApproxEq(p1[i].posZ, p2[i].posZ)) {
+                match = false;
+            }
+        }
+        TEST("Deterministic particle positions with same seed", match);
+    }
+
+    // Inactive emitter doesn't emit on update
+    {
+        ParticleEmitterConfig cfg;
+        cfg.emitRate = 100.0f;
+        cfg.maxParticles = 500;
+        cfg.minLifetime = 5.0f;
+        cfg.maxLifetime = 5.0f;
+        ParticleEmitter emitter("inactive_test", cfg);
+        emitter.SetActive(false);
+        emitter.Update(1.0f);
+        TEST("Inactive emitter no particles", emitter.GetAliveCount() == 0);
+    }
+
+    // Gravity effect
+    {
+        ParticleEmitterConfig cfg;
+        cfg.shape = EmitterShape::Point;
+        cfg.emitRate = 0.0f;
+        cfg.maxParticles = 10;
+        cfg.minLifetime = 10.0f;
+        cfg.maxLifetime = 10.0f;
+        cfg.gravityY = -10.0f;
+        cfg.minSpeed = 0.0f;
+        cfg.maxSpeed = 0.0f;  // zero initial speed so only gravity matters
+        ParticleEmitter emitter("gravity_test", cfg);
+        emitter.Emit(1);
+        float initialY = emitter.GetParticles()[0].posY;
+        emitter.Update(1.0f);
+        float afterY = emitter.GetParticles()[0].posY;
+        TEST("Gravity moves particle downward", afterY < initialY);
+    }
+}
+
+static void TestParticleEmitterShapes() {
+    std::cout << "[ParticleEmitterShapes]\n";
+
+    // Sphere shape
+    {
+        ParticleEmitterConfig cfg;
+        cfg.shape = EmitterShape::Sphere;
+        cfg.sphereRadius = 2.0f;
+        cfg.emitRate = 0.0f;
+        cfg.maxParticles = 100;
+        cfg.minLifetime = 5.0f;
+        cfg.maxLifetime = 5.0f;
+        ParticleEmitter emitter("sphere_test", cfg);
+        emitter.Emit(20);
+        TEST("Sphere emitter spawns particles", emitter.GetAliveCount() == 20);
+
+        bool allInRange = true;
+        for (const auto& p : emitter.GetParticles()) {
+            float dist = std::sqrt(p.posX * p.posX + p.posY * p.posY + p.posZ * p.posZ);
+            if (dist > cfg.sphereRadius + 0.01f) allInRange = false;
+        }
+        TEST("Sphere particles within radius", allInRange);
+    }
+
+    // Cone shape
+    {
+        ParticleEmitterConfig cfg;
+        cfg.shape = EmitterShape::Cone;
+        cfg.coneAngleDeg = 45.0f;
+        cfg.emitRate = 0.0f;
+        cfg.maxParticles = 100;
+        cfg.minLifetime = 5.0f;
+        cfg.maxLifetime = 5.0f;
+        ParticleEmitter emitter("cone_test", cfg);
+        emitter.Emit(20);
+        TEST("Cone emitter spawns particles", emitter.GetAliveCount() == 20);
+    }
+
+    // Box shape
+    {
+        ParticleEmitterConfig cfg;
+        cfg.shape = EmitterShape::Box;
+        cfg.boxHalfW = 1.0f;
+        cfg.boxHalfH = 2.0f;
+        cfg.boxHalfD = 3.0f;
+        cfg.emitRate = 0.0f;
+        cfg.maxParticles = 100;
+        cfg.minLifetime = 5.0f;
+        cfg.maxLifetime = 5.0f;
+        ParticleEmitter emitter("box_test", cfg);
+        emitter.Emit(20);
+        TEST("Box emitter spawns particles", emitter.GetAliveCount() == 20);
+
+        bool allInBox = true;
+        for (const auto& p : emitter.GetParticles()) {
+            if (std::fabs(p.posX) > cfg.boxHalfW + 0.01f ||
+                std::fabs(p.posY) > cfg.boxHalfH + 0.01f ||
+                std::fabs(p.posZ) > cfg.boxHalfD + 0.01f) {
+                allInBox = false;
+            }
+        }
+        TEST("Box particles within extents", allInBox);
+    }
+}
+
+static void TestParticleComponent() {
+    std::cout << "[ParticleComponent]\n";
+
+    // Add and get emitter
+    {
+        ParticleComponent comp;
+        ParticleEmitter emitter("fx1");
+        comp.AddEmitter(emitter);
+        TEST("Component has 1 emitter", comp.GetEmitterCount() == 1);
+        auto* found = comp.GetEmitter("fx1");
+        TEST("Can find emitter by id", found != nullptr);
+        TEST("Found correct emitter", found && found->GetId() == "fx1");
+    }
+
+    // Remove emitter
+    {
+        ParticleComponent comp;
+        comp.AddEmitter(ParticleEmitter("a"));
+        comp.AddEmitter(ParticleEmitter("b"));
+        TEST("2 emitters added", comp.GetEmitterCount() == 2);
+        bool removed = comp.RemoveEmitter("a");
+        TEST("Remove returned true", removed);
+        TEST("1 emitter remaining", comp.GetEmitterCount() == 1);
+        TEST("Remaining is b", comp.GetEmitter("b") != nullptr);
+    }
+
+    // Remove non-existent
+    {
+        ParticleComponent comp;
+        bool removed = comp.RemoveEmitter("nope");
+        TEST("Remove non-existent returns false", !removed);
+    }
+
+    // Get non-existent
+    {
+        ParticleComponent comp;
+        TEST("Get non-existent returns nullptr", comp.GetEmitter("nope") == nullptr);
+    }
+
+    // Total particle count
+    {
+        ParticleEmitterConfig cfg;
+        cfg.emitRate = 0.0f;
+        cfg.maxParticles = 50;
+        cfg.minLifetime = 10.0f;
+        cfg.maxLifetime = 10.0f;
+
+        ParticleComponent comp;
+        ParticleEmitter e1("e1", cfg);
+        e1.Emit(5);
+        ParticleEmitter e2("e2", cfg);
+        e2.Emit(3);
+        comp.AddEmitter(e1);
+        comp.AddEmitter(e2);
+        TEST("Total particle count", comp.GetTotalParticleCount() == 8);
+    }
+
+    // Stop and resume all
+    {
+        ParticleComponent comp;
+        comp.AddEmitter(ParticleEmitter("x"));
+        comp.AddEmitter(ParticleEmitter("y"));
+        comp.StopAll();
+        TEST("All stopped", !comp.emitters[0].IsActive() && !comp.emitters[1].IsActive());
+        comp.ResumeAll();
+        TEST("All resumed", comp.emitters[0].IsActive() && comp.emitters[1].IsActive());
+    }
+}
+
+static void TestParticlePresets() {
+    std::cout << "[ParticlePresets]\n";
+
+    // Explosion
+    {
+        auto cfg = ParticleSystem::CreateExplosionPreset();
+        TEST("Explosion shape sphere", cfg.shape == EmitterShape::Sphere);
+        TEST("Explosion emit rate 0 (burst only)", ApproxEq(cfg.emitRate, 0.0f));
+        TEST("Explosion max particles > 0", cfg.maxParticles > 0);
+        TEST("Explosion has gravity", cfg.gravityY < 0.0f);
+
+        ParticleEmitter emitter("explosion", cfg);
+        emitter.Emit(50);
+        TEST("Explosion burst works", emitter.GetAliveCount() == 50);
+    }
+
+    // Engine thrust
+    {
+        auto cfg = ParticleSystem::CreateEngineThrustPreset();
+        TEST("Thrust shape cone", cfg.shape == EmitterShape::Cone);
+        TEST("Thrust emit rate > 0", cfg.emitRate > 0.0f);
+        TEST("Thrust cone angle > 0", cfg.coneAngleDeg > 0.0f);
+    }
+
+    // Shield hit
+    {
+        auto cfg = ParticleSystem::CreateShieldHitPreset();
+        TEST("Shield shape point", cfg.shape == EmitterShape::Point);
+        TEST("Shield emit rate 0", ApproxEq(cfg.emitRate, 0.0f));
+    }
+
+    // Mining
+    {
+        auto cfg = ParticleSystem::CreateMiningPreset();
+        TEST("Mining shape cone", cfg.shape == EmitterShape::Cone);
+        TEST("Mining has gravity", cfg.gravityY < 0.0f);
+    }
+
+    // Hyperdrive
+    {
+        auto cfg = ParticleSystem::CreateHyperdrivePreset();
+        TEST("Hyperdrive shape cone", cfg.shape == EmitterShape::Cone);
+        TEST("Hyperdrive narrow angle", cfg.coneAngleDeg < 10.0f);
+        TEST("Hyperdrive fast particles", cfg.minSpeed > 15.0f);
+    }
+}
+
+static void TestParticleSystem() {
+    std::cout << "[ParticleSystem]\n";
+
+    ParticleSystem sys;
+    TEST("System name", sys.GetName() == "ParticleSystem");
+    TEST("System enabled", sys.IsEnabled());
+
+    sys.Initialize();
+    sys.Update(0.016f);
+    sys.Shutdown();
+    TEST("Particle system lifecycle ok", true);
+}
+
+// ===================================================================
+// Achievement System tests
+// ===================================================================
+
+static void TestAchievementCriterion() {
+    std::cout << "[AchievementCriterion]\n";
+
+    // Incomplete criterion
+    {
+        AchievementCriterion c;
+        c.eventType = "test.event";
+        c.requiredCount = 10;
+        c.currentCount = 3;
+        TEST("Criterion not complete", !c.IsComplete());
+        TEST("Criterion progress 0.3", ApproxEq(c.GetProgress(), 0.3f));
+    }
+
+    // Complete criterion
+    {
+        AchievementCriterion c;
+        c.requiredCount = 5;
+        c.currentCount = 5;
+        TEST("Criterion complete", c.IsComplete());
+        TEST("Criterion progress 1.0", ApproxEq(c.GetProgress(), 1.0f));
+    }
+
+    // Over-complete
+    {
+        AchievementCriterion c;
+        c.requiredCount = 5;
+        c.currentCount = 10;
+        TEST("Criterion over-complete", c.IsComplete());
+        TEST("Criterion progress clamped 1.0", ApproxEq(c.GetProgress(), 1.0f));
+    }
+
+    // Zero required
+    {
+        AchievementCriterion c;
+        c.requiredCount = 0;
+        c.currentCount = 0;
+        TEST("Zero required progress 1.0", ApproxEq(c.GetProgress(), 1.0f));
+    }
+}
+
+static void TestAchievement() {
+    std::cout << "[Achievement]\n";
+
+    // Incomplete achievement
+    {
+        Achievement a;
+        a.id = "test";
+        a.name = "Test Achievement";
+        a.criteria.push_back({"event.a", 5, 2});
+        a.criteria.push_back({"event.b", 10, 10});
+        TEST("Achievement not complete", !a.IsComplete());
+        // Progress: (2/5 + 10/10) / 2 = (0.4 + 1.0) / 2 = 0.7
+        TEST("Achievement progress", ApproxEq(a.GetProgress(), 0.7f));
+    }
+
+    // Complete achievement
+    {
+        Achievement a;
+        a.id = "done";
+        a.criteria.push_back({"e1", 1, 1});
+        a.criteria.push_back({"e2", 5, 5});
+        TEST("Achievement complete", a.IsComplete());
+        TEST("Achievement progress 1.0", ApproxEq(a.GetProgress(), 1.0f));
+    }
+
+    // Empty criteria
+    {
+        Achievement a;
+        a.id = "empty";
+        TEST("Empty criteria not complete", !a.IsComplete());
+        TEST("Empty criteria progress 0", ApproxEq(a.GetProgress(), 0.0f));
+    }
+
+    // Single criterion
+    {
+        Achievement a;
+        a.id = "single";
+        a.criteria.push_back({"e1", 10, 7});
+        TEST("Single criterion progress", ApproxEq(a.GetProgress(), 0.7f));
+    }
+}
+
+static void TestAchievementComponent() {
+    std::cout << "[AchievementComponent]\n";
+
+    // Add and get
+    {
+        AchievementComponent comp;
+        Achievement a;
+        a.id = "ach1";
+        a.name = "First";
+        a.category = AchievementCategory::Combat;
+        comp.AddAchievement(a);
+        TEST("Total count 1", comp.GetTotalCount() == 1);
+
+        auto* found = comp.GetAchievement("ach1");
+        TEST("Found achievement", found != nullptr);
+        TEST("Correct name", found && found->name == "First");
+    }
+
+    // Duplicate prevention
+    {
+        AchievementComponent comp;
+        Achievement a;
+        a.id = "dup";
+        comp.AddAchievement(a);
+        comp.AddAchievement(a);
+        TEST("No duplicates", comp.GetTotalCount() == 1);
+    }
+
+    // Not found
+    {
+        AchievementComponent comp;
+        TEST("Get non-existent null", comp.GetAchievement("nope") == nullptr);
+    }
+
+    // IsUnlocked
+    {
+        AchievementComponent comp;
+        Achievement a;
+        a.id = "unlock_test";
+        a.unlocked = false;
+        comp.AddAchievement(a);
+        TEST("Not unlocked initially", !comp.IsUnlocked("unlock_test"));
+        comp.GetAchievement("unlock_test")->unlocked = true;
+        TEST("Unlocked after set", comp.IsUnlocked("unlock_test"));
+    }
+
+    // Unlocked count
+    {
+        AchievementComponent comp;
+        Achievement a1; a1.id = "a1"; a1.unlocked = true;
+        Achievement a2; a2.id = "a2"; a2.unlocked = false;
+        Achievement a3; a3.id = "a3"; a3.unlocked = true;
+        comp.AddAchievement(a1);
+        comp.AddAchievement(a2);
+        comp.AddAchievement(a3);
+        TEST("Unlocked count 2", comp.GetUnlockedCount() == 2);
+    }
+
+    // Overall progress
+    {
+        AchievementComponent comp;
+        Achievement a1;
+        a1.id = "p1";
+        a1.unlocked = true;
+        Achievement a2;
+        a2.id = "p2";
+        a2.criteria.push_back({"e", 10, 5});
+        comp.AddAchievement(a1);
+        comp.AddAchievement(a2);
+        // (1.0 + 0.5) / 2 = 0.75
+        TEST("Overall progress", ApproxEq(comp.GetOverallProgress(), 0.75f));
+    }
+
+    // GetByCategory
+    {
+        AchievementComponent comp;
+        Achievement a1; a1.id = "c1"; a1.category = AchievementCategory::Combat;
+        Achievement a2; a2.id = "c2"; a2.category = AchievementCategory::Trading;
+        Achievement a3; a3.id = "c3"; a3.category = AchievementCategory::Combat;
+        comp.AddAchievement(a1);
+        comp.AddAchievement(a2);
+        comp.AddAchievement(a3);
+        auto combat = comp.GetByCategory(AchievementCategory::Combat);
+        TEST("2 combat achievements", combat.size() == 2);
+        auto trading = comp.GetByCategory(AchievementCategory::Trading);
+        TEST("1 trading achievement", trading.size() == 1);
+    }
+
+    // RecordEvent
+    {
+        AchievementComponent comp;
+        Achievement a;
+        a.id = "record_test";
+        a.criteria.push_back({"kill", 3, 0});
+        comp.AddAchievement(a);
+
+        bool complete = comp.RecordEvent("record_test", "kill", 1);
+        TEST("Not complete after 1 kill", !complete);
+        complete = comp.RecordEvent("record_test", "kill", 2);
+        TEST("Complete after 3 kills total", complete);
+        TEST("Achievement unlocked", comp.IsUnlocked("record_test"));
+    }
+
+    // RecordEvent on already-unlocked
+    {
+        AchievementComponent comp;
+        Achievement a;
+        a.id = "already";
+        a.unlocked = true;
+        a.criteria.push_back({"e", 1, 1});
+        comp.AddAchievement(a);
+        bool result = comp.RecordEvent("already", "e", 1);
+        TEST("RecordEvent on unlocked returns false", !result);
+    }
+
+    // RecordEvent wrong event type
+    {
+        AchievementComponent comp;
+        Achievement a;
+        a.id = "wrong_event";
+        a.criteria.push_back({"kill", 1, 0});
+        comp.AddAchievement(a);
+        comp.RecordEvent("wrong_event", "trade", 1);
+        TEST("Wrong event no progress", !comp.IsUnlocked("wrong_event"));
+    }
+
+    // Empty component
+    {
+        AchievementComponent comp;
+        TEST("Empty total 0", comp.GetTotalCount() == 0);
+        TEST("Empty unlocked 0", comp.GetUnlockedCount() == 0);
+        TEST("Empty progress 0", ApproxEq(comp.GetOverallProgress(), 0.0f));
+    }
+}
+
+static void TestAchievementComponentSerialization() {
+    std::cout << "[AchievementComponentSerialization]\n";
+
+    // Round-trip
+    {
+        AchievementComponent original;
+        Achievement a1;
+        a1.id = "first_blood";
+        a1.name = "First Blood";
+        a1.description = "Destroy first enemy";
+        a1.category = AchievementCategory::Combat;
+        a1.rewardXP = 50;
+        a1.rewardCredits = 100;
+        a1.unlocked = true;
+        a1.unlockTimestamp = 1234567.0;
+        a1.criteria.push_back({"entity.destroyed", 1, 1});
+        original.AddAchievement(a1);
+
+        Achievement a2;
+        a2.id = "explorer";
+        a2.name = "Explorer";
+        a2.description = "Visit sectors";
+        a2.category = AchievementCategory::Exploration;
+        a2.rewardXP = 100;
+        a2.rewardCredits = 250;
+        a2.unlocked = false;
+        a2.criteria.push_back({"sector.entered", 10, 3});
+        a2.criteria.push_back({"resource.collected", 50, 20});
+        original.AddAchievement(a2);
+
+        ComponentData data = original.Serialize();
+        TEST("Serialize type", data.componentType == "AchievementComponent");
+
+        AchievementComponent restored;
+        restored.Deserialize(data);
+
+        TEST("Restored count", restored.GetTotalCount() == 2);
+
+        auto* r1 = restored.GetAchievement("first_blood");
+        TEST("R1 exists", r1 != nullptr);
+        if (r1) {
+            TEST("R1 name", r1->name == "First Blood");
+            TEST("R1 description", r1->description == "Destroy first enemy");
+            TEST("R1 category", r1->category == AchievementCategory::Combat);
+            TEST("R1 rewardXP", r1->rewardXP == 50);
+            TEST("R1 rewardCredits", r1->rewardCredits == 100);
+            TEST("R1 unlocked", r1->unlocked);
+            TEST("R1 timestamp", ApproxEq(static_cast<float>(r1->unlockTimestamp), 1234567.0f));
+            TEST("R1 criteria count", r1->criteria.size() == 1);
+            TEST("R1 criterion event", r1->criteria[0].eventType == "entity.destroyed");
+            TEST("R1 criterion required", r1->criteria[0].requiredCount == 1);
+            TEST("R1 criterion current", r1->criteria[0].currentCount == 1);
+        }
+
+        auto* r2 = restored.GetAchievement("explorer");
+        TEST("R2 exists", r2 != nullptr);
+        if (r2) {
+            TEST("R2 not unlocked", !r2->unlocked);
+            TEST("R2 criteria count", r2->criteria.size() == 2);
+            TEST("R2 c1 current", r2->criteria[0].currentCount == 3);
+            TEST("R2 c2 current", r2->criteria[1].currentCount == 20);
+        }
+    }
+
+    // Empty component round-trip
+    {
+        AchievementComponent empty;
+        ComponentData data = empty.Serialize();
+        AchievementComponent restored;
+        restored.Deserialize(data);
+        TEST("Empty round-trip", restored.GetTotalCount() == 0);
+    }
+}
+
+static void TestAchievementSystem() {
+    std::cout << "[AchievementSystem]\n";
+
+    AchievementSystem sys;
+    TEST("System name", sys.GetName() == "AchievementSystem");
+
+    // Register achievements
+    {
+        sys.RegisterAchievement(AchievementSystem::CreateFirstBlood());
+        sys.RegisterAchievement(AchievementSystem::CreateExplorer());
+        sys.RegisterAchievement(AchievementSystem::CreateShipwright());
+        TEST("Registered 3", sys.GetRegisteredCount() == 3);
+        TEST("Has first_blood", sys.HasAchievement("first_blood"));
+        TEST("Has explorer", sys.HasAchievement("explorer"));
+        TEST("No nonexistent", !sys.HasAchievement("nonexistent"));
+    }
+
+    // Get achievement
+    {
+        const auto* a = sys.GetAchievement("first_blood");
+        TEST("Get first_blood", a != nullptr);
+        TEST("First blood name", a && a->name == "First Blood");
+        TEST("Get non-existent null", sys.GetAchievement("nope") == nullptr);
+    }
+
+    // Record progress
+    {
+        bool complete = sys.RecordProgress("first_blood", "entity.destroyed", 1);
+        TEST("First blood completed", complete);
+        auto unlocked = sys.GetUnlockedIds();
+        bool found = false;
+        for (const auto& id : unlocked)
+            if (id == "first_blood") found = true;
+        TEST("First blood in unlocked list", found);
+    }
+
+    // Record on already unlocked
+    {
+        bool result = sys.RecordProgress("first_blood", "entity.destroyed", 1);
+        TEST("Already unlocked returns false", !result);
+    }
+
+    // Record on non-existent
+    {
+        bool result = sys.RecordProgress("nonexistent", "e", 1);
+        TEST("Non-existent returns false", !result);
+    }
+
+    // Get all achievements
+    {
+        auto all = sys.GetAllAchievements();
+        TEST("GetAll returns 3", all.size() == 3);
+    }
+
+    // Lifecycle
+    sys.Initialize();
+    sys.Update(0.016f);
+    sys.Shutdown();
+    TEST("System lifecycle ok", sys.GetRegisteredCount() == 0);
+}
+
+static void TestAchievementTemplates() {
+    std::cout << "[AchievementTemplates]\n";
+
+    auto firstBlood = AchievementSystem::CreateFirstBlood();
+    TEST("First blood id", firstBlood.id == "first_blood");
+    TEST("First blood category", firstBlood.category == AchievementCategory::Combat);
+    TEST("First blood has criteria", !firstBlood.criteria.empty());
+    TEST("First blood not complete", !firstBlood.IsComplete());
+
+    auto explorer = AchievementSystem::CreateExplorer();
+    TEST("Explorer id", explorer.id == "explorer");
+    TEST("Explorer category", explorer.category == AchievementCategory::Exploration);
+
+    auto shipwright = AchievementSystem::CreateShipwright();
+    TEST("Shipwright id", shipwright.id == "shipwright");
+    TEST("Shipwright category", shipwright.category == AchievementCategory::Building);
+
+    auto trader = AchievementSystem::CreateTrader();
+    TEST("Trader id", trader.id == "trader");
+    TEST("Trader category", trader.category == AchievementCategory::Trading);
+
+    auto veteran = AchievementSystem::CreateVeteran();
+    TEST("Veteran id", veteran.id == "veteran");
+    TEST("Veteran category", veteran.category == AchievementCategory::Progression);
+
+    auto miner = AchievementSystem::CreateMiner();
+    TEST("Miner id", miner.id == "miner");
+    TEST("Miner has criteria", !miner.criteria.empty());
+
+    auto fleet = AchievementSystem::CreateFleetCommander();
+    TEST("Fleet commander id", fleet.id == "fleet_commander");
+    TEST("Fleet category", fleet.category == AchievementCategory::Social);
+
+    auto rich = AchievementSystem::CreateRichPilot();
+    TEST("Rich pilot id", rich.id == "rich_pilot");
+    TEST("Rich pilot 0 credit reward", rich.rewardCredits == 0);
+}
+
+static void TestAchievementGameEvents() {
+    std::cout << "[AchievementGameEvents]\n";
+
+    TEST("AchievementUnlocked event", std::string(GameEvents::AchievementUnlocked) == "achievement.unlocked");
+    TEST("AchievementProgress event", std::string(GameEvents::AchievementProgress) == "achievement.progress");
+    TEST("ParticleEmitted event", std::string(GameEvents::ParticleEmitted) == "particle.emitted");
+    TEST("ParticleBurst event", std::string(GameEvents::ParticleBurst) == "particle.burst");
+    TEST("EmitterStarted event", std::string(GameEvents::EmitterStarted) == "particle.emitter.started");
+    TEST("EmitterStopped event", std::string(GameEvents::EmitterStopped) == "particle.emitter.stopped");
+}
+
+// ===================================================================
 // Engine tests
 // ===================================================================
 
@@ -5549,6 +6403,20 @@ int main() {
     TestQuestGenerator();
     TestQuestGeneratorDifficulty();
     TestQuestGeneratorIntegration();
+    TestParticle();
+    TestParticleEmitterConfig();
+    TestParticleEmitter();
+    TestParticleEmitterShapes();
+    TestParticleComponent();
+    TestParticlePresets();
+    TestParticleSystem();
+    TestAchievementCriterion();
+    TestAchievement();
+    TestAchievementComponent();
+    TestAchievementComponentSerialization();
+    TestAchievementSystem();
+    TestAchievementTemplates();
+    TestAchievementGameEvents();
     TestEngine();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "

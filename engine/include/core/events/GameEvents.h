@@ -110,6 +110,16 @@ namespace GameEvents {
     constexpr const char* MusicStarted    = "audio.music.started";
     constexpr const char* MusicStopped    = "audio.music.stopped";
     constexpr const char* MusicTrackChanged = "audio.music.track_changed";
+
+    // Particle events
+    constexpr const char* ParticleEmitted  = "particle.emitted";
+    constexpr const char* ParticleBurst    = "particle.burst";
+    constexpr const char* EmitterStarted   = "particle.emitter.started";
+    constexpr const char* EmitterStopped   = "particle.emitter.stopped";
+
+    // Achievement events
+    constexpr const char* AchievementUnlocked  = "achievement.unlocked";
+    constexpr const char* AchievementProgress  = "achievement.progress";
 } // namespace GameEvents
 
 } // namespace subspace
