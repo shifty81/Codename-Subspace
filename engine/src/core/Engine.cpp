@@ -12,6 +12,8 @@
 #include "power/PowerSystem.h"
 #include "ai/AIDecisionSystem.h"
 #include "mining/MiningSystem.h"
+#include "rendering/ParticleSystem.h"
+#include "achievement/AchievementSystem.h"
 #include "ui/UISystem.h"
 
 #include <algorithm>
@@ -194,6 +196,8 @@ void Engine::RegisterSystems()
     _entityManager.RegisterSystem(std::make_unique<MiningSystem>());
     _entityManager.RegisterSystem(std::make_unique<QuestSystem>());
     _entityManager.RegisterSystem(std::make_unique<TutorialSystem>());
+    _entityManager.RegisterSystem(std::make_unique<ParticleSystem>());
+    _entityManager.RegisterSystem(std::make_unique<AchievementSystem>());
 
     auto uiSystemPtr = std::make_unique<UISystem>();
     _uiSystem = uiSystemPtr.get();

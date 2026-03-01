@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **C++ Engine: Particle System** — New `ParticleSystem`, `ParticleEmitter`, `ParticleComponent`, and `Particle` classes provide configurable emitters (Point, Sphere, Cone, Box shapes), color interpolation, gravity, deterministic seeding, and 5 built-in effect presets (Explosion, Engine Thrust, Shield Hit, Mining, Hyperdrive) (2026-03-01)
+- **C++ Engine: Achievement System** — New `AchievementSystem`, `AchievementComponent`, and `Achievement` classes provide event-driven criteria tracking, category filtering, progress reporting, save-game serialization, and 8 template achievements (First Blood, Explorer, Shipwright, Trader, Veteran, Miner, Fleet Commander, Rich Pilot) (2026-03-01)
+- **C++ Engine: Particle & Achievement events** — `GameEvents` namespace now includes `ParticleEmitted`, `ParticleBurst`, `EmitterStarted`, `EmitterStopped`, `AchievementUnlocked`, and `AchievementProgress` event constants (2026-03-01)
+- **C++ Engine: 170 new unit tests** for ParticleSystem, ParticleEmitter, ParticleComponent, effect presets, AchievementSystem, AchievementComponent serialization, and templates (1393 → 1563 total tests)
 - **C++ Engine: Audio System** — New `AudioSystem`, `AudioComponent`, `AudioClip`, `AudioSource`, and `MusicPlaylist` classes provide clip management, 2D/3D sound playback, fade in/out, music playlists, volume mixing via `AudioSettings`, and save-game serialization (2026-03-01)
 - **C++ Engine: Dynamic Quest Generation** — New `QuestGenerator` class creates procedural quests scaled by player level and sector security, with deterministic seeding and batch generation (2026-03-01)
 - **C++ Engine: Audio events** — `GameEvents` namespace now includes `SoundPlayed`, `SoundStopped`, `MusicStarted`, `MusicStopped`, and `MusicTrackChanged` event constants (2026-03-01)
@@ -359,5 +363,6 @@ See [NEXT_STEPS.md](NEXT_STEPS.md) for detailed development roadmap and prioriti
 - **Performance Optimizations** - Spatial partitioning, collision layers, multi-threading
 - **Network Enhancements** - Client prediction, lag compensation, better synchronization
 - **Tutorial System** - Interactive tutorials, tooltips, help system
-- **Achievement System** - Milestones, rewards, progression tracking
-- **Audio System** - Sound effects, music, 3D spatial audio
+- ~~**Achievement System**~~ ✅ Milestones, rewards, progression tracking (implemented)
+- ~~**Audio System**~~ ✅ Sound effects, music, 3D spatial audio (framework implemented)
+- ~~**Particle System**~~ ✅ Visual effects for explosions, engines, shields (implemented)
