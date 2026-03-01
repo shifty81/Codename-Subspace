@@ -171,7 +171,6 @@ void AudioComponent::Deserialize(const ComponentData& data) {
 std::string MusicPlaylist::CurrentTrackId() const {
     if (trackIds.empty()) return "";
     int idx = currentIndex % static_cast<int>(trackIds.size());
-    if (idx < 0) idx = 0;
     return trackIds[static_cast<size_t>(idx)];
 }
 

@@ -20,7 +20,7 @@ namespace subspace {
 
 enum class AudioCategory { SFX, Music, Voice, Ambient, UI };
 
-/// Describes a loaded audio clip (metadata only – actual PCM data is
+/// Describes a loaded audio clip (metadata only -- actual PCM data is
 /// handled by the platform audio backend which is not yet integrated).
 struct AudioClip {
     std::string id;

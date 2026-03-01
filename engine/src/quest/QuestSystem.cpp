@@ -392,7 +392,7 @@ size_t QuestSystem::GetTemplateCount() const {
 // ---------------------------------------------------------------------------
 
 void QuestGenerator::SetSeed(unsigned int seed) {
-    _seed = (seed == 0) ? 12345 : seed;
+    _seed = (seed == 0) ? kDefaultSeed : seed;
 }
 
 unsigned int QuestGenerator::NextRandom() {
@@ -457,8 +457,9 @@ Quest QuestGenerator::Generate(int playerLevel, int sectorSecurityLevel) {
                     std::to_string(sectorSecurityLevel) + " space.";
 
     // Difficulty scales with player level and inversely with security
-    int diffIdx = std::min(playerLevel / 5, 4);
-    if (sectorSecurityLevel < 3) diffIdx = std::min(diffIdx + 1, 4);
+    int diffIdx = std::min(playerLevel / kLevelsPerDifficultyTier, kMaxDifficultyIndex);
+    if (sectorSecurityLevel < kLowSecurityThreshold)
+        diffIdx = std::min(diffIdx + 1, kMaxDifficultyIndex);
     q.difficulty = static_cast<QuestDifficulty>(diffIdx);
 
     q.canAbandon  = true;
@@ -466,7 +467,7 @@ Quest QuestGenerator::Generate(int playerLevel, int sectorSecurityLevel) {
 
     // 1-3 objectives based on difficulty
     int objCount = 1 + static_cast<int>(q.difficulty);
-    if (objCount > 3) objCount = 3;
+    if (objCount > kMaxObjectivesPerQuest) objCount = kMaxObjectivesPerQuest;
 
     for (int i = 0; i < objCount; ++i) {
         QuestObjective obj;

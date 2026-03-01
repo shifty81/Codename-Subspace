@@ -192,7 +192,13 @@ private:
     int RandomRange(int lo, int hi);
     float RandomFloat();
 
-    unsigned int _seed = 12345;
+    static constexpr unsigned int kDefaultSeed = 12345;
+    static constexpr int kLevelsPerDifficultyTier = 5;
+    static constexpr int kMaxDifficultyIndex = 4;
+    static constexpr int kMaxObjectivesPerQuest = 3;
+    static constexpr int kLowSecurityThreshold = 3;
+
+    unsigned int _seed = kDefaultSeed;
     int _generatedCount = 0;
 };
 
