@@ -103,6 +103,13 @@ namespace GameEvents {
     constexpr const char* SectorEntered   = "sector.entered";
     constexpr const char* SectorExited    = "sector.exited";
     constexpr const char* SectorGenerated = "sector.generated";
+
+    // Audio events
+    constexpr const char* SoundPlayed     = "audio.sound.played";
+    constexpr const char* SoundStopped    = "audio.sound.stopped";
+    constexpr const char* MusicStarted    = "audio.music.started";
+    constexpr const char* MusicStopped    = "audio.music.stopped";
+    constexpr const char* MusicTrackChanged = "audio.music.track_changed";
 } // namespace GameEvents
 
 } // namespace subspace

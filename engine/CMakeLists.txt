@@ -53,6 +53,7 @@ endif()
 # Collect source files from every src/ subdirectory
 # ---------------------------------------------------------------------------
 file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/audio/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/ai/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/combat/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/core/*.cpp"

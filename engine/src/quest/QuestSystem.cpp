@@ -387,4 +387,153 @@ size_t QuestSystem::GetTemplateCount() const {
     return _questTemplates.size();
 }
 
+// ---------------------------------------------------------------------------
+// QuestGenerator
+// ---------------------------------------------------------------------------
+
+void QuestGenerator::SetSeed(unsigned int seed) {
+    _seed = (seed == 0) ? kDefaultSeed : seed;
+}
+
+unsigned int QuestGenerator::NextRandom() {
+    // Simple LCG (same family as glibc's)
+    _seed = _seed * 1103515245u + 12345u;
+    return (_seed >> 16) & 0x7FFF;
+}
+
+int QuestGenerator::RandomRange(int lo, int hi) {
+    if (lo >= hi) return lo;
+    return lo + static_cast<int>(NextRandom() % static_cast<unsigned int>(hi - lo + 1));
+}
+
+float QuestGenerator::RandomFloat() {
+    return static_cast<float>(NextRandom()) / 32767.0f;
+}
+
+// Tables used by the generator ------------------------------------------------
+
+static const char* const kQuestTitlePrefixes[] = {
+    "Eliminate", "Collect", "Mine", "Deliver", "Explore",
+    "Scan", "Escort", "Build", "Trade", "Investigate"
+};
+static constexpr int kPrefixCount = 10;
+
+static const char* const kQuestTitleTargets[] = {
+    "Pirate Raiders", "Rare Minerals", "Ancient Artifacts",
+    "Cargo Shipment", "Unknown Sector", "Signal Source",
+    "Merchant Convoy", "Defense Platform", "Trade Goods", "Anomaly"
+};
+static constexpr int kTargetCount = 10;
+
+static const ObjectiveType kObjectivePool[] = {
+    ObjectiveType::Destroy, ObjectiveType::Collect, ObjectiveType::Mine,
+    ObjectiveType::Visit,   ObjectiveType::Trade,   ObjectiveType::Build,
+    ObjectiveType::Escort,  ObjectiveType::Scan,    ObjectiveType::Deliver,
+    ObjectiveType::Talk
+};
+static constexpr int kObjectivePoolSize = 10;
+
+static const char* const kObjectiveTargets[] = {
+    "pirate_ship", "iron_ore", "titanium_ore", "naonite_crystal",
+    "trinium_chunk", "cargo_crate", "station_alpha", "sector_7",
+    "merchant_vessel", "signal_beacon"
+};
+static constexpr int kObjTargetCount = 10;
+
+Quest QuestGenerator::Generate(int playerLevel, int sectorSecurityLevel) {
+    Quest q;
+
+    // Unique id
+    q.id = "gen_quest_" + std::to_string(++_generatedCount);
+
+    // Title
+    int prefixIdx = RandomRange(0, kPrefixCount - 1);
+    int targetIdx = RandomRange(0, kTargetCount - 1);
+    q.title = std::string(kQuestTitlePrefixes[prefixIdx]) + " " +
+              kQuestTitleTargets[targetIdx];
+
+    q.description = "Dynamically generated quest for level " +
+                    std::to_string(playerLevel) + " in security " +
+                    std::to_string(sectorSecurityLevel) + " space.";
+
+    // Difficulty scales with player level and inversely with security
+    int diffIdx = std::min(playerLevel / kLevelsPerDifficultyTier, kMaxDifficultyIndex);
+    if (sectorSecurityLevel < kLowSecurityThreshold)
+        diffIdx = std::min(diffIdx + 1, kMaxDifficultyIndex);
+    q.difficulty = static_cast<QuestDifficulty>(diffIdx);
+
+    q.canAbandon  = true;
+    q.isRepeatable = false;
+
+    // 1-3 objectives based on difficulty
+    int objCount = 1 + static_cast<int>(q.difficulty);
+    if (objCount > kMaxObjectivesPerQuest) objCount = kMaxObjectivesPerQuest;
+
+    for (int i = 0; i < objCount; ++i) {
+        QuestObjective obj;
+        obj.id = q.id + "_obj_" + std::to_string(i);
+
+        int typeIdx = RandomRange(0, kObjectivePoolSize - 1);
+        obj.type = kObjectivePool[typeIdx];
+
+        int tgtIdx = RandomRange(0, kObjTargetCount - 1);
+        obj.target = kObjectiveTargets[tgtIdx];
+
+        // Quantity scales with level
+        int baseQty = 1 + playerLevel / 3;
+        obj.requiredQuantity = RandomRange(baseQty, baseQty + 3);
+        obj.description = "Objective " + std::to_string(i + 1) + " of " +
+                          q.title;
+
+        // Last objective may be optional on higher difficulties
+        if (i == objCount - 1 && static_cast<int>(q.difficulty) >= 2) {
+            obj.isOptional = RandomFloat() > 0.5f;
+        }
+
+        q.objectives.push_back(std::move(obj));
+    }
+
+    // Rewards scale with difficulty and level
+    int rewardMultiplier = 1 + static_cast<int>(q.difficulty);
+    {
+        QuestReward r;
+        r.type = RewardType::Credits;
+        r.amount = rewardMultiplier * (100 + playerLevel * 25);
+        r.description = "Credit reward";
+        q.rewards.push_back(r);
+    }
+    {
+        QuestReward r;
+        r.type = RewardType::Experience;
+        r.amount = rewardMultiplier * (50 + playerLevel * 10);
+        r.description = "Experience reward";
+        q.rewards.push_back(r);
+    }
+
+    // Higher-difficulty quests may also grant reputation
+    if (static_cast<int>(q.difficulty) >= 2) {
+        QuestReward r;
+        r.type = RewardType::Reputation;
+        r.amount = rewardMultiplier * 5;
+        r.description = "Reputation reward";
+        q.rewards.push_back(r);
+    }
+
+    return q;
+}
+
+std::vector<Quest> QuestGenerator::GenerateBatch(int count, int playerLevel,
+                                                  int sectorSecurityLevel) {
+    std::vector<Quest> out;
+    out.reserve(static_cast<size_t>(count));
+    for (int i = 0; i < count; ++i) {
+        out.push_back(Generate(playerLevel, sectorSecurityLevel));
+    }
+    return out;
+}
+
+int QuestGenerator::GetGeneratedCount() const {
+    return _generatedCount;
+}
+
 } // namespace subspace

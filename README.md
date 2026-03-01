@@ -10,7 +10,7 @@ An Avorion-inspired space exploration and combat game engine, actively transitio
 
 > **✨ LATEST (Feb 2026):**
 > - 🔧 **C++ MODULAR SHIP SYSTEM** — Hardpoint-based module assembly with 12 module types, 5 ship archetypes, and faction-aware procedural generation ✨ **NEW!**
-> - 🧪 **1158 unit tests** passing across all C++ engine systems
+> - 🧪 **1393 unit tests** passing across all C++ engine systems
 > - 📁 **Repository restructured** — docs, scripts, and assets organized into dedicated directories
 > - 🚀 **MODULAR SHIP SYSTEM** — Ships built from pre-defined modular parts with hardpoint attachment
 > - 🔨 **BLOCK-BASED CONSTRUCTION** — Voxel system for ship building, damage visualization, and mining
@@ -24,7 +24,7 @@ Codename-Subspace/
 ├── engine/              # C++ engine (primary development focus)
 │   ├── include/         #   Public headers (ships, rendering, factions, weapons, AI, networking)
 │   ├── src/             #   Implementations
-│   ├── tests/           #   1158 unit tests
+│   ├── tests/           #   1393 unit tests
 │   ├── data/            #   JSON faction definitions
 │   └── CMakeLists.txt   #   CMake build configuration
 ├── AvorionLike/         # C# prototype (playable reference)
@@ -51,7 +51,7 @@ cd engine
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 
-# Run tests (1158 tests)
+# Run tests (1393 tests)
 ./build/subspace_tests
 
 # Run the game
