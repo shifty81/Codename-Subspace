@@ -380,12 +380,14 @@ Based on impact and dependencies:
 | **Audio System** | 20% | ⚠️ Engine framework done, needs platform backend |
 | **Achievement System** | 100% | ✅ Complete (system, criteria, serialization, templates) |
 | **Particle System** | 100% | ✅ Complete (emitters, presets, component integration) |
+| **Voxel Damage System** | 100% | ✅ Complete (splash, penetrating, repair, structural integrity, fragmentation) |
+| **Spatial Partitioning** | 100% | ✅ Complete (SpatialHash + Octree, queries, nearest-neighbor) |
 | **Steam Integration** | 0% | ❌ Not started |
 | **Content (ships, weapons)** | 60% | ⚠️ Expansion needed |
 | **Polish & QoL** | 40% | ⚠️ Ongoing |
 | **Documentation** | 95% | ⚠️ Updates needed |
 | | | |
-| **OVERALL** | **~91%** | **✅ Playable with particle effects and achievement tracking!** |
+| **OVERALL** | **~92%** | **✅ Playable with voxel damage, spatial partitioning, and all core systems!** |
 
 ---
 

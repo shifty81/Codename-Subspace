@@ -9,9 +9,11 @@ An Avorion-inspired space exploration and combat game engine, actively transitio
 > **📂 Documentation:** Reorganized into [`docs/`](docs/) — guides, architecture, implementation notes
 
 > **✨ LATEST (Mar 2026):**
-> - 🎆 **C++ PARTICLE SYSTEM** — Configurable emitters with 5 effect presets (Explosion, Engine Thrust, Shield Hit, Mining, Hyperdrive) ✨ **NEW!**
-> - 🏆 **C++ ACHIEVEMENT SYSTEM** — Event-driven milestones with criteria tracking, serialization, and 8 template achievements ✨ **NEW!**
-> - 🧪 **1563 unit tests** passing across all C++ engine systems
+> - 💥 **C++ VOXEL DAMAGE SYSTEM** — Splash/penetrating damage, structural integrity (BFS flood-fill), repair mechanics, fragment separation ✨ **NEW!**
+> - 🌳 **C++ OCTREE SPATIAL PARTITIONING** — Hierarchical spatial indexing with sphere/box/nearest-neighbor queries ✨ **NEW!**
+> - 🎆 **C++ PARTICLE SYSTEM** — Configurable emitters with 5 effect presets (Explosion, Engine Thrust, Shield Hit, Mining, Hyperdrive)
+> - 🏆 **C++ ACHIEVEMENT SYSTEM** — Event-driven milestones with criteria tracking, serialization, and 8 template achievements
+> - 🧪 **1694 unit tests** passing across all C++ engine systems
 > - 📁 **Repository restructured** — docs, scripts, and assets organized into dedicated directories
 > - 🔧 **C++ MODULAR SHIP SYSTEM** — Hardpoint-based module assembly with 12 module types, 5 ship archetypes, and faction-aware procedural generation
 > - 🚀 **MODULAR SHIP SYSTEM** — Ships built from pre-defined modular parts with hardpoint attachment
@@ -76,6 +78,8 @@ cmake --build build
 | Networking | ✅ Complete | Deterministic build commands for multiplayer replication |
 | **Particle System** | ✅ **New** | **Configurable emitters, 4 shapes, 5 effect presets, gravity, color interpolation** |
 | **Achievement System** | ✅ **New** | **Event-driven criteria tracking, save-game persistence, 8 template achievements** |
+| **Voxel Damage System** | ✅ **New** | **Splash/penetrating damage, structural integrity (BFS), repair, fragmentation** |
+| **Octree Spatial Partitioning** | ✅ **New** | **Hierarchical spatial indexing, sphere/box/nearest queries, subdivision** |
 
 ## 🎮 C# Prototype
 
