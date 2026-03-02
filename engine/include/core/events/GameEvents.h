@@ -67,6 +67,18 @@ namespace GameEvents {
     constexpr const char* VoxelBlockAdded  = "ship.block.added";
     constexpr const char* VoxelBlockRemoved= "ship.block.removed";
 
+    // Voxel damage events
+    constexpr const char* BlockDamaged             = "ship.block.damaged";
+    constexpr const char* BlockDestroyed           = "ship.block.destroyed";
+    constexpr const char* BlockRepaired            = "ship.block.repaired";
+    constexpr const char* SplashDamageApplied      = "ship.splash.damage";
+    constexpr const char* PenetratingDamageApplied = "ship.penetrating.damage";
+
+    // Structural integrity events
+    constexpr const char* StructuralCheck   = "ship.structural.check";
+    constexpr const char* ShipFragmented    = "ship.fragmented";
+    constexpr const char* IntegrityRestored = "ship.integrity.restored";
+
     // Physics events
     constexpr const char* CollisionDetected = "physics.collision";
     constexpr const char* EntityCollision   = "physics.entity.collision";
