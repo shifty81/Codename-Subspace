@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **C++ Engine: Voxel Damage & Structural Integrity System** — Expanded `ShipDamage` with area/splash damage (Manhattan distance fall-off), directional penetrating damage (0.7× per block), repair mechanics (single-block and budget-distributed), structural integrity checking via BFS flood-fill (`StructuralIntegrity`), fragment separation, and damage queries. New `DamageComponent` ECS component with damage history, modifiers, invulnerability, and save-game serialization (2026-03-02)
+- **C++ Engine: Octree Spatial Partitioning** — New `Octree` class with `AABB` bounds provides hierarchical spatial indexing for 3D entities with insert/remove, sphere query, box query, nearest-neighbor, K-nearest, subdivision (8 octants), max-depth limiting, and tree rebuild. Complements existing `SpatialHash` for non-uniform entity distributions and LOD queries (2026-03-02)
+- **C++ Engine: Voxel Damage & Spatial events** — `GameEvents` namespace now includes `BlockDamaged`, `BlockDestroyed`, `BlockRepaired`, `SplashDamageApplied`, `PenetratingDamageApplied`, `StructuralCheck`, `ShipFragmented`, `IntegrityRestored`, `OctreeRebuilt`, and `SpatialQueryPerformed` event constants (2026-03-02)
+- **C++ Engine: 131 new unit tests** for StructuralIntegrity, ShipDamage (splash, penetrating, repair, fragments), DamageComponent serialization, AABB, Octree (insert, remove, queries, subdivision, rebuild), and event constants (1563 → 1694 total tests)
 - **C++ Engine: Particle System** — New `ParticleSystem`, `ParticleEmitter`, `ParticleComponent`, and `Particle` classes provide configurable emitters (Point, Sphere, Cone, Box shapes), color interpolation, gravity, deterministic seeding, and 5 built-in effect presets (Explosion, Engine Thrust, Shield Hit, Mining, Hyperdrive) (2026-03-01)
 - **C++ Engine: Achievement System** — New `AchievementSystem`, `AchievementComponent`, and `Achievement` classes provide event-driven criteria tracking, category filtering, progress reporting, save-game serialization, and 8 template achievements (First Blood, Explorer, Shipwright, Trader, Veteran, Miner, Fleet Commander, Rich Pilot) (2026-03-01)
 - **C++ Engine: Particle & Achievement events** — `GameEvents` namespace now includes `ParticleEmitted`, `ParticleBurst`, `EmitterStarted`, `EmitterStopped`, `AchievementUnlocked`, and `AchievementProgress` event constants (2026-03-01)
@@ -357,10 +361,10 @@ See [NEXT_STEPS.md](NEXT_STEPS.md) for detailed development roadmap and prioriti
 
 ### Planned Features
 - **AI System** - NPC behaviors, pathfinding, decision making
-- **Voxel Damage** - Destructible blocks, structural integrity, damage effects
+- ~~**Voxel Damage**~~ ✅ Destructible blocks, structural integrity, splash/penetrating damage, repair (implemented)
 - **Advanced Combat** - Weapon variety, ammunition, targeting systems
 - **Enhanced Procedural Generation** - Unique sectors, special events, anomalies
-- **Performance Optimizations** - Spatial partitioning, collision layers, multi-threading
+- ~~**Performance Optimizations**~~ ✅ Spatial partitioning (SpatialHash + Octree), collision queries (implemented)
 - **Network Enhancements** - Client prediction, lag compensation, better synchronization
 - **Tutorial System** - Interactive tutorials, tooltips, help system
 - ~~**Achievement System**~~ ✅ Milestones, rewards, progression tracking (implemented)

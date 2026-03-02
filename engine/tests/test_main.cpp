@@ -59,6 +59,9 @@
 #include "audio/AudioSystem.h"
 #include "rendering/ParticleSystem.h"
 #include "achievement/AchievementSystem.h"
+#include "ships/StructuralIntegrity.h"
+#include "ships/DamageComponent.h"
+#include "core/physics/Octree.h"
 #include "core/Engine.h"
 
 using namespace subspace;
@@ -6086,6 +6089,585 @@ static void TestAchievementGameEvents() {
 }
 
 // ===================================================================
+// StructuralIntegrity tests
+// ===================================================================
+
+static void TestStructuralIntegrityConnected() {
+    std::cout << "\n--- StructuralIntegrity (Connected) ---\n";
+    Ship ship;
+
+    // Empty ship is trivially connected
+    TEST("Empty ship is connected", StructuralIntegrity::IsFullyConnected(ship));
+
+    // Single block
+    BlockPlacement::Place(ship, MakeBlock({0,0,0}, {1,1,1}));
+    TEST("Single block is connected", StructuralIntegrity::IsFullyConnected(ship));
+
+    // Linear chain of 3 blocks
+    BlockPlacement::Place(ship, MakeBlock({1,0,0}, {1,1,1}));
+    BlockPlacement::Place(ship, MakeBlock({2,0,0}, {1,1,1}));
+    TEST("3-block line is connected", StructuralIntegrity::IsFullyConnected(ship));
+
+    // L-shape still connected
+    BlockPlacement::Place(ship, MakeBlock({2,1,0}, {1,1,1}));
+    TEST("L-shape is connected", StructuralIntegrity::IsFullyConnected(ship));
+
+    auto groups = StructuralIntegrity::FindDisconnectedGroups(ship);
+    TEST("L-shape has 1 group", groups.size() == 1);
+    TEST("L-shape group has 4 blocks", groups[0].size() == 4);
+}
+
+static void TestStructuralIntegrityDisconnected() {
+    std::cout << "\n--- StructuralIntegrity (Disconnected) ---\n";
+    Ship ship;
+
+    // Build two separate clusters manually
+    // Cluster A: blocks at (0,0,0) and (1,0,0)
+    auto blockA1 = MakeBlock({0,0,0}, {1,1,1});
+    auto blockA2 = MakeBlock({1,0,0}, {1,1,1});
+    // Cluster B: blocks at (5,5,5) and (6,5,5) -- placed without adjacency check
+    auto blockB1 = MakeBlock({5,5,5}, {1,1,1});
+    auto blockB2 = MakeBlock({6,5,5}, {1,1,1});
+
+    // Manually add blocks (bypass adjacency validation to create disconnected state)
+    ship.blocks.push_back(blockA1);
+    for (auto& c : BlockPlacement::GetOccupiedCells(*blockA1)) ship.occupiedCells[c] = blockA1;
+    ship.blocks.push_back(blockA2);
+    for (auto& c : BlockPlacement::GetOccupiedCells(*blockA2)) ship.occupiedCells[c] = blockA2;
+    ship.blocks.push_back(blockB1);
+    for (auto& c : BlockPlacement::GetOccupiedCells(*blockB1)) ship.occupiedCells[c] = blockB1;
+    ship.blocks.push_back(blockB2);
+    for (auto& c : BlockPlacement::GetOccupiedCells(*blockB2)) ship.occupiedCells[c] = blockB2;
+    ShipStats::Recalculate(ship);
+
+    TEST("Disconnected ship not fully connected", !StructuralIntegrity::IsFullyConnected(ship));
+
+    auto groups = StructuralIntegrity::FindDisconnectedGroups(ship);
+    TEST("Disconnected ship has 2 groups", groups.size() == 2);
+    TEST("Largest group has 2 blocks", groups[0].size() == 2);
+    TEST("Smallest group has 2 blocks", groups[1].size() == 2);
+}
+
+static void TestStructuralIntegrityWouldDisconnect() {
+    std::cout << "\n--- StructuralIntegrity (WouldDisconnect) ---\n";
+    Ship ship;
+
+    // Build a chain: A - B - C
+    auto a = MakeBlock({0,0,0}, {1,1,1});
+    auto b = MakeBlock({1,0,0}, {1,1,1});
+    auto c = MakeBlock({2,0,0}, {1,1,1});
+    BlockPlacement::Place(ship, a);
+    BlockPlacement::Place(ship, b);
+    BlockPlacement::Place(ship, c);
+
+    TEST("Removing middle block would disconnect", StructuralIntegrity::WouldDisconnect(ship, b));
+    TEST("Removing end block A would not disconnect", !StructuralIntegrity::WouldDisconnect(ship, a));
+    TEST("Removing end block C would not disconnect", !StructuralIntegrity::WouldDisconnect(ship, c));
+    TEST("Null block returns false", !StructuralIntegrity::WouldDisconnect(ship, nullptr));
+}
+
+static void TestStructuralIntegrityMultiCell() {
+    std::cout << "\n--- StructuralIntegrity (MultiCell) ---\n";
+    Ship ship;
+
+    // A 2x1x1 block followed by a 1x1x1 block
+    auto big = MakeBlock({0,0,0}, {2,1,1});
+    auto small = MakeBlock({2,0,0}, {1,1,1});
+    BlockPlacement::Place(ship, big);
+    BlockPlacement::Place(ship, small);
+
+    TEST("Multi-cell ship is connected", StructuralIntegrity::IsFullyConnected(ship));
+
+    auto groups = StructuralIntegrity::FindDisconnectedGroups(ship);
+    TEST("Multi-cell ship has 1 group", groups.size() == 1);
+    TEST("Multi-cell group has 2 blocks", groups[0].size() == 2);
+
+    // Removing the big block should not leave the small disconnected
+    // (it would be alone but still connected to itself)
+    TEST("Small block alone would not disconnect", !StructuralIntegrity::WouldDisconnect(ship, small));
+}
+
+// ===================================================================
+// Expanded ShipDamage tests
+// ===================================================================
+
+static void TestSplashDamage() {
+    std::cout << "\n--- ShipDamage (Splash) ---\n";
+    Ship ship;
+
+    // Create a cross pattern: center + 4 cardinal directions
+    auto center = MakeBlock({0,0,0}, {1,1,1});
+    auto right  = MakeBlock({1,0,0}, {1,1,1});
+    auto left   = MakeBlock({-1,0,0}, {1,1,1});
+    auto up     = MakeBlock({0,1,0}, {1,1,1});
+    auto down   = MakeBlock({0,-1,0}, {1,1,1});
+    BlockPlacement::Place(ship, center);
+    BlockPlacement::Place(ship, right);
+    BlockPlacement::Place(ship, left);
+    BlockPlacement::Place(ship, up);
+    BlockPlacement::Place(ship, down);
+
+    float origHP = center->currentHP;
+
+    // Splash from center with radius 1
+    int hit = ShipDamage::ApplySplashDamage(ship, {0,0,0}, 10.0f, 1);
+    TEST("Splash hits 5 blocks", hit == 5);
+    TEST("Center block took full damage", center->currentHP < origHP);
+    TEST("Neighbor took reduced damage", right->currentHP < origHP);
+
+    // Splash with radius 0 only hits center
+    Ship ship2;
+    auto only = MakeBlock({0,0,0}, {1,1,1});
+    BlockPlacement::Place(ship2, only);
+    int hit2 = ShipDamage::ApplySplashDamage(ship2, {0,0,0}, 5.0f, 0);
+    TEST("Radius 0 splash hits 1 block", hit2 == 1);
+
+    // Splash far from blocks hits nothing
+    Ship ship3;
+    BlockPlacement::Place(ship3, MakeBlock({0,0,0}, {1,1,1}));
+    int hit3 = ShipDamage::ApplySplashDamage(ship3, {100,100,100}, 10.0f, 1);
+    TEST("Splash far away hits 0 blocks", hit3 == 0);
+}
+
+static void TestPenetratingDamage() {
+    std::cout << "\n--- ShipDamage (Penetrating) ---\n";
+    Ship ship;
+
+    // 5-block line along X axis
+    for (int i = 0; i < 5; ++i) {
+        BlockPlacement::Place(ship, MakeBlock({i,0,0}, {1,1,1}));
+    }
+
+    float origHP = ship.blocks[0]->currentHP;
+    int hit = ShipDamage::ApplyPenetratingDamage(ship, {0,0,0}, {1,0,0}, 30.0f, 5);
+    TEST("Penetrating hits 5 blocks", hit == 5);
+    TEST("First block took full 30 damage", ApproxEq(ship.blocks[0]->currentHP, origHP - 30.0f));
+    TEST("Second block took 70% damage", ApproxEq(ship.blocks[1]->currentHP, origHP - 21.0f));
+    TEST("Third block took 49% damage", ApproxEq(ship.blocks[2]->currentHP, origHP - 14.7f));
+
+    // Penetrating into empty space
+    Ship ship2;
+    BlockPlacement::Place(ship2, MakeBlock({0,0,0}, {1,1,1}));
+    int hit2 = ShipDamage::ApplyPenetratingDamage(ship2, {0,0,0}, {1,0,0}, 10.0f, 5);
+    TEST("Penetrating through 1 block hits 1", hit2 == 1);
+}
+
+static void TestRepairBlock() {
+    std::cout << "\n--- ShipDamage (Repair Block) ---\n";
+    Ship ship;
+    auto block = MakeBlock({0,0,0}, {1,1,1});
+    BlockPlacement::Place(ship, block);
+
+    float maxHP = block->maxHP;
+    ShipDamage::ApplyDamage(ship, block, 50.0f);
+    float damagedHP = block->currentHP;
+
+    float repaired = ShipDamage::RepairBlock(ship, block, 30.0f);
+    TEST("Repaired 30 HP", ApproxEq(repaired, 30.0f));
+    TEST("Block HP increased by 30", ApproxEq(block->currentHP, damagedHP + 30.0f));
+
+    // Repair more than missing
+    float repaired2 = ShipDamage::RepairBlock(ship, block, 1000.0f);
+    TEST("Can't repair past maxHP", ApproxEq(block->currentHP, maxHP));
+    TEST("Only repaired what was missing", repaired2 < 1000.0f);
+
+    // Repair null block
+    float repaired3 = ShipDamage::RepairBlock(ship, nullptr, 10.0f);
+    TEST("Null repair returns 0", ApproxEq(repaired3, 0.0f));
+
+    // Repair with 0 budget
+    float repaired4 = ShipDamage::RepairBlock(ship, block, 0.0f);
+    TEST("Zero budget returns 0", ApproxEq(repaired4, 0.0f));
+}
+
+static void TestRepairAll() {
+    std::cout << "\n--- ShipDamage (Repair All) ---\n";
+    Ship ship;
+    auto b1 = MakeBlock({0,0,0}, {1,1,1});
+    auto b2 = MakeBlock({1,0,0}, {1,1,1});
+    auto b3 = MakeBlock({2,0,0}, {1,1,1});
+    BlockPlacement::Place(ship, b1);
+    BlockPlacement::Place(ship, b2);
+    BlockPlacement::Place(ship, b3);
+
+    // Damage blocks differently
+    ShipDamage::ApplyDamage(ship, b1, 80.0f);  // heavily damaged
+    ShipDamage::ApplyDamage(ship, b2, 30.0f);  // lightly damaged
+    // b3 is untouched
+
+    float totalRepaired = ShipDamage::RepairAll(ship, 50.0f);
+    TEST("RepairAll returns positive", totalRepaired > 0.0f);
+    TEST("Most damaged block got some repair", b1->currentHP > b1->maxHP - 80.0f);
+
+    // RepairAll with 0 budget
+    float r2 = ShipDamage::RepairAll(ship, 0.0f);
+    TEST("RepairAll with 0 budget returns 0", ApproxEq(r2, 0.0f));
+
+    // RepairAll on empty ship
+    Ship empty;
+    float r3 = ShipDamage::RepairAll(empty, 100.0f);
+    TEST("RepairAll on empty ship returns 0", ApproxEq(r3, 0.0f));
+}
+
+static void TestCheckAndSeparateFragments() {
+    std::cout << "\n--- ShipDamage (CheckAndSeparateFragments) ---\n";
+    Ship ship;
+
+    // Connected ship should produce no fragments
+    BlockPlacement::Place(ship, MakeBlock({0,0,0}, {1,1,1}));
+    BlockPlacement::Place(ship, MakeBlock({1,0,0}, {1,1,1}));
+    auto fragments = ShipDamage::CheckAndSeparateFragments(ship);
+    TEST("Connected ship has 0 fragments", fragments.empty());
+    TEST("Ship still has 2 blocks", ship.BlockCount() == 2);
+
+    // Create disconnected ship manually
+    Ship ship2;
+    auto mainA = MakeBlock({0,0,0}, {1,1,1});
+    auto mainB = MakeBlock({1,0,0}, {1,1,1});
+    auto mainC = MakeBlock({2,0,0}, {1,1,1});
+    auto fragX = MakeBlock({10,10,10}, {1,1,1});
+
+    ship2.blocks.push_back(mainA);
+    for (auto& c : BlockPlacement::GetOccupiedCells(*mainA)) ship2.occupiedCells[c] = mainA;
+    ship2.blocks.push_back(mainB);
+    for (auto& c : BlockPlacement::GetOccupiedCells(*mainB)) ship2.occupiedCells[c] = mainB;
+    ship2.blocks.push_back(mainC);
+    for (auto& c : BlockPlacement::GetOccupiedCells(*mainC)) ship2.occupiedCells[c] = mainC;
+    ship2.blocks.push_back(fragX);
+    for (auto& c : BlockPlacement::GetOccupiedCells(*fragX)) ship2.occupiedCells[c] = fragX;
+    ShipStats::Recalculate(ship2);
+
+    auto frags = ShipDamage::CheckAndSeparateFragments(ship2);
+    TEST("Disconnected ship produces 1 fragment group", frags.size() == 1);
+    TEST("Fragment group has 1 block", frags[0].size() == 1);
+    TEST("Main ship left with 3 blocks", ship2.BlockCount() == 3);
+}
+
+static void TestDamagePercentageAndQueries() {
+    std::cout << "\n--- ShipDamage (Percentage & Queries) ---\n";
+    Ship ship;
+    auto b1 = MakeBlock({0,0,0}, {1,1,1});
+    auto b2 = MakeBlock({1,0,0}, {1,1,1});
+    BlockPlacement::Place(ship, b1);
+    BlockPlacement::Place(ship, b2);
+
+    TEST("Pristine ship damage is 0%", ApproxEq(ShipDamage::GetDamagePercentage(ship), 0.0f));
+
+    ShipDamage::ApplyDamage(ship, b1, b1->maxHP * 0.5f);
+    float dmg = ShipDamage::GetDamagePercentage(ship);
+    TEST("Partially damaged ship > 0%", dmg > 0.0f);
+    TEST("Partially damaged ship < 100%", dmg < 1.0f);
+
+    auto damaged = ShipDamage::GetDamagedBlocks(ship, 0.75f);
+    TEST("GetDamagedBlocks finds b1", damaged.size() == 1);
+
+    int inRadius = ShipDamage::GetBlocksInRadius(ship, {0,0,0}, 1);
+    TEST("GetBlocksInRadius(0,0,0 r=1) finds 2", inRadius == 2);
+
+    int farRadius = ShipDamage::GetBlocksInRadius(ship, {100,100,100}, 0);
+    TEST("GetBlocksInRadius far away finds 0", farRadius == 0);
+
+    // Empty ship
+    Ship empty;
+    TEST("Empty ship damage is 0%", ApproxEq(ShipDamage::GetDamagePercentage(empty), 0.0f));
+}
+
+// ===================================================================
+// DamageComponent tests
+// ===================================================================
+
+static void TestDamageComponentBasic() {
+    std::cout << "\n--- DamageComponent (Basic) ---\n";
+    DamageComponent dc;
+
+    TEST("Default damageMultiplier is 1.0", ApproxEq(dc.damageMultiplier, 1.0f));
+    TEST("Default repairRate is 0.0", ApproxEq(dc.repairRate, 0.0f));
+    TEST("Default isInvulnerable is false", !dc.isInvulnerable);
+    TEST("Default hasStructuralDamage is false", !dc.hasStructuralDamage);
+    TEST("Default disconnectedFragments is 0", dc.disconnectedFragments == 0);
+    TEST("History starts empty", dc.damageHistory.empty());
+}
+
+static void TestDamageComponentHistory() {
+    std::cout << "\n--- DamageComponent (History) ---\n";
+    DamageComponent dc;
+
+    DamageRecord r1{1.0f, 25.0f, DamageType::Kinetic, {0,0,0}};
+    DamageRecord r2{2.0f, 50.0f, DamageType::Energy, {1,0,0}};
+    DamageRecord r3{3.0f, 75.0f, DamageType::Explosive, {2,0,0}};
+
+    dc.AddDamageRecord(r1);
+    dc.AddDamageRecord(r2);
+    dc.AddDamageRecord(r3);
+
+    TEST("History has 3 records", dc.damageHistory.size() == 3);
+    TEST("Total damage is 150", ApproxEq(dc.GetTotalDamageReceived(), 150.0f));
+
+    TEST("Recent damage within 1s at t=3.5", ApproxEq(dc.GetRecentDamage(1.0f, 3.5f), 75.0f));
+    TEST("Recent damage within 2s at t=3.5", ApproxEq(dc.GetRecentDamage(2.0f, 3.5f), 125.0f));
+    TEST("Recent damage within 10s at t=3.5", ApproxEq(dc.GetRecentDamage(10.0f, 3.5f), 150.0f));
+
+    // Test max history eviction
+    for (int i = 0; i < 60; ++i) {
+        dc.AddDamageRecord({static_cast<float>(i + 10), 1.0f, DamageType::Thermal, {0,0,0}});
+    }
+    TEST("History capped at max", dc.damageHistory.size() == DamageComponent::kMaxHistorySize);
+}
+
+static void TestDamageComponentSerialization() {
+    std::cout << "\n--- DamageComponent (Serialization) ---\n";
+    DamageComponent original;
+    original.damageMultiplier = 1.5f;
+    original.repairRate = 10.0f;
+    original.isInvulnerable = true;
+    original.hasStructuralDamage = true;
+    original.disconnectedFragments = 3;
+    original.AddDamageRecord({1.0f, 50.0f, DamageType::Energy, {1,2,3}});
+    original.AddDamageRecord({2.0f, 100.0f, DamageType::EMP, {4,5,6}});
+
+    auto cd = original.Serialize();
+    TEST("Serialize type is DamageComponent", cd.componentType == "DamageComponent");
+
+    DamageComponent restored;
+    restored.Deserialize(cd);
+
+    TEST("Restored damageMultiplier", ApproxEq(restored.damageMultiplier, 1.5f));
+    TEST("Restored repairRate", ApproxEq(restored.repairRate, 10.0f));
+    TEST("Restored isInvulnerable", restored.isInvulnerable);
+    TEST("Restored hasStructuralDamage", restored.hasStructuralDamage);
+    TEST("Restored disconnectedFragments", restored.disconnectedFragments == 3);
+    TEST("Restored history size", restored.damageHistory.size() == 2);
+    TEST("Restored first record damage", ApproxEq(restored.damageHistory[0].damageAmount, 50.0f));
+    TEST("Restored first record type is Energy", restored.damageHistory[0].damageType == DamageType::Energy);
+    TEST("Restored first record position", restored.damageHistory[0].hitPosition == Vector3Int(1,2,3));
+    TEST("Restored second record damage", ApproxEq(restored.damageHistory[1].damageAmount, 100.0f));
+    TEST("Restored second record type is EMP", restored.damageHistory[1].damageType == DamageType::EMP);
+}
+
+// ===================================================================
+// Octree tests
+// ===================================================================
+
+static void TestAABB() {
+    std::cout << "\n--- AABB ---\n";
+    AABB box(Vector3(0,0,0), Vector3(10,10,10));
+
+    TEST("Contains center", box.Contains(Vector3(0,0,0)));
+    TEST("Contains corner", box.Contains(Vector3(10,10,10)));
+    TEST("Contains edge", box.Contains(Vector3(10,0,0)));
+    TEST("Does not contain outside", !box.Contains(Vector3(11,0,0)));
+
+    TEST("Sphere at center intersects", box.IntersectsSphere(Vector3(0,0,0), 1.0f));
+    TEST("Sphere far away no intersect", !box.IntersectsSphere(Vector3(100,100,100), 1.0f));
+    TEST("Sphere touching edge intersects", box.IntersectsSphere(Vector3(11,0,0), 2.0f));
+
+    AABB other(Vector3(5,5,5), Vector3(5,5,5));
+    TEST("Overlapping boxes intersect", box.Intersects(other));
+
+    AABB far(Vector3(100,100,100), Vector3(1,1,1));
+    TEST("Far boxes no intersect", !box.Intersects(far));
+}
+
+static void TestOctreeInsertAndCount() {
+    std::cout << "\n--- Octree (Insert & Count) ---\n";
+    AABB bounds(Vector3(0,0,0), Vector3(100,100,100));
+    Octree tree(bounds);
+
+    TEST("Empty tree has 0 entities", tree.GetEntityCount() == 0);
+    TEST("Empty tree has 1 node", tree.GetNodeCount() == 1);
+
+    bool inserted = tree.Insert(1, Vector3(10, 10, 10));
+    TEST("Insert succeeds", inserted);
+    TEST("Tree has 1 entity", tree.GetEntityCount() == 1);
+
+    tree.Insert(2, Vector3(-10, -10, -10));
+    tree.Insert(3, Vector3(50, 50, 50));
+    TEST("Tree has 3 entities", tree.GetEntityCount() == 3);
+
+    // Insert outside bounds should fail
+    bool outside = tree.Insert(99, Vector3(200, 200, 200));
+    TEST("Insert outside bounds fails", !outside);
+    TEST("Count unchanged after failed insert", tree.GetEntityCount() == 3);
+}
+
+static void TestOctreeRemove() {
+    std::cout << "\n--- Octree (Remove) ---\n";
+    AABB bounds(Vector3(0,0,0), Vector3(100,100,100));
+    Octree tree(bounds);
+
+    tree.Insert(1, Vector3(10, 10, 10));
+    tree.Insert(2, Vector3(-10, -10, -10));
+    tree.Insert(3, Vector3(50, 50, 50));
+
+    bool removed = tree.Remove(2);
+    TEST("Remove existing entity succeeds", removed);
+    TEST("Count decreased", tree.GetEntityCount() == 2);
+
+    bool removed2 = tree.Remove(999);
+    TEST("Remove nonexistent entity fails", !removed2);
+    TEST("Count unchanged", tree.GetEntityCount() == 2);
+}
+
+static void TestOctreeClear() {
+    std::cout << "\n--- Octree (Clear) ---\n";
+    AABB bounds(Vector3(0,0,0), Vector3(100,100,100));
+    Octree tree(bounds);
+
+    for (int i = 0; i < 20; ++i) {
+        tree.Insert(static_cast<EntityId>(i + 1), Vector3(static_cast<float>(i), 0, 0));
+    }
+    TEST("20 entities inserted", tree.GetEntityCount() == 20);
+
+    tree.Clear();
+    TEST("After clear, 0 entities", tree.GetEntityCount() == 0);
+    TEST("After clear, 1 node", tree.GetNodeCount() == 1);
+}
+
+static void TestOctreeQuerySphere() {
+    std::cout << "\n--- Octree (QuerySphere) ---\n";
+    AABB bounds(Vector3(0,0,0), Vector3(100,100,100));
+    Octree tree(bounds);
+
+    tree.Insert(1, Vector3(0, 0, 0));
+    tree.Insert(2, Vector3(5, 0, 0));
+    tree.Insert(3, Vector3(50, 50, 50));
+    tree.Insert(4, Vector3(-5, 0, 0));
+
+    auto nearby = tree.QuerySphere(Vector3(0, 0, 0), 10.0f);
+    TEST("Sphere query finds 3 nearby", nearby.size() == 3);
+
+    auto far = tree.QuerySphere(Vector3(50, 50, 50), 1.0f);
+    TEST("Tight sphere finds 1", far.size() == 1);
+    TEST("Tight sphere finds entity 3", far[0] == 3);
+
+    auto none = tree.QuerySphere(Vector3(99, 99, 99), 0.1f);
+    TEST("Very tight query finds 0", none.empty());
+}
+
+static void TestOctreeQueryBox() {
+    std::cout << "\n--- Octree (QueryBox) ---\n";
+    AABB bounds(Vector3(0,0,0), Vector3(100,100,100));
+    Octree tree(bounds);
+
+    tree.Insert(1, Vector3(0, 0, 0));
+    tree.Insert(2, Vector3(5, 5, 5));
+    tree.Insert(3, Vector3(50, 50, 50));
+
+    AABB queryBox(Vector3(2.5f, 2.5f, 2.5f), Vector3(5, 5, 5));
+    auto results = tree.QueryBox(queryBox);
+    TEST("Box query finds 2 entities", results.size() == 2);
+}
+
+static void TestOctreeFindNearest() {
+    std::cout << "\n--- Octree (FindNearest) ---\n";
+    AABB bounds(Vector3(0,0,0), Vector3(100,100,100));
+    Octree tree(bounds);
+
+    // Empty tree
+    auto nearest = tree.FindNearest(Vector3(0, 0, 0));
+    TEST("FindNearest on empty returns invalid", nearest == InvalidEntityId);
+
+    tree.Insert(1, Vector3(10, 10, 10));
+    tree.Insert(2, Vector3(20, 20, 20));
+    tree.Insert(3, Vector3(-10, -10, -10));
+
+    auto n1 = tree.FindNearest(Vector3(9, 9, 9));
+    TEST("Nearest to (9,9,9) is entity 1", n1 == 1);
+
+    auto n2 = tree.FindNearest(Vector3(19, 19, 19));
+    TEST("Nearest to (19,19,19) is entity 2", n2 == 2);
+
+    auto n3 = tree.FindNearest(Vector3(-9, -9, -9));
+    TEST("Nearest to (-9,-9,-9) is entity 3", n3 == 3);
+}
+
+static void TestOctreeFindKNearest() {
+    std::cout << "\n--- Octree (FindKNearest) ---\n";
+    AABB bounds(Vector3(0,0,0), Vector3(100,100,100));
+    Octree tree(bounds);
+
+    tree.Insert(1, Vector3(0, 0, 0));
+    tree.Insert(2, Vector3(5, 0, 0));
+    tree.Insert(3, Vector3(10, 0, 0));
+    tree.Insert(4, Vector3(20, 0, 0));
+    tree.Insert(5, Vector3(50, 0, 0));
+
+    auto k3 = tree.FindKNearest(Vector3(0, 0, 0), 3);
+    TEST("FindKNearest(3) returns 3", k3.size() == 3);
+    TEST("K-nearest first is entity 1", k3[0] == 1);
+    TEST("K-nearest second is entity 2", k3[1] == 2);
+    TEST("K-nearest third is entity 3", k3[2] == 3);
+
+    auto k0 = tree.FindKNearest(Vector3(0, 0, 0), 0);
+    TEST("FindKNearest(0) returns 0", k0.empty());
+
+    auto k100 = tree.FindKNearest(Vector3(0, 0, 0), 100);
+    TEST("FindKNearest(100) returns all 5", k100.size() == 5);
+}
+
+static void TestOctreeSubdivision() {
+    std::cout << "\n--- Octree (Subdivision) ---\n";
+    AABB bounds(Vector3(0,0,0), Vector3(100,100,100));
+    Octree tree(bounds, 4, 2);  // maxDepth=4, maxEntries=2
+
+    tree.Insert(1, Vector3(10, 10, 10));
+    tree.Insert(2, Vector3(20, 20, 20));
+    TEST("2 entities, 1 node (no split yet)", tree.GetNodeCount() == 1);
+
+    tree.Insert(3, Vector3(30, 30, 30));
+    TEST("3 entities after split", tree.GetEntityCount() == 3);
+    TEST("More than 1 node after split", tree.GetNodeCount() > 1);
+
+    // Max depth test - many entries in same spot
+    Octree deep(bounds, 2, 1);  // maxDepth=2, split after 1 entry
+    for (int i = 0; i < 20; ++i) {
+        deep.Insert(static_cast<EntityId>(i + 1), Vector3(1, 1, 1));
+    }
+    TEST("All 20 entities stored even at max depth", deep.GetEntityCount() == 20);
+    TEST("Max used depth <= 2", deep.GetMaxUsedDepth() <= 2);
+}
+
+static void TestOctreeRebuild() {
+    std::cout << "\n--- Octree (Rebuild) ---\n";
+    AABB bounds(Vector3(0,0,0), Vector3(100,100,100));
+    Octree tree(bounds, 8, 4);
+
+    for (int i = 0; i < 50; ++i) {
+        tree.Insert(static_cast<EntityId>(i + 1), Vector3(static_cast<float>(i * 2), 0, 0));
+    }
+    TEST("50 entities before rebuild", tree.GetEntityCount() == 50);
+
+    // Remove half
+    for (int i = 0; i < 25; ++i) {
+        tree.Remove(static_cast<EntityId>(i + 1));
+    }
+    TEST("25 entities after removal", tree.GetEntityCount() == 25);
+
+    size_t nodesBefore = tree.GetNodeCount();
+    tree.Rebuild();
+    TEST("25 entities after rebuild", tree.GetEntityCount() == 25);
+    TEST("Rebuild potentially reduces nodes", tree.GetNodeCount() <= nodesBefore);
+}
+
+static void TestOctreeGameEvents() {
+    std::cout << "\n--- Octree (GameEvents) ---\n";
+    TEST("OctreeRebuilt event defined", std::string(GameEvents::OctreeRebuilt) == "spatial.octree.rebuilt");
+    TEST("SpatialQueryPerformed event defined", std::string(GameEvents::SpatialQueryPerformed) == "spatial.query.performed");
+}
+
+static void TestVoxelDamageGameEvents() {
+    std::cout << "\n--- VoxelDamage (GameEvents) ---\n";
+    TEST("BlockDamaged event", std::string(GameEvents::BlockDamaged) == "ship.block.damaged");
+    TEST("BlockDestroyed event", std::string(GameEvents::BlockDestroyed) == "ship.block.destroyed");
+    TEST("BlockRepaired event", std::string(GameEvents::BlockRepaired) == "ship.block.repaired");
+    TEST("SplashDamageApplied event", std::string(GameEvents::SplashDamageApplied) == "ship.splash.damage");
+    TEST("PenetratingDamageApplied event", std::string(GameEvents::PenetratingDamageApplied) == "ship.penetrating.damage");
+    TEST("StructuralCheck event", std::string(GameEvents::StructuralCheck) == "ship.structural.check");
+    TEST("ShipFragmented event", std::string(GameEvents::ShipFragmented) == "ship.fragmented");
+    TEST("IntegrityRestored event", std::string(GameEvents::IntegrityRestored) == "ship.integrity.restored");
+}
+
+// ===================================================================
 // Engine tests
 // ===================================================================
 
@@ -6417,6 +6999,31 @@ int main() {
     TestAchievementSystem();
     TestAchievementTemplates();
     TestAchievementGameEvents();
+    TestStructuralIntegrityConnected();
+    TestStructuralIntegrityDisconnected();
+    TestStructuralIntegrityWouldDisconnect();
+    TestStructuralIntegrityMultiCell();
+    TestSplashDamage();
+    TestPenetratingDamage();
+    TestRepairBlock();
+    TestRepairAll();
+    TestCheckAndSeparateFragments();
+    TestDamagePercentageAndQueries();
+    TestDamageComponentBasic();
+    TestDamageComponentHistory();
+    TestDamageComponentSerialization();
+    TestAABB();
+    TestOctreeInsertAndCount();
+    TestOctreeRemove();
+    TestOctreeClear();
+    TestOctreeQuerySphere();
+    TestOctreeQueryBox();
+    TestOctreeFindNearest();
+    TestOctreeFindKNearest();
+    TestOctreeSubdivision();
+    TestOctreeRebuild();
+    TestOctreeGameEvents();
+    TestVoxelDamageGameEvents();
     TestEngine();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
