@@ -141,6 +141,13 @@ namespace GameEvents {
     // Spatial partitioning events
     constexpr const char* OctreeRebuilt     = "spatial.octree.rebuilt";
     constexpr const char* SpatialQueryPerformed = "spatial.query.performed";
+
+    // Pathfinding events
+    constexpr const char* PathFound        = "navigation.path.found";
+    constexpr const char* PathNotFound     = "navigation.path.not_found";
+    constexpr const char* WaypointReached  = "navigation.waypoint.reached";
+    constexpr const char* PathCompleted    = "navigation.path.completed";
+    constexpr const char* NavGridBuilt     = "navigation.grid.built";
 } // namespace GameEvents
 
 } // namespace subspace
