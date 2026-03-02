@@ -133,6 +133,11 @@ namespace GameEvents {
     constexpr const char* AchievementUnlocked  = "achievement.unlocked";
     constexpr const char* AchievementProgress  = "achievement.progress";
 
+    // Collision layer events
+    constexpr const char* CollisionLayerChanged = "physics.collision.layer_changed";
+    constexpr const char* TriggerEntered        = "physics.trigger.entered";
+    constexpr const char* TriggerExited         = "physics.trigger.exited";
+
     // Spatial partitioning events
     constexpr const char* OctreeRebuilt     = "spatial.octree.rebuilt";
     constexpr const char* SpatialQueryPerformed = "spatial.query.performed";

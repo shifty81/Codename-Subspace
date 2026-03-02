@@ -36,4 +36,15 @@ void PhysicsComponent::ClearForces()
     appliedTorque = Vector3();
 }
 
+void PhysicsComponent::SetCollisionPreset(CollisionPresets::Preset preset)
+{
+    collisionLayer = preset.layer;
+    collisionMask  = preset.mask;
+}
+
+bool PhysicsComponent::ShouldCollideWith(const PhysicsComponent& other) const
+{
+    return ShouldCollide(collisionLayer, collisionMask, other.collisionLayer, other.collisionMask);
+}
+
 } // namespace subspace

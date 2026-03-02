@@ -119,6 +119,9 @@ void PhysicsSystem::DetectCollisions(std::vector<PhysicsComponent*>& components)
             if (otherIt == byId.end()) continue;
             auto* other = otherIt->second;
 
+            // Check collision layers
+            if (!comp->ShouldCollideWith(*other)) continue;
+
             Vector3 diff = other->position - comp->position;
             float distance = diff.length();
             float minDistance = comp->collisionRadius + other->collisionRadius;
@@ -132,6 +135,9 @@ void PhysicsSystem::DetectCollisions(std::vector<PhysicsComponent*>& components)
 
 void PhysicsSystem::HandleCollision(PhysicsComponent& obj1, PhysicsComponent& obj2)
 {
+    // Trigger volumes don't generate physics response
+    if (obj1.isTrigger || obj2.isTrigger) return;
+
     if (obj1.isStatic && obj2.isStatic) return;
 
     Vector3 diff = obj2.position - obj1.position;
