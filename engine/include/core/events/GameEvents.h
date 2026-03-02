@@ -132,6 +132,10 @@ namespace GameEvents {
     // Achievement events
     constexpr const char* AchievementUnlocked  = "achievement.unlocked";
     constexpr const char* AchievementProgress  = "achievement.progress";
+
+    // Spatial partitioning events
+    constexpr const char* OctreeRebuilt     = "spatial.octree.rebuilt";
+    constexpr const char* SpatialQueryPerformed = "spatial.query.performed";
 } // namespace GameEvents
 
 } // namespace subspace
