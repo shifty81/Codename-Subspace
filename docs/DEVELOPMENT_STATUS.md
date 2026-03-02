@@ -15,8 +15,8 @@
 - **12 module types** (Core, Engine, Weapon, Hull, Cargo, Shield, Utility)
 - **5 ship archetypes** (Interceptor, Frigate, Freighter, Cruiser, Battleship)
 - **Faction-aware procedural generation** using BFS assembly pipeline
-- **1234/1234 unit tests** passing across all engine systems
-- **12 subsystems** operational (blocks, modules, editor, weapons, factions, AI, rendering, blueprints, networking, damage, scripting, UI)
+- **1912/1912 unit tests** passing across all engine systems
+- **14 subsystems** operational (blocks, modules, editor, weapons, factions, AI, rendering, blueprints, networking, damage, scripting, UI, collision layers, pathfinding)
 
 ### ✅ C# Prototype (Playable Reference)
 - **Full gameplay loop** with player-controlled ships
@@ -224,7 +224,7 @@
 - **Lines of Code:** ~35,000+
 - **Systems:** 19+ major systems
 - **Components:** 40+ component types
-- **C++ Test Pass Rate:** 100% (1234/1234)
+- **C++ Test Pass Rate:** 100% (1912/1912)
 - **C# Test Pass Rate:** 100% (32/32)
 
 ### Quality Metrics

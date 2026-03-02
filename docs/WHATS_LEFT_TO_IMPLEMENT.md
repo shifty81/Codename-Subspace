@@ -382,12 +382,14 @@ Based on impact and dependencies:
 | **Particle System** | 100% | ✅ Complete (emitters, presets, component integration) |
 | **Voxel Damage System** | 100% | ✅ Complete (splash, penetrating, repair, structural integrity, fragmentation) |
 | **Spatial Partitioning** | 100% | ✅ Complete (SpatialHash + Octree, queries, nearest-neighbor) |
+| **Collision Layers** | 100% | ✅ Complete (10 categories, presets, bidirectional filtering, triggers) |
+| **Pathfinding** | 100% | ✅ Complete (A* search, NavGraph, 3D grid, PathfindingComponent/System) |
 | **Steam Integration** | 0% | ❌ Not started |
 | **Content (ships, weapons)** | 60% | ⚠️ Expansion needed |
 | **Polish & QoL** | 40% | ⚠️ Ongoing |
 | **Documentation** | 95% | ⚠️ Updates needed |
 | | | |
-| **OVERALL** | **~92%** | **✅ Playable with voxel damage, spatial partitioning, and all core systems!** |
+| **OVERALL** | **~93%** | **✅ Playable with collision layers, pathfinding, and all core systems!** |
 
 ---
 
@@ -460,7 +462,7 @@ Despite missing features, the game is fully playable:
 
 **Question:** What is left to implement?
 
-**Answer:** The game is **91% complete and playable**. What's left:
+**Answer:** The game is **93% complete and playable**. What's left:
 - 2 major features not started (Steam, multiplayer client UI)
 - Audio system needs platform backend integration
 - 2 features need final polish (advanced rendering, docs)

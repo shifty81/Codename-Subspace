@@ -62,6 +62,10 @@
 #include "ships/StructuralIntegrity.h"
 #include "ships/DamageComponent.h"
 #include "core/physics/Octree.h"
+#include "core/physics/CollisionLayers.h"
+#include "navigation/Pathfinding.h"
+#include "navigation/PathfindingComponent.h"
+#include "navigation/PathfindingSystem.h"
 #include "core/Engine.h"
 
 using namespace subspace;
@@ -78,6 +82,7 @@ static int testsFailed = 0;
 } while(0)
 
 static constexpr float kEpsilon = 1e-4f;
+static constexpr float kTinyDeltaTime = 0.0001f;
 static bool ApproxEq(float a, float b) { return std::fabs(a - b) < kEpsilon; }
 
 // Helper: create a simple block
@@ -6668,6 +6673,982 @@ static void TestVoxelDamageGameEvents() {
 }
 
 // ===================================================================
+// Collision Layer tests
+// ===================================================================
+
+static void TestCollisionCategoryBitwise() {
+    std::cout << "[CollisionCategory Bitwise]\n";
+
+    // Individual category values are powers of two
+    TEST("Player is 1", static_cast<uint32_t>(CollisionCategory::Player) == 1);
+    TEST("Enemy is 2", static_cast<uint32_t>(CollisionCategory::Enemy) == 2);
+    TEST("Projectile is 4", static_cast<uint32_t>(CollisionCategory::Projectile) == 4);
+    TEST("Asteroid is 8", static_cast<uint32_t>(CollisionCategory::Asteroid) == 8);
+    TEST("Station is 16", static_cast<uint32_t>(CollisionCategory::Station) == 16);
+    TEST("Debris is 32", static_cast<uint32_t>(CollisionCategory::Debris) == 32);
+    TEST("Shield is 64", static_cast<uint32_t>(CollisionCategory::Shield) == 64);
+    TEST("Sensor is 128", static_cast<uint32_t>(CollisionCategory::Sensor) == 128);
+    TEST("Pickup is 256", static_cast<uint32_t>(CollisionCategory::Pickup) == 256);
+    TEST("Missile is 512", static_cast<uint32_t>(CollisionCategory::Missile) == 512);
+    TEST("None is 0", static_cast<uint32_t>(CollisionCategory::None) == 0);
+    TEST("All is 0xFFFFFFFF", static_cast<uint32_t>(CollisionCategory::All) == 0xFFFFFFFF);
+
+    // Bitwise OR
+    auto combined = CollisionCategory::Player | CollisionCategory::Enemy;
+    TEST("Player|Enemy = 3", static_cast<uint32_t>(combined) == 3);
+
+    // Bitwise AND
+    auto masked = combined & CollisionCategory::Player;
+    TEST("(Player|Enemy) & Player = Player", static_cast<uint32_t>(masked) == 1);
+
+    auto maskedNone = combined & CollisionCategory::Asteroid;
+    TEST("(Player|Enemy) & Asteroid = 0", static_cast<uint32_t>(maskedNone) == 0);
+
+    // Bitwise NOT
+    auto inverted = ~CollisionCategory::Player;
+    TEST("~Player does not contain Player", !HasCategory(inverted, CollisionCategory::Player));
+    TEST("~Player contains Enemy", HasCategory(inverted, CollisionCategory::Enemy));
+}
+
+static void TestHasCategory() {
+    std::cout << "[HasCategory]\n";
+
+    auto flags = CollisionCategory::Player | CollisionCategory::Enemy | CollisionCategory::Projectile;
+    TEST("flags has Player", HasCategory(flags, CollisionCategory::Player));
+    TEST("flags has Enemy", HasCategory(flags, CollisionCategory::Enemy));
+    TEST("flags has Projectile", HasCategory(flags, CollisionCategory::Projectile));
+    TEST("flags no Asteroid", !HasCategory(flags, CollisionCategory::Asteroid));
+    TEST("flags no Station", !HasCategory(flags, CollisionCategory::Station));
+    TEST("None has nothing", !HasCategory(CollisionCategory::None, CollisionCategory::Player));
+    TEST("All has everything", HasCategory(CollisionCategory::All, CollisionCategory::Player));
+    TEST("All has Missile", HasCategory(CollisionCategory::All, CollisionCategory::Missile));
+}
+
+static void TestShouldCollide() {
+    std::cout << "[ShouldCollide]\n";
+
+    // Default: All collides with All
+    TEST("All vs All collide", ShouldCollide(CollisionCategory::All, CollisionCategory::All,
+                                              CollisionCategory::All, CollisionCategory::All));
+
+    // Player projectile vs Enemy: should collide
+    auto ppPreset = CollisionPresets::PlayerProjectile();
+    auto ePreset = CollisionPresets::EnemyShip();
+    TEST("PlayerProjectile vs EnemyShip collide",
+         ShouldCollide(ppPreset.layer, ppPreset.mask, ePreset.layer, ePreset.mask));
+
+    // Player projectile vs Player: should NOT collide (friendly fire off)
+    auto pPreset = CollisionPresets::PlayerShip();
+    TEST("PlayerProjectile vs PlayerShip no collide",
+         !ShouldCollide(ppPreset.layer, ppPreset.mask, pPreset.layer, pPreset.mask));
+
+    // Enemy projectile vs Player: should collide
+    auto epPreset = CollisionPresets::EnemyProjectile();
+    TEST("EnemyProjectile vs PlayerShip collide",
+         ShouldCollide(epPreset.layer, epPreset.mask, pPreset.layer, pPreset.mask));
+
+    // Enemy projectile vs Enemy: should NOT collide
+    TEST("EnemyProjectile vs EnemyShip no collide",
+         !ShouldCollide(epPreset.layer, epPreset.mask, ePreset.layer, ePreset.mask));
+
+    // Pickup vs Player: should collide
+    auto pickPreset = CollisionPresets::PickupPreset();
+    TEST("Pickup vs Player collide",
+         ShouldCollide(pickPreset.layer, pickPreset.mask, pPreset.layer, pPreset.mask));
+
+    // Pickup vs Enemy: should NOT collide (pickup only collides with Player)
+    TEST("Pickup vs Enemy no collide",
+         !ShouldCollide(pickPreset.layer, pickPreset.mask, ePreset.layer, ePreset.mask));
+
+    // Sensor vs Player: should NOT collide (Player's mask doesn't include Sensor)
+    auto sensorPreset = CollisionPresets::SensorPreset();
+    TEST("Sensor vs Player no collide (bidirectional check)",
+         !ShouldCollide(sensorPreset.layer, sensorPreset.mask, pPreset.layer, pPreset.mask));
+
+    // None vs anything: should NOT collide
+    TEST("None vs All no collide",
+         !ShouldCollide(CollisionCategory::None, CollisionCategory::None,
+                        CollisionCategory::All, CollisionCategory::All));
+}
+
+static void TestCollisionPresets() {
+    std::cout << "[CollisionPresets]\n";
+
+    // Default preset
+    auto def = CollisionPresets::Default();
+    TEST("Default layer is All", def.layer == CollisionCategory::All);
+    TEST("Default mask is All", def.mask == CollisionCategory::All);
+
+    // PlayerShip preset
+    auto ps = CollisionPresets::PlayerShip();
+    TEST("PlayerShip layer is Player", ps.layer == CollisionCategory::Player);
+    TEST("PlayerShip mask has Enemy", HasCategory(ps.mask, CollisionCategory::Enemy));
+    TEST("PlayerShip mask has Projectile", HasCategory(ps.mask, CollisionCategory::Projectile));
+    TEST("PlayerShip mask has Asteroid", HasCategory(ps.mask, CollisionCategory::Asteroid));
+    TEST("PlayerShip mask has Pickup", HasCategory(ps.mask, CollisionCategory::Pickup));
+    TEST("PlayerShip mask no Sensor", !HasCategory(ps.mask, CollisionCategory::Sensor));
+
+    // EnemyShip preset
+    auto es = CollisionPresets::EnemyShip();
+    TEST("EnemyShip layer is Enemy", es.layer == CollisionCategory::Enemy);
+    TEST("EnemyShip mask has Player", HasCategory(es.mask, CollisionCategory::Player));
+    TEST("EnemyShip mask has Enemy (self)", HasCategory(es.mask, CollisionCategory::Enemy));
+
+    // Asteroid preset
+    auto ast = CollisionPresets::AsteroidPreset();
+    TEST("Asteroid layer is Asteroid", ast.layer == CollisionCategory::Asteroid);
+    TEST("Asteroid mask has Missile", HasCategory(ast.mask, CollisionCategory::Missile));
+    TEST("Asteroid mask no Debris", !HasCategory(ast.mask, CollisionCategory::Debris));
+
+    // Debris preset
+    auto deb = CollisionPresets::DebrisPreset();
+    TEST("Debris layer is Debris", deb.layer == CollisionCategory::Debris);
+    TEST("Debris mask has Player", HasCategory(deb.mask, CollisionCategory::Player));
+    TEST("Debris mask no Projectile", !HasCategory(deb.mask, CollisionCategory::Projectile));
+
+    // Missile preset
+    auto mis = CollisionPresets::MissilePreset();
+    TEST("Missile layer is Missile", mis.layer == CollisionCategory::Missile);
+    TEST("Missile mask has Shield", HasCategory(mis.mask, CollisionCategory::Shield));
+    TEST("Missile mask has Station", HasCategory(mis.mask, CollisionCategory::Station));
+}
+
+static void TestGetCategoryName() {
+    std::cout << "[GetCategoryName]\n";
+
+    TEST("Name Player", GetCategoryName(CollisionCategory::Player) == "Player");
+    TEST("Name Enemy", GetCategoryName(CollisionCategory::Enemy) == "Enemy");
+    TEST("Name Projectile", GetCategoryName(CollisionCategory::Projectile) == "Projectile");
+    TEST("Name Asteroid", GetCategoryName(CollisionCategory::Asteroid) == "Asteroid");
+    TEST("Name Station", GetCategoryName(CollisionCategory::Station) == "Station");
+    TEST("Name Debris", GetCategoryName(CollisionCategory::Debris) == "Debris");
+    TEST("Name Shield", GetCategoryName(CollisionCategory::Shield) == "Shield");
+    TEST("Name Sensor", GetCategoryName(CollisionCategory::Sensor) == "Sensor");
+    TEST("Name Pickup", GetCategoryName(CollisionCategory::Pickup) == "Pickup");
+    TEST("Name Missile", GetCategoryName(CollisionCategory::Missile) == "Missile");
+    TEST("Name None", GetCategoryName(CollisionCategory::None) == "None");
+    TEST("Name All", GetCategoryName(CollisionCategory::All) == "All");
+}
+
+static void TestPhysicsComponentCollisionLayers() {
+    std::cout << "[PhysicsComponent CollisionLayers]\n";
+
+    // Default values for backward compat
+    PhysicsComponent pc;
+    TEST("Default layer is All", pc.collisionLayer == CollisionCategory::All);
+    TEST("Default mask is All", pc.collisionMask == CollisionCategory::All);
+    TEST("Default not trigger", !pc.isTrigger);
+
+    // SetCollisionPreset
+    pc.SetCollisionPreset(CollisionPresets::PlayerShip());
+    TEST("After preset layer is Player", pc.collisionLayer == CollisionCategory::Player);
+    TEST("After preset mask has Enemy", HasCategory(pc.collisionMask, CollisionCategory::Enemy));
+
+    // ShouldCollideWith
+    PhysicsComponent enemy;
+    enemy.SetCollisionPreset(CollisionPresets::EnemyShip());
+    TEST("Player should collide with Enemy", pc.ShouldCollideWith(enemy));
+
+    PhysicsComponent pickup;
+    pickup.SetCollisionPreset(CollisionPresets::PickupPreset());
+    TEST("Player should collide with Pickup", pc.ShouldCollideWith(pickup));
+    TEST("Enemy should not collide with Pickup", !enemy.ShouldCollideWith(pickup));
+
+    // Trigger field
+    pc.isTrigger = true;
+    TEST("Trigger set", pc.isTrigger);
+}
+
+static void TestPhysicsSystemCollisionLayers() {
+    std::cout << "[PhysicsSystem CollisionLayers]\n";
+
+    // Two objects on different non-overlapping layers should NOT collide
+    EntityManager em;
+    PhysicsSystem physSys(em);
+
+    auto& obj1 = em.CreateEntity("PlayerShip");
+    auto c1 = std::make_unique<PhysicsComponent>();
+    c1->mass = 100.0f;
+    c1->drag = 0.0f;
+    c1->angularDrag = 0.0f;
+    c1->position = Vector3(0.0f, 0.0f, 0.0f);
+    c1->velocity = Vector3(5.0f, 0.0f, 0.0f);
+    c1->collisionRadius = 5.0f;
+    c1->SetCollisionPreset(CollisionPresets::PlayerShip());
+    auto* pc1 = em.AddComponent<PhysicsComponent>(obj1.id, std::move(c1));
+
+    auto& obj2 = em.CreateEntity("PlayerProjectile");
+    auto c2 = std::make_unique<PhysicsComponent>();
+    c2->mass = 1.0f;
+    c2->drag = 0.0f;
+    c2->angularDrag = 0.0f;
+    c2->position = Vector3(8.0f, 0.0f, 0.0f);
+    c2->velocity = Vector3(-5.0f, 0.0f, 0.0f);
+    c2->collisionRadius = 5.0f;
+    c2->SetCollisionPreset(CollisionPresets::PlayerProjectile());
+    auto* pc2 = em.AddComponent<PhysicsComponent>(obj2.id, std::move(c2));
+
+    // Store velocities before update
+    float v1Before = pc1->velocity.x;
+    float v2Before = pc2->velocity.x;
+
+    physSys.Update(kTinyDeltaTime); // Tiny dt to minimize position change
+
+    // PlayerProjectile should NOT collide with PlayerShip (friendly fire off)
+    // Velocities should remain essentially unchanged (no collision response)
+    TEST("Player not hit by own projectile (v1 same)",
+         ApproxEq(pc1->velocity.x, v1Before));
+    TEST("Player not hit by own projectile (v2 same)",
+         ApproxEq(pc2->velocity.x, v2Before));
+
+    // Now test that enemy projectile DOES collide with player
+    EntityManager em2;
+    PhysicsSystem physSys2(em2);
+
+    auto& ship = em2.CreateEntity("PlayerShip2");
+    auto cs = std::make_unique<PhysicsComponent>();
+    cs->mass = 100.0f;
+    cs->drag = 0.0f;
+    cs->angularDrag = 0.0f;
+    cs->position = Vector3(0.0f, 0.0f, 0.0f);
+    cs->velocity = Vector3(0.0f, 0.0f, 0.0f);
+    cs->collisionRadius = 5.0f;
+    cs->SetCollisionPreset(CollisionPresets::PlayerShip());
+    auto* pcs = em2.AddComponent<PhysicsComponent>(ship.id, std::move(cs));
+
+    auto& proj = em2.CreateEntity("EnemyProjectile");
+    auto cp = std::make_unique<PhysicsComponent>();
+    cp->mass = 1.0f;
+    cp->drag = 0.0f;
+    cp->angularDrag = 0.0f;
+    cp->position = Vector3(8.0f, 0.0f, 0.0f);
+    cp->velocity = Vector3(-10.0f, 0.0f, 0.0f);
+    cp->collisionRadius = 5.0f;
+    cp->SetCollisionPreset(CollisionPresets::EnemyProjectile());
+    auto* pcp = em2.AddComponent<PhysicsComponent>(proj.id, std::move(cp));
+
+    physSys2.Update(kTinyDeltaTime);
+
+    // Enemy projectile should collide with player - velocity should change
+    TEST("Enemy projectile hits player (velocity changed)",
+         !ApproxEq(pcp->velocity.x, -10.0f) || !ApproxEq(pcs->velocity.x, 0.0f));
+}
+
+static void TestPhysicsSystemTrigger() {
+    std::cout << "[PhysicsSystem Trigger]\n";
+
+    EntityManager em;
+    PhysicsSystem physSys(em);
+
+    auto& obj1 = em.CreateEntity("Ship");
+    auto c1 = std::make_unique<PhysicsComponent>();
+    c1->mass = 100.0f;
+    c1->drag = 0.0f;
+    c1->angularDrag = 0.0f;
+    c1->position = Vector3(0.0f, 0.0f, 0.0f);
+    c1->velocity = Vector3(5.0f, 0.0f, 0.0f);
+    c1->collisionRadius = 5.0f;
+    auto* pc1 = em.AddComponent<PhysicsComponent>(obj1.id, std::move(c1));
+
+    auto& obj2 = em.CreateEntity("SensorZone");
+    auto c2 = std::make_unique<PhysicsComponent>();
+    c2->mass = 1.0f;
+    c2->isStatic = true;
+    c2->position = Vector3(8.0f, 0.0f, 0.0f);
+    c2->collisionRadius = 5.0f;
+    c2->isTrigger = true; // Trigger volume
+    auto* pc2 = em.AddComponent<PhysicsComponent>(obj2.id, std::move(c2));
+
+    float v1Before = pc1->velocity.x;
+    physSys.Update(kTinyDeltaTime);
+
+    // Trigger should not alter velocity (no physics response)
+    TEST("Trigger does not alter velocity", ApproxEq(pc1->velocity.x, v1Before));
+}
+
+static void TestCollisionLayerGameEvents() {
+    std::cout << "[CollisionLayer GameEvents]\n";
+
+    TEST("CollisionLayerChanged event",
+         std::string(GameEvents::CollisionLayerChanged) == "physics.collision.layer_changed");
+    TEST("TriggerEntered event",
+         std::string(GameEvents::TriggerEntered) == "physics.trigger.entered");
+    TEST("TriggerExited event",
+         std::string(GameEvents::TriggerExited) == "physics.trigger.exited");
+}
+
+// ===================================================================
+// NavGraph tests
+// ===================================================================
+
+static void TestNavGraphAddNode() {
+    std::cout << "[NavGraph AddNode]\n";
+
+    NavGraph graph;
+    TEST("Empty graph has 0 nodes", graph.NodeCount() == 0);
+
+    NavNodeId id1 = graph.AddNode(Vector3(0, 0, 0));
+    TEST("First node id valid", id1 != InvalidNavNodeId);
+    TEST("Node count is 1", graph.NodeCount() == 1);
+
+    NavNodeId id2 = graph.AddNode(Vector3(10, 0, 0));
+    TEST("Second node id valid", id2 != InvalidNavNodeId);
+    TEST("Node count is 2", graph.NodeCount() == 2);
+    TEST("IDs are different", id1 != id2);
+
+    const NavNode* node = graph.GetNode(id1);
+    TEST("GetNode returns valid", node != nullptr);
+    TEST("Node position correct", ApproxEq(node->position.x, 0.0f));
+    TEST("Node not blocked", !node->blocked);
+    TEST("Node default cost 1", ApproxEq(node->cost, 1.0f));
+
+    NavNodeId id3 = graph.AddNode(Vector3(20, 0, 0), 2.5f);
+    const NavNode* node3 = graph.GetNode(id3);
+    TEST("Custom cost node", ApproxEq(node3->cost, 2.5f));
+}
+
+static void TestNavGraphAddEdge() {
+    std::cout << "[NavGraph AddEdge]\n";
+
+    NavGraph graph;
+    NavNodeId a = graph.AddNode(Vector3(0, 0, 0));
+    NavNodeId b = graph.AddNode(Vector3(10, 0, 0));
+
+    TEST("No edges initially", graph.EdgeCount() == 0);
+
+    graph.AddEdge(a, b);
+    TEST("Bidirectional adds 2 directed edges", graph.EdgeCount() == 2);
+
+    const auto& edgesA = graph.GetEdges(a);
+    TEST("Node A has 1 edge", edgesA.size() == 1);
+    TEST("Edge from A goes to B", edgesA[0].to == b);
+    TEST("Edge weight is distance (10)", ApproxEq(edgesA[0].weight, 10.0f));
+
+    const auto& edgesB = graph.GetEdges(b);
+    TEST("Node B has 1 edge", edgesB.size() == 1);
+    TEST("Edge from B goes to A", edgesB[0].to == a);
+}
+
+static void TestNavGraphDirectedEdge() {
+    std::cout << "[NavGraph DirectedEdge]\n";
+
+    NavGraph graph;
+    NavNodeId a = graph.AddNode(Vector3(0, 0, 0));
+    NavNodeId b = graph.AddNode(Vector3(10, 0, 0));
+
+    graph.AddDirectedEdge(a, b, 5.0f);
+    TEST("Directed adds 1 edge", graph.EdgeCount() == 1);
+
+    const auto& edgesA = graph.GetEdges(a);
+    TEST("A has 1 outgoing edge", edgesA.size() == 1);
+    TEST("Custom weight applied", ApproxEq(edgesA[0].weight, 5.0f));
+
+    const auto& edgesB = graph.GetEdges(b);
+    TEST("B has 0 outgoing edges", edgesB.empty());
+}
+
+static void TestNavGraphRemoveNode() {
+    std::cout << "[NavGraph RemoveNode]\n";
+
+    NavGraph graph;
+    NavNodeId a = graph.AddNode(Vector3(0, 0, 0));
+    NavNodeId b = graph.AddNode(Vector3(10, 0, 0));
+    NavNodeId c = graph.AddNode(Vector3(20, 0, 0));
+    graph.AddEdge(a, b);
+    graph.AddEdge(b, c);
+
+    TEST("3 nodes before remove", graph.NodeCount() == 3);
+    TEST("4 edges before remove", graph.EdgeCount() == 4);
+
+    graph.RemoveNode(b);
+    TEST("2 nodes after remove", graph.NodeCount() == 2);
+    TEST("Removed node not found", graph.GetNode(b) == nullptr);
+
+    // Edges to/from removed node should be gone
+    const auto& edgesA = graph.GetEdges(a);
+    TEST("A has no edges after B removed", edgesA.empty());
+    const auto& edgesC = graph.GetEdges(c);
+    TEST("C has no edges after B removed", edgesC.empty());
+}
+
+static void TestNavGraphRemoveEdge() {
+    std::cout << "[NavGraph RemoveEdge]\n";
+
+    NavGraph graph;
+    NavNodeId a = graph.AddNode(Vector3(0, 0, 0));
+    NavNodeId b = graph.AddNode(Vector3(10, 0, 0));
+    graph.AddEdge(a, b);
+    TEST("2 edges before", graph.EdgeCount() == 2);
+
+    graph.RemoveEdge(a, b);
+    TEST("0 edges after remove", graph.EdgeCount() == 0);
+}
+
+static void TestNavGraphBlocking() {
+    std::cout << "[NavGraph Blocking]\n";
+
+    NavGraph graph;
+    NavNodeId a = graph.AddNode(Vector3(0, 0, 0));
+
+    TEST("Node not blocked initially", !graph.IsBlocked(a));
+    graph.SetBlocked(a, true);
+    TEST("Node blocked after set", graph.IsBlocked(a));
+    graph.SetBlocked(a, false);
+    TEST("Node unblocked", !graph.IsBlocked(a));
+
+    // Non-existent node treated as blocked
+    TEST("Non-existent node is blocked", graph.IsBlocked(999));
+}
+
+static void TestNavGraphFindNearest() {
+    std::cout << "[NavGraph FindNearest]\n";
+
+    NavGraph graph;
+    NavNodeId a = graph.AddNode(Vector3(0, 0, 0));
+    NavNodeId b = graph.AddNode(Vector3(10, 0, 0));
+    NavNodeId c = graph.AddNode(Vector3(20, 0, 0));
+
+    TEST("Nearest to origin is A", graph.FindNearest(Vector3(1, 0, 0)) == a);
+    NavNodeId nearMid = graph.FindNearest(Vector3(15, 0, 0));
+    TEST("Nearest to (15,0,0) is B or C", nearMid == b || nearMid == c);
+    TEST("Nearest to (25,0,0) is C", graph.FindNearest(Vector3(25, 0, 0)) == c);
+
+    // Blocked nodes are skipped
+    graph.SetBlocked(a, true);
+    TEST("Nearest skips blocked A", graph.FindNearest(Vector3(1, 0, 0)) == b);
+
+    // Empty graph returns invalid
+    NavGraph empty;
+    TEST("Empty graph returns invalid", empty.FindNearest(Vector3(0, 0, 0)) == InvalidNavNodeId);
+}
+
+static void TestNavGraphClear() {
+    std::cout << "[NavGraph Clear]\n";
+
+    NavGraph graph;
+    graph.AddNode(Vector3(0, 0, 0));
+    graph.AddNode(Vector3(10, 0, 0));
+    TEST("2 nodes before clear", graph.NodeCount() == 2);
+
+    graph.Clear();
+    TEST("0 nodes after clear", graph.NodeCount() == 0);
+    TEST("0 edges after clear", graph.EdgeCount() == 0);
+}
+
+static void TestNavGraphBuildGrid() {
+    std::cout << "[NavGraph BuildGrid]\n";
+
+    NavGraph graph;
+
+    // 3x3x1 grid
+    graph.BuildGrid(Vector3(0, 0, 0), 10.0f, 3, 3, 1);
+    TEST("3x3x1 grid = 9 nodes", graph.NodeCount() == 9);
+
+    // Each interior node has 4 edges (up/down/left/right in 2D plane)
+    // Corner nodes have 2 edges, edge nodes have 3 edges
+    // Total edges: 2*(3*2) = 12 bidirectional = 24 directed
+    TEST("3x3x1 grid edge count = 24", graph.EdgeCount() == 24);
+
+    // 2x2x2 grid
+    NavGraph graph2;
+    graph2.BuildGrid(Vector3(0, 0, 0), 5.0f, 2, 2, 2);
+    TEST("2x2x2 grid = 8 nodes", graph2.NodeCount() == 8);
+    // 12 bidirectional edges = 24 directed edges
+    TEST("2x2x2 grid edge count = 24", graph2.EdgeCount() == 24);
+
+    // 1x1x1 grid (single node)
+    NavGraph graph3;
+    graph3.BuildGrid(Vector3(0, 0, 0), 10.0f, 1, 1, 1);
+    TEST("1x1x1 grid = 1 node", graph3.NodeCount() == 1);
+    TEST("1x1x1 grid = 0 edges", graph3.EdgeCount() == 0);
+
+    // Zero dimensions
+    NavGraph graph4;
+    graph4.BuildGrid(Vector3(0, 0, 0), 10.0f, 0, 5, 5);
+    TEST("0x5x5 grid = 0 nodes", graph4.NodeCount() == 0);
+}
+
+static void TestPathfinderSimple() {
+    std::cout << "[Pathfinder Simple]\n";
+
+    NavGraph graph;
+    NavNodeId a = graph.AddNode(Vector3(0, 0, 0));
+    NavNodeId b = graph.AddNode(Vector3(10, 0, 0));
+    NavNodeId c = graph.AddNode(Vector3(20, 0, 0));
+    graph.AddEdge(a, b);
+    graph.AddEdge(b, c);
+
+    Pathfinder pf(graph);
+    NavPath path = pf.FindPath(a, c);
+
+    TEST("Path is valid", path.valid);
+    TEST("Path has 3 waypoints", path.Length() == 3);
+    TEST("Path start at A", ApproxEq(path.waypoints[0].x, 0.0f));
+    TEST("Path through B", ApproxEq(path.waypoints[1].x, 10.0f));
+    TEST("Path ends at C", ApproxEq(path.waypoints[2].x, 20.0f));
+    TEST("Path cost is 20", ApproxEq(path.totalCost, 20.0f));
+    TEST("Nodes explored > 0", pf.LastNodesExplored() > 0);
+}
+
+static void TestPathfinderSameNode() {
+    std::cout << "[Pathfinder SameNode]\n";
+
+    NavGraph graph;
+    NavNodeId a = graph.AddNode(Vector3(5, 5, 5));
+
+    Pathfinder pf(graph);
+    NavPath path = pf.FindPath(a, a);
+
+    TEST("Same node path valid", path.valid);
+    TEST("Same node path has 1 waypoint", path.Length() == 1);
+    TEST("Same node cost is 0", ApproxEq(path.totalCost, 0.0f));
+}
+
+static void TestPathfinderNoPath() {
+    std::cout << "[Pathfinder NoPath]\n";
+
+    NavGraph graph;
+    NavNodeId a = graph.AddNode(Vector3(0, 0, 0));
+    NavNodeId b = graph.AddNode(Vector3(100, 0, 0));
+    // No edge between them
+
+    Pathfinder pf(graph);
+    NavPath path = pf.FindPath(a, b);
+
+    TEST("No path is invalid", !path.valid);
+    TEST("No path is empty", path.IsEmpty());
+}
+
+static void TestPathfinderBlockedNode() {
+    std::cout << "[Pathfinder BlockedNode]\n";
+
+    NavGraph graph;
+    NavNodeId a = graph.AddNode(Vector3(0, 0, 0));
+    NavNodeId b = graph.AddNode(Vector3(10, 0, 0));
+    NavNodeId c = graph.AddNode(Vector3(20, 0, 0));
+    graph.AddEdge(a, b);
+    graph.AddEdge(b, c);
+
+    // Block the middle node
+    graph.SetBlocked(b, true);
+
+    Pathfinder pf(graph);
+    NavPath path = pf.FindPath(a, c);
+
+    TEST("Path through blocked node invalid", !path.valid);
+
+    // Block the goal
+    graph.SetBlocked(b, false);
+    graph.SetBlocked(c, true);
+    NavPath path2 = pf.FindPath(a, c);
+    TEST("Path to blocked goal invalid", !path2.valid);
+}
+
+static void TestPathfinderAlternateRoute() {
+    std::cout << "[Pathfinder AlternateRoute]\n";
+
+    // Diamond graph: A -> B -> D, A -> C -> D
+    // Block B, should go through C
+    NavGraph graph;
+    NavNodeId a = graph.AddNode(Vector3(0, 0, 0));
+    NavNodeId b = graph.AddNode(Vector3(10, 10, 0));
+    NavNodeId c = graph.AddNode(Vector3(10, -10, 0));
+    NavNodeId d = graph.AddNode(Vector3(20, 0, 0));
+    graph.AddEdge(a, b);
+    graph.AddEdge(a, c);
+    graph.AddEdge(b, d);
+    graph.AddEdge(c, d);
+
+    graph.SetBlocked(b, true);
+
+    Pathfinder pf(graph);
+    NavPath path = pf.FindPath(a, d);
+
+    TEST("Alternate route found", path.valid);
+    TEST("Alternate route has 3 waypoints", path.Length() == 3);
+    // Should go through C (y=-10)
+    TEST("Goes through C", ApproxEq(path.waypoints[1].y, -10.0f));
+}
+
+static void TestPathfinderByPosition() {
+    std::cout << "[Pathfinder ByPosition]\n";
+
+    NavGraph graph;
+    graph.AddNode(Vector3(0, 0, 0));
+    graph.AddNode(Vector3(10, 0, 0));
+    graph.AddNode(Vector3(20, 0, 0));
+    NavNodeId a = graph.FindNearest(Vector3(0, 0, 0));
+    NavNodeId b = graph.FindNearest(Vector3(10, 0, 0));
+    NavNodeId c = graph.FindNearest(Vector3(20, 0, 0));
+    graph.AddEdge(a, b);
+    graph.AddEdge(b, c);
+
+    Pathfinder pf(graph);
+    NavPath path = pf.FindPathByPosition(Vector3(1, 1, 0), Vector3(19, 0, 0));
+
+    TEST("Position-based path valid", path.valid);
+    TEST("Position-based path has waypoints", path.Length() >= 2);
+}
+
+static void TestPathfinderGrid() {
+    std::cout << "[Pathfinder Grid]\n";
+
+    NavGraph graph;
+    graph.BuildGrid(Vector3(0, 0, 0), 10.0f, 5, 5, 1);
+
+    Pathfinder pf(graph);
+    NavNodeId start = graph.FindNearest(Vector3(0, 0, 0));
+    NavNodeId goal = graph.FindNearest(Vector3(40, 40, 0));
+
+    NavPath path = pf.FindPath(start, goal);
+    TEST("Grid path valid", path.valid);
+    TEST("Grid path has waypoints", path.Length() > 0);
+    TEST("Grid path cost > 0", path.totalCost > 0.0f);
+
+    // Path should go from (0,0,0) to (40,40,0)
+    TEST("Grid path starts near origin",
+         ApproxEq(path.waypoints.front().x, 0.0f) &&
+         ApproxEq(path.waypoints.front().y, 0.0f));
+    TEST("Grid path ends near (40,40,0)",
+         ApproxEq(path.waypoints.back().x, 40.0f) &&
+         ApproxEq(path.waypoints.back().y, 40.0f));
+}
+
+static void TestPathfinderGridBlocked() {
+    std::cout << "[Pathfinder GridBlocked]\n";
+
+    NavGraph graph;
+    graph.BuildGrid(Vector3(0, 0, 0), 10.0f, 5, 1, 1);
+    // Nodes at x=0,10,20,30,40 in a line
+
+    // Block node at x=20 (the middle)
+    NavNodeId midNode = graph.FindNearest(Vector3(20, 0, 0));
+    graph.SetBlocked(midNode, true);
+
+    Pathfinder pf(graph);
+    NavNodeId start = graph.FindNearest(Vector3(0, 0, 0));
+    NavNodeId goal = graph.FindNearest(Vector3(40, 0, 0));
+
+    NavPath path = pf.FindPath(start, goal);
+    // In a 1D line, blocking the middle means no path
+    TEST("Blocked middle in line = no path", !path.valid);
+}
+
+static void TestPathfinderManhattanHeuristic() {
+    std::cout << "[Pathfinder ManhattanHeuristic]\n";
+
+    float d = Pathfinder::ManhattanHeuristic(Vector3(0, 0, 0), Vector3(3, 4, 5));
+    TEST("Manhattan distance (3,4,5) = 12", ApproxEq(d, 12.0f));
+
+    float d2 = Pathfinder::EuclideanHeuristic(Vector3(0, 0, 0), Vector3(3, 4, 0));
+    TEST("Euclidean distance (3,4,0) = 5", ApproxEq(d2, 5.0f));
+}
+
+static void TestPathfinderCustomHeuristic() {
+    std::cout << "[Pathfinder CustomHeuristic]\n";
+
+    NavGraph graph;
+    NavNodeId a = graph.AddNode(Vector3(0, 0, 0));
+    NavNodeId b = graph.AddNode(Vector3(10, 0, 0));
+    graph.AddEdge(a, b);
+
+    Pathfinder pf(graph);
+    pf.SetHeuristic(Pathfinder::ManhattanHeuristic);
+    NavPath path = pf.FindPath(a, b);
+    TEST("Path with Manhattan heuristic valid", path.valid);
+}
+
+static void TestPathfinderNodeCost() {
+    std::cout << "[Pathfinder NodeCost]\n";
+
+    // Two paths: direct through expensive node vs longer through cheap nodes
+    NavGraph graph;
+    NavNodeId a = graph.AddNode(Vector3(0, 0, 0), 1.0f);
+    NavNodeId expensive = graph.AddNode(Vector3(10, 0, 0), 10.0f);
+    NavNodeId cheap1 = graph.AddNode(Vector3(5, 10, 0), 1.0f);
+    NavNodeId cheap2 = graph.AddNode(Vector3(15, 10, 0), 1.0f);
+    NavNodeId goal = graph.AddNode(Vector3(20, 0, 0), 1.0f);
+
+    graph.AddEdge(a, expensive);
+    graph.AddEdge(expensive, goal);
+    graph.AddEdge(a, cheap1);
+    graph.AddEdge(cheap1, cheap2);
+    graph.AddEdge(cheap2, goal);
+
+    Pathfinder pf(graph);
+    NavPath path = pf.FindPath(a, goal);
+    TEST("Avoids expensive node path valid", path.valid);
+    // The path should prefer going through cheap nodes
+    TEST("Path has waypoints", path.Length() >= 2);
+}
+
+static void TestSmoothPathFunc() {
+    std::cout << "[SmoothPath]\n";
+
+    // Create a path with collinear points
+    NavPath raw;
+    raw.valid = true;
+    raw.totalCost = 30.0f;
+    raw.waypoints = {
+        Vector3(0, 0, 0),
+        Vector3(10, 0, 0),
+        Vector3(20, 0, 0),
+        Vector3(30, 0, 0)
+    };
+
+    NavPath smoothed = SmoothPath(raw);
+    TEST("Smoothed path valid", smoothed.valid);
+    TEST("Smoothed removes collinear", smoothed.Length() == 2); // start and end only
+    TEST("Smoothed keeps start", ApproxEq(smoothed.waypoints.front().x, 0.0f));
+    TEST("Smoothed keeps end", ApproxEq(smoothed.waypoints.back().x, 30.0f));
+    TEST("Smoothed preserves cost", ApproxEq(smoothed.totalCost, 30.0f));
+
+    // Non-collinear path should not be changed
+    NavPath nonCollinear;
+    nonCollinear.valid = true;
+    nonCollinear.waypoints = {
+        Vector3(0, 0, 0),
+        Vector3(10, 10, 0),
+        Vector3(20, 0, 0)
+    };
+    NavPath smoothed2 = SmoothPath(nonCollinear);
+    TEST("Non-collinear preserved", smoothed2.Length() == 3);
+
+    // Invalid path returns as-is
+    NavPath invalid;
+    NavPath smoothedInvalid = SmoothPath(invalid);
+    TEST("Invalid path unchanged", !smoothedInvalid.valid);
+
+    // Two-point path returns as-is
+    NavPath twoPoint;
+    twoPoint.valid = true;
+    twoPoint.waypoints = { Vector3(0, 0, 0), Vector3(10, 0, 0) };
+    NavPath smoothedTwo = SmoothPath(twoPoint);
+    TEST("Two-point path unchanged", smoothedTwo.Length() == 2);
+}
+
+static void TestNavPath() {
+    std::cout << "[NavPath]\n";
+
+    NavPath path;
+    TEST("Default path invalid", !path.valid);
+    TEST("Default path empty", path.IsEmpty());
+    TEST("Default path length 0", path.Length() == 0);
+
+    path.valid = true;
+    path.waypoints = { Vector3(0, 0, 0), Vector3(10, 0, 0) };
+    TEST("Path not empty after add", !path.IsEmpty());
+    TEST("Path length 2", path.Length() == 2);
+}
+
+// ===================================================================
+// PathfindingComponent tests
+// ===================================================================
+
+static void TestPathfindingComponent() {
+    std::cout << "[PathfindingComponent]\n";
+
+    PathfindingComponent pfc;
+
+    // Default state
+    TEST("Default no target", !pfc.hasTarget);
+    TEST("Default reached destination", pfc.HasReachedDestination());
+    TEST("Default waypoint is zero", ApproxEq(pfc.GetNextWaypoint().x, 0.0f));
+    TEST("Default arrival threshold 5", ApproxEq(pfc.arrivalThreshold, 5.0f));
+    TEST("Default repath interval 2", ApproxEq(pfc.repathInterval, 2.0f));
+
+    // SetTarget
+    pfc.SetTarget(Vector3(100, 50, 0));
+    TEST("Has target after set", pfc.hasTarget);
+    TEST("Needs repath after set", pfc.needsRepath);
+    TEST("Target x correct", ApproxEq(pfc.targetPosition.x, 100.0f));
+    TEST("Target y correct", ApproxEq(pfc.targetPosition.y, 50.0f));
+    TEST("Waypoint index reset", pfc.currentWaypointIndex == 0);
+
+    // Not reached (no path assigned yet)
+    TEST("Not reached without path", !pfc.HasReachedDestination());
+
+    // Assign a path manually
+    NavPath path;
+    path.valid = true;
+    path.waypoints = {
+        Vector3(0, 0, 0),
+        Vector3(50, 25, 0),
+        Vector3(100, 50, 0)
+    };
+    pfc.currentPath = path;
+    pfc.currentWaypointIndex = 0;
+
+    TEST("First waypoint is start", ApproxEq(pfc.GetNextWaypoint().x, 0.0f));
+
+    // AdvanceWaypoint: too far away
+    bool advanced = pfc.AdvanceWaypoint(Vector3(50, 50, 50));
+    TEST("Not advanced when far", !advanced);
+
+    // AdvanceWaypoint: close enough
+    advanced = pfc.AdvanceWaypoint(Vector3(1, 1, 1));
+    TEST("Advanced when close", advanced);
+    TEST("Waypoint index is 1", pfc.currentWaypointIndex == 1);
+    TEST("Next waypoint is second", ApproxEq(pfc.GetNextWaypoint().x, 50.0f));
+
+    // Advance to end
+    pfc.AdvanceWaypoint(Vector3(50, 25, 0));
+    pfc.AdvanceWaypoint(Vector3(100, 50, 0));
+    TEST("Reached destination", pfc.HasReachedDestination());
+    TEST("Waypoint past end returns zero", ApproxEq(pfc.GetNextWaypoint().x, 0.0f));
+
+    // ClearPath
+    pfc.ClearPath();
+    TEST("No target after clear", !pfc.hasTarget);
+    TEST("Path empty after clear", pfc.currentPath.IsEmpty());
+    TEST("Index 0 after clear", pfc.currentWaypointIndex == 0);
+}
+
+// ===================================================================
+// PathfindingSystem tests
+// ===================================================================
+
+static void TestPathfindingSystem() {
+    std::cout << "[PathfindingSystem]\n";
+
+    EntityManager em;
+    PathfindingSystem pfSys(em);
+
+    // Build a small nav grid
+    pfSys.BuildNavGrid(Vector3(0, 0, 0), 10.0f, 5, 5, 1);
+    TEST("Nav grid built", pfSys.GetNavGraph().NodeCount() == 25);
+
+    // Request a path
+    NavPath path = pfSys.RequestPath(Vector3(0, 0, 0), Vector3(40, 40, 0));
+    TEST("Requested path valid", path.valid);
+    TEST("Total paths calculated is 1", pfSys.GetTotalPathsCalculated() == 1);
+
+    // Create entity with pathfinding component
+    auto& ent = em.CreateEntity("NavBot");
+    auto physComp = std::make_unique<PhysicsComponent>();
+    physComp->position = Vector3(0, 0, 0);
+    em.AddComponent<PhysicsComponent>(ent.id, std::move(physComp));
+
+    auto pfComp = std::make_unique<PathfindingComponent>();
+    pfComp->SetTarget(Vector3(40, 40, 0));
+    auto* pfc = em.AddComponent<PathfindingComponent>(ent.id, std::move(pfComp));
+
+    // First update should trigger path calculation (needsRepath = true)
+    pfSys.Update(0.1f);
+    TEST("Path calculated after update", pfc->currentPath.valid);
+    TEST("Path has waypoints", !pfc->currentPath.IsEmpty());
+    TEST("Total paths is 2", pfSys.GetTotalPathsCalculated() == 2);
+}
+
+static void TestPathfindingSystemRepath() {
+    std::cout << "[PathfindingSystem Repath]\n";
+
+    EntityManager em;
+    PathfindingSystem pfSys(em);
+    pfSys.BuildNavGrid(Vector3(0, 0, 0), 10.0f, 3, 3, 1);
+
+    auto& ent = em.CreateEntity("NavBot2");
+    auto physComp = std::make_unique<PhysicsComponent>();
+    physComp->position = Vector3(0, 0, 0);
+    em.AddComponent<PhysicsComponent>(ent.id, std::move(physComp));
+
+    auto pfComp = std::make_unique<PathfindingComponent>();
+    pfComp->SetTarget(Vector3(20, 20, 0));
+    pfComp->repathInterval = 1.0f;
+    auto* pfc = em.AddComponent<PathfindingComponent>(ent.id, std::move(pfComp));
+
+    // First update: repath due to needsRepath flag
+    pfSys.Update(0.1f);
+    int count1 = pfSys.GetTotalPathsCalculated();
+    TEST("First update calculates path", count1 == 1);
+
+    // Small update: no repath needed
+    pfSys.Update(0.1f);
+    TEST("No repath on small dt", pfSys.GetTotalPathsCalculated() == 1);
+
+    // Large update: repath triggered by timer
+    pfSys.Update(1.0f);
+    TEST("Repath after interval", pfSys.GetTotalPathsCalculated() == 2);
+}
+
+static void TestPathfindingGameEvents() {
+    std::cout << "[Pathfinding GameEvents]\n";
+
+    TEST("PathFound event", std::string(GameEvents::PathFound) == "navigation.path.found");
+    TEST("PathNotFound event", std::string(GameEvents::PathNotFound) == "navigation.path.not_found");
+    TEST("WaypointReached event", std::string(GameEvents::WaypointReached) == "navigation.waypoint.reached");
+    TEST("PathCompleted event", std::string(GameEvents::PathCompleted) == "navigation.path.completed");
+    TEST("NavGridBuilt event", std::string(GameEvents::NavGridBuilt) == "navigation.grid.built");
+}
+
+static void TestPathfinder3D() {
+    std::cout << "[Pathfinder 3D]\n";
+
+    NavGraph graph;
+    graph.BuildGrid(Vector3(0, 0, 0), 10.0f, 3, 3, 3);
+    TEST("3D grid has 27 nodes", graph.NodeCount() == 27);
+
+    Pathfinder pf(graph);
+    NavNodeId start = graph.FindNearest(Vector3(0, 0, 0));
+    NavNodeId goal = graph.FindNearest(Vector3(20, 20, 20));
+
+    NavPath path = pf.FindPath(start, goal);
+    TEST("3D path valid", path.valid);
+    TEST("3D path starts at origin",
+         ApproxEq(path.waypoints.front().x, 0.0f) &&
+         ApproxEq(path.waypoints.front().y, 0.0f) &&
+         ApproxEq(path.waypoints.front().z, 0.0f));
+    TEST("3D path ends at (20,20,20)",
+         ApproxEq(path.waypoints.back().x, 20.0f) &&
+         ApproxEq(path.waypoints.back().y, 20.0f) &&
+         ApproxEq(path.waypoints.back().z, 20.0f));
+}
+
+static void TestPathfinderInvalidNodes() {
+    std::cout << "[Pathfinder InvalidNodes]\n";
+
+    NavGraph graph;
+    NavNodeId a = graph.AddNode(Vector3(0, 0, 0));
+
+    Pathfinder pf(graph);
+
+    // Non-existent start
+    NavPath path1 = pf.FindPath(999, a);
+    TEST("Invalid start = no path", !path1.valid);
+
+    // Non-existent goal
+    NavPath path2 = pf.FindPath(a, 999);
+    TEST("Invalid goal = no path", !path2.valid);
+
+    // Both invalid
+    NavPath path3 = pf.FindPath(998, 999);
+    TEST("Both invalid = no path", !path3.valid);
+}
+
+static void TestNavGraphEdgeWeight() {
+    std::cout << "[NavGraph EdgeWeight]\n";
+
+    NavGraph graph;
+    NavNodeId a = graph.AddNode(Vector3(0, 0, 0), 1.0f);
+    NavNodeId b = graph.AddNode(Vector3(10, 0, 0), 3.0f);
+
+    // Auto-calculated weight = distance * avg(1.0, 3.0) = 10 * 2.0 = 20
+    graph.AddEdge(a, b);
+    const auto& edges = graph.GetEdges(a);
+    TEST("Auto weight = dist * avgCost", ApproxEq(edges[0].weight, 20.0f));
+
+    // Explicit weight overrides
+    NavNodeId c = graph.AddNode(Vector3(20, 0, 0));
+    graph.AddEdge(b, c, 5.0f);
+    const auto& edgesB = graph.GetEdges(b);
+    bool hasExplicit = false;
+    for (const auto& e : edgesB) {
+        if (e.to == c && ApproxEq(e.weight, 5.0f)) hasExplicit = true;
+    }
+    TEST("Explicit weight applied", hasExplicit);
+}
+
+// ===================================================================
 // Engine tests
 // ===================================================================
 
@@ -7024,6 +8005,44 @@ int main() {
     TestOctreeRebuild();
     TestOctreeGameEvents();
     TestVoxelDamageGameEvents();
+    TestCollisionCategoryBitwise();
+    TestHasCategory();
+    TestShouldCollide();
+    TestCollisionPresets();
+    TestGetCategoryName();
+    TestPhysicsComponentCollisionLayers();
+    TestPhysicsSystemCollisionLayers();
+    TestPhysicsSystemTrigger();
+    TestCollisionLayerGameEvents();
+    TestNavGraphAddNode();
+    TestNavGraphAddEdge();
+    TestNavGraphDirectedEdge();
+    TestNavGraphRemoveNode();
+    TestNavGraphRemoveEdge();
+    TestNavGraphBlocking();
+    TestNavGraphFindNearest();
+    TestNavGraphClear();
+    TestNavGraphBuildGrid();
+    TestPathfinderSimple();
+    TestPathfinderSameNode();
+    TestPathfinderNoPath();
+    TestPathfinderBlockedNode();
+    TestPathfinderAlternateRoute();
+    TestPathfinderByPosition();
+    TestPathfinderGrid();
+    TestPathfinderGridBlocked();
+    TestPathfinderManhattanHeuristic();
+    TestPathfinderCustomHeuristic();
+    TestPathfinderNodeCost();
+    TestSmoothPathFunc();
+    TestNavPath();
+    TestPathfindingComponent();
+    TestPathfindingSystem();
+    TestPathfindingSystemRepath();
+    TestPathfindingGameEvents();
+    TestPathfinder3D();
+    TestPathfinderInvalidNodes();
+    TestNavGraphEdgeWeight();
     TestEngine();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "

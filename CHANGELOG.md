@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **C++ Engine: Collision Layer System** — New `CollisionCategory` bitmask enum with 10 categories (Player, Enemy, Projectile, Asteroid, Station, Debris, Shield, Sensor, Pickup, Missile), bitwise operators, `CollisionPresets` with 10 ready-made presets, `ShouldCollide()` bidirectional filtering, `isTrigger` support for non-physics volumes, and `GetCategoryName()` debug helper. PhysicsSystem now checks collision layers before resolving collisions, and trigger volumes skip physics response (2026-03-02)
+- **C++ Engine: 3D A* Pathfinding System** — New `NavGraph` class with add/remove nodes and edges, blocked-node support, cost-weighted edges, `FindNearest()`, and `BuildGrid()` for automatic 3D grid generation with 6-connected neighbors. New `Pathfinder` class with A* search, Euclidean/Manhattan/custom heuristics, and `FindPathByPosition()`. New `PathfindingComponent` ECS component with waypoint tracking, arrival threshold, repath timer, and target management. New `PathfindingSystem` that owns a shared NavGraph/Pathfinder and auto-repaths entities on timer. `SmoothPath()` utility removes collinear waypoints (2026-03-02)
+- **C++ Engine: Collision & Pathfinding events** — `GameEvents` namespace now includes `CollisionLayerChanged`, `TriggerEntered`, `TriggerExited`, `PathFound`, `PathNotFound`, `WaypointReached`, `PathCompleted`, and `NavGridBuilt` event constants (2026-03-02)
+- **C++ Engine: 218 new unit tests** for CollisionCategory bitwise ops, HasCategory, ShouldCollide, CollisionPresets, GetCategoryName, PhysicsComponent collision layers, PhysicsSystem collision layer filtering, trigger volumes, NavGraph (add/remove nodes/edges, blocking, FindNearest, Clear, BuildGrid, edge weights), Pathfinder (simple, same-node, no-path, blocked, alternate-route, by-position, grid, 3D, invalid-nodes, heuristics, node-cost), SmoothPath, NavPath, PathfindingComponent, PathfindingSystem, and event constants (1694 → 1912 total tests)
 - **C++ Engine: Voxel Damage & Structural Integrity System** — Expanded `ShipDamage` with area/splash damage (Manhattan distance fall-off), directional penetrating damage (0.7× per block), repair mechanics (single-block and budget-distributed), structural integrity checking via BFS flood-fill (`StructuralIntegrity`), fragment separation, and damage queries. New `DamageComponent` ECS component with damage history, modifiers, invulnerability, and save-game serialization (2026-03-02)
 - **C++ Engine: Octree Spatial Partitioning** — New `Octree` class with `AABB` bounds provides hierarchical spatial indexing for 3D entities with insert/remove, sphere query, box query, nearest-neighbor, K-nearest, subdivision (8 octants), max-depth limiting, and tree rebuild. Complements existing `SpatialHash` for non-uniform entity distributions and LOD queries (2026-03-02)
 - **C++ Engine: Voxel Damage & Spatial events** — `GameEvents` namespace now includes `BlockDamaged`, `BlockDestroyed`, `BlockRepaired`, `SplashDamageApplied`, `PenetratingDamageApplied`, `StructuralCheck`, `ShipFragmented`, `IntegrityRestored`, `OctreeRebuilt`, and `SpatialQueryPerformed` event constants (2026-03-02)
@@ -360,13 +364,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 See [NEXT_STEPS.md](NEXT_STEPS.md) for detailed development roadmap and priorities.
 
 ### Planned Features
-- **AI System** - NPC behaviors, pathfinding, decision making
+- ~~**AI System**~~ ✅ NPC behaviors, pathfinding, decision making (implemented — A* pathfinding, collision layers, AI steering)
 - ~~**Voxel Damage**~~ ✅ Destructible blocks, structural integrity, splash/penetrating damage, repair (implemented)
 - **Advanced Combat** - Weapon variety, ammunition, targeting systems
 - **Enhanced Procedural Generation** - Unique sectors, special events, anomalies
-- ~~**Performance Optimizations**~~ ✅ Spatial partitioning (SpatialHash + Octree), collision queries (implemented)
+- ~~**Performance Optimizations**~~ ✅ Spatial partitioning (SpatialHash + Octree), collision layers, collision queries (implemented)
 - **Network Enhancements** - Client prediction, lag compensation, better synchronization
-- **Tutorial System** - Interactive tutorials, tooltips, help system
+- ~~**Tutorial System**~~ ✅ Interactive tutorials, tooltips, help system (implemented)
 - ~~**Achievement System**~~ ✅ Milestones, rewards, progression tracking (implemented)
 - ~~**Audio System**~~ ✅ Sound effects, music, 3D spatial audio (framework implemented)
 - ~~**Particle System**~~ ✅ Visual effects for explosions, engines, shields (implemented)

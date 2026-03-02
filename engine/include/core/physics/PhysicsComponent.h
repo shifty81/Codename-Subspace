@@ -2,6 +2,7 @@
 
 #include "core/ecs/IComponent.h"
 #include "core/Math.h"
+#include "core/physics/CollisionLayers.h"
 
 namespace subspace {
 
@@ -41,6 +42,11 @@ struct PhysicsComponent : IComponent {
     float collisionRadius = 10.0f;
     bool  isStatic        = false;
 
+    // Collision layers
+    CollisionCategory collisionLayer = CollisionCategory::All;  // Which layer(s) this object belongs to
+    CollisionCategory collisionMask  = CollisionCategory::All;  // Which layer(s) this object collides with
+    bool isTrigger = false;  // If true, generates events but no physics response
+
     /// Apply a force to the object.
     void AddForce(const Vector3& force);
 
@@ -55,6 +61,12 @@ struct PhysicsComponent : IComponent {
 
     /// Clear all applied forces.
     void ClearForces();
+
+    /// Apply a collision preset.
+    void SetCollisionPreset(CollisionPresets::Preset preset);
+
+    /// Check whether this component should collide with another.
+    bool ShouldCollideWith(const PhysicsComponent& other) const;
 };
 
 } // namespace subspace
