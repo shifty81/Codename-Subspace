@@ -82,6 +82,7 @@ static int testsFailed = 0;
 } while(0)
 
 static constexpr float kEpsilon = 1e-4f;
+static constexpr float kTinyDeltaTime = 0.0001f;
 static bool ApproxEq(float a, float b) { return std::fabs(a - b) < kEpsilon; }
 
 // Helper: create a simple block
@@ -6891,7 +6892,7 @@ static void TestPhysicsSystemCollisionLayers() {
     float v1Before = pc1->velocity.x;
     float v2Before = pc2->velocity.x;
 
-    physSys.Update(0.0001f); // Tiny dt to minimize position change
+    physSys.Update(kTinyDeltaTime); // Tiny dt to minimize position change
 
     // PlayerProjectile should NOT collide with PlayerShip (friendly fire off)
     // Velocities should remain essentially unchanged (no collision response)
@@ -6926,7 +6927,7 @@ static void TestPhysicsSystemCollisionLayers() {
     cp->SetCollisionPreset(CollisionPresets::EnemyProjectile());
     auto* pcp = em2.AddComponent<PhysicsComponent>(proj.id, std::move(cp));
 
-    physSys2.Update(0.0001f);
+    physSys2.Update(kTinyDeltaTime);
 
     // Enemy projectile should collide with player - velocity should change
     TEST("Enemy projectile hits player (velocity changed)",
@@ -6959,7 +6960,7 @@ static void TestPhysicsSystemTrigger() {
     auto* pc2 = em.AddComponent<PhysicsComponent>(obj2.id, std::move(c2));
 
     float v1Before = pc1->velocity.x;
-    physSys.Update(0.0001f);
+    physSys.Update(kTinyDeltaTime);
 
     // Trigger should not alter velocity (no physics response)
     TEST("Trigger does not alter velocity", ApproxEq(pc1->velocity.x, v1Before));
@@ -7108,8 +7109,8 @@ static void TestNavGraphFindNearest() {
     NavNodeId c = graph.AddNode(Vector3(20, 0, 0));
 
     TEST("Nearest to origin is A", graph.FindNearest(Vector3(1, 0, 0)) == a);
-    TEST("Nearest to (15,0,0) is B or C", graph.FindNearest(Vector3(15, 0, 0)) == b ||
-                                            graph.FindNearest(Vector3(15, 0, 0)) == c);
+    NavNodeId nearMid = graph.FindNearest(Vector3(15, 0, 0));
+    TEST("Nearest to (15,0,0) is B or C", nearMid == b || nearMid == c);
     TEST("Nearest to (25,0,0) is C", graph.FindNearest(Vector3(25, 0, 0)) == c);
 
     // Blocked nodes are skipped

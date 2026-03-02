@@ -21,7 +21,7 @@ struct NavNode {
     NavNodeId id = InvalidNavNodeId;
     Vector3 position;
     bool blocked = false;   ///< If true, node cannot be traversed.
-    float cost = 1.0f;      ///< Movement cost multiplier (e.g., nebula = 2.0).
+    float cost = 1.0f;      ///< Movement cost multiplier (e.g., hazardous area = 2.0).
 };
 
 /// A connection between two navigation nodes.
