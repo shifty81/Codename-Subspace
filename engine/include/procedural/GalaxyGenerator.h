@@ -46,6 +46,18 @@ struct WormholeData {
     SectorPosition destinationSector;
 };
 
+/// Types of spatial anomalies found in sectors.
+enum class AnomalyType { Nebula, BlackHole, RadiationZone, IonStorm, GravityWell };
+
+/// Data for an anomaly within a sector.
+struct AnomalyData {
+    SectorPosition position;
+    AnomalyType type = AnomalyType::Nebula;
+    float radius = 50.0f;           // area of effect radius
+    float intensity = 1.0f;         // effect strength (0-1 scale typically, but can exceed)
+    std::string name = "Unknown Anomaly";
+};
+
 /// Represents a generated galaxy sector.
 struct GalaxySector {
     int x = 0;
@@ -56,6 +68,7 @@ struct GalaxySector {
     std::vector<WormholeData> wormholes;
     bool hasStation = false;
     StationData station;
+    std::vector<AnomalyData> anomalies;
 
     GalaxySector() = default;
     GalaxySector(int x_, int y_, int z_) : x(x_), y(y_), z(z_) {}
@@ -79,6 +92,9 @@ public:
     /// Wormhole spawn probability (0-1, default 0.05).
     float wormholeProbability = 0.05f;
 
+    /// Anomaly spawn probability (0-1, default 0.15).
+    float anomalyProbability = 0.15f;
+
     /// Min/max asteroid count per sector.
     int minAsteroids = 5;
     int maxAsteroids = 20;
@@ -100,6 +116,12 @@ private:
 
     /// Generate a wormhole designation (e.g. "A123").
     std::string GenerateWormholeDesignation(std::mt19937& rng) const;
+
+    /// Pick a random anomaly type.
+    AnomalyType GetRandomAnomalyType(std::mt19937& rng) const;
+
+    /// Generate an anomaly name.
+    std::string GenerateAnomalyName(std::mt19937& rng, AnomalyType type) const;
 };
 
 } // namespace subspace

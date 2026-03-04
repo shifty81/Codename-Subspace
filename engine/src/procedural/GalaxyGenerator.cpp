@@ -110,7 +110,74 @@ GalaxySector GalaxyGenerator::GenerateSector(int x, int y, int z) const {
         sector.wormholes.push_back(wh);
     }
 
+    // --- Anomaly generation ------------------------------------------------
+    std::uniform_real_distribution<float> anomalyDist(0.0f, 1.0f);
+    if (anomalyDist(rng) < anomalyProbability) {
+        int numAnomalies = 1 + static_cast<int>(anomalyDist(rng) * 2.0f); // 1-2 anomalies
+        std::uniform_real_distribution<float> anomalyPosDist(-400.0f, 400.0f);
+        std::uniform_real_distribution<float> radiusDist(30.0f, 150.0f);
+        std::uniform_real_distribution<float> intensityDist(0.3f, 1.5f);
+        for (int i = 0; i < numAnomalies; ++i) {
+            AnomalyData anomaly;
+            anomaly.position = { anomalyPosDist(rng), anomalyPosDist(rng), anomalyPosDist(rng) };
+            anomaly.type = GetRandomAnomalyType(rng);
+            anomaly.radius = radiusDist(rng);
+            anomaly.intensity = intensityDist(rng);
+            anomaly.name = GenerateAnomalyName(rng, anomaly.type);
+            sector.anomalies.push_back(anomaly);
+        }
+    }
+
     return sector;
+}
+
+AnomalyType GalaxyGenerator::GetRandomAnomalyType(std::mt19937& rng) const {
+    std::uniform_int_distribution<int> dist(0, 4);
+    switch (dist(rng)) {
+        case 0: return AnomalyType::Nebula;
+        case 1: return AnomalyType::BlackHole;
+        case 2: return AnomalyType::RadiationZone;
+        case 3: return AnomalyType::IonStorm;
+        case 4: return AnomalyType::GravityWell;
+        default: return AnomalyType::Nebula;
+    }
+}
+
+std::string GalaxyGenerator::GenerateAnomalyName(std::mt19937& rng, AnomalyType type) const {
+    static const std::vector<std::string> prefixes = {
+        "Alpha", "Beta", "Gamma", "Delta", "Epsilon",
+        "Omega", "Sigma", "Theta", "Lambda", "Zeta"
+    };
+    static const std::vector<std::string> nebulaNames = {
+        "Nebula", "Cloud", "Veil", "Mist", "Haze"
+    };
+    static const std::vector<std::string> blackHoleNames = {
+        "Singularity", "Void", "Abyss", "Maw", "Rift"
+    };
+    static const std::vector<std::string> radiationNames = {
+        "Radiation Zone", "Hot Zone", "Fallout", "Exposure", "Flux"
+    };
+    static const std::vector<std::string> stormNames = {
+        "Ion Storm", "Tempest", "Maelstrom", "Squall", "Surge"
+    };
+    static const std::vector<std::string> gravityNames = {
+        "Gravity Well", "Anomaly", "Distortion", "Warp", "Sink"
+    };
+
+    std::uniform_int_distribution<int> prefixDist(0, static_cast<int>(prefixes.size()) - 1);
+    const std::string& prefix = prefixes[prefixDist(rng)];
+
+    const std::vector<std::string>* suffixes = nullptr;
+    switch (type) {
+        case AnomalyType::Nebula:        suffixes = &nebulaNames; break;
+        case AnomalyType::BlackHole:     suffixes = &blackHoleNames; break;
+        case AnomalyType::RadiationZone: suffixes = &radiationNames; break;
+        case AnomalyType::IonStorm:      suffixes = &stormNames; break;
+        case AnomalyType::GravityWell:   suffixes = &gravityNames; break;
+    }
+
+    std::uniform_int_distribution<int> suffixDist(0, static_cast<int>(suffixes->size()) - 1);
+    return prefix + " " + (*suffixes)[suffixDist(rng)];
 }
 
 } // namespace subspace
