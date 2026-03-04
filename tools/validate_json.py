@@ -82,7 +82,7 @@ def validate_quest(data: Dict, filepath: Path) -> Tuple[List[str], List[str]]:
     if 'Objectives' in data:
         if not isinstance(data['Objectives'], list):
             errors.append("Objectives must be an array")
-        elif len(data['Objectives']) == 0:
+        elif not data['Objectives']:
             warnings.append("Objectives array is empty")
         else:
             for i, obj in enumerate(data['Objectives']):
@@ -128,7 +128,7 @@ def validate_tutorial(data: Dict, filepath: Path) -> Tuple[List[str], List[str]]
     if 'Steps' in data:
         if not isinstance(data['Steps'], list):
             errors.append("Steps must be an array")
-        elif len(data['Steps']) == 0:
+        elif not data['Steps']:
             warnings.append("Steps array is empty")
         else:
             for i, step in enumerate(data['Steps']):

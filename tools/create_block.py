@@ -87,8 +87,26 @@ def main():
 
         # Physical properties
         print("\n=== Physical Properties ===")
-        hit_points = prompt("Hit Points", default=100, type_=int)
-        mass = prompt("Mass (kg)", default=50.0, type_=float)
+        hit_points = prompt("Hit Points Per Volume", default=100, type_=int)
+        mass = prompt("Mass Per Unit Volume", default=1.0, type_=float)
+        scalable = prompt("Scalable?", choices=['y', 'n'], default='y')
+
+        # Function
+        print("\n=== Function ===")
+        functions = [
+            'structure', 'protection', 'propulsion', 'maneuvering',
+            'power', 'shields', 'cargo', 'crew', 'weapons', 'sensors',
+            'docking', 'navigation',
+        ]
+        print("Available functions:")
+        for i, func in enumerate(functions, 1):
+            print(f"  {i}. {func}")
+        func_idx = prompt("Select function number", type_=int)
+        if func_idx < 1 or func_idx > len(functions):
+            print("Invalid function number. Using 'structure'.")
+            function = 'structure'
+        else:
+            function = functions[func_idx - 1]
 
         # Resource costs
         print("\n=== Resource Cost ===")
@@ -96,10 +114,9 @@ def main():
         resources = {}
         default_resources = {
             'Iron': 10,
-            'Titanium': 5,
         }
         use_defaults = prompt(
-            "Use default resources (Iron: 10, Titanium: 5)?",
+            "Use default resources (Iron: 10)?",
             choices=['y', 'n'], default='y',
         )
         if use_defaults == 'y':
@@ -114,34 +131,54 @@ def main():
 
         # Power
         print("\n=== Power ===")
-        power_consumption = prompt("Power consumption (MW)", default=0.0, type_=float)
-        power_generation = prompt("Power generation (MW)", default=0.0, type_=float)
+        power_generation = prompt(
+            "Power generation per volume", default=0.0, type_=float
+        )
+        power_consumption = prompt(
+            "Power consumption per volume", default=0.0, type_=float
+        )
 
         # Placement rules
-        print("\n=== Placement Rules ===")
-        max_per_ship = prompt(
-            "Max per ship (0 = unlimited)", default=0, type_=int
+        print("\n=== Placement ===")
+        requires_internal = prompt(
+            "Requires internal placement?", choices=['y', 'n'], default='n'
         )
-        requires_adjacency = prompt(
-            "Requires adjacency to hull?", choices=['y', 'n'], default='n'
+        suitable_exterior = prompt(
+            "Suitable for exterior?", choices=['y', 'n'], default='y'
+        )
+        min_tech = prompt("Minimum tech level", default=1, type_=int)
+        ai_priority = prompt(
+            "AI placement priority (1-10)", default=5, type_=int
         )
 
-        # Build block dictionary
+        # Color
+        print("\n=== Appearance ===")
+        default_color = prompt(
+            "Default color (hex)", default="#3F3D3B"
+        )
+
+        # Build block definition matching project format
         block_data = {
-            block_id: {
-                "name": name,
-                "category": category,
-                "description": description,
-                "hit_points": hit_points,
-                "mass": mass,
-                "resources": resources,
-                "power_consumption": power_consumption,
-                "power_generation": power_generation,
-                "placement_rules": {
-                    "max_per_ship": max_per_ship,
-                    "requires_adjacency": requires_adjacency == 'y',
-                },
-            }
+            "id": block_id,
+            "displayName": name,
+            "blockType": 0,
+            "description": description,
+            "resourceCosts": resources,
+            "hitPointsPerVolume": hit_points,
+            "massPerUnitVolume": mass,
+            "scalable": scalable == 'y',
+            "function": function,
+            "powerGenerationPerVolume": power_generation,
+            "powerConsumptionPerVolume": power_consumption,
+            "thrustPowerPerVolume": 0,
+            "shieldCapacityPerVolume": 0,
+            "cargoCapacityPerVolume": 0,
+            "crewCapacityPerVolume": 0,
+            "aiPlacementPriority": ai_priority,
+            "requiresInternalPlacement": requires_internal == 'y',
+            "suitableForExterior": suitable_exterior == 'y',
+            "minTechLevel": min_tech,
+            "defaultColor": default_color,
         }
 
         # Display result

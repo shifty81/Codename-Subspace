@@ -13,6 +13,7 @@ endif
 # Logging setup
 LOG_DIR := logs
 TIMESTAMP := $(shell date '+%Y%m%d_%H%M%S')
+NPROC := $(shell nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
 
 # Default target
 .DEFAULT_GOAL := help
@@ -33,19 +34,19 @@ help: ## Show this help message
 build: ## Build C++ engine (Release)
 	@mkdir -p $(LOG_DIR)
 	@mkdir -p engine/build
-	(cd engine/build && cmake .. -DCMAKE_BUILD_TYPE=Release && cmake --build . --config Release -j$$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)) 2>&1 | tee $(LOG_DIR)/build_$(TIMESTAMP).log
+	(cd engine/build && cmake .. -DCMAKE_BUILD_TYPE=Release && cmake --build . --config Release -j$(NPROC)) 2>&1 | tee $(LOG_DIR)/build_$(TIMESTAMP).log
 
 .PHONY: build-debug
 build-debug: ## Build C++ engine (Debug)
 	@mkdir -p $(LOG_DIR)
 	@mkdir -p engine/build
-	(cd engine/build && cmake .. -DCMAKE_BUILD_TYPE=Debug && cmake --build . --config Debug -j$$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)) 2>&1 | tee $(LOG_DIR)/build-debug_$(TIMESTAMP).log
+	(cd engine/build && cmake .. -DCMAKE_BUILD_TYPE=Debug && cmake --build . --config Debug -j$(NPROC)) 2>&1 | tee $(LOG_DIR)/build-debug_$(TIMESTAMP).log
 
 .PHONY: build-engine
 build-engine: ## Build C++ engine library only (no game executable)
 	@mkdir -p $(LOG_DIR)
 	@mkdir -p engine/build
-	(cd engine/build && cmake .. -DCMAKE_BUILD_TYPE=Release -DSUBSPACE_BUILD_TESTS=OFF && cmake --build . --config Release --target subspace_engine -j$$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)) 2>&1 | tee $(LOG_DIR)/build-engine_$(TIMESTAMP).log
+	(cd engine/build && cmake .. -DCMAKE_BUILD_TYPE=Release -DSUBSPACE_BUILD_TESTS=OFF && cmake --build . --config Release --target subspace_engine -j$(NPROC)) 2>&1 | tee $(LOG_DIR)/build-engine_$(TIMESTAMP).log
 
 # ---------------------------------------------------------------------------
 # C# Prototype (dotnet)
@@ -70,7 +71,7 @@ test: test-engine ## Run all tests
 .PHONY: test-engine
 test-engine: ## Build and run C++ engine tests
 	@mkdir -p engine/build
-	cd engine/build && cmake .. -DCMAKE_BUILD_TYPE=Release -DSUBSPACE_BUILD_TESTS=ON && cmake --build . --config Release -j$$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+	cd engine/build && cmake .. -DCMAKE_BUILD_TYPE=Release -DSUBSPACE_BUILD_TESTS=ON && cmake --build . --config Release -j$(NPROC)
 	cd engine/build && ./subspace_tests
 
 # ---------------------------------------------------------------------------
