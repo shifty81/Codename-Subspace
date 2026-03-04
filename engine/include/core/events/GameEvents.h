@@ -178,6 +178,24 @@ namespace GameEvents {
     constexpr const char* LootCollected = "loot.collected";
     constexpr const char* LootDropped   = "loot.dropped";
     constexpr const char* RareItemFound = "loot.rare_item";
+
+    // Crafting events
+    constexpr const char* CraftingStarted   = "crafting.started";
+    constexpr const char* CraftingCompleted = "crafting.completed";
+    constexpr const char* CraftingFailed    = "crafting.failed";
+    constexpr const char* RecipeLearned     = "crafting.recipe.learned";
+
+    // Reputation events
+    constexpr const char* ReputationModified  = "reputation.changed";
+    constexpr const char* StandingChanged    = "reputation.standing.changed";
+    constexpr const char* ReputationDecayed  = "reputation.decayed";
+
+    // Formation events
+    constexpr const char* FormationCreated   = "formation.created";
+    constexpr const char* FormationDisbanded = "formation.disbanded";
+    constexpr const char* FormationChanged   = "formation.changed";
+    constexpr const char* MemberJoined       = "formation.member.joined";
+    constexpr const char* MemberLeft         = "formation.member.left";
 } // namespace GameEvents
 
 } // namespace subspace

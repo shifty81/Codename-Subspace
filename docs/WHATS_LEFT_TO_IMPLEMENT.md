@@ -384,6 +384,9 @@ Based on impact and dependencies:
 | **Spatial Partitioning** | 100% | ✅ Complete (SpatialHash + Octree, queries, nearest-neighbor) |
 | **Collision Layers** | 100% | ✅ Complete (10 categories, presets, bidirectional filtering, triggers) |
 | **Pathfinding** | 100% | ✅ Complete (A* search, NavGraph, 3D grid, PathfindingComponent/System) |
+| **Crafting System** | 100% | ✅ Complete (5 station types, 8 recipes, job queues, level gating, serialization) |
+| **Reputation System** | 100% | ✅ Complete (per-faction tracking, 5 standings, decay, event history, serialization) |
+| **Formation System** | 100% | ✅ Complete (6 patterns, slot positioning, member management, serialization) |
 | **Steam Integration** | 0% | ❌ Not started |
 | **Content (ships, weapons)** | 60% | ⚠️ Expansion needed |
 | **Polish & QoL** | 40% | ⚠️ Ongoing |

@@ -77,6 +77,9 @@
 #include "combat/ShieldSystem.h"
 #include "combat/StatusEffectSystem.h"
 #include "combat/LootSystem.h"
+#include "crafting/CraftingSystem.h"
+#include "formation/FormationSystem.h"
+#include "reputation/ReputationSystem.h"
 
 using namespace subspace;
 
@@ -9436,6 +9439,854 @@ static void TestShieldStatusLootGameEvents() {
 }
 
 // ===================================================================
+// Crafting System tests
+// ===================================================================
+static void TestCraftingRecipeStationName() {
+    std::cout << "[CraftingRecipe::GetStationName]\n";
+    TEST("Basic name", CraftingRecipe::GetStationName(CraftingStationType::Basic) == "Basic Workshop");
+    TEST("Forge name", CraftingRecipe::GetStationName(CraftingStationType::Forge) == "Forge");
+    TEST("Laboratory name", CraftingRecipe::GetStationName(CraftingStationType::Laboratory) == "Laboratory");
+    TEST("Shipyard name", CraftingRecipe::GetStationName(CraftingStationType::Shipyard) == "Shipyard");
+    TEST("Refinery name", CraftingRecipe::GetStationName(CraftingStationType::Refinery) == "Refinery");
+}
+
+static void TestCraftingJobProgress() {
+    std::cout << "[CraftingJob::GetProgress]\n";
+    CraftingJob job;
+    job.totalTime = 10.0f;
+    job.timeRemaining = 10.0f;
+    TEST("Progress at start", ApproxEq(job.GetProgress(), 0.0f));
+
+    job.timeRemaining = 5.0f;
+    TEST("Progress at half", ApproxEq(job.GetProgress(), 50.0f));
+
+    job.timeRemaining = 0.0f;
+    TEST("Progress at end", ApproxEq(job.GetProgress(), 100.0f));
+
+    CraftingJob zeroJob;
+    zeroJob.totalTime = 0.0f;
+    zeroJob.timeRemaining = 0.0f;
+    TEST("Progress zero totalTime", ApproxEq(zeroJob.GetProgress(), 100.0f));
+}
+
+static void TestRecipeDatabase() {
+    std::cout << "[RecipeDatabase]\n";
+    RecipeDatabase db;
+    TEST("Empty db count", db.GetRecipeCount() == 0);
+
+    CraftingRecipe r;
+    r.recipeId = "test_recipe";
+    r.resultItem = "Test Item";
+    r.resultQuantity = 1;
+    r.ingredients = {{"Ore", 2}};
+    r.requiredStation = CraftingStationType::Basic;
+    r.craftTime = 3.0f;
+    db.AddRecipe(r);
+
+    TEST("Count after add", db.GetRecipeCount() == 1);
+    TEST("FindRecipe exists", db.FindRecipe("test_recipe") != nullptr);
+    TEST("FindRecipe id", db.FindRecipe("test_recipe")->recipeId == "test_recipe");
+    TEST("FindRecipe missing", db.FindRecipe("nonexistent") == nullptr);
+
+    auto basicRecipes = db.GetRecipesForStation(CraftingStationType::Basic);
+    TEST("Station filter count", basicRecipes.size() == 1);
+    auto forgeRecipes = db.GetRecipesForStation(CraftingStationType::Forge);
+    TEST("Station filter empty", forgeRecipes.empty());
+
+    TEST("GetAllRecipes size", db.GetAllRecipes().size() == 1);
+}
+
+static void TestRecipeDatabaseDefaults() {
+    std::cout << "[RecipeDatabase::CreateDefaultDatabase]\n";
+    RecipeDatabase db = RecipeDatabase::CreateDefaultDatabase();
+    TEST("Default recipe count", db.GetRecipeCount() == 8);
+    TEST("iron_plate exists", db.FindRecipe("iron_plate") != nullptr);
+    TEST("steel_beam exists", db.FindRecipe("steel_beam") != nullptr);
+    TEST("circuit_board exists", db.FindRecipe("circuit_board") != nullptr);
+    TEST("hull_panel exists", db.FindRecipe("hull_panel") != nullptr);
+    TEST("energy_cell exists", db.FindRecipe("energy_cell") != nullptr);
+    TEST("engine_component exists", db.FindRecipe("engine_component") != nullptr);
+    TEST("shield_capacitor exists", db.FindRecipe("shield_capacitor") != nullptr);
+    TEST("refined_fuel exists", db.FindRecipe("refined_fuel") != nullptr);
+
+    const auto* fuel = db.FindRecipe("refined_fuel");
+    TEST("refined_fuel quantity", fuel->resultQuantity == 2);
+    TEST("refined_fuel station", fuel->requiredStation == CraftingStationType::Refinery);
+
+    const auto* engine = db.FindRecipe("engine_component");
+    TEST("engine_component level", engine->requiredLevel == 3);
+    TEST("engine_component station", engine->requiredStation == CraftingStationType::Shipyard);
+}
+
+static void TestCraftingComponentDefaults() {
+    std::cout << "[CraftingComponent defaults]\n";
+    CraftingComponent cc;
+    TEST("Default stationType", cc.stationType == CraftingStationType::Basic);
+    TEST("Default crafterLevel", cc.crafterLevel == 1);
+    TEST("Default maxConcurrentJobs", cc.maxConcurrentJobs == 1);
+    TEST("Default speedMultiplier", ApproxEq(cc.speedMultiplier, 1.0f));
+    TEST("Default activeJobs empty", cc.activeJobs.empty());
+    TEST("Default CanStartJob", cc.CanStartJob());
+    TEST("Default GetActiveJobCount", cc.GetActiveJobCount() == 0);
+}
+
+static void TestCraftingComponentStartCrafting() {
+    std::cout << "[CraftingComponent::StartCrafting]\n";
+    CraftingComponent cc;
+    cc.stationType = CraftingStationType::Basic;
+    cc.crafterLevel = 1;
+    cc.maxConcurrentJobs = 2;
+
+    CraftingRecipe recipe;
+    recipe.recipeId = "iron_plate";
+    recipe.resultItem = "Iron Plate";
+    recipe.craftTime = 2.0f;
+    recipe.requiredStation = CraftingStationType::Basic;
+    recipe.requiredLevel = 1;
+
+    TEST("Start first job", cc.StartCrafting(recipe));
+    TEST("Active count after 1", cc.GetActiveJobCount() == 1);
+    TEST("Can start second", cc.CanStartJob());
+
+    TEST("Start second job", cc.StartCrafting(recipe));
+    TEST("Active count after 2", cc.GetActiveJobCount() == 2);
+    TEST("Cannot start third", !cc.CanStartJob());
+    TEST("Third job rejected", !cc.StartCrafting(recipe));
+}
+
+static void TestCraftingComponentLevelRequirement() {
+    std::cout << "[CraftingComponent level requirement]\n";
+    CraftingComponent cc;
+    cc.stationType = CraftingStationType::Shipyard;
+    cc.crafterLevel = 1;
+
+    CraftingRecipe recipe;
+    recipe.recipeId = "engine_component";
+    recipe.requiredStation = CraftingStationType::Shipyard;
+    recipe.requiredLevel = 3;
+    recipe.craftTime = 10.0f;
+
+    TEST("Level too low", !cc.MeetsLevelRequirement(recipe));
+    TEST("Start rejected by level", !cc.StartCrafting(recipe));
+
+    cc.crafterLevel = 3;
+    TEST("Level met", cc.MeetsLevelRequirement(recipe));
+    TEST("Start accepted", cc.StartCrafting(recipe));
+}
+
+static void TestCraftingComponentStationRequirement() {
+    std::cout << "[CraftingComponent station requirement]\n";
+    CraftingComponent cc;
+    cc.stationType = CraftingStationType::Basic;
+
+    CraftingRecipe recipe;
+    recipe.recipeId = "steel_beam";
+    recipe.requiredStation = CraftingStationType::Forge;
+    recipe.requiredLevel = 1;
+    recipe.craftTime = 5.0f;
+
+    TEST("Wrong station", !cc.HasRequiredStation(recipe));
+    TEST("Start rejected by station", !cc.StartCrafting(recipe));
+
+    cc.stationType = CraftingStationType::Forge;
+    TEST("Correct station", cc.HasRequiredStation(recipe));
+    TEST("Start accepted", cc.StartCrafting(recipe));
+}
+
+static void TestCraftingComponentCollectCompleted() {
+    std::cout << "[CraftingComponent::CollectCompletedJobs]\n";
+    CraftingComponent cc;
+    cc.maxConcurrentJobs = 3;
+
+    CraftingJob j1; j1.recipeId = "a"; j1.isComplete = true;
+    CraftingJob j2; j2.recipeId = "b"; j2.isComplete = false;
+    CraftingJob j3; j3.recipeId = "c"; j3.isComplete = true;
+    cc.activeJobs = {j1, j2, j3};
+
+    auto completed = cc.CollectCompletedJobs();
+    TEST("Collected 2 completed", completed.size() == 2);
+    TEST("1 remaining", cc.activeJobs.size() == 1);
+    TEST("Remaining is incomplete", cc.activeJobs[0].recipeId == "b");
+}
+
+static void TestCraftingComponentSerialization() {
+    std::cout << "[CraftingComponent Serialization]\n";
+    CraftingComponent original;
+    original.stationType = CraftingStationType::Laboratory;
+    original.crafterLevel = 5;
+    original.maxConcurrentJobs = 3;
+    original.speedMultiplier = 1.5f;
+
+    CraftingJob job;
+    job.recipeId = "circuit_board";
+    job.timeRemaining = 1.5f;
+    job.totalTime = 3.0f;
+    job.isComplete = false;
+    original.activeJobs.push_back(job);
+
+    CraftingJob completedJob;
+    completedJob.recipeId = "energy_cell";
+    completedJob.timeRemaining = 0.0f;
+    completedJob.totalTime = 6.0f;
+    completedJob.isComplete = true;
+    original.activeJobs.push_back(completedJob);
+
+    ComponentData cd = original.Serialize();
+    TEST("Serialized type", cd.componentType == "CraftingComponent");
+
+    CraftingComponent restored;
+    restored.Deserialize(cd);
+    TEST("Restored stationType", restored.stationType == CraftingStationType::Laboratory);
+    TEST("Restored crafterLevel", restored.crafterLevel == 5);
+    TEST("Restored maxConcurrentJobs", restored.maxConcurrentJobs == 3);
+    TEST("Restored speedMultiplier", ApproxEq(restored.speedMultiplier, 1.5f));
+    TEST("Restored job count", restored.activeJobs.size() == 2);
+    TEST("Restored job0 recipeId", restored.activeJobs[0].recipeId == "circuit_board");
+    TEST("Restored job0 timeRemaining", ApproxEq(restored.activeJobs[0].timeRemaining, 1.5f));
+    TEST("Restored job0 totalTime", ApproxEq(restored.activeJobs[0].totalTime, 3.0f));
+    TEST("Restored job0 not complete", !restored.activeJobs[0].isComplete);
+    TEST("Restored job1 recipeId", restored.activeJobs[1].recipeId == "energy_cell");
+    TEST("Restored job1 complete", restored.activeJobs[1].isComplete);
+}
+
+static void TestCraftingComponentDeserializeInvalidEnum() {
+    std::cout << "[CraftingComponent Deserialize invalid enum]\n";
+    ComponentData cd;
+    cd.componentType = "CraftingComponent";
+    cd.data["stationType"] = "999";
+    cd.data["crafterLevel"] = "1";
+    cd.data["maxConcurrentJobs"] = "1";
+    cd.data["speedMultiplier"] = "1.0";
+    cd.data["jobCount"] = "0";
+
+    CraftingComponent cc;
+    cc.Deserialize(cd);
+    TEST("Invalid enum defaults to Basic", cc.stationType == CraftingStationType::Basic);
+}
+
+static void TestCraftingSystem() {
+    std::cout << "[CraftingSystem]\n";
+    EntityManager em;
+    CraftingSystem sys(em);
+
+    auto& ent = em.CreateEntity("crafter");
+    auto* cc = em.AddComponent<CraftingComponent>(ent.id, std::make_unique<CraftingComponent>());
+    cc->stationType = CraftingStationType::Basic;
+    cc->maxConcurrentJobs = 2;
+    cc->speedMultiplier = 1.0f;
+
+    CraftingRecipe recipe;
+    recipe.recipeId = "iron_plate";
+    recipe.requiredStation = CraftingStationType::Basic;
+    recipe.requiredLevel = 1;
+    recipe.craftTime = 2.0f;
+    cc->StartCrafting(recipe);
+
+    TEST("Job not complete before update", !cc->activeJobs[0].isComplete);
+
+    sys.Update(1.0f);
+    TEST("Job not complete after 1s", !cc->activeJobs[0].isComplete);
+    TEST("Time remaining ~1s", ApproxEq(cc->activeJobs[0].timeRemaining, 1.0f));
+
+    sys.Update(1.0f);
+    TEST("Job complete after 2s", cc->activeJobs[0].isComplete);
+    TEST("Time remaining 0", ApproxEq(cc->activeJobs[0].timeRemaining, 0.0f));
+}
+
+static void TestCraftingSystemSpeedMultiplier() {
+    std::cout << "[CraftingSystem speed multiplier]\n";
+    EntityManager em;
+    CraftingSystem sys(em);
+
+    auto& ent = em.CreateEntity("fast_crafter");
+    auto* cc = em.AddComponent<CraftingComponent>(ent.id, std::make_unique<CraftingComponent>());
+    cc->stationType = CraftingStationType::Basic;
+    cc->speedMultiplier = 2.0f;
+
+    CraftingRecipe recipe;
+    recipe.recipeId = "iron_plate";
+    recipe.requiredStation = CraftingStationType::Basic;
+    recipe.requiredLevel = 1;
+    recipe.craftTime = 4.0f;
+    cc->StartCrafting(recipe);
+
+    sys.Update(1.0f);
+    TEST("2x speed: 2s elapsed after 1s dt", ApproxEq(cc->activeJobs[0].timeRemaining, 2.0f));
+
+    sys.Update(1.0f);
+    TEST("2x speed: complete after 2s dt", cc->activeJobs[0].isComplete);
+}
+
+static void TestCraftingSystemMultipleJobs() {
+    std::cout << "[CraftingSystem multiple jobs]\n";
+    EntityManager em;
+    CraftingSystem sys(em);
+
+    auto& ent = em.CreateEntity("multi_crafter");
+    auto* cc = em.AddComponent<CraftingComponent>(ent.id, std::make_unique<CraftingComponent>());
+    cc->stationType = CraftingStationType::Basic;
+    cc->maxConcurrentJobs = 3;
+
+    CraftingRecipe r1;
+    r1.recipeId = "fast"; r1.requiredStation = CraftingStationType::Basic;
+    r1.requiredLevel = 1; r1.craftTime = 1.0f;
+    CraftingRecipe r2;
+    r2.recipeId = "slow"; r2.requiredStation = CraftingStationType::Basic;
+    r2.requiredLevel = 1; r2.craftTime = 3.0f;
+
+    cc->StartCrafting(r1);
+    cc->StartCrafting(r2);
+    TEST("Two active jobs", cc->GetActiveJobCount() == 2);
+
+    sys.Update(1.0f);
+    TEST("Fast job complete", cc->activeJobs[0].isComplete);
+    TEST("Slow job still active", !cc->activeJobs[1].isComplete);
+
+    auto completed = cc->CollectCompletedJobs();
+    TEST("Collected 1 completed", completed.size() == 1);
+    TEST("1 job remaining", cc->activeJobs.size() == 1);
+}
+
+// ---------------------------------------------------------------------------
+// Reputation system tests
+// ---------------------------------------------------------------------------
+
+static void TestFactionReputationDefaults() {
+    std::cout << "[FactionReputation Defaults]\n";
+    FactionReputation fr;
+    TEST("Default reputation is 0", fr.reputation == 0);
+    TEST("Default standing is Neutral", fr.GetStanding() == Standing::Neutral);
+    TEST("Default minReputation is -1000", fr.minReputation == -1000);
+    TEST("Default maxReputation is 1000", fr.maxReputation == 1000);
+    TEST("Default factionId is empty", fr.factionId.empty());
+    TEST("Default normalized rep is 0", ApproxEq(fr.GetNormalizedReputation(), 0.0f));
+}
+
+static void TestFactionReputationModify() {
+    std::cout << "[FactionReputation Modify]\n";
+    FactionReputation fr;
+    fr.ModifyReputation(200);
+    TEST("Add 200 rep", fr.reputation == 200);
+    fr.ModifyReputation(-300);
+    TEST("Subtract 300 rep", fr.reputation == -100);
+    fr.ModifyReputation(-2000);
+    TEST("Clamped to min", fr.reputation == -1000);
+    fr.ModifyReputation(5000);
+    TEST("Clamped to max", fr.reputation == 1000);
+}
+
+static void TestFactionReputationStandings() {
+    std::cout << "[FactionReputation Standings]\n";
+    FactionReputation fr;
+
+    fr.reputation = -1000;
+    TEST("Hostile at -1000", fr.GetStanding() == Standing::Hostile);
+    fr.reputation = -500;
+    TEST("Hostile at -500", fr.GetStanding() == Standing::Hostile);
+    fr.reputation = -499;
+    TEST("Unfriendly at -499", fr.GetStanding() == Standing::Unfriendly);
+    fr.reputation = -100;
+    TEST("Unfriendly at -100", fr.GetStanding() == Standing::Unfriendly);
+    fr.reputation = -99;
+    TEST("Neutral at -99", fr.GetStanding() == Standing::Neutral);
+    fr.reputation = 0;
+    TEST("Neutral at 0", fr.GetStanding() == Standing::Neutral);
+    fr.reputation = 100;
+    TEST("Neutral at 100", fr.GetStanding() == Standing::Neutral);
+    fr.reputation = 101;
+    TEST("Friendly at 101", fr.GetStanding() == Standing::Friendly);
+    fr.reputation = 500;
+    TEST("Friendly at 500", fr.GetStanding() == Standing::Friendly);
+    fr.reputation = 501;
+    TEST("Allied at 501", fr.GetStanding() == Standing::Allied);
+    fr.reputation = 1000;
+    TEST("Allied at 1000", fr.GetStanding() == Standing::Allied);
+}
+
+static void TestFactionReputationNormalized() {
+    std::cout << "[FactionReputation Normalized]\n";
+    FactionReputation fr;
+    fr.maxReputation = 1000;
+
+    fr.reputation = 500;
+    TEST("Normalized 0.5", ApproxEq(fr.GetNormalizedReputation(), 0.5f));
+    fr.reputation = -1000;
+    TEST("Normalized -1.0", ApproxEq(fr.GetNormalizedReputation(), -1.0f));
+    fr.reputation = 1000;
+    TEST("Normalized 1.0", ApproxEq(fr.GetNormalizedReputation(), 1.0f));
+    fr.reputation = 0;
+    TEST("Normalized 0.0", ApproxEq(fr.GetNormalizedReputation(), 0.0f));
+
+    FactionReputation frZero;
+    frZero.maxReputation = 0;
+    TEST("Normalized with max=0 returns 0", ApproxEq(frZero.GetNormalizedReputation(), 0.0f));
+}
+
+static void TestStandingNames() {
+    std::cout << "[Standing Names]\n";
+    TEST("Hostile name", FactionReputation::GetStandingName(Standing::Hostile) == "Hostile");
+    TEST("Unfriendly name", FactionReputation::GetStandingName(Standing::Unfriendly) == "Unfriendly");
+    TEST("Neutral name", FactionReputation::GetStandingName(Standing::Neutral) == "Neutral");
+    TEST("Friendly name", FactionReputation::GetStandingName(Standing::Friendly) == "Friendly");
+    TEST("Allied name", FactionReputation::GetStandingName(Standing::Allied) == "Allied");
+}
+
+static void TestStandingThresholds() {
+    std::cout << "[Standing Thresholds]\n";
+    TEST("Hostile threshold", FactionReputation::GetStandingThreshold(Standing::Hostile) == -500);
+    TEST("Unfriendly threshold", FactionReputation::GetStandingThreshold(Standing::Unfriendly) == -100);
+    TEST("Neutral threshold", FactionReputation::GetStandingThreshold(Standing::Neutral) == 100);
+    TEST("Friendly threshold", FactionReputation::GetStandingThreshold(Standing::Friendly) == 500);
+    TEST("Allied threshold", FactionReputation::GetStandingThreshold(Standing::Allied) == 500);
+}
+
+static void TestReputationComponentAddFaction() {
+    std::cout << "[ReputationComponent AddFaction]\n";
+    ReputationComponent rc;
+    TEST("Initial faction count is 0", rc.GetFactionCount() == 0);
+
+    rc.AddFaction("pirates", 0);
+    TEST("Count after 1 add", rc.GetFactionCount() == 1);
+
+    rc.AddFaction("traders", 200);
+    TEST("Count after 2 adds", rc.GetFactionCount() == 2);
+
+    // Adding same faction again should not duplicate
+    rc.AddFaction("pirates", 500);
+    TEST("No duplicate on re-add", rc.GetFactionCount() == 2);
+
+    auto* pirates = rc.GetFaction("pirates");
+    TEST("Pirates found", pirates != nullptr);
+    TEST("Pirates rep unchanged on re-add", pirates->reputation == 0);
+
+    auto* traders = rc.GetFaction("traders");
+    TEST("Traders found", traders != nullptr);
+    TEST("Traders initial rep", traders->reputation == 200);
+}
+
+static void TestReputationComponentModifyRep() {
+    std::cout << "[ReputationComponent ModifyRep]\n";
+    ReputationComponent rc;
+    rc.ModifyReputation("alliance", 300, "Quest completed");
+    TEST("Faction created on modify", rc.GetFactionCount() == 1);
+    TEST("Rep set correctly", rc.GetFaction("alliance")->reputation == 300);
+    TEST("Event recorded", rc.recentEvents.size() == 1);
+    TEST("Event factionId", rc.recentEvents[0].factionId == "alliance");
+    TEST("Event amount", rc.recentEvents[0].amount == 300);
+    TEST("Event reason", rc.recentEvents[0].reason == "Quest completed");
+
+    rc.ModifyReputation("alliance", -100, "Attacked ship");
+    TEST("Rep modified", rc.GetFaction("alliance")->reputation == 200);
+    TEST("Two events", rc.recentEvents.size() == 2);
+
+    // Test history trimming
+    rc.maxEventHistory = 3;
+    for (int i = 0; i < 5; ++i) {
+        rc.ModifyReputation("alliance", 1, "spam");
+    }
+    TEST("Event history trimmed", static_cast<int>(rc.recentEvents.size()) == 3);
+    // Verify FIFO: oldest events (Quest completed, Attacked ship, first spams) dropped
+    TEST("FIFO: all remaining are spam", rc.recentEvents[0].reason == "spam");
+    TEST("FIFO: newest at end", rc.recentEvents[2].reason == "spam");
+}
+
+static void TestReputationComponentGetStanding() {
+    std::cout << "[ReputationComponent GetStanding]\n";
+    ReputationComponent rc;
+    TEST("Untracked faction is Neutral", rc.GetStanding("unknown") == Standing::Neutral);
+
+    rc.AddFaction("enemies", -600);
+    TEST("Hostile faction", rc.GetStanding("enemies") == Standing::Hostile);
+
+    rc.AddFaction("friends", 300);
+    TEST("Friendly faction", rc.GetStanding("friends") == Standing::Friendly);
+}
+
+static void TestReputationComponentGetFactionsWithStanding() {
+    std::cout << "[ReputationComponent GetFactionsWithStanding]\n";
+    ReputationComponent rc;
+    rc.AddFaction("pirates", -700);
+    rc.AddFaction("rebels", -600);
+    rc.AddFaction("traders", 50);
+    rc.AddFaction("alliance", 300);
+    rc.AddFaction("empire", 800);
+
+    auto hostile = rc.GetFactionsWithStanding(Standing::Hostile);
+    TEST("2 hostile factions", hostile.size() == 2);
+
+    auto neutral = rc.GetFactionsWithStanding(Standing::Neutral);
+    TEST("1 neutral faction", neutral.size() == 1);
+    TEST("Traders are neutral", neutral[0] == "traders");
+
+    auto friendly = rc.GetFactionsWithStanding(Standing::Friendly);
+    TEST("1 friendly faction", friendly.size() == 1);
+
+    auto allied = rc.GetFactionsWithStanding(Standing::Allied);
+    TEST("1 allied faction", allied.size() == 1);
+    TEST("Empire is allied", allied[0] == "empire");
+}
+
+static void TestReputationComponentSerialization() {
+    std::cout << "[ReputationComponent Serialization]\n";
+    ReputationComponent original;
+    original.decayRate = 5.0f;
+    original.maxEventHistory = 10;
+    original.AddFaction("pirates", -700);
+    original.AddFaction("traders", 300);
+    original.ModifyReputation("pirates", 100, "Bribe");
+
+    ComponentData cd = original.Serialize();
+    TEST("Component type", cd.componentType == "ReputationComponent");
+
+    ReputationComponent restored;
+    restored.Deserialize(cd);
+    TEST("Decay rate restored", ApproxEq(restored.decayRate, 5.0f));
+    TEST("Max event history restored", restored.maxEventHistory == 10);
+    TEST("Faction count restored", restored.GetFactionCount() == 2);
+
+    auto* pirates = restored.GetFaction("pirates");
+    TEST("Pirates restored", pirates != nullptr);
+    TEST("Pirates rep restored", pirates->reputation == -600);
+
+    auto* traders = restored.GetFaction("traders");
+    TEST("Traders restored", traders != nullptr);
+    TEST("Traders rep restored", traders->reputation == 300);
+
+    TEST("Events restored", restored.recentEvents.size() == 1);
+    TEST("Event reason restored", restored.recentEvents[0].reason == "Bribe");
+}
+
+static void TestReputationSystem() {
+    std::cout << "[ReputationSystem]\n";
+    ReputationSystem sys;
+    TEST("System name", sys.GetName() == "ReputationSystem");
+    TEST("System enabled", sys.IsEnabled());
+
+    // Update without entity manager should not crash
+    sys.Update(1.0f);
+    TEST("Update without EM ok", true);
+}
+
+static void TestReputationSystemDecay() {
+    std::cout << "[ReputationSystem Decay]\n";
+    EntityManager em;
+    ReputationSystem sys(em);
+
+    auto& ent = em.CreateEntity("player");
+    auto* rc = em.AddComponent<ReputationComponent>(ent.id, std::make_unique<ReputationComponent>());
+    rc->decayRate = 10.0f;
+    rc->AddFaction("pirates", -100);
+    rc->AddFaction("traders", 200);
+    rc->AddFaction("neutral_faction", 0);
+
+    sys.Update(1.0f);
+
+    auto* pirates = rc->GetFaction("pirates");
+    TEST("Negative rep decays toward 0", pirates->reputation > -100);
+
+    auto* traders = rc->GetFaction("traders");
+    TEST("Positive rep decays toward 0", traders->reputation < 200);
+
+    auto* neutralFaction = rc->GetFaction("neutral_faction");
+    TEST("Zero rep stays at 0", neutralFaction->reputation == 0);
+
+    // Decay should not overshoot past 0
+    rc->AddFaction("small_pos", 5);
+    rc->decayRate = 100.0f;
+    sys.Update(1.0f);
+    auto* smallPos = rc->GetFaction("small_pos");
+    TEST("Decay does not overshoot past 0", smallPos->reputation == 0);
+}
+
+// ===================================================================
+// Formation System tests
+// ===================================================================
+
+static void TestFormationPatternLine() {
+    std::cout << "[FormationPattern Line]\n";
+    FormationPattern pattern;
+    pattern.type = FormationType::Line;
+    pattern.spacing = 10.0f;
+    auto slots = pattern.ComputeSlots(5);
+    TEST("Line slot count", slots.size() == 5);
+    // Center offset = (5-1)/2 = 2.0, so slot 0 = (0-2)*10 = -20, slot 2 = 0, slot 4 = 20
+    TEST("Line slot 0 x", ApproxEq(slots[0].offset.x, -20.0f));
+    TEST("Line slot 0 y", ApproxEq(slots[0].offset.y, 0.0f));
+    TEST("Line slot 0 z", ApproxEq(slots[0].offset.z, 0.0f));
+    TEST("Line slot 2 centered", ApproxEq(slots[2].offset.x, 0.0f));
+    TEST("Line slot 4 x", ApproxEq(slots[4].offset.x, 20.0f));
+    TEST("Line slot indices", slots[0].slotIndex == 0 && slots[4].slotIndex == 4);
+}
+
+static void TestFormationPatternV() {
+    std::cout << "[FormationPattern V]\n";
+    FormationPattern pattern;
+    pattern.type = FormationType::V;
+    pattern.spacing = 10.0f;
+    auto slots = pattern.ComputeSlots(5);
+    TEST("V slot count", slots.size() == 5);
+    // Slot 0: origin
+    TEST("V slot 0 at origin", ApproxEq(slots[0].offset.x, 0.0f) &&
+                                ApproxEq(slots[0].offset.z, 0.0f));
+    // Slot 1: left, pair=1 => (-10, 0, -10)
+    TEST("V slot 1 left", ApproxEq(slots[1].offset.x, -10.0f) &&
+                           ApproxEq(slots[1].offset.z, -10.0f));
+    // Slot 2: right, pair=1 => (10, 0, -10)
+    TEST("V slot 2 right", ApproxEq(slots[2].offset.x, 10.0f) &&
+                            ApproxEq(slots[2].offset.z, -10.0f));
+    // Slot 3: left, pair=2 => (-20, 0, -20)
+    TEST("V slot 3 left deep", ApproxEq(slots[3].offset.x, -20.0f) &&
+                                ApproxEq(slots[3].offset.z, -20.0f));
+    // Slot 4: right, pair=2 => (20, 0, -20)
+    TEST("V slot 4 right deep", ApproxEq(slots[4].offset.x, 20.0f) &&
+                                 ApproxEq(slots[4].offset.z, -20.0f));
+}
+
+static void TestFormationPatternDiamond() {
+    std::cout << "[FormationPattern Diamond]\n";
+    FormationPattern pattern;
+    pattern.type = FormationType::Diamond;
+    pattern.spacing = 10.0f;
+    auto slots = pattern.ComputeSlots(5);
+    TEST("Diamond slot count", slots.size() == 5);
+    // Slot 0: center
+    TEST("Diamond slot 0 center", ApproxEq(slots[0].offset.x, 0.0f) &&
+                                   ApproxEq(slots[0].offset.z, 0.0f));
+    // Slot 1: front (+Z)
+    TEST("Diamond slot 1 front", ApproxEq(slots[1].offset.x, 0.0f) &&
+                                  ApproxEq(slots[1].offset.z, 10.0f));
+    // Slot 2: left (-X)
+    TEST("Diamond slot 2 left", ApproxEq(slots[2].offset.x, -10.0f) &&
+                                 ApproxEq(slots[2].offset.z, 0.0f));
+    // Slot 3: right (+X)
+    TEST("Diamond slot 3 right", ApproxEq(slots[3].offset.x, 10.0f) &&
+                                  ApproxEq(slots[3].offset.z, 0.0f));
+    // Slot 4: back (-Z)
+    TEST("Diamond slot 4 back", ApproxEq(slots[4].offset.x, 0.0f) &&
+                                 ApproxEq(slots[4].offset.z, -10.0f));
+}
+
+static void TestFormationPatternCircle() {
+    std::cout << "[FormationPattern Circle]\n";
+    FormationPattern pattern;
+    pattern.type = FormationType::Circle;
+    pattern.spacing = 10.0f;
+    auto slots = pattern.ComputeSlots(5);
+    TEST("Circle slot count", slots.size() == 5);
+    // Slot 0: center
+    TEST("Circle slot 0 center", ApproxEq(slots[0].offset.x, 0.0f) &&
+                                  ApproxEq(slots[0].offset.z, 0.0f));
+    // Remaining 4 slots at radius = spacing = 10
+    for (int i = 1; i < 5; ++i) {
+        float r = std::sqrt(slots[i].offset.x * slots[i].offset.x +
+                            slots[i].offset.z * slots[i].offset.z);
+        TEST(("Circle slot " + std::to_string(i) + " radius").c_str(),
+             ApproxEq(r, 10.0f));
+    }
+    TEST("Circle slot 0 y", ApproxEq(slots[0].offset.y, 0.0f));
+}
+
+static void TestFormationPatternWedge() {
+    std::cout << "[FormationPattern Wedge]\n";
+    FormationPattern pattern;
+    pattern.type = FormationType::Wedge;
+    pattern.spacing = 10.0f;
+    auto slots = pattern.ComputeSlots(5);
+    TEST("Wedge slot count", slots.size() == 5);
+    // Slot 0: origin
+    TEST("Wedge slot 0 at origin", ApproxEq(slots[0].offset.x, 0.0f) &&
+                                    ApproxEq(slots[0].offset.z, 0.0f));
+    // Slot 1: left, pair=1, x = -5 (spacing/2), z = -10
+    TEST("Wedge slot 1 left", ApproxEq(slots[1].offset.x, -5.0f) &&
+                               ApproxEq(slots[1].offset.z, -10.0f));
+    // Slot 2: right, pair=1, x = 5, z = -10
+    TEST("Wedge slot 2 right", ApproxEq(slots[2].offset.x, 5.0f) &&
+                                ApproxEq(slots[2].offset.z, -10.0f));
+    // Slot 3: left, pair=2, x = -10, z = -20
+    TEST("Wedge slot 3 left deep", ApproxEq(slots[3].offset.x, -10.0f) &&
+                                    ApproxEq(slots[3].offset.z, -20.0f));
+    // Slot 4: right, pair=2, x = 10, z = -20
+    TEST("Wedge slot 4 right deep", ApproxEq(slots[4].offset.x, 10.0f) &&
+                                     ApproxEq(slots[4].offset.z, -20.0f));
+}
+
+static void TestFormationPatternColumn() {
+    std::cout << "[FormationPattern Column]\n";
+    FormationPattern pattern;
+    pattern.type = FormationType::Column;
+    pattern.spacing = 10.0f;
+    auto slots = pattern.ComputeSlots(5);
+    TEST("Column slot count", slots.size() == 5);
+    TEST("Column slot 0", ApproxEq(slots[0].offset.x, 0.0f) &&
+                           ApproxEq(slots[0].offset.z, 0.0f));
+    TEST("Column slot 1", ApproxEq(slots[1].offset.x, 0.0f) &&
+                           ApproxEq(slots[1].offset.z, -10.0f));
+    TEST("Column slot 4", ApproxEq(slots[4].offset.x, 0.0f) &&
+                           ApproxEq(slots[4].offset.z, -40.0f));
+    // All y offsets should be 0
+    for (int i = 0; i < 5; ++i) {
+        TEST(("Column slot " + std::to_string(i) + " y").c_str(),
+             ApproxEq(slots[i].offset.y, 0.0f));
+    }
+}
+
+static void TestFormationNames() {
+    std::cout << "[FormationPattern Names]\n";
+    TEST("Line name", FormationPattern::GetFormationName(FormationType::Line) == "Line");
+    TEST("V name", FormationPattern::GetFormationName(FormationType::V) == "V-Formation");
+    TEST("Diamond name", FormationPattern::GetFormationName(FormationType::Diamond) == "Diamond");
+    TEST("Circle name", FormationPattern::GetFormationName(FormationType::Circle) == "Circle");
+    TEST("Wedge name", FormationPattern::GetFormationName(FormationType::Wedge) == "Wedge");
+    TEST("Column name", FormationPattern::GetFormationName(FormationType::Column) == "Column");
+}
+
+static void TestFormationMaxSizes() {
+    std::cout << "[FormationPattern MaxSizes]\n";
+    TEST("Line max", FormationPattern::GetMaxRecommendedSize(FormationType::Line) == 10);
+    TEST("V max", FormationPattern::GetMaxRecommendedSize(FormationType::V) == 8);
+    TEST("Diamond max", FormationPattern::GetMaxRecommendedSize(FormationType::Diamond) == 9);
+    TEST("Circle max", FormationPattern::GetMaxRecommendedSize(FormationType::Circle) == 12);
+    TEST("Wedge max", FormationPattern::GetMaxRecommendedSize(FormationType::Wedge) == 7);
+    TEST("Column max", FormationPattern::GetMaxRecommendedSize(FormationType::Column) == 6);
+}
+
+static void TestFormationComponentAddRemove() {
+    std::cout << "[FormationComponent AddRemove]\n";
+    FormationComponent fc;
+    TEST("Initially empty", fc.GetMemberCount() == 0);
+
+    fc.AddMember(100);
+    fc.AddMember(200);
+    fc.AddMember(300);
+    TEST("3 members after add", fc.GetMemberCount() == 3);
+
+    // Adding duplicate should not increase count
+    fc.AddMember(200);
+    TEST("No duplicate", fc.GetMemberCount() == 3);
+
+    bool removed = fc.RemoveMember(200);
+    TEST("Remove returns true", removed);
+    TEST("2 members after remove", fc.GetMemberCount() == 2);
+
+    bool removedAgain = fc.RemoveMember(200);
+    TEST("Remove missing returns false", !removedAgain);
+    TEST("Still 2 members", fc.GetMemberCount() == 2);
+}
+
+static void TestFormationComponentHasMember() {
+    std::cout << "[FormationComponent HasMember]\n";
+    FormationComponent fc;
+    fc.AddMember(10);
+    fc.AddMember(20);
+    fc.AddMember(30);
+    TEST("Has member 10", fc.HasMember(10));
+    TEST("Has member 20", fc.HasMember(20));
+    TEST("Has member 30", fc.HasMember(30));
+    TEST("Does not have 40", !fc.HasMember(40));
+    TEST("Does not have 0", !fc.HasMember(0));
+}
+
+static void TestFormationComponentReassignSlots() {
+    std::cout << "[FormationComponent ReassignSlots]\n";
+    FormationComponent fc;
+    fc.AddMember(1);
+    fc.AddMember(2);
+    fc.AddMember(3);
+
+    FormationPattern pattern;
+    pattern.type = FormationType::Line;
+    pattern.spacing = 5.0f;
+
+    // Reassign should not crash
+    fc.ReassignSlots(pattern);
+    TEST("ReassignSlots does not crash", true);
+
+    // Change pattern and reassign
+    pattern.type = FormationType::V;
+    fc.ReassignSlots(pattern);
+    TEST("ReassignSlots with V does not crash", true);
+
+    // Add more members and reassign
+    fc.AddMember(4);
+    fc.AddMember(5);
+    fc.ReassignSlots(pattern);
+    TEST("ReassignSlots with 5 members does not crash", true);
+}
+
+static void TestFormationComponentSerialization() {
+    std::cout << "[FormationComponent Serialization]\n";
+    FormationComponent original;
+    original.formationType = FormationType::Diamond;
+    original.spacing = 15.0f;
+    original.leaderId = 42;
+    original.slotIndex = 3;
+    original.isLeader = true;
+    original.targetOffset = Vector3(1.0f, 2.0f, 3.0f);
+    original.AddMember(100);
+    original.AddMember(200);
+    original.AddMember(300);
+
+    ComponentData cd = original.Serialize();
+    TEST("Serialized type", cd.componentType == "FormationComponent");
+
+    FormationComponent restored;
+    restored.Deserialize(cd);
+    TEST("Restored formationType", restored.formationType == FormationType::Diamond);
+    TEST("Restored spacing", ApproxEq(restored.spacing, 15.0f));
+    TEST("Restored leaderId", restored.leaderId == 42);
+    TEST("Restored slotIndex", restored.slotIndex == 3);
+    TEST("Restored isLeader", restored.isLeader);
+    TEST("Restored targetOffset x", ApproxEq(restored.targetOffset.x, 1.0f));
+    TEST("Restored targetOffset y", ApproxEq(restored.targetOffset.y, 2.0f));
+    TEST("Restored targetOffset z", ApproxEq(restored.targetOffset.z, 3.0f));
+    TEST("Restored member count", restored.GetMemberCount() == 3);
+    TEST("Restored member 0", restored.members[0] == 100);
+    TEST("Restored member 1", restored.members[1] == 200);
+    TEST("Restored member 2", restored.members[2] == 300);
+}
+
+static void TestFormationSystem() {
+    std::cout << "[FormationSystem]\n";
+    FormationSystem fs;
+    TEST("FormationSystem name", fs.GetName() == "FormationSystem");
+    fs.Update(1.0f);
+    TEST("Update without EM does not crash", true);
+}
+
+static void TestFormationSystemWithEM() {
+    std::cout << "[FormationSystem WithEM]\n";
+    EntityManager em;
+    auto& ent = em.CreateEntity("Leader");
+    auto* fc = em.AddComponent<FormationComponent>(ent.id, std::make_unique<FormationComponent>());
+    fc->isLeader = true;
+    fc->formationType = FormationType::V;
+    fc->AddMember(ent.id);
+
+    FormationSystem fs(em);
+    fs.Update(1.0f);
+    TEST("FormationSystem with EM does not crash", true);
+}
+
+static void TestCraftingReputationFormationGameEvents() {
+    std::cout << "[Crafting/Reputation/Formation GameEvents]\n";
+    // Crafting events
+    TEST("CraftingStarted event", std::string(GameEvents::CraftingStarted) == "crafting.started");
+    TEST("CraftingCompleted event", std::string(GameEvents::CraftingCompleted) == "crafting.completed");
+    TEST("CraftingFailed event", std::string(GameEvents::CraftingFailed) == "crafting.failed");
+    TEST("RecipeLearned event", std::string(GameEvents::RecipeLearned) == "crafting.recipe.learned");
+    // Reputation events
+    TEST("ReputationModified event", std::string(GameEvents::ReputationModified) == "reputation.changed");
+    TEST("StandingChanged event", std::string(GameEvents::StandingChanged) == "reputation.standing.changed");
+    TEST("ReputationDecayed event", std::string(GameEvents::ReputationDecayed) == "reputation.decayed");
+    // Formation events
+    TEST("FormationCreated event", std::string(GameEvents::FormationCreated) == "formation.created");
+    TEST("FormationDisbanded event", std::string(GameEvents::FormationDisbanded) == "formation.disbanded");
+    TEST("FormationChanged event", std::string(GameEvents::FormationChanged) == "formation.changed");
+    TEST("MemberJoined event", std::string(GameEvents::MemberJoined) == "formation.member.joined");
+    TEST("MemberLeft event", std::string(GameEvents::MemberLeft) == "formation.member.left");
+}
+
+// ===================================================================
 // Main
 // ===================================================================
 int main() {
@@ -9673,6 +10524,48 @@ int main() {
     TestLootSystem();
     TestLootSystemWithEM();
     TestShieldStatusLootGameEvents();
+    TestCraftingRecipeStationName();
+    TestCraftingJobProgress();
+    TestRecipeDatabase();
+    TestRecipeDatabaseDefaults();
+    TestCraftingComponentDefaults();
+    TestCraftingComponentStartCrafting();
+    TestCraftingComponentLevelRequirement();
+    TestCraftingComponentStationRequirement();
+    TestCraftingComponentCollectCompleted();
+    TestCraftingComponentSerialization();
+    TestCraftingComponentDeserializeInvalidEnum();
+    TestCraftingSystem();
+    TestCraftingSystemSpeedMultiplier();
+    TestCraftingSystemMultipleJobs();
+    TestFactionReputationDefaults();
+    TestFactionReputationModify();
+    TestFactionReputationStandings();
+    TestFactionReputationNormalized();
+    TestStandingNames();
+    TestStandingThresholds();
+    TestReputationComponentAddFaction();
+    TestReputationComponentModifyRep();
+    TestReputationComponentGetStanding();
+    TestReputationComponentGetFactionsWithStanding();
+    TestReputationComponentSerialization();
+    TestReputationSystem();
+    TestReputationSystemDecay();
+    TestFormationPatternLine();
+    TestFormationPatternV();
+    TestFormationPatternDiamond();
+    TestFormationPatternCircle();
+    TestFormationPatternWedge();
+    TestFormationPatternColumn();
+    TestFormationNames();
+    TestFormationMaxSizes();
+    TestFormationComponentAddRemove();
+    TestFormationComponentHasMember();
+    TestFormationComponentReassignSlots();
+    TestFormationComponentSerialization();
+    TestFormationSystem();
+    TestFormationSystemWithEM();
+    TestCraftingReputationFormationGameEvents();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
               << testsFailed << " failed ===\n";
