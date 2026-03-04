@@ -81,8 +81,8 @@
 #include "formation/FormationSystem.h"
 #include "reputation/ReputationSystem.h"
 #include "ships/CapabilitySystem.h"
-#include "debug/DebugRenderer.h"
-#include "debug/PerformanceMonitor.h"
+#include "debug_tools/DebugRenderer.h"
+#include "debug_tools/PerformanceMonitor.h"
 
 using namespace subspace;
 
