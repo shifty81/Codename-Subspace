@@ -160,6 +160,24 @@ namespace GameEvents {
     // Anomaly events
     constexpr const char* AnomalyDiscovered = "sector.anomaly.discovered";
     constexpr const char* AnomalyEffect     = "sector.anomaly.effect";
+
+    // Shield events
+    constexpr const char* ShieldAbsorbed   = "combat.shield.absorbed";
+    constexpr const char* ShieldDepleted   = "combat.shield.depleted";
+    constexpr const char* ShieldRestored   = "combat.shield.restored";
+    constexpr const char* ShieldOvercharged = "combat.shield.overcharged";
+
+    // Status effect events
+    constexpr const char* StatusEffectApplied = "combat.status.applied";
+    constexpr const char* StatusEffectExpired = "combat.status.expired";
+    constexpr const char* StatusEffectRemoved = "combat.status.removed";
+    constexpr const char* StatusEffectTick    = "combat.status.tick";
+
+    // Loot events
+    constexpr const char* LootGenerated = "loot.generated";
+    constexpr const char* LootCollected = "loot.collected";
+    constexpr const char* LootDropped   = "loot.dropped";
+    constexpr const char* RareItemFound = "loot.rare_item";
 } // namespace GameEvents
 
 } // namespace subspace

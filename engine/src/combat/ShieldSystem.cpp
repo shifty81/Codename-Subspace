@@ -8,7 +8,7 @@ namespace subspace {
 // ShieldComponent
 // ---------------------------------------------------------------------------
 
-float ShieldComponent::AbsorbDamage(float damage) {
+float ShieldModuleComponent::AbsorbDamage(float damage) {
     if (!isActive) return damage;
 
     float absorbed = damage * GetAbsorptionMultiplier(shieldType);
@@ -35,17 +35,17 @@ float ShieldComponent::AbsorbDamage(float damage) {
     return overflow;
 }
 
-void ShieldComponent::ApplyOvercharge(float amount) {
+void ShieldModuleComponent::ApplyOvercharge(float amount) {
     if (amount > 0.0f) {
         overchargeAmount += amount;
     }
 }
 
-float ShieldComponent::GetEffectiveShield() const {
+float ShieldModuleComponent::GetEffectiveShield() const {
     return currentShield + overchargeAmount;
 }
 
-float ShieldComponent::GetShieldPercentage() const {
+float ShieldModuleComponent::GetShieldPercentage() const {
     if (maxShield <= 0.0f) return 0.0f;
     float pct = (currentShield / maxShield) * 100.0f;
     if (pct < 0.0f) pct = 0.0f;
@@ -53,16 +53,16 @@ float ShieldComponent::GetShieldPercentage() const {
     return pct;
 }
 
-bool ShieldComponent::IsDepleted() const {
+bool ShieldModuleComponent::IsDepleted() const {
     return currentShield <= 0.0f && overchargeAmount <= 0.0f;
 }
 
-void ShieldComponent::RestoreShield() {
+void ShieldModuleComponent::RestoreShield() {
     currentShield = maxShield;
     overchargeAmount = 0.0f;
 }
 
-float ShieldComponent::GetAbsorptionMultiplier(ShieldType type) {
+float ShieldModuleComponent::GetAbsorptionMultiplier(ShieldType type) {
     switch (type) {
         case ShieldType::Standard:     return 1.0f;
         case ShieldType::Hardened:     return 0.7f;
@@ -76,9 +76,9 @@ float ShieldComponent::GetAbsorptionMultiplier(ShieldType type) {
 // Serialization
 // ---------------------------------------------------------------------------
 
-ComponentData ShieldComponent::Serialize() const {
+ComponentData ShieldModuleComponent::Serialize() const {
     ComponentData cd;
-    cd.componentType = "ShieldComponent";
+    cd.componentType = "ShieldModuleComponent";
     cd.data["shieldType"]          = std::to_string(static_cast<int>(shieldType));
     cd.data["maxShield"]           = std::to_string(maxShield);
     cd.data["currentShield"]       = std::to_string(currentShield);
@@ -91,7 +91,7 @@ ComponentData ShieldComponent::Serialize() const {
     return cd;
 }
 
-void ShieldComponent::Deserialize(const ComponentData& data) {
+void ShieldModuleComponent::Deserialize(const ComponentData& data) {
     auto getStr = [&](const std::string& key) -> std::string {
         auto it = data.data.find(key);
         return it != data.data.end() ? it->second : "";
@@ -140,7 +140,7 @@ ShieldSystem::ShieldSystem(EntityManager& entityManager)
 void ShieldSystem::Update(float deltaTime) {
     if (!_entityManager) return;
 
-    auto shields = _entityManager->GetAllComponents<ShieldComponent>();
+    auto shields = _entityManager->GetAllComponents<ShieldModuleComponent>();
     for (auto* shield : shields) {
         if (!shield->isActive) continue;
 

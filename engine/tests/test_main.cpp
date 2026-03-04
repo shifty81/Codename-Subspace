@@ -68,6 +68,9 @@
 #include "navigation/PathfindingSystem.h"
 #include "core/Engine.h"
 #include "combat/TargetLockSystem.h"
+#include "combat/ShieldSystem.h"
+#include "combat/StatusEffectSystem.h"
+#include "combat/LootSystem.h"
 
 using namespace subspace;
 
@@ -8260,6 +8263,614 @@ static void TestAdvancedCombatGameEvents() {
 }
 
 // ===================================================================
+// Shield System tests
+// ===================================================================
+static void TestShieldComponentDefaults() {
+    std::cout << "[ShieldModuleComponent Defaults]\n";
+    ShieldModuleComponent sc;
+    TEST("Default type Standard", sc.shieldType == ShieldType::Standard);
+    TEST("Default max 100", ApproxEq(sc.maxShield, 100.0f));
+    TEST("Default current 100", ApproxEq(sc.currentShield, 100.0f));
+    TEST("Default regen rate 5", ApproxEq(sc.regenRate, 5.0f));
+    TEST("Default regen delay 3", ApproxEq(sc.regenDelay, 3.0f));
+    TEST("Default active", sc.isActive);
+    TEST("Default overcharge 0", ApproxEq(sc.overchargeAmount, 0.0f));
+    TEST("Not depleted by default", !sc.IsDepleted());
+    TEST("Effective shield 100", ApproxEq(sc.GetEffectiveShield(), 100.0f));
+    TEST("Percentage 100%", ApproxEq(sc.GetShieldPercentage(), 100.0f));
+}
+
+static void TestShieldAbsorbDamage() {
+    std::cout << "[ShieldModuleComponent AbsorbDamage]\n";
+    ShieldModuleComponent sc;
+    sc.maxShield = 100.0f;
+    sc.currentShield = 100.0f;
+    sc.shieldType = ShieldType::Standard;
+
+    // Standard absorption: 1.0x multiplier
+    float overflow = sc.AbsorbDamage(30.0f);
+    TEST("No overflow with 30 dmg", ApproxEq(overflow, 0.0f));
+    TEST("Shield at 70 after 30 dmg", ApproxEq(sc.currentShield, 70.0f));
+    TEST("timeSinceLastHit reset", ApproxEq(sc.timeSinceLastHit, 0.0f));
+
+    // Damage that exceeds shield
+    overflow = sc.AbsorbDamage(100.0f);
+    TEST("Overflow from excess damage", overflow > 0.0f);
+    TEST("Shield depleted to 0", ApproxEq(sc.currentShield, 0.0f));
+    TEST("Depleted after excess damage", sc.IsDepleted());
+}
+
+static void TestShieldAbsorbDamageHardened() {
+    std::cout << "[ShieldModuleComponent AbsorbDamage Hardened]\n";
+    ShieldModuleComponent sc;
+    sc.maxShield = 100.0f;
+    sc.currentShield = 100.0f;
+    sc.shieldType = ShieldType::Hardened; // 0.7x absorption
+
+    // 50 damage * 0.7 = 35 absorbed
+    float overflow = sc.AbsorbDamage(50.0f);
+    TEST("No overflow Hardened 50 dmg", ApproxEq(overflow, 0.0f));
+    TEST("Hardened absorbs 35 from 50", ApproxEq(sc.currentShield, 65.0f));
+}
+
+static void TestShieldAbsorbDamageInactive() {
+    std::cout << "[ShieldModuleComponent AbsorbDamage Inactive]\n";
+    ShieldModuleComponent sc;
+    sc.currentShield = 100.0f;
+    sc.isActive = false;
+
+    float overflow = sc.AbsorbDamage(50.0f);
+    TEST("Inactive shield passes all damage", ApproxEq(overflow, 50.0f));
+    TEST("Shield unchanged when inactive", ApproxEq(sc.currentShield, 100.0f));
+}
+
+static void TestShieldOvercharge() {
+    std::cout << "[ShieldModuleComponent Overcharge]\n";
+    ShieldModuleComponent sc;
+    sc.maxShield = 100.0f;
+    sc.currentShield = 100.0f;
+
+    sc.ApplyOvercharge(50.0f);
+    TEST("Overcharge added", ApproxEq(sc.overchargeAmount, 50.0f));
+    TEST("Effective shield 150", ApproxEq(sc.GetEffectiveShield(), 150.0f));
+    TEST("Not depleted with overcharge", !sc.IsDepleted());
+
+    // Absorb damage consumes overcharge first
+    float overflow = sc.AbsorbDamage(30.0f);
+    TEST("No overflow with overcharge", ApproxEq(overflow, 0.0f));
+    TEST("Overcharge reduced to 20", ApproxEq(sc.overchargeAmount, 20.0f));
+    TEST("Current shield unchanged", ApproxEq(sc.currentShield, 100.0f));
+
+    // Damage that bleeds through overcharge into shield
+    overflow = sc.AbsorbDamage(50.0f);
+    TEST("No overflow bleed-through", ApproxEq(overflow, 0.0f));
+    TEST("Overcharge fully consumed", ApproxEq(sc.overchargeAmount, 0.0f));
+    TEST("Shield reduced by remaining", ApproxEq(sc.currentShield, 70.0f));
+}
+
+static void TestShieldPercentageEdgeCases() {
+    std::cout << "[ShieldModuleComponent Percentage Edge Cases]\n";
+    ShieldModuleComponent sc;
+    sc.maxShield = 0.0f;
+    TEST("0 maxShield returns 0%", ApproxEq(sc.GetShieldPercentage(), 0.0f));
+
+    sc.maxShield = 200.0f;
+    sc.currentShield = 100.0f;
+    TEST("50% shield", ApproxEq(sc.GetShieldPercentage(), 50.0f));
+
+    sc.currentShield = 0.0f;
+    TEST("0% shield", ApproxEq(sc.GetShieldPercentage(), 0.0f));
+}
+
+static void TestShieldRestore() {
+    std::cout << "[ShieldModuleComponent Restore]\n";
+    ShieldModuleComponent sc;
+    sc.maxShield = 100.0f;
+    sc.currentShield = 20.0f;
+    sc.overchargeAmount = 50.0f;
+
+    sc.RestoreShield();
+    TEST("Restore sets current to max", ApproxEq(sc.currentShield, 100.0f));
+    TEST("Restore clears overcharge", ApproxEq(sc.overchargeAmount, 0.0f));
+}
+
+static void TestShieldAbsorptionMultipliers() {
+    std::cout << "[ShieldModuleComponent Absorption Multipliers]\n";
+    TEST("Standard multiplier 1.0", ApproxEq(ShieldModuleComponent::GetAbsorptionMultiplier(ShieldType::Standard), 1.0f));
+    TEST("Hardened multiplier 0.7", ApproxEq(ShieldModuleComponent::GetAbsorptionMultiplier(ShieldType::Hardened), 0.7f));
+    TEST("Phase multiplier 0.85", ApproxEq(ShieldModuleComponent::GetAbsorptionMultiplier(ShieldType::Phase), 0.85f));
+    TEST("Regenerative multiplier 1.1", ApproxEq(ShieldModuleComponent::GetAbsorptionMultiplier(ShieldType::Regenerative), 1.1f));
+}
+
+static void TestShieldComponentSerialization() {
+    std::cout << "[ShieldModuleComponent Serialization]\n";
+    ShieldModuleComponent original;
+    original.shieldType = ShieldType::Phase;
+    original.maxShield = 200.0f;
+    original.currentShield = 150.0f;
+    original.regenRate = 10.0f;
+    original.regenDelay = 5.0f;
+    original.timeSinceLastHit = 2.5f;
+    original.isActive = true;
+    original.overchargeAmount = 30.0f;
+    original.overchargeDecayRate = 15.0f;
+
+    ComponentData cd = original.Serialize();
+    TEST("Serialized type", cd.componentType == "ShieldModuleComponent");
+
+    ShieldModuleComponent restored;
+    restored.Deserialize(cd);
+    TEST("Restored shieldType", restored.shieldType == ShieldType::Phase);
+    TEST("Restored maxShield", ApproxEq(restored.maxShield, 200.0f));
+    TEST("Restored currentShield", ApproxEq(restored.currentShield, 150.0f));
+    TEST("Restored regenRate", ApproxEq(restored.regenRate, 10.0f));
+    TEST("Restored regenDelay", ApproxEq(restored.regenDelay, 5.0f));
+    TEST("Restored timeSinceLastHit", ApproxEq(restored.timeSinceLastHit, 2.5f));
+    TEST("Restored isActive", restored.isActive);
+    TEST("Restored overchargeAmount", ApproxEq(restored.overchargeAmount, 30.0f));
+    TEST("Restored overchargeDecayRate", ApproxEq(restored.overchargeDecayRate, 15.0f));
+}
+
+static void TestShieldSystem() {
+    std::cout << "[ShieldSystem]\n";
+    ShieldSystem ss;
+    TEST("ShieldSystem name", ss.GetName() == "ShieldSystem");
+    ss.Update(1.0f); // Should not crash without EntityManager
+    TEST("Update without EM does not crash", true);
+}
+
+static void TestShieldSystemRegen() {
+    std::cout << "[ShieldSystem Regen]\n";
+    EntityManager em;
+    auto& ent = em.CreateEntity("Ship");
+    auto* sc = em.AddComponent<ShieldModuleComponent>(ent.id, std::make_unique<ShieldModuleComponent>());
+    sc->maxShield = 100.0f;
+    sc->currentShield = 50.0f;
+    sc->regenRate = 10.0f;
+    sc->regenDelay = 2.0f;
+    sc->timeSinceLastHit = 0.0f;
+
+    ShieldSystem ss(em);
+
+    // Before regen delay
+    ss.Update(1.0f);
+    TEST("No regen before delay", ApproxEq(sc->currentShield, 50.0f));
+    TEST("Time since hit 1s", ApproxEq(sc->timeSinceLastHit, 1.0f));
+
+    // Still before delay
+    ss.Update(0.5f);
+    TEST("Still no regen at 1.5s", ApproxEq(sc->currentShield, 50.0f));
+
+    // After delay - should start regenerating
+    ss.Update(1.0f); // now at 2.5s, 0.5s of regen time
+    TEST("Regen started after delay", sc->currentShield > 50.0f);
+
+    // Regen to max
+    ss.Update(10.0f);
+    TEST("Shield capped at max", ApproxEq(sc->currentShield, 100.0f));
+}
+
+static void TestShieldSystemOverchargeDecay() {
+    std::cout << "[ShieldSystem Overcharge Decay]\n";
+    EntityManager em;
+    auto& ent = em.CreateEntity("Ship");
+    auto* sc = em.AddComponent<ShieldModuleComponent>(ent.id, std::make_unique<ShieldModuleComponent>());
+    sc->maxShield = 100.0f;
+    sc->currentShield = 100.0f;
+    sc->overchargeAmount = 50.0f;
+    sc->overchargeDecayRate = 10.0f;
+    sc->timeSinceLastHit = 10.0f; // already past delay
+
+    ShieldSystem ss(em);
+    ss.Update(1.0f);
+    TEST("Overcharge decayed by 10", ApproxEq(sc->overchargeAmount, 40.0f));
+
+    ss.Update(4.0f);
+    TEST("Overcharge at 0", ApproxEq(sc->overchargeAmount, 0.0f));
+
+    // Should not go negative
+    ss.Update(1.0f);
+    TEST("Overcharge does not go negative", ApproxEq(sc->overchargeAmount, 0.0f));
+}
+
+// ===================================================================
+// Status Effect System tests
+// ===================================================================
+static void TestStatusEffectBasic() {
+    std::cout << "[StatusEffect Basic]\n";
+    StatusEffect e;
+    e.duration = 5.0f;
+    e.remainingTime = 5.0f;
+    TEST("Effect is active", e.IsActive());
+    TEST("Remaining 100%", ApproxEq(e.GetRemainingPercent(), 100.0f));
+
+    e.remainingTime = 2.5f;
+    TEST("Remaining 50%", ApproxEq(e.GetRemainingPercent(), 50.0f));
+
+    e.remainingTime = 0.0f;
+    TEST("Effect expired", !e.IsActive());
+    TEST("Remaining 0%", ApproxEq(e.GetRemainingPercent(), 0.0f));
+
+    e.duration = 0.0f;
+    TEST("Zero duration returns 0%", ApproxEq(e.GetRemainingPercent(), 0.0f));
+}
+
+static void TestStatusEffectNames() {
+    std::cout << "[StatusEffect Names]\n";
+    TEST("EMP name", StatusEffect::GetEffectName(StatusEffectType::EMPDisruption) == "EMP Disruption");
+    TEST("Fire name", StatusEffect::GetEffectName(StatusEffectType::FireDOT) == "Fire");
+    TEST("Radiation name", StatusEffect::GetEffectName(StatusEffectType::RadiationDOT) == "Radiation");
+    TEST("Shield Drain name", StatusEffect::GetEffectName(StatusEffectType::ShieldDrain) == "Shield Drain");
+    TEST("Engine Jam name", StatusEffect::GetEffectName(StatusEffectType::EngineJam) == "Engine Jam");
+    TEST("Sensor Scramble name", StatusEffect::GetEffectName(StatusEffectType::SensorScramble) == "Sensor Scramble");
+}
+
+static void TestStatusEffectDefaults() {
+    std::cout << "[StatusEffect Defaults]\n";
+    TEST("EMP default duration 3", ApproxEq(StatusEffect::GetDefaultDuration(StatusEffectType::EMPDisruption), 3.0f));
+    TEST("Fire default duration 8", ApproxEq(StatusEffect::GetDefaultDuration(StatusEffectType::FireDOT), 8.0f));
+    TEST("Radiation default duration 10", ApproxEq(StatusEffect::GetDefaultDuration(StatusEffectType::RadiationDOT), 10.0f));
+    TEST("ShieldDrain default duration 6", ApproxEq(StatusEffect::GetDefaultDuration(StatusEffectType::ShieldDrain), 6.0f));
+    TEST("EngineJam default duration 5", ApproxEq(StatusEffect::GetDefaultDuration(StatusEffectType::EngineJam), 5.0f));
+    TEST("SensorScramble default duration 7", ApproxEq(StatusEffect::GetDefaultDuration(StatusEffectType::SensorScramble), 7.0f));
+
+    TEST("EMP default magnitude 0", ApproxEq(StatusEffect::GetDefaultMagnitude(StatusEffectType::EMPDisruption), 0.0f));
+    TEST("Fire default magnitude 15", ApproxEq(StatusEffect::GetDefaultMagnitude(StatusEffectType::FireDOT), 15.0f));
+    TEST("Radiation default magnitude 10", ApproxEq(StatusEffect::GetDefaultMagnitude(StatusEffectType::RadiationDOT), 10.0f));
+    TEST("ShieldDrain default magnitude 20", ApproxEq(StatusEffect::GetDefaultMagnitude(StatusEffectType::ShieldDrain), 20.0f));
+    TEST("EngineJam default magnitude 50", ApproxEq(StatusEffect::GetDefaultMagnitude(StatusEffectType::EngineJam), 50.0f));
+    TEST("SensorScramble default magnitude 40", ApproxEq(StatusEffect::GetDefaultMagnitude(StatusEffectType::SensorScramble), 40.0f));
+}
+
+static void TestStatusEffectComponentApply() {
+    std::cout << "[StatusEffectComponent Apply]\n";
+    StatusEffectComponent sec;
+    TEST("No active effects initially", sec.GetActiveCount() == 0);
+
+    StatusEffect fire;
+    fire.type = StatusEffectType::FireDOT;
+    fire.duration = 5.0f;
+    fire.remainingTime = 5.0f;
+    fire.magnitude = 10.0f;
+
+    bool applied = sec.ApplyEffect(fire);
+    TEST("Effect applied", applied);
+    TEST("One active effect", sec.GetActiveCount() == 1);
+    TEST("Has fire effect", sec.HasEffect(StatusEffectType::FireDOT));
+    TEST("No EMP effect", !sec.HasEffect(StatusEffectType::EMPDisruption));
+    TEST("Fire magnitude 10", ApproxEq(sec.GetEffectMagnitude(StatusEffectType::FireDOT), 10.0f));
+}
+
+static void TestStatusEffectComponentImmune() {
+    std::cout << "[StatusEffectComponent Immune]\n";
+    StatusEffectComponent sec;
+    sec.isImmune = true;
+
+    StatusEffect fire;
+    fire.type = StatusEffectType::FireDOT;
+    bool applied = sec.ApplyEffect(fire);
+    TEST("Immune prevents application", !applied);
+    TEST("No effects when immune", sec.GetActiveCount() == 0);
+}
+
+static void TestStatusEffectComponentCapacity() {
+    std::cout << "[StatusEffectComponent Capacity]\n";
+    StatusEffectComponent sec;
+    for (size_t i = 0; i < StatusEffectComponent::kMaxEffects; ++i) {
+        StatusEffect e;
+        e.type = StatusEffectType::FireDOT;
+        e.remainingTime = 5.0f;
+        sec.ApplyEffect(e);
+    }
+    TEST("At max capacity", sec.GetActiveCount() == StatusEffectComponent::kMaxEffects);
+
+    StatusEffect extra;
+    extra.type = StatusEffectType::EMPDisruption;
+    bool applied = sec.ApplyEffect(extra);
+    TEST("Rejected at capacity", !applied);
+    TEST("Still at max", sec.GetActiveCount() == StatusEffectComponent::kMaxEffects);
+}
+
+static void TestStatusEffectComponentResistance() {
+    std::cout << "[StatusEffectComponent Resistance]\n";
+    StatusEffectComponent sec;
+    sec.resistanceMultiplier = 0.5f; // 50% resistance
+
+    StatusEffect fire;
+    fire.type = StatusEffectType::FireDOT;
+    fire.magnitude = 20.0f;
+    fire.remainingTime = 5.0f;
+    sec.ApplyEffect(fire);
+
+    TEST("Magnitude halved by resistance", ApproxEq(sec.GetEffectMagnitude(StatusEffectType::FireDOT), 10.0f));
+}
+
+static void TestStatusEffectComponentRemoveByType() {
+    std::cout << "[StatusEffectComponent RemoveByType]\n";
+    StatusEffectComponent sec;
+
+    StatusEffect fire;
+    fire.type = StatusEffectType::FireDOT;
+    fire.remainingTime = 5.0f;
+    sec.ApplyEffect(fire);
+
+    StatusEffect emp;
+    emp.type = StatusEffectType::EMPDisruption;
+    emp.remainingTime = 3.0f;
+    sec.ApplyEffect(emp);
+
+    TEST("Two effects active", sec.GetActiveCount() == 2);
+
+    sec.RemoveEffectsByType(StatusEffectType::FireDOT);
+    TEST("One effect after removal", sec.GetActiveCount() == 1);
+    TEST("Fire removed", !sec.HasEffect(StatusEffectType::FireDOT));
+    TEST("EMP still active", sec.HasEffect(StatusEffectType::EMPDisruption));
+}
+
+static void TestStatusEffectComponentClearExpired() {
+    std::cout << "[StatusEffectComponent ClearExpired]\n";
+    StatusEffectComponent sec;
+
+    StatusEffect alive;
+    alive.type = StatusEffectType::FireDOT;
+    alive.remainingTime = 5.0f;
+    sec.ApplyEffect(alive);
+
+    StatusEffect expired;
+    expired.type = StatusEffectType::EMPDisruption;
+    expired.remainingTime = 0.0f;
+    sec.ApplyEffect(expired);
+
+    TEST("Two effects before clear", sec.GetActiveCount() == 2);
+    sec.ClearExpired();
+    TEST("One effect after clear", sec.GetActiveCount() == 1);
+    TEST("Fire still active", sec.HasEffect(StatusEffectType::FireDOT));
+}
+
+static void TestStatusEffectComponentSerialization() {
+    std::cout << "[StatusEffectComponent Serialization]\n";
+    StatusEffectComponent original;
+    original.isImmune = false;
+    original.resistanceMultiplier = 0.8f;
+
+    StatusEffect fire;
+    fire.type = StatusEffectType::FireDOT;
+    fire.duration = 8.0f;
+    fire.remainingTime = 5.0f;
+    fire.tickInterval = 1.0f;
+    fire.tickTimer = 0.3f;
+    fire.magnitude = 15.0f;
+    original.ApplyEffect(fire);
+
+    StatusEffect emp;
+    emp.type = StatusEffectType::EMPDisruption;
+    emp.duration = 3.0f;
+    emp.remainingTime = 2.0f;
+    emp.tickInterval = 0.5f;
+    emp.tickTimer = 0.1f;
+    emp.magnitude = 0.0f;
+    original.ApplyEffect(emp);
+
+    ComponentData cd = original.Serialize();
+    TEST("Serialized type", cd.componentType == "StatusEffectComponent");
+
+    StatusEffectComponent restored;
+    restored.Deserialize(cd);
+    TEST("Restored isImmune", !restored.isImmune);
+    TEST("Restored resistance", ApproxEq(restored.resistanceMultiplier, 0.8f));
+    TEST("Restored effect count", restored.GetActiveCount() == 2);
+    TEST("Restored has fire", restored.HasEffect(StatusEffectType::FireDOT));
+    TEST("Restored has EMP", restored.HasEffect(StatusEffectType::EMPDisruption));
+}
+
+static void TestStatusEffectSystem() {
+    std::cout << "[StatusEffectSystem]\n";
+    StatusEffectSystem ses;
+    TEST("StatusEffectSystem name", ses.GetName() == "StatusEffectSystem");
+    ses.Update(1.0f);
+    TEST("Update without EM does not crash", true);
+}
+
+static void TestStatusEffectSystemUpdate() {
+    std::cout << "[StatusEffectSystem Update]\n";
+    EntityManager em;
+    auto& ent = em.CreateEntity("Ship");
+    auto* sec = em.AddComponent<StatusEffectComponent>(ent.id, std::make_unique<StatusEffectComponent>());
+
+    StatusEffect fire;
+    fire.type = StatusEffectType::FireDOT;
+    fire.duration = 5.0f;
+    fire.remainingTime = 5.0f;
+    fire.tickInterval = 1.0f;
+    fire.tickTimer = 0.0f;
+    fire.magnitude = 10.0f;
+    sec->ApplyEffect(fire);
+
+    StatusEffectSystem ses(em);
+
+    ses.Update(2.0f);
+    TEST("Remaining time decreased", sec->activeEffects[0].remainingTime < 5.0f);
+    TEST("Effect still active", sec->GetActiveCount() == 1);
+
+    // Expire the effect
+    ses.Update(5.0f);
+    TEST("Expired effect removed", sec->GetActiveCount() == 0);
+}
+
+// ===================================================================
+// Loot System tests
+// ===================================================================
+static void TestLootRarityNames() {
+    std::cout << "[LootRarity Names]\n";
+    TEST("Common name", LootTableEntry::GetRarityName(LootRarity::Common) == "Common");
+    TEST("Uncommon name", LootTableEntry::GetRarityName(LootRarity::Uncommon) == "Uncommon");
+    TEST("Rare name", LootTableEntry::GetRarityName(LootRarity::Rare) == "Rare");
+    TEST("Epic name", LootTableEntry::GetRarityName(LootRarity::Epic) == "Epic");
+    TEST("Legendary name", LootTableEntry::GetRarityName(LootRarity::Legendary) == "Legendary");
+}
+
+static void TestLootRarityWeights() {
+    std::cout << "[LootRarity Weights]\n";
+    TEST("Common weight 1.0", ApproxEq(LootTableEntry::GetRarityWeight(LootRarity::Common), 1.0f));
+    TEST("Uncommon weight 0.5", ApproxEq(LootTableEntry::GetRarityWeight(LootRarity::Uncommon), 0.5f));
+    TEST("Rare weight 0.2", ApproxEq(LootTableEntry::GetRarityWeight(LootRarity::Rare), 0.2f));
+    TEST("Epic weight 0.08", ApproxEq(LootTableEntry::GetRarityWeight(LootRarity::Epic), 0.08f));
+    TEST("Legendary weight 0.02", ApproxEq(LootTableEntry::GetRarityWeight(LootRarity::Legendary), 0.02f));
+}
+
+static void TestLootTableRoll() {
+    std::cout << "[LootTable Roll]\n";
+    LootTable table;
+    table.tableName = "Test";
+    table.entries = {
+        {"Iron", LootRarity::Common, 1.0f, 1, 5},   // always drops
+        {"Gold", LootRarity::Rare, 0.0f, 1, 1},       // never drops
+    };
+
+    auto drops = table.Roll(42);
+    TEST("At least one drop", !drops.empty());
+
+    bool hasIron = false, hasGold = false;
+    for (const auto& d : drops) {
+        if (d.itemName == "Iron") hasIron = true;
+        if (d.itemName == "Gold") hasGold = true;
+    }
+    TEST("Iron always drops", hasIron);
+    TEST("Gold never drops", !hasGold);
+}
+
+static void TestLootTableDeterminism() {
+    std::cout << "[LootTable Determinism]\n";
+    LootTable table = LootTable::CreateStandardEnemyTable();
+
+    auto drops1 = table.Roll(12345);
+    auto drops2 = table.Roll(12345);
+    TEST("Same seed same count", drops1.size() == drops2.size());
+    for (size_t i = 0; i < drops1.size() && i < drops2.size(); ++i) {
+        TEST("Same item name", drops1[i].itemName == drops2[i].itemName);
+        TEST("Same quantity", drops1[i].quantity == drops2[i].quantity);
+    }
+}
+
+static void TestLootTableWithLuck() {
+    std::cout << "[LootTable RollWithLuck]\n";
+    LootTable table;
+    table.tableName = "LuckTest";
+    table.entries = {
+        {"Rare Item", LootRarity::Rare, 0.5f, 1, 1},
+    };
+
+    // Roll many times with high luck - should get more drops
+    int dropsWithLuck = 0;
+    int dropsWithoutLuck = 0;
+    for (uint32_t seed = 0; seed < 100; ++seed) {
+        auto d1 = table.RollWithLuck(seed, 2.0f); // capped at 1.0
+        if (!d1.empty()) dropsWithLuck++;
+        auto d2 = table.RollWithLuck(seed, 1.0f);
+        if (!d2.empty()) dropsWithoutLuck++;
+    }
+    TEST("High luck gets more drops", dropsWithLuck >= dropsWithoutLuck);
+}
+
+static void TestLootTablePresets() {
+    std::cout << "[LootTable Presets]\n";
+    auto standard = LootTable::CreateStandardEnemyTable();
+    TEST("Standard table name", standard.tableName == "StandardEnemy");
+    TEST("Standard has 5 entries", standard.entries.size() == 5);
+
+    auto boss = LootTable::CreateBossTable();
+    TEST("Boss table name", boss.tableName == "BossEnemy");
+    TEST("Boss has 5 entries", boss.entries.size() == 5);
+
+    auto asteroid = LootTable::CreateAsteroidTable();
+    TEST("Asteroid table name", asteroid.tableName == "Asteroid");
+    TEST("Asteroid has 5 entries", asteroid.entries.size() == 5);
+}
+
+static void TestLootComponent() {
+    std::cout << "[LootComponent]\n";
+    LootComponent lc;
+    lc.lootTable = LootTable::CreateStandardEnemyTable();
+    lc.lootSeed = 42;
+    lc.luckModifier = 1.0f;
+
+    TEST("Not looted initially", !lc.hasBeenLooted);
+
+    auto drops = lc.GenerateDrops();
+    TEST("Generates drops", true); // just checking it doesn't crash
+
+    lc.MarkLooted();
+    TEST("Marked as looted", lc.hasBeenLooted);
+
+    auto drops2 = lc.GenerateDrops();
+    TEST("No drops after looted", drops2.empty());
+}
+
+static void TestLootComponentSerialization() {
+    std::cout << "[LootComponent Serialization]\n";
+    LootComponent original;
+    original.lootTable = LootTable::CreateStandardEnemyTable();
+    original.luckModifier = 1.5f;
+    original.hasBeenLooted = false;
+    original.lootSeed = 9999;
+
+    ComponentData cd = original.Serialize();
+    TEST("Serialized type", cd.componentType == "LootComponent");
+
+    LootComponent restored;
+    restored.Deserialize(cd);
+    TEST("Restored luck modifier", ApproxEq(restored.luckModifier, 1.5f));
+    TEST("Restored not looted", !restored.hasBeenLooted);
+    TEST("Restored seed", restored.lootSeed == 9999);
+    TEST("Restored table name", restored.lootTable.tableName == "StandardEnemy");
+    TEST("Restored entry count", restored.lootTable.entries.size() == 5);
+    TEST("Restored first entry name", restored.lootTable.entries[0].itemName == "Scrap Metal");
+}
+
+static void TestLootSystem() {
+    std::cout << "[LootSystem]\n";
+    LootSystem ls;
+    TEST("LootSystem name", ls.GetName() == "LootSystem");
+    ls.Update(1.0f);
+    TEST("Update without EM does not crash", true);
+}
+
+static void TestLootSystemWithEM() {
+    std::cout << "[LootSystem WithEM]\n";
+    EntityManager em;
+    auto& ent = em.CreateEntity("Enemy");
+    auto* lc = em.AddComponent<LootComponent>(ent.id, std::make_unique<LootComponent>());
+    lc->lootTable = LootTable::CreateBossTable();
+    lc->lootSeed = 42;
+
+    LootSystem ls(em);
+    ls.Update(1.0f); // No-op, but should not crash
+    TEST("LootSystem with EM does not crash", true);
+}
+
+// ===================================================================
+// New Game Event Constants tests (Shield, StatusEffect, Loot)
+// ===================================================================
+static void TestShieldStatusLootGameEvents() {
+    std::cout << "[ShieldStatusLootGameEvents]\n";
+    // Shield events
+    TEST("ShieldAbsorbed event", std::string(GameEvents::ShieldAbsorbed) == "combat.shield.absorbed");
+    TEST("ShieldDepleted event", std::string(GameEvents::ShieldDepleted) == "combat.shield.depleted");
+    TEST("ShieldRestored event", std::string(GameEvents::ShieldRestored) == "combat.shield.restored");
+    TEST("ShieldOvercharged event", std::string(GameEvents::ShieldOvercharged) == "combat.shield.overcharged");
+    // Status effect events
+    TEST("StatusEffectApplied event", std::string(GameEvents::StatusEffectApplied) == "combat.status.applied");
+    TEST("StatusEffectExpired event", std::string(GameEvents::StatusEffectExpired) == "combat.status.expired");
+    TEST("StatusEffectRemoved event", std::string(GameEvents::StatusEffectRemoved) == "combat.status.removed");
+    TEST("StatusEffectTick event", std::string(GameEvents::StatusEffectTick) == "combat.status.tick");
+    // Loot events
+    TEST("LootGenerated event", std::string(GameEvents::LootGenerated) == "loot.generated");
+    TEST("LootCollected event", std::string(GameEvents::LootCollected) == "loot.collected");
+    TEST("LootDropped event", std::string(GameEvents::LootDropped) == "loot.dropped");
+    TEST("RareItemFound event", std::string(GameEvents::RareItemFound) == "loot.rare_item");
+}
+
+// ===================================================================
 // Main
 // ===================================================================
 int main() {
@@ -8447,6 +9058,41 @@ int main() {
     TestAnomalyProbabilityZero();
     TestAnomalyTypes();
     TestAdvancedCombatGameEvents();
+    TestShieldComponentDefaults();
+    TestShieldAbsorbDamage();
+    TestShieldAbsorbDamageHardened();
+    TestShieldAbsorbDamageInactive();
+    TestShieldOvercharge();
+    TestShieldPercentageEdgeCases();
+    TestShieldRestore();
+    TestShieldAbsorptionMultipliers();
+    TestShieldComponentSerialization();
+    TestShieldSystem();
+    TestShieldSystemRegen();
+    TestShieldSystemOverchargeDecay();
+    TestStatusEffectBasic();
+    TestStatusEffectNames();
+    TestStatusEffectDefaults();
+    TestStatusEffectComponentApply();
+    TestStatusEffectComponentImmune();
+    TestStatusEffectComponentCapacity();
+    TestStatusEffectComponentResistance();
+    TestStatusEffectComponentRemoveByType();
+    TestStatusEffectComponentClearExpired();
+    TestStatusEffectComponentSerialization();
+    TestStatusEffectSystem();
+    TestStatusEffectSystemUpdate();
+    TestLootRarityNames();
+    TestLootRarityWeights();
+    TestLootTableRoll();
+    TestLootTableDeterminism();
+    TestLootTableWithLuck();
+    TestLootTablePresets();
+    TestLootComponent();
+    TestLootComponentSerialization();
+    TestLootSystem();
+    TestLootSystemWithEM();
+    TestShieldStatusLootGameEvents();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
               << testsFailed << " failed ===\n";

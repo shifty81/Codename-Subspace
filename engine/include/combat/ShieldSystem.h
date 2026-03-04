@@ -13,8 +13,8 @@ namespace subspace {
 /// Types of shield technology.
 enum class ShieldType { Standard, Hardened, Phase, Regenerative };
 
-/// ECS component giving an entity a shield.
-struct ShieldComponent : public IComponent {
+/// ECS component giving an entity an advanced modular shield.
+struct ShieldModuleComponent : public IComponent {
     ShieldType shieldType = ShieldType::Standard;
     float maxShield = 100.0f;
     float currentShield = 100.0f;
