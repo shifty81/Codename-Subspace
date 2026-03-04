@@ -18,6 +18,12 @@
 #include "ship_editor/ShipEditorController.h"
 #include "ship_editor/ShipEditorState.h"
 #include "ship_editor/SymmetrySystem.h"
+#include "ship_editor/EditorAction.h"
+#include "ship_editor/EditorClipboard.h"
+#include "ship_editor/EditorSelection.h"
+#include "ship_editor/ShipValidator.h"
+#include "ship_editor/BlockPalette.h"
+#include "ship_editor/EditorGrid.h"
 #include "factions/FactionProfile.h"
 #include "factions/SilhouetteProfile.h"
 #include "ai/AIShipBuilder.h"
@@ -478,6 +484,565 @@ static void TestShipEditor() {
     bool removed = editor.RemoveAtHover();
     TEST("Editor RemoveAtHover succeeds", removed);
     TEST("Editor RemoveAtHover removes block", ship.BlockCount() == 0);
+}
+
+// ===================================================================
+// 8a. EditorHistory (Undo/Redo) tests
+// ===================================================================
+static void TestEditorHistory() {
+    std::cout << "[EditorHistory]\n";
+
+    EditorHistory history(50);
+
+    TEST("Initial undo count is 0", history.UndoCount() == 0);
+    TEST("Initial redo count is 0", history.RedoCount() == 0);
+    TEST("Cannot undo empty", !history.CanUndo());
+    TEST("Cannot redo empty", !history.CanRedo());
+    TEST("MaxSize correct", history.MaxSize() == 50);
+
+    // Push one action
+    Block b{};
+    b.gridPos = {1, 2, 3};
+    history.PushAction(EditorAction::MakePlaceAction(b));
+    TEST("UndoCount after push", history.UndoCount() == 1);
+    TEST("CanUndo after push", history.CanUndo());
+
+    // Undo
+    EditorAction undone = history.Undo();
+    TEST("Undone action type", undone.type == EditorActionType::PlaceBlock);
+    TEST("Undone pos matches", undone.blockData.gridPos == Vector3Int(1, 2, 3));
+    TEST("CanRedo after undo", history.CanRedo());
+    TEST("Cannot undo after single undo", !history.CanUndo());
+
+    // Redo
+    EditorAction redone = history.Redo();
+    TEST("Redone action type", redone.type == EditorActionType::PlaceBlock);
+    TEST("CanUndo after redo", history.CanUndo());
+
+    // Push discards redo stack
+    history.Undo();
+    Block b2{};
+    b2.gridPos = {4, 5, 6};
+    history.PushAction(EditorAction::MakeRemoveAction(b2));
+    TEST("Redo cleared after new push", !history.CanRedo());
+    TEST("UndoCount after re-push", history.UndoCount() == 1);
+
+    // Clear
+    history.Clear();
+    TEST("Clear empties history", history.UndoCount() == 0);
+    TEST("Clear empties redo", history.RedoCount() == 0);
+}
+
+static void TestEditorHistoryMaxSize() {
+    std::cout << "[EditorHistory MaxSize]\n";
+
+    EditorHistory history(3);
+    Block b{};
+    for (int i = 0; i < 5; ++i) {
+        b.gridPos = {i, 0, 0};
+        history.PushAction(EditorAction::MakePlaceAction(b));
+    }
+    TEST("MaxSize trims old entries", history.UndoCount() == 3);
+}
+
+static void TestEditorActionFactories() {
+    std::cout << "[EditorAction Factories]\n";
+
+    Block b{};
+    b.gridPos = {1, 1, 1};
+    b.material = MaterialType::Titanium;
+
+    auto place = EditorAction::MakePlaceAction(b);
+    TEST("PlaceAction type", place.type == EditorActionType::PlaceBlock);
+
+    auto remove = EditorAction::MakeRemoveAction(b);
+    TEST("RemoveAction type", remove.type == EditorActionType::RemoveBlock);
+
+    auto paint = EditorAction::MakePaintAction(b, MaterialType::Iron);
+    TEST("PaintAction type", paint.type == EditorActionType::PaintBlock);
+    TEST("PaintAction previousMaterial", paint.previousMaterial == MaterialType::Iron);
+
+    std::vector<Block> blocks = {b, b};
+    auto mp = EditorAction::MakeMultiPlace(blocks);
+    TEST("MultiPlace type", mp.type == EditorActionType::MultiPlace);
+    TEST("MultiPlace count", mp.multiBlocks.size() == 2);
+
+    auto mr = EditorAction::MakeMultiRemove(blocks);
+    TEST("MultiRemove type", mr.type == EditorActionType::MultiRemove);
+}
+
+// ===================================================================
+// 8b. EditorClipboard tests
+// ===================================================================
+static void TestEditorClipboard() {
+    std::cout << "[EditorClipboard]\n";
+
+    EditorClipboard clipboard;
+    TEST("Clipboard initially empty", clipboard.IsEmpty());
+    TEST("Clipboard count 0", clipboard.BlockCount() == 0);
+
+    // Copy two blocks anchored at (2,0,0)
+    Block b1{};
+    b1.gridPos = {2, 0, 0};
+    b1.size = {1, 1, 1};
+    b1.type = BlockType::Hull;
+    Block b2{};
+    b2.gridPos = {3, 0, 0};
+    b2.size = {1, 1, 1};
+    b2.type = BlockType::Engine;
+
+    clipboard.Copy({b1, b2}, {2, 0, 0});
+    TEST("Clipboard not empty after copy", !clipboard.IsEmpty());
+    TEST("Clipboard has 2 blocks", clipboard.BlockCount() == 2);
+
+    // Paste at (10, 5, 0) → relative offsets applied
+    auto pasted = clipboard.Paste({10, 5, 0});
+    TEST("Paste returns 2 blocks", pasted.size() == 2);
+
+    // The first block was at offset (0,0,0) → should be at (10,5,0)
+    bool found10 = false, found11 = false;
+    for (const auto& p : pasted) {
+        if (p.gridPos == Vector3Int(10, 5, 0)) found10 = true;
+        if (p.gridPos == Vector3Int(11, 5, 0)) found11 = true;
+    }
+    TEST("Paste places first block correctly", found10);
+    TEST("Paste places second block correctly", found11);
+
+    // Clear
+    clipboard.Clear();
+    TEST("Clipboard empty after clear", clipboard.IsEmpty());
+}
+
+// ===================================================================
+// 8c. EditorSelection tests
+// ===================================================================
+static void TestEditorSelection() {
+    std::cout << "[EditorSelection]\n";
+
+    EditorSelection sel;
+    TEST("Selection initially empty", sel.IsEmpty());
+    TEST("Selection count 0", sel.Count() == 0);
+
+    sel.Add({1, 0, 0});
+    TEST("Selection count after add", sel.Count() == 1);
+    TEST("Contains added cell", sel.Contains({1, 0, 0}));
+    TEST("Does not contain other", !sel.Contains({2, 0, 0}));
+
+    sel.Remove({1, 0, 0});
+    TEST("Selection empty after remove", sel.IsEmpty());
+
+    // Toggle
+    sel.Toggle({5, 5, 5});
+    TEST("Toggle adds", sel.Contains({5, 5, 5}));
+    sel.Toggle({5, 5, 5});
+    TEST("Toggle removes", !sel.Contains({5, 5, 5}));
+
+    // Box select
+    sel.SelectBox({0, 0, 0}, {2, 2, 0});
+    TEST("Box select count", sel.Count() == 9);  // 3x3x1
+    TEST("Box select contains corner", sel.Contains({0, 0, 0}));
+    TEST("Box select contains far corner", sel.Contains({2, 2, 0}));
+
+    // Bounds
+    Vector3Int bMin, bMax;
+    bool hasBounds = sel.GetBounds(bMin, bMax);
+    TEST("GetBounds returns true", hasBounds);
+    TEST("GetBounds min", bMin == Vector3Int(0, 0, 0));
+    TEST("GetBounds max", bMax == Vector3Int(2, 2, 0));
+
+    // Clear
+    sel.Clear();
+    TEST("Selection cleared", sel.IsEmpty());
+
+    // GetBounds on empty
+    TEST("GetBounds on empty returns false", !sel.GetBounds(bMin, bMax));
+}
+
+static void TestEditorSelectionGatherBlocks() {
+    std::cout << "[EditorSelection GatherBlocks]\n";
+
+    Ship ship;
+    auto b1 = std::make_shared<Block>();
+    b1->gridPos = {0, 0, 0};
+    b1->size = {1, 1, 1};
+    b1->type = BlockType::Hull;
+    b1->maxHP = 100;
+    b1->currentHP = 100;
+    BlockPlacement::Place(ship, b1);
+
+    auto b2 = std::make_shared<Block>();
+    b2->gridPos = {1, 0, 0};
+    b2->size = {1, 1, 1};
+    b2->type = BlockType::Engine;
+    b2->maxHP = 100;
+    b2->currentHP = 100;
+    BlockPlacement::Place(ship, b2);
+
+    EditorSelection sel;
+    sel.Add({0, 0, 0});
+    sel.Add({1, 0, 0});
+    sel.Add({99, 99, 99}); // not a real block
+
+    auto gathered = sel.GatherBlocks(ship);
+    TEST("GatherBlocks returns existing blocks", gathered.size() == 2);
+}
+
+// ===================================================================
+// 8d. ShipValidator tests
+// ===================================================================
+static void TestShipValidator() {
+    std::cout << "[ShipValidator]\n";
+
+    // Empty ship
+    {
+        Ship empty;
+        auto result = ShipValidator::Validate(empty);
+        TEST("Empty ship is invalid", !result.valid);
+        TEST("Empty ship error count", result.errors.size() == 1);
+    }
+
+    // Single hull block – connected but no engine/generator
+    {
+        Ship ship;
+        auto b = std::make_shared<Block>();
+        b->gridPos = {0, 0, 0};
+        b->size = {1, 1, 1};
+        b->type = BlockType::Hull;
+        b->maxHP = 100;
+        b->currentHP = 100;
+        BlockPlacement::Place(ship, b);
+
+        auto result = ShipValidator::Validate(ship);
+        TEST("Single hull is valid (no hard errors)", result.valid);
+        TEST("Warns about missing engine", result.warnings.size() >= 1);
+    }
+
+    // Ship with engine + generator
+    {
+        Ship ship;
+        auto b1 = std::make_shared<Block>();
+        b1->gridPos = {0, 0, 0};
+        b1->size = {1, 1, 1};
+        b1->type = BlockType::Engine;
+        b1->maxHP = 100;
+        b1->currentHP = 100;
+        BlockPlacement::Place(ship, b1);
+
+        auto b2 = std::make_shared<Block>();
+        b2->gridPos = {1, 0, 0};
+        b2->size = {1, 1, 1};
+        b2->type = BlockType::Generator;
+        b2->maxHP = 100;
+        b2->currentHP = 100;
+        BlockPlacement::Place(ship, b2);
+
+        auto result = ShipValidator::Validate(ship);
+        TEST("Engine+generator ship valid", result.valid);
+        TEST("No warnings for complete ship", result.warnings.empty());
+    }
+
+    // Individual checks
+    {
+        Ship ship;
+        TEST("HasBlocks false for empty", !ShipValidator::HasBlocks(ship));
+
+        auto b = std::make_shared<Block>();
+        b->gridPos = {0, 0, 0};
+        b->size = {1, 1, 1};
+        b->type = BlockType::Hull;
+        b->maxHP = 100;
+        b->currentHP = 100;
+        BlockPlacement::Place(ship, b);
+
+        TEST("HasBlocks true after add", ShipValidator::HasBlocks(ship));
+        TEST("HasEngine false for hull", !ShipValidator::HasEngine(ship));
+        TEST("HasGenerator false for hull", !ShipValidator::HasGenerator(ship));
+        TEST("MassWithinLimit", ShipValidator::MassWithinLimit(ship, 99999.0f));
+        TEST("BlockCountWithinLimit", ShipValidator::BlockCountWithinLimit(ship, 100));
+        TEST("BlockCountWithinLimit fails", !ShipValidator::BlockCountWithinLimit(ship, 0));
+    }
+}
+
+static void TestShipValidatorConnectivity() {
+    std::cout << "[ShipValidator Connectivity]\n";
+
+    // Connected ship
+    {
+        Ship ship;
+        auto b1 = std::make_shared<Block>();
+        b1->gridPos = {0, 0, 0};
+        b1->size = {1, 1, 1};
+        b1->type = BlockType::Hull;
+        b1->maxHP = 100;
+        b1->currentHP = 100;
+        BlockPlacement::Place(ship, b1);
+
+        auto b2 = std::make_shared<Block>();
+        b2->gridPos = {1, 0, 0};
+        b2->size = {1, 1, 1};
+        b2->type = BlockType::Hull;
+        b2->maxHP = 100;
+        b2->currentHP = 100;
+        BlockPlacement::Place(ship, b2);
+
+        TEST("Two adjacent blocks connected", ShipValidator::IsConnected(ship));
+    }
+
+    // Disconnected ship (manually insert two blocks far apart)
+    {
+        Ship ship;
+        auto b1 = std::make_shared<Block>();
+        b1->gridPos = {0, 0, 0};
+        b1->size = {1, 1, 1};
+        b1->type = BlockType::Hull;
+        b1->maxHP = 100;
+        b1->currentHP = 100;
+        ship.blocks.push_back(b1);
+        ship.occupiedCells[b1->gridPos] = b1;
+
+        auto b2 = std::make_shared<Block>();
+        b2->gridPos = {10, 10, 10};
+        b2->size = {1, 1, 1};
+        b2->type = BlockType::Hull;
+        b2->maxHP = 100;
+        b2->currentHP = 100;
+        ship.blocks.push_back(b2);
+        ship.occupiedCells[b2->gridPos] = b2;
+
+        TEST("Two distant blocks not connected", !ShipValidator::IsConnected(ship));
+    }
+}
+
+// ===================================================================
+// 8e. BlockPalette tests
+// ===================================================================
+static void TestBlockPalette() {
+    std::cout << "[BlockPalette]\n";
+
+    BlockPalette palette;
+    TEST("Palette not empty", palette.Count() > 0);
+    TEST("Palette has entries", palette.GetAll().size() == palette.Count());
+
+    // Categories
+    auto cats = palette.GetCategories();
+    TEST("Has at least 3 categories", cats.size() >= 3);
+
+    bool hasStructure = false, hasFunctional = false, hasWeapons = false;
+    for (const auto& c : cats) {
+        if (c == "Structure") hasStructure = true;
+        if (c == "Functional") hasFunctional = true;
+        if (c == "Weapons") hasWeapons = true;
+    }
+    TEST("Has Structure category", hasStructure);
+    TEST("Has Functional category", hasFunctional);
+    TEST("Has Weapons category", hasWeapons);
+
+    // Filter by category
+    auto structural = palette.GetByCategory("Structure");
+    TEST("Structure has entries", !structural.empty());
+
+    auto weapons = palette.GetByCategory("Weapons");
+    TEST("Weapons has entries", !weapons.empty());
+
+    // FindByType
+    auto engine = palette.FindByType(BlockType::Engine);
+    TEST("FindByType Engine", engine != nullptr);
+    TEST("Engine entry name", engine->name == "Engine");
+
+    auto notFound = palette.FindByType(static_cast<BlockType>(99));
+    TEST("FindByType returns null for unknown", notFound == nullptr);
+}
+
+// ===================================================================
+// 8f. EditorGrid tests
+// ===================================================================
+static void TestEditorGrid() {
+    std::cout << "[EditorGrid]\n";
+
+    EditorGrid grid;
+    TEST("Default cell size 1", grid.GetCellSize() == 1);
+    TEST("Default visible true", grid.IsVisible());
+    TEST("Default extent 50", grid.GetExtent() == 50);
+
+    // Snap to grid
+    auto snapped = grid.SnapToGrid(2.7f, -0.3f, 5.0f);
+    TEST("Snap X", snapped.x == 2);
+    TEST("Snap Y", snapped.y == -1);
+    TEST("Snap Z", snapped.z == 5);
+
+    // Cell to world
+    auto world = grid.CellToWorld({3, 4, 5});
+    TEST("CellToWorld X", std::fabs(world.x - 3.5f) < 0.01f);
+    TEST("CellToWorld Y", std::fabs(world.y - 4.5f) < 0.01f);
+    TEST("CellToWorld Z", std::fabs(world.z - 5.5f) < 0.01f);
+
+    // Cell size 2
+    grid.SetCellSize(2);
+    TEST("Cell size updated", grid.GetCellSize() == 2);
+    auto snapped2 = grid.SnapToGrid(5.0f, 5.0f, 5.0f);
+    TEST("Snap with cell size 2", snapped2.x == 2);
+
+    auto world2 = grid.CellToWorld({1, 1, 1});
+    TEST("CellToWorld with size 2", std::fabs(world2.x - 3.0f) < 0.01f);
+
+    // Visibility
+    grid.SetVisible(false);
+    TEST("Set visible false", !grid.IsVisible());
+
+    // Extent
+    grid.SetExtent(100);
+    TEST("Set extent 100", grid.GetExtent() == 100);
+
+    // Cannot set negative cell size
+    grid.SetCellSize(-5);
+    TEST("Negative cell size clamped to 1", grid.GetCellSize() == 1);
+
+    // Snap via Vector3
+    EditorGrid grid3(1);
+    auto snappedV = grid3.SnapToGrid(Vector3{1.5f, 2.5f, 3.5f});
+    TEST("SnapToGrid Vector3 X", snappedV.x == 1);
+    TEST("SnapToGrid Vector3 Y", snappedV.y == 2);
+    TEST("SnapToGrid Vector3 Z", snappedV.z == 3);
+}
+
+// ===================================================================
+// 8g. Integrated editor undo/redo tests
+// ===================================================================
+static void TestEditorUndoRedo() {
+    std::cout << "[Editor Undo/Redo]\n";
+
+    Ship ship;
+    ShipEditorController editor(ship);
+
+    // Place → Undo → Redo
+    editor.SetHoverCell({0, 0, 0});
+    editor.Place();
+    TEST("Ship has 1 block after place", ship.BlockCount() == 1);
+
+    editor.Undo();
+    TEST("Ship has 0 blocks after undo place", ship.BlockCount() == 0);
+
+    editor.Redo();
+    TEST("Ship has 1 block after redo", ship.BlockCount() == 1);
+
+    // Remove → Undo
+    editor.SetHoverCell({0, 0, 0});
+    editor.RemoveAtHover();
+    TEST("Ship has 0 blocks after remove", ship.BlockCount() == 0);
+
+    editor.Undo();
+    TEST("Ship has 1 block after undo remove", ship.BlockCount() == 1);
+
+    // Paint → Undo
+    editor.GetState().selectedMaterial = MaterialType::Titanium;
+    editor.SetHoverCell({0, 0, 0});
+    editor.PaintAtHover();
+    auto it = ship.occupiedCells.find({0, 0, 0});
+    TEST("Paint changed material", it->second->material == MaterialType::Titanium);
+
+    editor.Undo();
+    it = ship.occupiedCells.find({0, 0, 0});
+    TEST("Undo paint restores material", it->second->material == MaterialType::Iron);
+}
+
+static void TestEditorCopyPaste() {
+    std::cout << "[Editor Copy/Paste]\n";
+
+    Ship ship;
+    ShipEditorController editor(ship);
+
+    // Place two blocks
+    editor.SetHoverCell({0, 0, 0});
+    editor.Place();
+    editor.SetHoverCell({1, 0, 0});
+    editor.Place();
+    TEST("Ship has 2 blocks", ship.BlockCount() == 2);
+
+    // Select both and copy
+    editor.GetSelection().Add({0, 0, 0});
+    editor.GetSelection().Add({1, 0, 0});
+    editor.CopySelection();
+    TEST("Clipboard has 2 blocks", editor.GetClipboard().BlockCount() == 2);
+
+    // Paste at (2,0,0) — adjacent to existing block at (1,0,0)
+    editor.SetHoverCell({2, 0, 0});
+    bool pasted = editor.PasteAtHover();
+    TEST("Paste succeeds", pasted);
+    TEST("Ship has 4 blocks after paste", ship.BlockCount() == 4);
+
+    // Undo paste
+    editor.Undo();
+    TEST("Ship has 2 blocks after undo paste", ship.BlockCount() == 2);
+}
+
+static void TestEditorCutPaste() {
+    std::cout << "[Editor Cut/Paste]\n";
+
+    Ship ship;
+    ShipEditorController editor(ship);
+
+    editor.SetHoverCell({0, 0, 0});
+    editor.Place();
+    editor.SetHoverCell({1, 0, 0});
+    editor.Place();
+    TEST("Ship has 2 blocks before cut", ship.BlockCount() == 2);
+
+    editor.GetSelection().Add({0, 0, 0});
+    editor.GetSelection().Add({1, 0, 0});
+    editor.CutSelection();
+    TEST("Ship has 0 blocks after cut", ship.BlockCount() == 0);
+    TEST("Clipboard has 2 blocks after cut", editor.GetClipboard().BlockCount() == 2);
+    TEST("Selection cleared after cut", editor.GetSelection().IsEmpty());
+
+    // Undo cut restores blocks
+    editor.Undo();
+    TEST("Ship has 2 blocks after undo cut", ship.BlockCount() == 2);
+}
+
+static void TestEditorRemoveSelected() {
+    std::cout << "[Editor RemoveSelected]\n";
+
+    Ship ship;
+    ShipEditorController editor(ship);
+
+    editor.SetHoverCell({0, 0, 0});
+    editor.Place();
+    editor.SetHoverCell({1, 0, 0});
+    editor.Place();
+    editor.SetHoverCell({2, 0, 0});
+    editor.Place();
+    TEST("Ship has 3 blocks", ship.BlockCount() == 3);
+
+    editor.GetSelection().Add({0, 0, 0});
+    editor.GetSelection().Add({2, 0, 0});
+    bool removed = editor.RemoveSelected();
+    TEST("RemoveSelected succeeds", removed);
+    TEST("Ship has 1 block after remove selected", ship.BlockCount() == 1);
+
+    // Undo
+    editor.Undo();
+    TEST("Ship has 3 blocks after undo remove selected", ship.BlockCount() == 3);
+}
+
+static void TestEditorValidation() {
+    std::cout << "[Editor Validation]\n";
+
+    Ship ship;
+    ShipEditorController editor(ship);
+
+    auto result = editor.ValidateShip();
+    TEST("Empty ship validation fails", !result.valid);
+
+    editor.SetHoverCell({0, 0, 0});
+    editor.GetState().selectedType = BlockType::Engine;
+    editor.Place();
+    editor.SetHoverCell({1, 0, 0});
+    editor.GetState().selectedType = BlockType::Generator;
+    editor.Place();
+
+    auto result2 = editor.ValidateShip();
+    TEST("Ship with engine+gen is valid", result2.valid);
+    TEST("No warnings for complete ship", result2.warnings.empty());
 }
 
 // ===================================================================
@@ -8884,6 +9449,21 @@ int main() {
     TestShipStats();
     TestShipDamage();
     TestShipEditor();
+    TestEditorHistory();
+    TestEditorHistoryMaxSize();
+    TestEditorActionFactories();
+    TestEditorClipboard();
+    TestEditorSelection();
+    TestEditorSelectionGatherBlocks();
+    TestShipValidator();
+    TestShipValidatorConnectivity();
+    TestBlockPalette();
+    TestEditorGrid();
+    TestEditorUndoRedo();
+    TestEditorCopyPaste();
+    TestEditorCutPaste();
+    TestEditorRemoveSelected();
+    TestEditorValidation();
     TestFactions();
     TestAIShipBuilder();
     TestBlueprint();
