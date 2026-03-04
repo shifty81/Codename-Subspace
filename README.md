@@ -9,14 +9,17 @@ An Avorion-inspired space exploration and combat game engine, actively transitio
 > **📂 Documentation:** Reorganized into [`docs/`](docs/) — guides, architecture, implementation notes
 
 > **✨ LATEST (Mar 2026):**
-> - 🎯 **C++ AMMUNITION SYSTEM** — AmmoPool with reload mechanics, 5 ammo types, per-weapon-archetype defaults ✨ **NEW!**
-> - 🔒 **C++ TARGET LOCK SYSTEM** — Lock-on acquisition, distance-based tracking, configurable break range ✨ **NEW!**
-> - 🌌 **C++ SECTOR ANOMALIES** — Nebulas, black holes, radiation zones, ion storms, gravity wells in galaxy generation ✨ **NEW!**
+> - 🛡️ **C++ SHIELD MODULE SYSTEM** — 4 shield types with absorption multipliers, overcharge mechanics, regen delay ✨ **NEW!**
+> - ⚡ **C++ STATUS EFFECT SYSTEM** — 6 effect types (EMP, Fire, Radiation, Shield Drain, Engine Jam, Sensor Scramble) with timed expiry ✨ **NEW!**
+> - 💎 **C++ LOOT/DROP SYSTEM** — 5 rarity tiers, deterministic seeded rolling, luck multipliers, 3 preset loot tables ✨ **NEW!**
+> - 🎯 **C++ AMMUNITION SYSTEM** — AmmoPool with reload mechanics, 5 ammo types, per-weapon-archetype defaults
+> - 🔒 **C++ TARGET LOCK SYSTEM** — Lock-on acquisition, distance-based tracking, configurable break range
+> - 🌌 **C++ SECTOR ANOMALIES** — Nebulas, black holes, radiation zones, ion storms, gravity wells in galaxy generation
 > - 💥 **C++ VOXEL DAMAGE SYSTEM** — Splash/penetrating damage, structural integrity (BFS flood-fill), repair mechanics, fragment separation
 > - 🌳 **C++ OCTREE SPATIAL PARTITIONING** — Hierarchical spatial indexing with sphere/box/nearest-neighbor queries
 > - 🎆 **C++ PARTICLE SYSTEM** — Configurable emitters with 5 effect presets (Explosion, Engine Thrust, Shield Hit, Mining, Hyperdrive)
 > - 🏆 **C++ ACHIEVEMENT SYSTEM** — Event-driven milestones with criteria tracking, serialization, and 8 template achievements
-> - 🧪 **2007 unit tests** passing across all C++ engine systems
+> - 🧪 **2170 unit tests** passing across all C++ engine systems
 > - 📁 **Repository restructured** — docs, scripts, and assets organized into dedicated directories
 > - 🔧 **C++ MODULAR SHIP SYSTEM** — Hardpoint-based module assembly with 12 module types, 5 ship archetypes, and faction-aware procedural generation
 > - 🚀 **MODULAR SHIP SYSTEM** — Ships built from pre-defined modular parts with hardpoint attachment
@@ -86,6 +89,9 @@ cmake --build build
 | **Ammunition System** | ✅ **New** | **AmmoPool with 5 ammo types, reload mechanics, per-weapon defaults, damage multipliers** |
 | **Target Lock System** | ✅ **New** | **Lock-on acquisition/tracking, distance-based break, configurable range/timing** |
 | **Sector Anomalies** | ✅ **New** | **5 anomaly types (Nebula, BlackHole, RadiationZone, IonStorm, GravityWell) in galaxy gen** |
+| **Shield Module System** | ✅ **New** | **4 shield types (Standard, Hardened, Phase, Regenerative), overcharge, regen delay, absorption multipliers** |
+| **Status Effect System** | ✅ **New** | **6 effect types (EMP, Fire, Radiation, Shield Drain, Engine Jam, Sensor Scramble), resistance, timed expiry** |
+| **Loot/Drop System** | ✅ **New** | **5 rarity tiers, deterministic seeded rolling, luck multipliers, 3 preset loot tables** |
 
 ## 🎮 C# Prototype
 
