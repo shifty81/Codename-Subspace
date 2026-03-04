@@ -24,7 +24,10 @@ STAR_TYPES = {
     "M": {"temp_k": 3000,  "color": [255, 204, 111], "luminosity": 0.04},
 }
 
-# Realistic spectral type distribution (weighted towards K/M)
+# Realistic spectral type distribution (weighted towards K/M).
+# Approximates real main-sequence stellar populations: M-type stars make
+# up ~76% of all stars, K-type ~12%, G-type ~8%, with hotter classes
+# progressively rarer.
 _STAR_WEIGHTS = ["M", "M", "M", "M", "K", "K", "K", "G", "G", "F", "A", "B"]
 
 

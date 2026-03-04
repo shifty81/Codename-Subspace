@@ -133,7 +133,10 @@ def generate_planet(seed, planet_id, star_type="G", orbit_index=0,
         }
 
     # Mineable resources (Subspace resource types found on this planet)
-    resource_rng = random.Random(seed + 7)
+    # Use a separate RNG seeded with an offset so that resource selection
+    # is independent of the foliage/liquid rolls above.
+    _RESOURCE_SEED_OFFSET = 7
+    resource_rng = random.Random(seed + _RESOURCE_SEED_OFFSET)
     all_resources = ["Iron", "Titanium", "Naonite", "Trinium",
                      "Xanion", "Ogonite", "Avorion"]
     # Rarer resources only on outer/exotic worlds
