@@ -7,7 +7,7 @@ namespace subspace {
 // ---------------------------------------------------------------------------
 // Sector generation constants
 // ---------------------------------------------------------------------------
-static constexpr float kSectorPositionRange  = 5000.0f;   // asteroid position spread
+static constexpr float kSectorPositionRange  = 5000.0f;   // object position spread within sector
 static constexpr float kAsteroidMinSize      = 10.0f;
 static constexpr float kAsteroidMaxSize      = 60.0f;
 static constexpr int   kWormholeMinClass     = 1;
