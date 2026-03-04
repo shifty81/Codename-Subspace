@@ -80,6 +80,9 @@
 #include "crafting/CraftingSystem.h"
 #include "formation/FormationSystem.h"
 #include "reputation/ReputationSystem.h"
+#include "ships/CapabilitySystem.h"
+#include "debug_tools/DebugRenderer.h"
+#include "debug_tools/PerformanceMonitor.h"
 
 using namespace subspace;
 
@@ -10287,6 +10290,494 @@ static void TestCraftingReputationFormationGameEvents() {
 }
 
 // ===================================================================
+// CapabilitySystem tests
+// ===================================================================
+
+static void TestCapabilitySystemEmptyShip() {
+    std::cout << "[CapabilitySystem - Empty Ship]\n";
+    Ship ship;
+    ShipCapabilities caps = CapabilitySystem::Evaluate(ship);
+    TEST("Empty ship blockCount=0", caps.blockCount == 0);
+    TEST("Empty ship aliveCount=0", caps.aliveCount == 0);
+    TEST("Empty ship mobility=0", ApproxEq(caps.mobility, 0.0f));
+    TEST("Empty ship firepower=0", ApproxEq(caps.firepower, 0.0f));
+    TEST("Empty ship power=0", ApproxEq(caps.power, 0.0f));
+    TEST("Empty ship command=0", ApproxEq(caps.command, 0.0f));
+    TEST("Empty ship defense=0", ApproxEq(caps.defense, 0.0f));
+    TEST("Empty ship cargo=0", ApproxEq(caps.cargo, 0.0f));
+    TEST("Empty ship totalMass=0", ApproxEq(caps.totalMass, 0.0f));
+    TEST("Empty ship healthFraction=0", ApproxEq(caps.GetHealthFraction(), 0.0f));
+}
+
+static void TestCapabilitySystemSingleBlock() {
+    std::cout << "[CapabilitySystem - Single Block]\n";
+    Ship ship;
+    ship.blocks.push_back(MakeBlock({0,0,0}, {1,1,1}, BlockType::Engine));
+    ShipCapabilities caps = CapabilitySystem::Evaluate(ship);
+    TEST("Single engine blockCount=1", caps.blockCount == 1);
+    TEST("Single engine aliveCount=1", caps.aliveCount == 1);
+    TEST("Single engine mobility=10", ApproxEq(caps.mobility, 10.0f));
+    TEST("Single engine firepower=0", ApproxEq(caps.firepower, 0.0f));
+    TEST("Single engine healthFraction=1", ApproxEq(caps.GetHealthFraction(), 1.0f));
+}
+
+static void TestCapabilitySystemMultipleBlockTypes() {
+    std::cout << "[CapabilitySystem - Multiple Types]\n";
+    Ship ship;
+    ship.blocks.push_back(MakeBlock({0,0,0}, {1,1,1}, BlockType::Engine));
+    ship.blocks.push_back(MakeBlock({1,0,0}, {1,1,1}, BlockType::WeaponMount));
+    ship.blocks.push_back(MakeBlock({2,0,0}, {1,1,1}, BlockType::Generator));
+    ship.blocks.push_back(MakeBlock({3,0,0}, {1,1,1}, BlockType::Gyro));
+    ship.blocks.push_back(MakeBlock({4,0,0}, {1,1,1}, BlockType::Armor));
+    ship.blocks.push_back(MakeBlock({5,0,0}, {1,1,1}, BlockType::Cargo));
+    ship.blocks.push_back(MakeBlock({6,0,0}, {1,1,1}, BlockType::Hull));
+
+    ShipCapabilities caps = CapabilitySystem::Evaluate(ship);
+    TEST("All types blockCount=7", caps.blockCount == 7);
+    TEST("All types aliveCount=7", caps.aliveCount == 7);
+    TEST("All types mobility=10", ApproxEq(caps.mobility, 10.0f));
+    TEST("All types firepower=8", ApproxEq(caps.firepower, 8.0f));
+    TEST("All types power=12", ApproxEq(caps.power, 12.0f));
+    TEST("All types command=6", ApproxEq(caps.command, 6.0f));
+    TEST("All types defense=5", ApproxEq(caps.defense, 5.0f));
+    TEST("All types cargo=15", ApproxEq(caps.cargo, 15.0f));
+    TEST("All types totalMass>0", caps.totalMass > 0.0f);
+}
+
+static void TestCapabilitySystemDeadBlocks() {
+    std::cout << "[CapabilitySystem - Dead Blocks]\n";
+    Ship ship;
+    auto engine1 = MakeBlock({0,0,0}, {1,1,1}, BlockType::Engine);
+    auto engine2 = MakeBlock({1,0,0}, {1,1,1}, BlockType::Engine);
+    engine2->currentHP = 0.0f; // dead
+    ship.blocks.push_back(engine1);
+    ship.blocks.push_back(engine2);
+
+    ShipCapabilities caps = CapabilitySystem::Evaluate(ship);
+    TEST("Dead block blockCount=2", caps.blockCount == 2);
+    TEST("Dead block aliveCount=1", caps.aliveCount == 1);
+    TEST("Dead block mobility=10", ApproxEq(caps.mobility, 10.0f)); // only 1 alive
+    TEST("Dead block healthFraction=0.5", ApproxEq(caps.GetHealthFraction(), 0.5f));
+}
+
+static void TestCapabilitySystemLargerBlocks() {
+    std::cout << "[CapabilitySystem - Larger Blocks]\n";
+    Ship ship;
+    // 2x2x2 engine = volume 8 => mobility = 10 * 8 = 80
+    ship.blocks.push_back(MakeBlock({0,0,0}, {2,2,2}, BlockType::Engine));
+    ShipCapabilities caps = CapabilitySystem::Evaluate(ship);
+    TEST("Large engine mobility=80", ApproxEq(caps.mobility, 80.0f));
+}
+
+static void TestCapabilitySystemGetCapability() {
+    std::cout << "[CapabilitySystem - GetCapability]\n";
+    ShipCapabilities caps;
+    caps.mobility = 50.0f;
+    caps.firepower = 30.0f;
+    caps.power = 20.0f;
+    caps.command = 10.0f;
+    caps.defense = 5.0f;
+    caps.cargo = 15.0f;
+    caps.totalMass = 100.0f;
+
+    TEST("GetCapability mobility", ApproxEq(caps.GetCapability("mobility"), 50.0f));
+    TEST("GetCapability firepower", ApproxEq(caps.GetCapability("firepower"), 30.0f));
+    TEST("GetCapability power", ApproxEq(caps.GetCapability("power"), 20.0f));
+    TEST("GetCapability command", ApproxEq(caps.GetCapability("command"), 10.0f));
+    TEST("GetCapability defense", ApproxEq(caps.GetCapability("defense"), 5.0f));
+    TEST("GetCapability cargo", ApproxEq(caps.GetCapability("cargo"), 15.0f));
+    TEST("GetCapability totalMass", ApproxEq(caps.GetCapability("totalMass"), 100.0f));
+    TEST("GetCapability unknown=0", ApproxEq(caps.GetCapability("unknown"), 0.0f));
+}
+
+static void TestCapabilitySystemGetSummary() {
+    std::cout << "[CapabilitySystem - GetSummary]\n";
+    ShipCapabilities caps;
+    caps.blockCount = 5;
+    caps.aliveCount = 3;
+    std::string summary = caps.GetSummary();
+    TEST("Summary not empty", !summary.empty());
+    TEST("Summary contains 'Caps'", summary.find("Caps") != std::string::npos);
+    TEST("Summary contains block counts", summary.find("3/5") != std::string::npos);
+}
+
+static void TestCapabilitySystemBlockWeights() {
+    std::cout << "[CapabilitySystem - Block Weights]\n";
+    TEST("Engine mobility weight=10", ApproxEq(CapabilitySystem::GetBlockCapabilityWeight(BlockType::Engine, "mobility"), 10.0f));
+    TEST("WeaponMount firepower weight=8", ApproxEq(CapabilitySystem::GetBlockCapabilityWeight(BlockType::WeaponMount, "firepower"), 8.0f));
+    TEST("Generator power weight=12", ApproxEq(CapabilitySystem::GetBlockCapabilityWeight(BlockType::Generator, "power"), 12.0f));
+    TEST("Gyro command weight=6", ApproxEq(CapabilitySystem::GetBlockCapabilityWeight(BlockType::Gyro, "command"), 6.0f));
+    TEST("Armor defense weight=5", ApproxEq(CapabilitySystem::GetBlockCapabilityWeight(BlockType::Armor, "defense"), 5.0f));
+    TEST("Cargo cargo weight=15", ApproxEq(CapabilitySystem::GetBlockCapabilityWeight(BlockType::Cargo, "cargo"), 15.0f));
+    TEST("Hull mobility weight=0", ApproxEq(CapabilitySystem::GetBlockCapabilityWeight(BlockType::Hull, "mobility"), 0.0f));
+    TEST("Engine firepower weight=0", ApproxEq(CapabilitySystem::GetBlockCapabilityWeight(BlockType::Engine, "firepower"), 0.0f));
+}
+
+static void TestCapabilitySystemBlockTypeNames() {
+    std::cout << "[CapabilitySystem - Block Type Names]\n";
+    TEST("Hull name", CapabilitySystem::GetBlockTypeName(BlockType::Hull) == "Hull");
+    TEST("Armor name", CapabilitySystem::GetBlockTypeName(BlockType::Armor) == "Armor");
+    TEST("Engine name", CapabilitySystem::GetBlockTypeName(BlockType::Engine) == "Engine");
+    TEST("Generator name", CapabilitySystem::GetBlockTypeName(BlockType::Generator) == "Generator");
+    TEST("Gyro name", CapabilitySystem::GetBlockTypeName(BlockType::Gyro) == "Gyro");
+    TEST("Cargo name", CapabilitySystem::GetBlockTypeName(BlockType::Cargo) == "Cargo");
+    TEST("WeaponMount name", CapabilitySystem::GetBlockTypeName(BlockType::WeaponMount) == "WeaponMount");
+}
+
+// ===================================================================
+// DebugRenderer tests
+// ===================================================================
+
+static void TestDebugRendererDrawLine() {
+    std::cout << "[DebugRenderer - DrawLine]\n";
+    DebugRenderer dr;
+    dr.DrawLine({0,0,0}, {1,1,1}, DebugColor::Red());
+    TEST("Line command count=1", dr.GetCommandCount() == 1);
+    auto& cmds = dr.GetCommands();
+    TEST("Line type", cmds[0].type == DebugDrawCommand::Type::Line);
+    TEST("Line color red", cmds[0].color == DebugColor::Red());
+}
+
+static void TestDebugRendererDrawBox() {
+    std::cout << "[DebugRenderer - DrawBox]\n";
+    DebugRenderer dr;
+    dr.DrawBox({5,5,5}, {1,1,1}, DebugColor::Green());
+    TEST("Box command count=1", dr.GetCommandCount() == 1);
+    auto& cmds = dr.GetCommands();
+    TEST("Box type", cmds[0].type == DebugDrawCommand::Type::Box);
+    TEST("Box center.x=5", ApproxEq(cmds[0].p1.x, 5.0f));
+}
+
+static void TestDebugRendererDrawSphere() {
+    std::cout << "[DebugRenderer - DrawSphere]\n";
+    DebugRenderer dr;
+    dr.DrawSphere({3,3,3}, 2.5f, DebugColor::Blue());
+    TEST("Sphere command count=1", dr.GetCommandCount() == 1);
+    auto& cmds = dr.GetCommands();
+    TEST("Sphere type", cmds[0].type == DebugDrawCommand::Type::Sphere);
+    TEST("Sphere radius=2.5", ApproxEq(cmds[0].radius, 2.5f));
+}
+
+static void TestDebugRendererDrawText() {
+    std::cout << "[DebugRenderer - DrawText]\n";
+    DebugRenderer dr;
+    dr.DrawText({0,0,0}, "Hello", DebugColor::White());
+    TEST("Text command count=1", dr.GetCommandCount() == 1);
+    auto& cmds = dr.GetCommands();
+    TEST("Text type", cmds[0].type == DebugDrawCommand::Type::Text);
+    TEST("Text content", cmds[0].text == "Hello");
+}
+
+static void TestDebugRendererClear() {
+    std::cout << "[DebugRenderer - Clear]\n";
+    DebugRenderer dr;
+    dr.DrawLine({0,0,0}, {1,1,1}, DebugColor::Red());
+    dr.DrawBox({0,0,0}, {1,1,1}, DebugColor::Green());
+    TEST("Before clear count=2", dr.GetCommandCount() == 2);
+    dr.Clear();
+    TEST("After clear count=0", dr.GetCommandCount() == 0);
+}
+
+static void TestDebugRendererUpdate() {
+    std::cout << "[DebugRenderer - Update]\n";
+    DebugRenderer dr;
+    // Persistent command (lifetime 1.0s)
+    dr.DrawLine({0,0,0}, {1,1,1}, DebugColor::Red(), 1.0f);
+    // Single-frame command (lifetime 0)
+    dr.DrawLine({0,0,0}, {2,2,2}, DebugColor::Green(), 0.0f);
+    TEST("Initial count=2", dr.GetCommandCount() == 2);
+
+    // After update, single-frame commands are removed
+    dr.Update(0.016f);
+    TEST("After first update count=1", dr.GetCommandCount() == 1);
+
+    // Persistent command still alive
+    dr.Update(0.5f);
+    TEST("After 0.5s update count=1", dr.GetCommandCount() == 1);
+
+    // Expire the persistent command
+    dr.Update(0.5f);
+    TEST("After 1s total count=0", dr.GetCommandCount() == 0);
+}
+
+static void TestDebugRendererGetByType() {
+    std::cout << "[DebugRenderer - GetByType]\n";
+    DebugRenderer dr;
+    dr.DrawLine({0,0,0}, {1,1,1}, DebugColor::Red());
+    dr.DrawBox({0,0,0}, {1,1,1}, DebugColor::Green());
+    dr.DrawLine({1,1,1}, {2,2,2}, DebugColor::Blue());
+
+    auto lines = dr.GetCommandsByType(DebugDrawCommand::Type::Line);
+    TEST("Line count=2", lines.size() == 2);
+    auto boxes = dr.GetCommandsByType(DebugDrawCommand::Type::Box);
+    TEST("Box count=1", boxes.size() == 1);
+    auto spheres = dr.GetCommandsByType(DebugDrawCommand::Type::Sphere);
+    TEST("Sphere count=0", spheres.size() == 0);
+}
+
+static void TestDebugRendererOverlayToggle() {
+    std::cout << "[DebugRenderer - Overlay Toggle]\n";
+    DebugRenderer dr;
+    TEST("BlockRoles initially off", !dr.IsOverlayEnabled(DebugOverlayType::BlockRoles));
+
+    dr.SetOverlayEnabled(DebugOverlayType::BlockRoles, true);
+    TEST("BlockRoles enabled", dr.IsOverlayEnabled(DebugOverlayType::BlockRoles));
+    TEST("DamageState still off", !dr.IsOverlayEnabled(DebugOverlayType::DamageState));
+
+    dr.ToggleOverlay(DebugOverlayType::BlockRoles);
+    TEST("BlockRoles toggled off", !dr.IsOverlayEnabled(DebugOverlayType::BlockRoles));
+
+    dr.ToggleOverlay(DebugOverlayType::DamageState);
+    TEST("DamageState toggled on", dr.IsOverlayEnabled(DebugOverlayType::DamageState));
+}
+
+static void TestDebugRendererOverlayNames() {
+    std::cout << "[DebugRenderer - Overlay Names]\n";
+    TEST("BlockRoles name", DebugRenderer::GetOverlayName(DebugOverlayType::BlockRoles) == "Block Roles");
+    TEST("DamageState name", DebugRenderer::GetOverlayName(DebugOverlayType::DamageState) == "Damage State");
+    TEST("Hardpoints name", DebugRenderer::GetOverlayName(DebugOverlayType::Hardpoints) == "Hardpoints");
+    TEST("Capabilities name", DebugRenderer::GetOverlayName(DebugOverlayType::Capabilities) == "Capabilities");
+    TEST("Grid name", DebugRenderer::GetOverlayName(DebugOverlayType::Grid) == "Grid");
+    TEST("Physics name", DebugRenderer::GetOverlayName(DebugOverlayType::Physics) == "Physics");
+}
+
+static void TestDebugRendererBlockRoles() {
+    std::cout << "[DebugRenderer - DrawBlockRoles]\n";
+    Ship ship;
+    ship.blocks.push_back(MakeBlock({0,0,0}, {1,1,1}, BlockType::Engine));
+    ship.blocks.push_back(MakeBlock({1,0,0}, {1,1,1}, BlockType::WeaponMount));
+    ship.blocks.push_back(MakeBlock({2,0,0}, {1,1,1}, BlockType::Hull));
+
+    DebugRenderer dr;
+    dr.DrawBlockRoles(ship);
+    TEST("BlockRoles 3 commands", dr.GetCommandCount() == 3);
+    auto boxes = dr.GetCommandsByType(DebugDrawCommand::Type::Box);
+    TEST("BlockRoles all boxes", boxes.size() == 3);
+    // Engine should be green
+    TEST("Engine block green", boxes[0].color == DebugColor::Green());
+    // WeaponMount should be red
+    TEST("Weapon block red", boxes[1].color == DebugColor::Red());
+}
+
+static void TestDebugRendererDamageOverlay() {
+    std::cout << "[DebugRenderer - DrawDamageOverlay]\n";
+    Ship ship;
+    auto fullHP = MakeBlock({0,0,0}, {1,1,1}, BlockType::Hull);
+    auto halfHP = MakeBlock({1,0,0}, {1,1,1}, BlockType::Hull);
+    halfHP->currentHP = halfHP->maxHP * 0.5f;
+    auto deadBlock = MakeBlock({2,0,0}, {1,1,1}, BlockType::Hull);
+    deadBlock->currentHP = 0.0f;
+
+    ship.blocks.push_back(fullHP);
+    ship.blocks.push_back(halfHP);
+    ship.blocks.push_back(deadBlock);
+
+    DebugRenderer dr;
+    dr.DrawDamageOverlay(ship);
+    TEST("DamageOverlay 3 commands", dr.GetCommandCount() == 3);
+
+    auto boxes = dr.GetCommandsByType(DebugDrawCommand::Type::Box);
+    // Full HP block: green (r=0, g=255)
+    TEST("Full HP block green", boxes[0].color.g == 255 && boxes[0].color.r == 0);
+    // Dead block: red (r=255, g=0)
+    TEST("Dead block red", boxes[2].color.r == 255 && boxes[2].color.g == 0);
+}
+
+static void TestDebugColorPresets() {
+    std::cout << "[DebugColor - Presets]\n";
+    DebugColor red = DebugColor::Red();
+    TEST("Red r=255", red.r == 255 && red.g == 0 && red.b == 0);
+    DebugColor green = DebugColor::Green();
+    TEST("Green g=255", green.r == 0 && green.g == 255 && green.b == 0);
+    DebugColor blue = DebugColor::Blue();
+    TEST("Blue b=255", blue.r == 0 && blue.g == 0 && blue.b == 255);
+    DebugColor yellow = DebugColor::Yellow();
+    TEST("Yellow r+g=255", yellow.r == 255 && yellow.g == 255 && yellow.b == 0);
+    DebugColor cyan = DebugColor::Cyan();
+    TEST("Cyan g+b=255", cyan.r == 0 && cyan.g == 255 && cyan.b == 255);
+    DebugColor white = DebugColor::White();
+    TEST("White all=255", white.r == 255 && white.g == 255 && white.b == 255);
+    TEST("Color equality", red == DebugColor::Red());
+    TEST("Color inequality", red != green);
+}
+
+// ===================================================================
+// PerformanceMonitor tests
+// ===================================================================
+
+static void TestPerfMetricDefaults() {
+    std::cout << "[PerfMetric - Defaults]\n";
+    PerfMetric m("TestMetric");
+    TEST("Name is TestMetric", m.GetName() == "TestMetric");
+    TEST("Initial count=0", m.GetSampleCount() == 0);
+    TEST("Initial latest=0", ApproxEq(m.GetLatest(), 0.0f));
+    TEST("Initial avg=0", ApproxEq(m.GetAverage(), 0.0f));
+    TEST("Initial min=0", ApproxEq(m.GetMin(), 0.0f));
+    TEST("Initial max=0", ApproxEq(m.GetMax(), 0.0f));
+}
+
+static void TestPerfMetricRecord() {
+    std::cout << "[PerfMetric - Record]\n";
+    PerfMetric m("FrameTime");
+    m.Record(16.0f);
+    m.Record(17.0f);
+    m.Record(15.0f);
+    TEST("After 3 records count=3", m.GetSampleCount() == 3);
+    TEST("Latest=15", ApproxEq(m.GetLatest(), 15.0f));
+    TEST("Average=16", ApproxEq(m.GetAverage(), 16.0f));
+    TEST("Min=15", ApproxEq(m.GetMin(), 15.0f));
+    TEST("Max=17", ApproxEq(m.GetMax(), 17.0f));
+}
+
+static void TestPerfMetricMaxSamples() {
+    std::cout << "[PerfMetric - MaxSamples]\n";
+    PerfMetric m("Limited", 3);
+    m.Record(1.0f);
+    m.Record(2.0f);
+    m.Record(3.0f);
+    m.Record(4.0f);
+    m.Record(5.0f);
+    TEST("MaxSamples capped at 3", m.GetSampleCount() == 3);
+    TEST("Oldest evicted, latest=5", ApproxEq(m.GetLatest(), 5.0f));
+    TEST("Min=3 (1,2 evicted)", ApproxEq(m.GetMin(), 3.0f));
+}
+
+static void TestPerfMetricClear() {
+    std::cout << "[PerfMetric - Clear]\n";
+    PerfMetric m("Clearable");
+    m.Record(10.0f);
+    m.Record(20.0f);
+    TEST("Before clear count=2", m.GetSampleCount() == 2);
+    m.Clear();
+    TEST("After clear count=0", m.GetSampleCount() == 0);
+    TEST("After clear latest=0", ApproxEq(m.GetLatest(), 0.0f));
+}
+
+static void TestPerfMetricGetSamples() {
+    std::cout << "[PerfMetric - GetSamples]\n";
+    PerfMetric m("Samples");
+    m.Record(1.0f, 0.0f);
+    m.Record(2.0f, 1.0f);
+    const auto& samples = m.GetSamples();
+    TEST("Samples size=2", samples.size() == 2);
+    TEST("Sample 0 value=1", ApproxEq(samples[0].value, 1.0f));
+    TEST("Sample 1 value=2", ApproxEq(samples[1].value, 2.0f));
+    TEST("Sample 1 timestamp=1", ApproxEq(samples[1].timestamp, 1.0f));
+}
+
+static void TestPerformanceMonitorFrame() {
+    std::cout << "[PerformanceMonitor - Frame]\n";
+    PerformanceMonitor pm;
+    TEST("Initial frame count=0", pm.GetFrameCount() == 0);
+    TEST("Initial FPS=0", ApproxEq(pm.GetFPS(), 0.0f));
+
+    pm.BeginFrame();
+    // Simulate a tiny amount of work
+    pm.EndFrame();
+
+    TEST("After 1 frame, count=1", pm.GetFrameCount() == 1);
+    TEST("Frame time >= 0", pm.GetFrameTimeMs() >= 0.0f);
+    // FPS should be positive if frame time > 0
+    // (might be very high since the frame was nearly instant)
+}
+
+static void TestPerformanceMonitorSection() {
+    std::cout << "[PerformanceMonitor - Section]\n";
+    PerformanceMonitor pm;
+    pm.BeginSection("Physics");
+    // Simulate some work
+    pm.EndSection("Physics");
+
+    float physicsTime = pm.GetSectionTime("Physics");
+    TEST("Physics section time >= 0", physicsTime >= 0.0f);
+    TEST("Unknown section time = 0", ApproxEq(pm.GetSectionTime("Unknown"), 0.0f));
+
+    const PerfMetric* metric = pm.GetMetric("Physics");
+    TEST("Physics metric exists", metric != nullptr);
+    TEST("Physics metric count=1", metric != nullptr && metric->GetSampleCount() == 1);
+}
+
+static void TestPerformanceMonitorCounters() {
+    std::cout << "[PerformanceMonitor - Counters]\n";
+    PerformanceMonitor pm;
+    pm.RecordCounter("EntityCount", 150.0f);
+    pm.RecordCounter("DrawCalls", 45.0f);
+
+    TEST("EntityCount=150", ApproxEq(pm.GetCounter("EntityCount"), 150.0f));
+    TEST("DrawCalls=45", ApproxEq(pm.GetCounter("DrawCalls"), 45.0f));
+    TEST("Unknown counter=0", ApproxEq(pm.GetCounter("Unknown"), 0.0f));
+}
+
+static void TestPerformanceMonitorMetricNames() {
+    std::cout << "[PerformanceMonitor - MetricNames]\n";
+    PerformanceMonitor pm;
+    pm.RecordCounter("Alpha", 1.0f);
+    pm.RecordCounter("Beta", 2.0f);
+    pm.RecordCounter("Gamma", 3.0f);
+
+    auto names = pm.GetAllMetricNames();
+    TEST("3 metrics", names.size() == 3);
+    // Names should be sorted
+    TEST("First is Alpha", names[0] == "Alpha");
+    TEST("Second is Beta", names[1] == "Beta");
+    TEST("Third is Gamma", names[2] == "Gamma");
+}
+
+static void TestPerformanceMonitorSummary() {
+    std::cout << "[PerformanceMonitor - Summary]\n";
+    PerformanceMonitor pm;
+    pm.BeginFrame();
+    pm.EndFrame();
+    std::string summary = pm.GetSummary();
+    TEST("Summary not empty", !summary.empty());
+    TEST("Summary contains FPS", summary.find("FPS") != std::string::npos);
+    TEST("Summary contains Frame", summary.find("Frame") != std::string::npos);
+}
+
+static void TestPerformanceMonitorReset() {
+    std::cout << "[PerformanceMonitor - Reset]\n";
+    PerformanceMonitor pm;
+    pm.BeginFrame();
+    pm.EndFrame();
+    pm.RecordCounter("Test", 100.0f);
+    TEST("Before reset frame>0", pm.GetFrameCount() > 0);
+
+    pm.Reset();
+    TEST("After reset frame=0", pm.GetFrameCount() == 0);
+    TEST("After reset FPS=0", ApproxEq(pm.GetFPS(), 0.0f));
+    TEST("After reset counter=0", ApproxEq(pm.GetCounter("Test"), 0.0f));
+    TEST("After reset metrics empty", pm.GetAllMetricNames().empty());
+}
+
+static void TestPerformanceMonitorEndSectionWithoutBegin() {
+    std::cout << "[PerformanceMonitor - EndSection without Begin]\n";
+    PerformanceMonitor pm;
+    // Should not crash
+    pm.EndSection("NeverStarted");
+    TEST("No crash on EndSection without Begin", true);
+    TEST("NeverStarted time=0", ApproxEq(pm.GetSectionTime("NeverStarted"), 0.0f));
+}
+
+// ===================================================================
+// Capability/Debug/Performance GameEvents tests
+// ===================================================================
+
+static void TestCapabilityDebugPerfGameEvents() {
+    std::cout << "[Capability/Debug/Perf GameEvents]\n";
+    // Capability events
+    TEST("CapabilityEvaluated event", std::string(GameEvents::CapabilityEvaluated) == "capability.evaluated");
+    TEST("CapabilityDegraded event", std::string(GameEvents::CapabilityDegraded) == "capability.degraded");
+    TEST("CapabilityRestored event", std::string(GameEvents::CapabilityRestored) == "capability.restored");
+    // Debug events
+    TEST("DebugOverlayToggled event", std::string(GameEvents::DebugOverlayToggled) == "debug.overlay.toggled");
+    TEST("DebugCommandQueued event", std::string(GameEvents::DebugCommandQueued) == "debug.command.queued");
+    // Performance events
+    TEST("PerfFrameRecorded event", std::string(GameEvents::PerfFrameRecorded) == "perf.frame.recorded");
+    TEST("PerfSectionRecorded event", std::string(GameEvents::PerfSectionRecorded) == "perf.section.recorded");
+    TEST("PerfCounterRecorded event", std::string(GameEvents::PerfCounterRecorded) == "perf.counter.recorded");
+}
+
+// ===================================================================
 // Main
 // ===================================================================
 int main() {
@@ -10566,6 +11057,40 @@ int main() {
     TestFormationSystem();
     TestFormationSystemWithEM();
     TestCraftingReputationFormationGameEvents();
+    TestCapabilitySystemEmptyShip();
+    TestCapabilitySystemSingleBlock();
+    TestCapabilitySystemMultipleBlockTypes();
+    TestCapabilitySystemDeadBlocks();
+    TestCapabilitySystemLargerBlocks();
+    TestCapabilitySystemGetCapability();
+    TestCapabilitySystemGetSummary();
+    TestCapabilitySystemBlockWeights();
+    TestCapabilitySystemBlockTypeNames();
+    TestDebugRendererDrawLine();
+    TestDebugRendererDrawBox();
+    TestDebugRendererDrawSphere();
+    TestDebugRendererDrawText();
+    TestDebugRendererClear();
+    TestDebugRendererUpdate();
+    TestDebugRendererGetByType();
+    TestDebugRendererOverlayToggle();
+    TestDebugRendererOverlayNames();
+    TestDebugRendererBlockRoles();
+    TestDebugRendererDamageOverlay();
+    TestDebugColorPresets();
+    TestPerfMetricDefaults();
+    TestPerfMetricRecord();
+    TestPerfMetricMaxSamples();
+    TestPerfMetricClear();
+    TestPerfMetricGetSamples();
+    TestPerformanceMonitorFrame();
+    TestPerformanceMonitorSection();
+    TestPerformanceMonitorCounters();
+    TestPerformanceMonitorMetricNames();
+    TestPerformanceMonitorSummary();
+    TestPerformanceMonitorReset();
+    TestPerformanceMonitorEndSectionWithoutBegin();
+    TestCapabilityDebugPerfGameEvents();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
               << testsFailed << " failed ===\n";

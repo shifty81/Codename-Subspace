@@ -196,6 +196,20 @@ namespace GameEvents {
     constexpr const char* FormationChanged   = "formation.changed";
     constexpr const char* MemberJoined       = "formation.member.joined";
     constexpr const char* MemberLeft         = "formation.member.left";
+
+    // Capability events
+    constexpr const char* CapabilityEvaluated   = "capability.evaluated";
+    constexpr const char* CapabilityDegraded    = "capability.degraded";
+    constexpr const char* CapabilityRestored    = "capability.restored";
+
+    // Debug visualization events
+    constexpr const char* DebugOverlayToggled   = "debug.overlay.toggled";
+    constexpr const char* DebugCommandQueued    = "debug.command.queued";
+
+    // Performance monitoring events
+    constexpr const char* PerfFrameRecorded     = "perf.frame.recorded";
+    constexpr const char* PerfSectionRecorded   = "perf.section.recorded";
+    constexpr const char* PerfCounterRecorded   = "perf.counter.recorded";
 } // namespace GameEvents
 
 } // namespace subspace
