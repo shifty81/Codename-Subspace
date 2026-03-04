@@ -78,6 +78,7 @@
 #include "combat/StatusEffectSystem.h"
 #include "combat/LootSystem.h"
 #include "crafting/CraftingSystem.h"
+#include "formation/FormationSystem.h"
 #include "reputation/ReputationSystem.h"
 
 using namespace subspace;
@@ -9995,6 +9996,275 @@ static void TestReputationSystemDecay() {
 }
 
 // ===================================================================
+// Formation System tests
+// ===================================================================
+
+static void TestFormationPatternLine() {
+    std::cout << "[FormationPattern Line]\n";
+    FormationPattern pattern;
+    pattern.type = FormationType::Line;
+    pattern.spacing = 10.0f;
+    auto slots = pattern.ComputeSlots(5);
+    TEST("Line slot count", slots.size() == 5);
+    // Center offset = (5-1)/2 = 2.0, so slot 0 = (0-2)*10 = -20, slot 2 = 0, slot 4 = 20
+    TEST("Line slot 0 x", ApproxEq(slots[0].offset.x, -20.0f));
+    TEST("Line slot 0 y", ApproxEq(slots[0].offset.y, 0.0f));
+    TEST("Line slot 0 z", ApproxEq(slots[0].offset.z, 0.0f));
+    TEST("Line slot 2 centered", ApproxEq(slots[2].offset.x, 0.0f));
+    TEST("Line slot 4 x", ApproxEq(slots[4].offset.x, 20.0f));
+    TEST("Line slot indices", slots[0].slotIndex == 0 && slots[4].slotIndex == 4);
+}
+
+static void TestFormationPatternV() {
+    std::cout << "[FormationPattern V]\n";
+    FormationPattern pattern;
+    pattern.type = FormationType::V;
+    pattern.spacing = 10.0f;
+    auto slots = pattern.ComputeSlots(5);
+    TEST("V slot count", slots.size() == 5);
+    // Slot 0: origin
+    TEST("V slot 0 at origin", ApproxEq(slots[0].offset.x, 0.0f) &&
+                                ApproxEq(slots[0].offset.z, 0.0f));
+    // Slot 1: left, pair=1 => (-10, 0, -10)
+    TEST("V slot 1 left", ApproxEq(slots[1].offset.x, -10.0f) &&
+                           ApproxEq(slots[1].offset.z, -10.0f));
+    // Slot 2: right, pair=1 => (10, 0, -10)
+    TEST("V slot 2 right", ApproxEq(slots[2].offset.x, 10.0f) &&
+                            ApproxEq(slots[2].offset.z, -10.0f));
+    // Slot 3: left, pair=2 => (-20, 0, -20)
+    TEST("V slot 3 left deep", ApproxEq(slots[3].offset.x, -20.0f) &&
+                                ApproxEq(slots[3].offset.z, -20.0f));
+    // Slot 4: right, pair=2 => (20, 0, -20)
+    TEST("V slot 4 right deep", ApproxEq(slots[4].offset.x, 20.0f) &&
+                                 ApproxEq(slots[4].offset.z, -20.0f));
+}
+
+static void TestFormationPatternDiamond() {
+    std::cout << "[FormationPattern Diamond]\n";
+    FormationPattern pattern;
+    pattern.type = FormationType::Diamond;
+    pattern.spacing = 10.0f;
+    auto slots = pattern.ComputeSlots(5);
+    TEST("Diamond slot count", slots.size() == 5);
+    // Slot 0: center
+    TEST("Diamond slot 0 center", ApproxEq(slots[0].offset.x, 0.0f) &&
+                                   ApproxEq(slots[0].offset.z, 0.0f));
+    // Slot 1: front (+Z)
+    TEST("Diamond slot 1 front", ApproxEq(slots[1].offset.x, 0.0f) &&
+                                  ApproxEq(slots[1].offset.z, 10.0f));
+    // Slot 2: left (-X)
+    TEST("Diamond slot 2 left", ApproxEq(slots[2].offset.x, -10.0f) &&
+                                 ApproxEq(slots[2].offset.z, 0.0f));
+    // Slot 3: right (+X)
+    TEST("Diamond slot 3 right", ApproxEq(slots[3].offset.x, 10.0f) &&
+                                  ApproxEq(slots[3].offset.z, 0.0f));
+    // Slot 4: back (-Z)
+    TEST("Diamond slot 4 back", ApproxEq(slots[4].offset.x, 0.0f) &&
+                                 ApproxEq(slots[4].offset.z, -10.0f));
+}
+
+static void TestFormationPatternCircle() {
+    std::cout << "[FormationPattern Circle]\n";
+    FormationPattern pattern;
+    pattern.type = FormationType::Circle;
+    pattern.spacing = 10.0f;
+    auto slots = pattern.ComputeSlots(5);
+    TEST("Circle slot count", slots.size() == 5);
+    // Slot 0: center
+    TEST("Circle slot 0 center", ApproxEq(slots[0].offset.x, 0.0f) &&
+                                  ApproxEq(slots[0].offset.z, 0.0f));
+    // Remaining 4 slots at radius = spacing = 10
+    for (int i = 1; i < 5; ++i) {
+        float r = std::sqrt(slots[i].offset.x * slots[i].offset.x +
+                            slots[i].offset.z * slots[i].offset.z);
+        TEST(("Circle slot " + std::to_string(i) + " radius").c_str(),
+             ApproxEq(r, 10.0f));
+    }
+    TEST("Circle slot 0 y", ApproxEq(slots[0].offset.y, 0.0f));
+}
+
+static void TestFormationPatternWedge() {
+    std::cout << "[FormationPattern Wedge]\n";
+    FormationPattern pattern;
+    pattern.type = FormationType::Wedge;
+    pattern.spacing = 10.0f;
+    auto slots = pattern.ComputeSlots(5);
+    TEST("Wedge slot count", slots.size() == 5);
+    // Slot 0: origin
+    TEST("Wedge slot 0 at origin", ApproxEq(slots[0].offset.x, 0.0f) &&
+                                    ApproxEq(slots[0].offset.z, 0.0f));
+    // Slot 1: left, pair=1, x = -5 (spacing/2), z = -10
+    TEST("Wedge slot 1 left", ApproxEq(slots[1].offset.x, -5.0f) &&
+                               ApproxEq(slots[1].offset.z, -10.0f));
+    // Slot 2: right, pair=1, x = 5, z = -10
+    TEST("Wedge slot 2 right", ApproxEq(slots[2].offset.x, 5.0f) &&
+                                ApproxEq(slots[2].offset.z, -10.0f));
+    // Slot 3: left, pair=2, x = -10, z = -20
+    TEST("Wedge slot 3 left deep", ApproxEq(slots[3].offset.x, -10.0f) &&
+                                    ApproxEq(slots[3].offset.z, -20.0f));
+    // Slot 4: right, pair=2, x = 10, z = -20
+    TEST("Wedge slot 4 right deep", ApproxEq(slots[4].offset.x, 10.0f) &&
+                                     ApproxEq(slots[4].offset.z, -20.0f));
+}
+
+static void TestFormationPatternColumn() {
+    std::cout << "[FormationPattern Column]\n";
+    FormationPattern pattern;
+    pattern.type = FormationType::Column;
+    pattern.spacing = 10.0f;
+    auto slots = pattern.ComputeSlots(5);
+    TEST("Column slot count", slots.size() == 5);
+    TEST("Column slot 0", ApproxEq(slots[0].offset.x, 0.0f) &&
+                           ApproxEq(slots[0].offset.z, 0.0f));
+    TEST("Column slot 1", ApproxEq(slots[1].offset.x, 0.0f) &&
+                           ApproxEq(slots[1].offset.z, -10.0f));
+    TEST("Column slot 4", ApproxEq(slots[4].offset.x, 0.0f) &&
+                           ApproxEq(slots[4].offset.z, -40.0f));
+    // All y offsets should be 0
+    for (int i = 0; i < 5; ++i) {
+        TEST(("Column slot " + std::to_string(i) + " y").c_str(),
+             ApproxEq(slots[i].offset.y, 0.0f));
+    }
+}
+
+static void TestFormationNames() {
+    std::cout << "[FormationPattern Names]\n";
+    TEST("Line name", FormationPattern::GetFormationName(FormationType::Line) == "Line");
+    TEST("V name", FormationPattern::GetFormationName(FormationType::V) == "V-Formation");
+    TEST("Diamond name", FormationPattern::GetFormationName(FormationType::Diamond) == "Diamond");
+    TEST("Circle name", FormationPattern::GetFormationName(FormationType::Circle) == "Circle");
+    TEST("Wedge name", FormationPattern::GetFormationName(FormationType::Wedge) == "Wedge");
+    TEST("Column name", FormationPattern::GetFormationName(FormationType::Column) == "Column");
+}
+
+static void TestFormationMaxSizes() {
+    std::cout << "[FormationPattern MaxSizes]\n";
+    TEST("Line max", FormationPattern::GetMaxRecommendedSize(FormationType::Line) == 10);
+    TEST("V max", FormationPattern::GetMaxRecommendedSize(FormationType::V) == 8);
+    TEST("Diamond max", FormationPattern::GetMaxRecommendedSize(FormationType::Diamond) == 9);
+    TEST("Circle max", FormationPattern::GetMaxRecommendedSize(FormationType::Circle) == 12);
+    TEST("Wedge max", FormationPattern::GetMaxRecommendedSize(FormationType::Wedge) == 7);
+    TEST("Column max", FormationPattern::GetMaxRecommendedSize(FormationType::Column) == 6);
+}
+
+static void TestFormationComponentAddRemove() {
+    std::cout << "[FormationComponent AddRemove]\n";
+    FormationComponent fc;
+    TEST("Initially empty", fc.GetMemberCount() == 0);
+
+    fc.AddMember(100);
+    fc.AddMember(200);
+    fc.AddMember(300);
+    TEST("3 members after add", fc.GetMemberCount() == 3);
+
+    // Adding duplicate should not increase count
+    fc.AddMember(200);
+    TEST("No duplicate", fc.GetMemberCount() == 3);
+
+    bool removed = fc.RemoveMember(200);
+    TEST("Remove returns true", removed);
+    TEST("2 members after remove", fc.GetMemberCount() == 2);
+
+    bool removedAgain = fc.RemoveMember(200);
+    TEST("Remove missing returns false", !removedAgain);
+    TEST("Still 2 members", fc.GetMemberCount() == 2);
+}
+
+static void TestFormationComponentHasMember() {
+    std::cout << "[FormationComponent HasMember]\n";
+    FormationComponent fc;
+    fc.AddMember(10);
+    fc.AddMember(20);
+    fc.AddMember(30);
+    TEST("Has member 10", fc.HasMember(10));
+    TEST("Has member 20", fc.HasMember(20));
+    TEST("Has member 30", fc.HasMember(30));
+    TEST("Does not have 40", !fc.HasMember(40));
+    TEST("Does not have 0", !fc.HasMember(0));
+}
+
+static void TestFormationComponentReassignSlots() {
+    std::cout << "[FormationComponent ReassignSlots]\n";
+    FormationComponent fc;
+    fc.AddMember(1);
+    fc.AddMember(2);
+    fc.AddMember(3);
+
+    FormationPattern pattern;
+    pattern.type = FormationType::Line;
+    pattern.spacing = 5.0f;
+
+    // Reassign should not crash
+    fc.ReassignSlots(pattern);
+    TEST("ReassignSlots does not crash", true);
+
+    // Change pattern and reassign
+    pattern.type = FormationType::V;
+    fc.ReassignSlots(pattern);
+    TEST("ReassignSlots with V does not crash", true);
+
+    // Add more members and reassign
+    fc.AddMember(4);
+    fc.AddMember(5);
+    fc.ReassignSlots(pattern);
+    TEST("ReassignSlots with 5 members does not crash", true);
+}
+
+static void TestFormationComponentSerialization() {
+    std::cout << "[FormationComponent Serialization]\n";
+    FormationComponent original;
+    original.formationType = FormationType::Diamond;
+    original.spacing = 15.0f;
+    original.leaderId = 42;
+    original.slotIndex = 3;
+    original.isLeader = true;
+    original.targetOffset = Vector3(1.0f, 2.0f, 3.0f);
+    original.AddMember(100);
+    original.AddMember(200);
+    original.AddMember(300);
+
+    ComponentData cd = original.Serialize();
+    TEST("Serialized type", cd.componentType == "FormationComponent");
+
+    FormationComponent restored;
+    restored.Deserialize(cd);
+    TEST("Restored formationType", restored.formationType == FormationType::Diamond);
+    TEST("Restored spacing", ApproxEq(restored.spacing, 15.0f));
+    TEST("Restored leaderId", restored.leaderId == 42);
+    TEST("Restored slotIndex", restored.slotIndex == 3);
+    TEST("Restored isLeader", restored.isLeader);
+    TEST("Restored targetOffset x", ApproxEq(restored.targetOffset.x, 1.0f));
+    TEST("Restored targetOffset y", ApproxEq(restored.targetOffset.y, 2.0f));
+    TEST("Restored targetOffset z", ApproxEq(restored.targetOffset.z, 3.0f));
+    TEST("Restored member count", restored.GetMemberCount() == 3);
+    TEST("Restored member 0", restored.members[0] == 100);
+    TEST("Restored member 1", restored.members[1] == 200);
+    TEST("Restored member 2", restored.members[2] == 300);
+}
+
+static void TestFormationSystem() {
+    std::cout << "[FormationSystem]\n";
+    FormationSystem fs;
+    TEST("FormationSystem name", fs.GetName() == "FormationSystem");
+    fs.Update(1.0f);
+    TEST("Update without EM does not crash", true);
+}
+
+static void TestFormationSystemWithEM() {
+    std::cout << "[FormationSystem WithEM]\n";
+    EntityManager em;
+    auto& ent = em.CreateEntity("Leader");
+    auto* fc = em.AddComponent<FormationComponent>(ent.id, std::make_unique<FormationComponent>());
+    fc->isLeader = true;
+    fc->formationType = FormationType::V;
+    fc->AddMember(ent.id);
+
+    FormationSystem fs(em);
+    fs.Update(1.0f);
+    TEST("FormationSystem with EM does not crash", true);
+}
+
+// ===================================================================
 // Main
 // ===================================================================
 int main() {
@@ -10259,6 +10529,20 @@ int main() {
     TestReputationComponentSerialization();
     TestReputationSystem();
     TestReputationSystemDecay();
+    TestFormationPatternLine();
+    TestFormationPatternV();
+    TestFormationPatternDiamond();
+    TestFormationPatternCircle();
+    TestFormationPatternWedge();
+    TestFormationPatternColumn();
+    TestFormationNames();
+    TestFormationMaxSizes();
+    TestFormationComponentAddRemove();
+    TestFormationComponentHasMember();
+    TestFormationComponentReassignSlots();
+    TestFormationComponentSerialization();
+    TestFormationSystem();
+    TestFormationSystemWithEM();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
               << testsFailed << " failed ===\n";
