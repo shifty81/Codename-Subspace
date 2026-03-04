@@ -387,6 +387,9 @@ Based on impact and dependencies:
 | **Crafting System** | 100% | ✅ Complete (5 station types, 8 recipes, job queues, level gating, serialization) |
 | **Reputation System** | 100% | ✅ Complete (per-faction tracking, 5 standings, decay, event history, serialization) |
 | **Formation System** | 100% | ✅ Complete (6 patterns, slot positioning, member management, serialization) |
+| **Diplomacy System** | 100% | ✅ Complete (6 statuses, 5 treaty types, trust, war weariness, serialization) |
+| **Research System** | 100% | ✅ Complete (6 categories, 8 tech nodes, prerequisites, level gating, serialization) |
+| **Notification System** | 100% | ✅ Complete (6 categories, 4 priorities, expiry, filtering, serialization) |
 | **Steam Integration** | 0% | ❌ Not started |
 | **Content (ships, weapons)** | 60% | ⚠️ Expansion needed |
 | **Polish & QoL** | 40% | ⚠️ Ongoing |
