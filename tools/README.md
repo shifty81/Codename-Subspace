@@ -88,7 +88,62 @@ make validate           # Validate all GameData JSON files
 make validate-verbose   # Validate with verbose output
 make contract-scan      # Scan C++ engine for contract violations
 make check-deps         # Check if build dependencies are installed
+make generate-universe  # Generate a procedural universe (default seed)
+make generate-universe SEED=42 SYSTEMS=10  # Custom seed and system count
+make test-pcg           # Run PCG pipeline validation tests
 ```
+
+## PCG Pipeline (`pcg_pipeline/`)
+
+Seed-based procedural content generation pipeline for bulk Subspace
+universe creation.  Generates galaxies, star systems, planets, stations,
+ships, and NPCs using deterministic seeds for fully reproducible content.
+
+**Requirements:** Python 3.7+ (no game engine needed for metadata
+generation)
+
+**Features:**
+- Deterministic galaxy generation — same seed always produces the same
+  universe
+- Realistic astronomical parameters — star spectral types (O–M), orbital
+  mechanics, Kepler's third law
+- Planet terrain with biomes, foliage layers, liquid bodies, atmosphere
+  composition, and mineable Subspace resources (Iron through Avorion)
+- Faction-aware station generation (6 station types, 5 Subspace factions)
+- Ship generation with hull archetypes, faction styling, material tiers,
+  modules, and LOD tiers
+- NPC character generation with faction alignment, roles, and cybernetic
+  augmentations
+- Single-command batch generation of entire universes to structured JSON
+
+**Usage:**
+```bash
+# Generate universe metadata
+cd tools
+python -m pcg_pipeline --seed 123456 --systems 10 --output-dir ../build/pcg
+
+# Or from the project root via Make
+make generate-universe SEED=123456 SYSTEMS=10
+```
+
+**Validation:**
+```bash
+python tools/pcg_pipeline/test_pcg_pipeline.py
+# Or via Make
+make test-pcg
+```
+
+**Pipeline Modules:**
+
+| Module | Description |
+|---|---|
+| `galaxy_generator.py` | Top-level galaxy with N star systems |
+| `system_generator.py` | Star system with stars, planets, stations, ships |
+| `planet_generator.py` | Planet type, biome, atmosphere, foliage, liquids, resources |
+| `station_generator.py` | Station type, modules, faction (Subspace factions) |
+| `ship_generator.py` | Ship class, hull archetype, faction, modules, LOD tiers |
+| `character_generator.py` | NPC faction, role, cybernetic augmentations |
+| `batch_generate.py` | Single-command batch orchestrator |
 
 ## Future Tools
 

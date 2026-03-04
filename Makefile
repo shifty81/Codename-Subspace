@@ -90,6 +90,14 @@ validate-verbose: ## Validate GameData JSON with verbose output
 contract-scan: ## Scan C++ engine for contract violations
 	python3 tools/contract_scan.py
 
+.PHONY: generate-universe
+generate-universe: ## Generate a procedural universe (use SEED=N SYSTEMS=N)
+	python3 -m tools.pcg_pipeline --seed $(or $(SEED),123456) --systems $(or $(SYSTEMS),5) --output-dir build/pcg
+
+.PHONY: test-pcg
+test-pcg: ## Run PCG pipeline validation tests
+	python3 tools/pcg_pipeline/test_pcg_pipeline.py
+
 # ---------------------------------------------------------------------------
 # Maintenance
 # ---------------------------------------------------------------------------

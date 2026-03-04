@@ -18,6 +18,9 @@ compile_commands.json
 # Build logs
 logs/
 
+# PCG pipeline generated output
+build/pcg/
+
 # VS C++ build output (shared output directories)
 out/
 obj/
