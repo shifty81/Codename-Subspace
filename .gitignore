@@ -15,6 +15,9 @@ compile_commands.json
 *.so
 *.dylib
 
+# Build logs
+logs/
+
 # VS C++ build output (shared output directories)
 out/
 obj/
