@@ -122,34 +122,7 @@ class Program
         }
         
         // Display galaxy progression information
-        int distance = GalaxyProgressionSystem.GetDistanceFromCenter(podLocation.CurrentSector);
-        var zoneName = GalaxyProgressionSystem.GetZoneName(distance);
-        var availableTier = GalaxyProgressionSystem.GetAvailableMaterialTier(distance);
-        var difficulty = GalaxyProgressionSystem.GetDifficultyMultiplier(distance);
-        
-        Console.WriteLine("\n=== GALAXY PROGRESSION SYSTEM ===");
-        Console.WriteLine($"  📍 Starting Location: Sector [{podLocation.CurrentSector.X}, {podLocation.CurrentSector.Y}, {podLocation.CurrentSector.Z}]");
-        Console.WriteLine($"  🌌 Current Zone: {zoneName}");
-        Console.WriteLine($"  📏 Distance from Center: {distance} sectors");
-        Console.WriteLine($"  ⚔️  Zone Difficulty: {difficulty:F1}x");
-        Console.WriteLine($"  🔨 Available Materials: {availableTier}");
-        
-        // Display material tier unlocks
-        var features = MaterialTierInfo.GetUnlockedFeatures(availableTier);
-        Console.WriteLine($"\n  ✨ Unlocked Features in {availableTier} Zone:");
-        foreach (var feature in features.Take(5))
-        {
-            Console.WriteLine($"     • {feature}");
-        }
-        
-        // Show progression goals
-        Console.WriteLine("\n  🎯 Progression Goals:");
-        Console.WriteLine($"     • Reach Titanium Zone (< 350 sectors from center)");
-        Console.WriteLine($"     • Unlock Shields in Naonite Zone (< 250 sectors)");
-        Console.WriteLine($"     • Hire Captains in Ogonite Zone (< 50 sectors)");
-        Console.WriteLine($"     • Reach Galactic Core (< 25 sectors) for Avorion!");
-        
-        Console.WriteLine("\n  💡 Tip: Journey toward the galactic center (0,0,0) to unlock better materials and features!");
+        DisplayGalaxyProgressionInfo(podLocation);
         
         // Populate the game world with zone-appropriate content
         Console.WriteLine("\n=== Populating Game World ===");
@@ -233,34 +206,7 @@ class Program
         }
         
         // Display galaxy progression information
-        int distance = GalaxyProgressionSystem.GetDistanceFromCenter(podLocation.CurrentSector);
-        var zoneName = GalaxyProgressionSystem.GetZoneName(distance);
-        var availableTier = GalaxyProgressionSystem.GetAvailableMaterialTier(distance);
-        var difficulty = GalaxyProgressionSystem.GetDifficultyMultiplier(distance);
-        
-        Console.WriteLine("\n=== GALAXY PROGRESSION SYSTEM ===");
-        Console.WriteLine($"  📍 Starting Location: Sector [{podLocation.CurrentSector.X}, {podLocation.CurrentSector.Y}, {podLocation.CurrentSector.Z}]");
-        Console.WriteLine($"  🌌 Current Zone: {zoneName}");
-        Console.WriteLine($"  📏 Distance from Center: {distance} sectors");
-        Console.WriteLine($"  ⚔️  Zone Difficulty: {difficulty:F1}x");
-        Console.WriteLine($"  🔨 Available Materials: {availableTier}");
-        
-        // Display material tier unlocks
-        var features = MaterialTierInfo.GetUnlockedFeatures(availableTier);
-        Console.WriteLine($"\n  ✨ Unlocked Features in {availableTier} Zone:");
-        foreach (var feature in features.Take(5))
-        {
-            Console.WriteLine($"     • {feature}");
-        }
-        
-        // Show progression goals
-        Console.WriteLine("\n  🎯 Progression Goals:");
-        Console.WriteLine($"     • Reach Titanium Zone (< 350 sectors from center)");
-        Console.WriteLine($"     • Unlock Shields in Naonite Zone (< 250 sectors)");
-        Console.WriteLine($"     • Hire Captains in Ogonite Zone (< 50 sectors)");
-        Console.WriteLine($"     • Reach Galactic Core (< 25 sectors) for Avorion!");
-        
-        Console.WriteLine("\n  💡 Tip: Journey toward the galactic center (0,0,0) to unlock better materials and features!");
+        DisplayGalaxyProgressionInfo(podLocation);
         
         // Populate the game world with zone-appropriate content
         Console.WriteLine("\n=== Populating Game World ===");
@@ -566,9 +512,9 @@ class Program
                 
                 // Random position within field (larger spread)
                 var offset = new Vector3(
-                    (float)(new Random(i).NextDouble() * 250 - 125),
-                    (float)(new Random(i + 1000).NextDouble() * 120 - 60),
-                    (float)(new Random(i + 2000).NextDouble() * 250 - 125)
+                    (float)(_random.NextDouble() * 250 - 125),
+                    (float)(_random.NextDouble() * 120 - 60),
+                    (float)(_random.NextDouble() * 250 - 125)
                 );
                 
                 Vector3 asteroidPosition = centerPosition + field.Center + offset;
@@ -679,38 +625,7 @@ class Program
                             );
                             
                             // Add subtle color variation for visual interest
-                            if (planetConfig.Type == "Rocky")
-                            {
-                                float colorNoise = NoiseGenerator.PerlinNoise3D(blockPos.X * 0.05f, blockPos.Y * 0.05f, blockPos.Z * 0.05f);
-                                byte r = (byte)((0.6f + colorNoise * 0.2f) * 255);
-                                byte g = (byte)((0.5f + colorNoise * 0.1f) * 255);
-                                byte b = (byte)(0.4f * 255);
-                                block.ColorRGB = (uint)((r << 16) | (g << 8) | b);
-                            }
-                            else if (planetConfig.Type == "Ice")
-                            {
-                                float colorNoise = NoiseGenerator.PerlinNoise3D(blockPos.X * 0.05f, blockPos.Y * 0.05f, blockPos.Z * 0.05f);
-                                byte r = (byte)((0.8f + colorNoise * 0.2f) * 255);
-                                byte g = (byte)((0.9f + colorNoise * 0.1f) * 255);
-                                byte b = 255;
-                                block.ColorRGB = (uint)((r << 16) | (g << 8) | b);
-                            }
-                            else if (planetConfig.Type == "Desert")
-                            {
-                                float colorNoise = NoiseGenerator.PerlinNoise3D(blockPos.X * 0.05f, blockPos.Y * 0.05f, blockPos.Z * 0.05f);
-                                byte r = (byte)((0.9f + colorNoise * 0.1f) * 255);
-                                byte g = (byte)((0.7f + colorNoise * 0.2f) * 255);
-                                byte b = (byte)(0.4f * 255);
-                                block.ColorRGB = (uint)((r << 16) | (g << 8) | b);
-                            }
-                            else if (planetConfig.Type == "Gas")
-                            {
-                                float colorNoise = NoiseGenerator.PerlinNoise3D(blockPos.X * 0.03f, blockPos.Y * 0.03f, blockPos.Z * 0.03f);
-                                byte r = (byte)((0.7f + colorNoise * 0.2f) * 255);
-                                byte g = (byte)((0.5f + colorNoise * 0.3f) * 255);
-                                byte b = (byte)(0.3f * 255);
-                                block.ColorRGB = (uint)((r << 16) | (g << 8) | b);
-                            }
+                            block.ColorRGB = GetPlanetBlockColor(planetConfig.Type, blockPos);
                             
                             planetVoxel.AddBlock(block);
                         }
@@ -912,6 +827,63 @@ class Program
         Console.WriteLine($"\n✓ Solar system populated with {entityCount + asteroidCount + stationCount + aiShipCount} entities!");
     }
     
+    /// <summary>
+    /// Display galaxy progression information for the player's current sector location.
+    /// </summary>
+    static void DisplayGalaxyProgressionInfo(SectorLocationComponent podLocation)
+    {
+        int distance = GalaxyProgressionSystem.GetDistanceFromCenter(podLocation.CurrentSector);
+        var zoneName = GalaxyProgressionSystem.GetZoneName(distance);
+        var availableTier = GalaxyProgressionSystem.GetAvailableMaterialTier(distance);
+        var difficulty = GalaxyProgressionSystem.GetDifficultyMultiplier(distance);
+        
+        Console.WriteLine("\n=== GALAXY PROGRESSION SYSTEM ===");
+        Console.WriteLine($"  📍 Starting Location: Sector [{podLocation.CurrentSector.X}, {podLocation.CurrentSector.Y}, {podLocation.CurrentSector.Z}]");
+        Console.WriteLine($"  🌌 Current Zone: {zoneName}");
+        Console.WriteLine($"  📏 Distance from Center: {distance} sectors");
+        Console.WriteLine($"  ⚔️  Zone Difficulty: {difficulty:F1}x");
+        Console.WriteLine($"  🔨 Available Materials: {availableTier}");
+        
+        // Display material tier unlocks
+        var features = MaterialTierInfo.GetUnlockedFeatures(availableTier);
+        Console.WriteLine($"\n  ✨ Unlocked Features in {availableTier} Zone:");
+        foreach (var feature in features.Take(5))
+        {
+            Console.WriteLine($"     • {feature}");
+        }
+        
+        // Show progression goals
+        Console.WriteLine("\n  🎯 Progression Goals:");
+        Console.WriteLine($"     • Reach Titanium Zone (< 350 sectors from center)");
+        Console.WriteLine($"     • Unlock Shields in Naonite Zone (< 250 sectors)");
+        Console.WriteLine($"     • Hire Captains in Ogonite Zone (< 50 sectors)");
+        Console.WriteLine($"     • Reach Galactic Core (< 25 sectors) for Avorion!");
+        
+        Console.WriteLine("\n  💡 Tip: Journey toward the galactic center (0,0,0) to unlock better materials and features!");
+    }
+
+    static uint GetPlanetBlockColor(string planetType, Vector3 blockPos)
+    {
+        float noiseScale = planetType == "Gas" ? 0.03f : 0.05f;
+        float colorNoise = NoiseGenerator.PerlinNoise3D(
+            blockPos.X * noiseScale, blockPos.Y * noiseScale, blockPos.Z * noiseScale);
+
+        float rBase, rVar, gBase, gVar, bBase;
+        switch (planetType)
+        {
+            case "Rocky":  rBase = 0.6f; rVar = 0.2f; gBase = 0.5f; gVar = 0.1f; bBase = 0.4f; break;
+            case "Ice":    rBase = 0.8f; rVar = 0.2f; gBase = 0.9f; gVar = 0.1f; bBase = 1.0f; break;
+            case "Desert": rBase = 0.9f; rVar = 0.1f; gBase = 0.7f; gVar = 0.2f; bBase = 0.4f; break;
+            case "Gas":    rBase = 0.7f; rVar = 0.2f; gBase = 0.5f; gVar = 0.3f; bBase = 0.3f; break;
+            default: return 0;
+        }
+
+        byte r = (byte)((rBase + colorNoise * rVar) * 255);
+        byte g = (byte)((gBase + colorNoise * gVar) * 255);
+        byte b = (byte)(bBase * 255);
+        return (uint)((r << 16) | (g << 8) | b);
+    }
+
     /// <summary>
     /// Helper method to get material name for a resource type
     /// </summary>

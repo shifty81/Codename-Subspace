@@ -4,6 +4,21 @@
 
 namespace subspace {
 
+// ---------------------------------------------------------------------------
+// Sector generation constants
+// ---------------------------------------------------------------------------
+static constexpr float kSectorPositionRange  = 5000.0f;   // object position spread within sector
+static constexpr float kAsteroidMinSize      = 10.0f;
+static constexpr float kAsteroidMaxSize      = 60.0f;
+static constexpr int   kWormholeMinClass     = 1;
+static constexpr int   kWormholeMaxClass     = 6;
+static constexpr int   kWormholeDestRange    = 500;       // ±sectors for destination
+static constexpr float kAnomalyPositionRange = 400.0f;
+static constexpr float kAnomalyMinRadius     = 30.0f;
+static constexpr float kAnomalyMaxRadius     = 150.0f;
+static constexpr float kAnomalyMinIntensity  = 0.3f;
+static constexpr float kAnomalyMaxIntensity  = 1.5f;
+
 GalaxyGenerator::GalaxyGenerator(int seed)
     : _seed(seed != 0
                 ? seed
@@ -72,8 +87,8 @@ GalaxySector GalaxyGenerator::GenerateSector(int x, int y, int z) const {
     std::uniform_int_distribution<int> asteroidCountDist(minAsteroids, maxAsteroids);
     int asteroidCount = asteroidCountDist(rng);
 
-    std::uniform_real_distribution<float> posDist(-5000.0f, 5000.0f);
-    std::uniform_real_distribution<float> sizeDist(10.0f, 60.0f);
+    std::uniform_real_distribution<float> posDist(-kSectorPositionRange, kSectorPositionRange);
+    std::uniform_real_distribution<float> sizeDist(kAsteroidMinSize, kAsteroidMaxSize);
 
     for (int i = 0; i < asteroidCount; ++i) {
         AsteroidData ad;
@@ -94,8 +109,8 @@ GalaxySector GalaxyGenerator::GenerateSector(int x, int y, int z) const {
 
     // --- Wormholes (probability-based) ---
     if (prob(rng) < wormholeProbability) {
-        std::uniform_int_distribution<int> classDist(1, 6);
-        std::uniform_int_distribution<int> destDist(-500, 500);
+        std::uniform_int_distribution<int> classDist(kWormholeMinClass, kWormholeMaxClass);
+        std::uniform_int_distribution<int> destDist(-kWormholeDestRange, kWormholeDestRange);
 
         WormholeData wh;
         wh.position = {posDist(rng), posDist(rng), posDist(rng)};
@@ -114,9 +129,9 @@ GalaxySector GalaxyGenerator::GenerateSector(int x, int y, int z) const {
     std::uniform_real_distribution<float> anomalyDist(0.0f, 1.0f);
     if (anomalyDist(rng) < anomalyProbability) {
         int numAnomalies = 1 + static_cast<int>(anomalyDist(rng) * 2.0f); // 1-2 anomalies
-        std::uniform_real_distribution<float> anomalyPosDist(-400.0f, 400.0f);
-        std::uniform_real_distribution<float> radiusDist(30.0f, 150.0f);
-        std::uniform_real_distribution<float> intensityDist(0.3f, 1.5f);
+        std::uniform_real_distribution<float> anomalyPosDist(-kAnomalyPositionRange, kAnomalyPositionRange);
+        std::uniform_real_distribution<float> radiusDist(kAnomalyMinRadius, kAnomalyMaxRadius);
+        std::uniform_real_distribution<float> intensityDist(kAnomalyMinIntensity, kAnomalyMaxIntensity);
         for (int i = 0; i < numAnomalies; ++i) {
             AnomalyData anomaly;
             anomaly.position = { anomalyPosDist(rng), anomalyPosDist(rng), anomalyPosDist(rng) };
