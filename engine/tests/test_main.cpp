@@ -83,6 +83,9 @@
 #include "ships/CapabilitySystem.h"
 #include "debug_tools/DebugRenderer.h"
 #include "debug_tools/PerformanceMonitor.h"
+#include "diplomacy/DiplomacySystem.h"
+#include "research/ResearchSystem.h"
+#include "notification/NotificationSystem.h"
 
 using namespace subspace;
 
@@ -10778,6 +10781,798 @@ static void TestCapabilityDebugPerfGameEvents() {
 }
 
 // ===================================================================
+// DiplomacySystem tests
+// ===================================================================
+
+static void TestTreatyGetName() {
+    std::cout << "[Treaty::GetTreatyName]\n";
+    TEST("NonAggression name", Treaty::GetTreatyName(TreatyType::NonAggression) == "Non-Aggression Pact");
+    TEST("TradeAgreement name", Treaty::GetTreatyName(TreatyType::TradeAgreement) == "Trade Agreement");
+    TEST("DefensivePact name", Treaty::GetTreatyName(TreatyType::DefensivePact) == "Defensive Pact");
+    TEST("Alliance name", Treaty::GetTreatyName(TreatyType::Alliance) == "Alliance");
+    TEST("Ceasefire name", Treaty::GetTreatyName(TreatyType::Ceasefire) == "Ceasefire");
+}
+
+static void TestTreatyProgress() {
+    std::cout << "[Treaty::GetProgress]\n";
+    Treaty t;
+    t.totalDuration = 100.0f;
+    t.duration = 100.0f;
+    TEST("Progress at start", ApproxEq(t.GetProgress(), 0.0f));
+
+    t.duration = 50.0f;
+    TEST("Progress at half", ApproxEq(t.GetProgress(), 50.0f));
+
+    t.duration = 0.0f;
+    TEST("Progress at end", ApproxEq(t.GetProgress(), 100.0f));
+
+    Treaty indefinite;
+    indefinite.totalDuration = -1.0f;
+    indefinite.duration = -1.0f;
+    TEST("Indefinite progress", ApproxEq(indefinite.GetProgress(), 100.0f));
+}
+
+static void TestDiplomaticRelationStatusName() {
+    std::cout << "[DiplomaticRelation::GetStatusName]\n";
+    TEST("War name", DiplomaticRelation::GetStatusName(DiplomaticStatus::War) == "War");
+    TEST("Hostile name", DiplomaticRelation::GetStatusName(DiplomaticStatus::Hostile) == "Hostile");
+    TEST("Neutral name", DiplomaticRelation::GetStatusName(DiplomaticStatus::Neutral) == "Neutral");
+    TEST("NonAggression name", DiplomaticRelation::GetStatusName(DiplomaticStatus::NonAggression) == "Non-Aggression");
+    TEST("Trade name", DiplomaticRelation::GetStatusName(DiplomaticStatus::Trade) == "Trade");
+    TEST("Alliance name", DiplomaticRelation::GetStatusName(DiplomaticStatus::Alliance) == "Alliance");
+}
+
+static void TestDiplomaticRelationTrust() {
+    std::cout << "[DiplomaticRelation::ModifyTrust]\n";
+    DiplomaticRelation r;
+    r.trust = 0;
+    r.ModifyTrust(50);
+    TEST("Trust +50", r.trust == 50);
+    r.ModifyTrust(60);
+    TEST("Trust clamped to 100", r.trust == 100);
+    r.ModifyTrust(-250);
+    TEST("Trust clamped to -100", r.trust == -100);
+}
+
+static void TestDiplomacyDatabase() {
+    std::cout << "[DiplomacyDatabase]\n";
+    DiplomacyDatabase db;
+    TEST("Empty db count", db.GetTreatyCount() == 0);
+
+    Treaty t;
+    t.type = TreatyType::TradeAgreement;
+    t.factionA = "alpha";
+    t.factionB = "beta";
+    std::string id = db.AddTreaty(t);
+    TEST("Count after add", db.GetTreatyCount() == 1);
+    TEST("FindTreaty exists", db.FindTreaty(id) != nullptr);
+    TEST("FindTreaty factionA", db.FindTreaty(id)->factionA == "alpha");
+    TEST("FindTreaty missing", db.FindTreaty("nonexistent") == nullptr);
+
+    auto alphaT = db.GetTreatiesForFaction("alpha");
+    TEST("Treaties for alpha", alphaT.size() == 1);
+    auto gammaT = db.GetTreatiesForFaction("gamma");
+    TEST("Treaties for gamma", gammaT.empty());
+
+    auto active = db.GetActiveTreaties();
+    TEST("Active treaties", active.size() == 1);
+
+    TEST("Remove treaty", db.RemoveTreaty(id));
+    TEST("Count after remove", db.GetTreatyCount() == 0);
+    TEST("Remove nonexistent", !db.RemoveTreaty("fake"));
+}
+
+static void TestDiplomacyDatabaseDefaults() {
+    std::cout << "[DiplomacyDatabase::CreateDefaultDatabase]\n";
+    DiplomacyDatabase db = DiplomacyDatabase::CreateDefaultDatabase();
+    TEST("Default treaty count", db.GetTreatyCount() == 4);
+
+    auto tradersT = db.GetTreatiesForFaction("traders_guild");
+    TEST("Traders treaties count", tradersT.size() == 1);
+
+    auto empireT = db.GetTreatiesForFaction("galactic_empire");
+    TEST("Empire treaties count", empireT.size() == 2);
+
+    auto republicT = db.GetTreatiesForFaction("free_republic");
+    TEST("Republic treaties count", republicT.size() == 2);
+}
+
+static void TestDiplomacyComponentDefaults() {
+    std::cout << "[DiplomacyComponent defaults]\n";
+    DiplomacyComponent dc;
+    TEST("Default factionId", dc.factionId.empty());
+    TEST("Default relations empty", dc.relations.empty());
+    TEST("Default warWeariness", ApproxEq(dc.warWeariness, 0.0f));
+    TEST("Default not at war", !dc.IsAtWar());
+    TEST("Default war count", dc.GetWarCount() == 0);
+    TEST("Default relation count", dc.GetRelationCount() == 0);
+}
+
+static void TestDiplomacyComponentAddRelation() {
+    std::cout << "[DiplomacyComponent::AddRelation]\n";
+    DiplomacyComponent dc;
+    dc.factionId = "empire";
+
+    dc.AddRelation("republic");
+    TEST("Relation count", dc.GetRelationCount() == 1);
+    TEST("Default status", dc.GetStatus("republic") == DiplomaticStatus::Neutral);
+
+    // Adding same faction again returns existing
+    dc.AddRelation("republic", DiplomaticStatus::War);
+    TEST("No duplicate", dc.GetRelationCount() == 1);
+    TEST("Status unchanged by AddRelation", dc.GetStatus("republic") == DiplomaticStatus::Neutral);
+}
+
+static void TestDiplomacyComponentDeclareWar() {
+    std::cout << "[DiplomacyComponent war/peace]\n";
+    DiplomacyComponent dc;
+    dc.factionId = "empire";
+
+    dc.DeclareWar("pirates");
+    TEST("At war", dc.IsAtWar());
+    TEST("War count", dc.GetWarCount() == 1);
+    TEST("Status is War", dc.GetStatus("pirates") == DiplomaticStatus::War);
+
+    dc.ProposePeace("pirates");
+    TEST("Not at war after peace", !dc.IsAtWar());
+    TEST("Status is Neutral", dc.GetStatus("pirates") == DiplomaticStatus::Neutral);
+}
+
+static void TestDiplomacyComponentSetStatus() {
+    std::cout << "[DiplomacyComponent::SetStatus]\n";
+    DiplomacyComponent dc;
+    dc.factionId = "empire";
+
+    dc.SetStatus("republic", DiplomaticStatus::Alliance);
+    TEST("Status set", dc.GetStatus("republic") == DiplomaticStatus::Alliance);
+
+    dc.SetStatus("republic", DiplomaticStatus::Trade);
+    TEST("Status updated", dc.GetStatus("republic") == DiplomaticStatus::Trade);
+}
+
+static void TestDiplomacyComponentGetFactionsWithStatus() {
+    std::cout << "[DiplomacyComponent::GetFactionsWithStatus]\n";
+    DiplomacyComponent dc;
+    dc.factionId = "empire";
+    dc.SetStatus("republic", DiplomaticStatus::Alliance);
+    dc.SetStatus("traders", DiplomaticStatus::Trade);
+    dc.SetStatus("pirates", DiplomaticStatus::War);
+    dc.SetStatus("miners", DiplomaticStatus::Alliance);
+
+    auto allies = dc.GetFactionsWithStatus(DiplomaticStatus::Alliance);
+    TEST("Allied factions count", allies.size() == 2);
+
+    auto enemies = dc.GetFactionsWithStatus(DiplomaticStatus::War);
+    TEST("War factions count", enemies.size() == 1);
+    TEST("War faction is pirates", enemies[0] == "pirates");
+}
+
+static void TestDiplomacyComponentSerialization() {
+    std::cout << "[DiplomacyComponent serialization]\n";
+    DiplomacyComponent dc;
+    dc.factionId = "empire";
+    dc.warWeariness = 45.0f;
+    dc.warWearinessRate = 2.0f;
+    dc.trustGainRate = 0.5f;
+    dc.SetStatus("republic", DiplomaticStatus::Alliance);
+    dc.SetStatus("pirates", DiplomaticStatus::War);
+
+    auto* rel = dc.GetRelation("republic");
+    rel->trust = 75;
+    rel->activeTreatyIds = {"t1", "t2"};
+
+    ComponentData cd = dc.Serialize();
+
+    DiplomacyComponent dc2;
+    dc2.Deserialize(cd);
+    TEST("Faction round-trip", dc2.factionId == "empire");
+    TEST("WarWeariness round-trip", ApproxEq(dc2.warWeariness, 45.0f));
+    TEST("WarWearinessRate round-trip", ApproxEq(dc2.warWearinessRate, 2.0f));
+    TEST("TrustGainRate round-trip", ApproxEq(dc2.trustGainRate, 0.5f));
+    TEST("Relation count round-trip", dc2.GetRelationCount() == 2);
+    TEST("Status round-trip", dc2.GetStatus("republic") == DiplomaticStatus::Alliance);
+    TEST("Status round-trip2", dc2.GetStatus("pirates") == DiplomaticStatus::War);
+
+    auto* rel2 = dc2.GetRelation("republic");
+    TEST("Trust round-trip", rel2 != nullptr && rel2->trust == 75);
+    TEST("Treaty IDs round-trip", rel2 != nullptr && rel2->activeTreatyIds.size() == 2);
+}
+
+static void TestDiplomacyComponentDeserializeInvalidEnum() {
+    std::cout << "[DiplomacyComponent deserialize invalid enum]\n";
+    ComponentData cd;
+    cd.componentType = "DiplomacyComponent";
+    cd.data["relationCount"] = "1";
+    cd.data["rel_0_factionA"] = "a";
+    cd.data["rel_0_factionB"] = "b";
+    cd.data["rel_0_status"] = "999";  // invalid
+    cd.data["rel_0_trust"] = "500";   // out of range
+
+    DiplomacyComponent dc;
+    dc.Deserialize(cd);
+    TEST("Invalid status -> Neutral", dc.relations[0].status == DiplomaticStatus::Neutral);
+    TEST("Trust clamped to 100", dc.relations[0].trust == 100);
+}
+
+static void TestDiplomacySystem() {
+    std::cout << "[DiplomacySystem default ctor]\n";
+    DiplomacySystem sys;
+    TEST("System name", sys.GetName() == "DiplomacySystem");
+    // Should not crash on empty update
+    sys.Update(1.0f);
+    TEST("No crash on empty Update", true);
+}
+
+static void TestDiplomacySystemWarWeariness() {
+    std::cout << "[DiplomacySystem war weariness]\n";
+    EntityManager em;
+    DiplomacySystem sys(em);
+
+    auto& ent = em.CreateEntity("faction_test");
+    auto* dc = em.AddComponent<DiplomacyComponent>(ent.id, std::make_unique<DiplomacyComponent>());
+    dc->factionId = "empire";
+    dc->warWearinessRate = 10.0f;
+    dc->DeclareWar("pirates");
+
+    sys.Update(1.0f);
+    TEST("War weariness increases", dc->warWeariness > 0.0f);
+    TEST("War weariness ~10", ApproxEq(dc->warWeariness, 10.0f));
+
+    // Without war, weariness should not increase
+    dc->ProposePeace("pirates");
+    float prevWeariness = dc->warWeariness;
+    sys.Update(1.0f);
+    TEST("No weariness without war", ApproxEq(dc->warWeariness, prevWeariness));
+}
+
+static void TestDiplomacySystemTrustGain() {
+    std::cout << "[DiplomacySystem trust gain]\n";
+    EntityManager em;
+    DiplomacySystem sys(em);
+
+    auto& ent = em.CreateEntity("faction_test");
+    auto* dc = em.AddComponent<DiplomacyComponent>(ent.id, std::make_unique<DiplomacyComponent>());
+    dc->factionId = "empire";
+    dc->trustGainRate = 10.0f;
+    dc->SetStatus("republic", DiplomaticStatus::Alliance);
+
+    sys.Update(1.0f);
+    auto* rel = dc->GetRelation("republic");
+    TEST("Trust increased for alliance", rel != nullptr && rel->trust > 0);
+}
+
+// ===================================================================
+// ResearchSystem tests
+// ===================================================================
+
+static void TestResearchNodeCategoryName() {
+    std::cout << "[ResearchNode::GetCategoryName]\n";
+    TEST("Engineering name", ResearchNode::GetCategoryName(ResearchCategory::Engineering) == "Engineering");
+    TEST("Weapons name", ResearchNode::GetCategoryName(ResearchCategory::Weapons) == "Weapons");
+    TEST("Shields name", ResearchNode::GetCategoryName(ResearchCategory::Shields) == "Shields");
+    TEST("Navigation name", ResearchNode::GetCategoryName(ResearchCategory::Navigation) == "Navigation");
+    TEST("Economy name", ResearchNode::GetCategoryName(ResearchCategory::Economy) == "Economy");
+    TEST("Special name", ResearchNode::GetCategoryName(ResearchCategory::Special) == "Special");
+}
+
+static void TestResearchJobPercentage() {
+    std::cout << "[ResearchJob::GetPercentage]\n";
+    ResearchJob job;
+    job.totalCost = 100.0f;
+    job.progress = 0.0f;
+    TEST("Percentage at start", ApproxEq(job.GetPercentage(), 0.0f));
+
+    job.progress = 50.0f;
+    TEST("Percentage at half", ApproxEq(job.GetPercentage(), 50.0f));
+
+    job.progress = 100.0f;
+    TEST("Percentage at end", ApproxEq(job.GetPercentage(), 100.0f));
+
+    ResearchJob zeroJob;
+    zeroJob.totalCost = 0.0f;
+    TEST("Zero cost percentage", ApproxEq(zeroJob.GetPercentage(), 100.0f));
+}
+
+static void TestResearchTree() {
+    std::cout << "[ResearchTree]\n";
+    ResearchTree tree;
+    TEST("Empty tree count", tree.GetNodeCount() == 0);
+
+    ResearchNode n;
+    n.nodeId = "test_tech";
+    n.displayName = "Test Tech";
+    n.category = ResearchCategory::Engineering;
+    n.researchCost = 50.0f;
+    tree.AddNode(n);
+
+    TEST("Count after add", tree.GetNodeCount() == 1);
+    TEST("FindNode exists", tree.FindNode("test_tech") != nullptr);
+    TEST("FindNode id", tree.FindNode("test_tech")->nodeId == "test_tech");
+    TEST("FindNode missing", tree.FindNode("nonexistent") == nullptr);
+
+    auto engNodes = tree.GetNodesByCategory(ResearchCategory::Engineering);
+    TEST("Category filter count", engNodes.size() == 1);
+    auto weapNodes = tree.GetNodesByCategory(ResearchCategory::Weapons);
+    TEST("Category filter empty", weapNodes.empty());
+}
+
+static void TestResearchTreeDefaults() {
+    std::cout << "[ResearchTree::CreateDefaultTree]\n";
+    ResearchTree tree = ResearchTree::CreateDefaultTree();
+    TEST("Default node count", tree.GetNodeCount() == 8);
+    TEST("improved_hull exists", tree.FindNode("improved_hull") != nullptr);
+    TEST("advanced_materials exists", tree.FindNode("advanced_materials") != nullptr);
+    TEST("laser_efficiency exists", tree.FindNode("laser_efficiency") != nullptr);
+    TEST("plasma_weapons exists", tree.FindNode("plasma_weapons") != nullptr);
+    TEST("shield_harmonics exists", tree.FindNode("shield_harmonics") != nullptr);
+    TEST("hyperdrive_calibration exists", tree.FindNode("hyperdrive_calibration") != nullptr);
+    TEST("trade_networks exists", tree.FindNode("trade_networks") != nullptr);
+    TEST("experimental_reactor exists", tree.FindNode("experimental_reactor") != nullptr);
+
+    const auto* reactor = tree.FindNode("experimental_reactor");
+    TEST("Reactor level 3", reactor->requiredLevel == 3);
+    TEST("Reactor cost", ApproxEq(reactor->researchCost, 500.0f));
+    TEST("Reactor prereqs", reactor->prerequisites.size() == 2);
+}
+
+static void TestResearchTreePrerequisites() {
+    std::cout << "[ResearchTree::ArePrerequisitesMet]\n";
+    ResearchTree tree = ResearchTree::CreateDefaultTree();
+    std::unordered_set<std::string> completed;
+
+    // improved_hull has no prereqs
+    TEST("No prereqs met", tree.ArePrerequisitesMet("improved_hull", completed));
+    // advanced_materials needs improved_hull
+    TEST("Prereq not met", !tree.ArePrerequisitesMet("advanced_materials", completed));
+
+    completed.insert("improved_hull");
+    TEST("Prereq met after completing", tree.ArePrerequisitesMet("advanced_materials", completed));
+
+    // experimental_reactor needs advanced_materials + shield_harmonics
+    TEST("Partial prereqs not met", !tree.ArePrerequisitesMet("experimental_reactor", completed));
+    completed.insert("advanced_materials");
+    completed.insert("shield_harmonics");
+    TEST("All prereqs met", tree.ArePrerequisitesMet("experimental_reactor", completed));
+}
+
+static void TestResearchComponentDefaults() {
+    std::cout << "[ResearchComponent defaults]\n";
+    ResearchComponent rc;
+    TEST("Default completed empty", rc.GetCompletedCount() == 0);
+    TEST("Default not researching", !rc.IsResearching());
+    TEST("Default no active job", !rc.hasActiveJob);
+    TEST("Default rate", ApproxEq(rc.researchRate, 1.0f));
+    TEST("Default level", rc.researcherLevel == 1);
+}
+
+static void TestResearchComponentStartResearch() {
+    std::cout << "[ResearchComponent::StartResearch]\n";
+    ResearchTree tree = ResearchTree::CreateDefaultTree();
+    ResearchComponent rc;
+
+    const auto* hull = tree.FindNode("improved_hull");
+    TEST("Start research", rc.StartResearch(*hull, tree));
+    TEST("Is researching", rc.IsResearching());
+    TEST("Has active job", rc.hasActiveJob);
+    TEST("Job nodeId", rc.currentJob.nodeId == "improved_hull");
+    TEST("Job progress", ApproxEq(rc.currentJob.progress, 0.0f));
+
+    // Can't start another while active
+    const auto* laser = tree.FindNode("laser_efficiency");
+    TEST("Can't start another", !rc.StartResearch(*laser, tree));
+}
+
+static void TestResearchComponentPrerequisites() {
+    std::cout << "[ResearchComponent prerequisite check]\n";
+    ResearchTree tree = ResearchTree::CreateDefaultTree();
+    ResearchComponent rc;
+    rc.researcherLevel = 2; // advanced_materials requires level 2
+
+    // advanced_materials requires improved_hull
+    const auto* adv = tree.FindNode("advanced_materials");
+    TEST("Prereq blocks start", !rc.StartResearch(*adv, tree));
+
+    rc.completedResearch.insert("improved_hull");
+    TEST("Prereq met allows start", rc.StartResearch(*adv, tree));
+}
+
+static void TestResearchComponentLevelRequirement() {
+    std::cout << "[ResearchComponent level requirement]\n";
+    ResearchTree tree = ResearchTree::CreateDefaultTree();
+    ResearchComponent rc;
+    rc.completedResearch.insert("improved_hull");
+    rc.completedResearch.insert("advanced_materials");
+    rc.completedResearch.insert("shield_harmonics");
+
+    // experimental_reactor requires level 3
+    const auto* reactor = tree.FindNode("experimental_reactor");
+    TEST("Level too low", !rc.StartResearch(*reactor, tree));
+
+    rc.researcherLevel = 3;
+    TEST("Level met", rc.StartResearch(*reactor, tree));
+}
+
+static void TestResearchComponentCancel() {
+    std::cout << "[ResearchComponent::CancelResearch]\n";
+    ResearchTree tree = ResearchTree::CreateDefaultTree();
+    ResearchComponent rc;
+    const auto* hull = tree.FindNode("improved_hull");
+    rc.StartResearch(*hull, tree);
+
+    TEST("Cancel returns true", rc.CancelResearch());
+    TEST("Not researching after cancel", !rc.IsResearching());
+    TEST("Cancel empty returns false", !rc.CancelResearch());
+}
+
+static void TestResearchComponentAlreadyCompleted() {
+    std::cout << "[ResearchComponent already completed check]\n";
+    ResearchTree tree = ResearchTree::CreateDefaultTree();
+    ResearchComponent rc;
+    rc.completedResearch.insert("improved_hull");
+
+    const auto* hull = tree.FindNode("improved_hull");
+    TEST("Can't re-research completed", !rc.StartResearch(*hull, tree));
+}
+
+static void TestResearchComponentGetAvailable() {
+    std::cout << "[ResearchComponent::GetAvailableResearch]\n";
+    ResearchTree tree = ResearchTree::CreateDefaultTree();
+    ResearchComponent rc;
+
+    auto available = rc.GetAvailableResearch(tree);
+    // Tier 1 nodes with no prereqs and level 1: improved_hull, laser_efficiency, shield_harmonics,
+    // hyperdrive_calibration, trade_networks
+    TEST("Initial available count", available.size() == 5);
+
+    rc.completedResearch.insert("improved_hull");
+    available = rc.GetAvailableResearch(tree);
+    // Should now include advanced_materials (level 2 but rc is level 1)
+    // improved_hull is completed so removed; advanced_materials needs level 2
+    TEST("Available after completing hull", available.size() == 4);
+
+    rc.researcherLevel = 2;
+    available = rc.GetAvailableResearch(tree);
+    // Now advanced_materials is available
+    TEST("Available at level 2", available.size() == 5);
+}
+
+static void TestResearchComponentSerialization() {
+    std::cout << "[ResearchComponent serialization]\n";
+    ResearchTree tree = ResearchTree::CreateDefaultTree();
+    ResearchComponent rc;
+    rc.researchRate = 2.5f;
+    rc.researcherLevel = 3;
+    rc.completedResearch.insert("improved_hull");
+    rc.completedResearch.insert("laser_efficiency");
+
+    const auto* adv = tree.FindNode("advanced_materials");
+    rc.StartResearch(*adv, tree);
+    rc.currentJob.progress = 75.0f;
+
+    ComponentData cd = rc.Serialize();
+
+    ResearchComponent rc2;
+    rc2.Deserialize(cd);
+    TEST("Rate round-trip", ApproxEq(rc2.researchRate, 2.5f));
+    TEST("Level round-trip", rc2.researcherLevel == 3);
+    TEST("Completed count round-trip", rc2.GetCompletedCount() == 2);
+    TEST("Has hull", rc2.HasCompleted("improved_hull"));
+    TEST("Has laser", rc2.HasCompleted("laser_efficiency"));
+    TEST("Active job round-trip", rc2.hasActiveJob);
+    TEST("Job nodeId round-trip", rc2.currentJob.nodeId == "advanced_materials");
+    TEST("Job progress round-trip", ApproxEq(rc2.currentJob.progress, 75.0f));
+}
+
+static void TestResearchSystem() {
+    std::cout << "[ResearchSystem default ctor]\n";
+    ResearchSystem sys;
+    TEST("System name", sys.GetName() == "ResearchSystem");
+    sys.Update(1.0f);
+    TEST("No crash on empty Update", true);
+}
+
+static void TestResearchSystemProgress() {
+    std::cout << "[ResearchSystem progress]\n";
+    EntityManager em;
+    ResearchSystem sys(em);
+    ResearchTree tree = ResearchTree::CreateDefaultTree();
+
+    auto& ent = em.CreateEntity("researcher");
+    auto* rc = em.AddComponent<ResearchComponent>(ent.id, std::make_unique<ResearchComponent>());
+    rc->researchRate = 50.0f;
+
+    const auto* hull = tree.FindNode("improved_hull");
+    rc->StartResearch(*hull, tree);
+
+    sys.Update(1.0f);
+    TEST("Progress after 1s", ApproxEq(rc->currentJob.progress, 50.0f));
+    TEST("Not complete yet", !rc->currentJob.isComplete);
+
+    sys.Update(1.0f);
+    TEST("Research complete", rc->currentJob.isComplete);
+    TEST("Added to completed set", rc->HasCompleted("improved_hull"));
+    TEST("Job cleared", !rc->hasActiveJob);
+}
+
+static void TestResearchSystemNoOvershoot() {
+    std::cout << "[ResearchSystem no overshoot]\n";
+    EntityManager em;
+    ResearchSystem sys(em);
+    ResearchTree tree = ResearchTree::CreateDefaultTree();
+
+    auto& ent = em.CreateEntity("researcher");
+    auto* rc = em.AddComponent<ResearchComponent>(ent.id, std::make_unique<ResearchComponent>());
+    rc->researchRate = 1000.0f;  // Very fast
+
+    const auto* hull = tree.FindNode("improved_hull");
+    rc->StartResearch(*hull, tree);
+
+    sys.Update(1.0f);
+    TEST("Progress capped at cost", ApproxEq(rc->currentJob.progress, hull->researchCost));
+    TEST("Complete", rc->currentJob.isComplete);
+}
+
+// ===================================================================
+// NotificationSystem tests
+// ===================================================================
+
+static void TestNotificationCategoryName() {
+    std::cout << "[Notification::GetCategoryName]\n";
+    TEST("Combat name", Notification::GetCategoryName(NotificationCategory::Combat) == "Combat");
+    TEST("Trade name", Notification::GetCategoryName(NotificationCategory::Trade) == "Trade");
+    TEST("Diplomacy name", Notification::GetCategoryName(NotificationCategory::Diplomacy) == "Diplomacy");
+    TEST("Research name", Notification::GetCategoryName(NotificationCategory::Research) == "Research");
+    TEST("Navigation name", Notification::GetCategoryName(NotificationCategory::Navigation) == "Navigation");
+    TEST("System name", Notification::GetCategoryName(NotificationCategory::System) == "System");
+}
+
+static void TestNotificationPriorityName() {
+    std::cout << "[Notification::GetPriorityName]\n";
+    TEST("Low name", Notification::GetPriorityName(NotificationPriority::Low) == "Low");
+    TEST("Normal name", Notification::GetPriorityName(NotificationPriority::Normal) == "Normal");
+    TEST("High name", Notification::GetPriorityName(NotificationPriority::High) == "High");
+    TEST("Critical name", Notification::GetPriorityName(NotificationPriority::Critical) == "Critical");
+}
+
+static void TestNotificationComponentDefaults() {
+    std::cout << "[NotificationComponent defaults]\n";
+    NotificationComponent nc;
+    TEST("Default empty", nc.notifications.empty());
+    TEST("Default max", nc.maxNotifications == 50);
+    TEST("Default autoRemove", nc.autoRemoveExpired);
+    TEST("Default unread count", nc.GetUnreadCount() == 0);
+    TEST("Default active count", nc.GetActiveCount() == 0);
+    TEST("No critical unread", !nc.HasCriticalUnread());
+}
+
+static void TestNotificationComponentAddNotification() {
+    std::cout << "[NotificationComponent::AddNotification]\n";
+    NotificationComponent nc;
+    int id1 = nc.AddNotification("Test", "Test message");
+    TEST("First ID positive", id1 > 0);
+    TEST("Count after add", nc.GetActiveCount() == 1);
+    TEST("Unread after add", nc.GetUnreadCount() == 1);
+
+    int id2 = nc.AddNotification("Test 2", "Another message", NotificationCategory::Combat,
+                                 NotificationPriority::High);
+    TEST("IDs are unique", id2 != id1);
+    TEST("Count after 2 adds", nc.GetActiveCount() == 2);
+
+    const auto* n = nc.FindNotification(id2);
+    TEST("Find by ID", n != nullptr);
+    TEST("Title matches", n != nullptr && n->title == "Test 2");
+    TEST("Category matches", n != nullptr && n->category == NotificationCategory::Combat);
+    TEST("Priority matches", n != nullptr && n->priority == NotificationPriority::High);
+}
+
+static void TestNotificationComponentMaxCapacity() {
+    std::cout << "[NotificationComponent max capacity]\n";
+    NotificationComponent nc;
+    nc.maxNotifications = 3;
+    nc.AddNotification("1", "m1");
+    nc.AddNotification("2", "m2");
+    nc.AddNotification("3", "m3");
+    TEST("At capacity", nc.GetActiveCount() == 3);
+
+    nc.AddNotification("4", "m4");
+    TEST("Still at max", nc.GetActiveCount() == 3);
+    // Oldest should have been removed
+    TEST("Newest exists", nc.FindNotification(4) != nullptr);
+}
+
+static void TestNotificationComponentMarkAsRead() {
+    std::cout << "[NotificationComponent mark as read]\n";
+    NotificationComponent nc;
+    int id = nc.AddNotification("Test", "msg");
+    TEST("Unread before", nc.GetUnreadCount() == 1);
+
+    TEST("MarkAsRead returns true", nc.MarkAsRead(id));
+    TEST("Unread after", nc.GetUnreadCount() == 0);
+    TEST("MarkAsRead nonexistent", !nc.MarkAsRead(999));
+}
+
+static void TestNotificationComponentMarkAllAsRead() {
+    std::cout << "[NotificationComponent::MarkAllAsRead]\n";
+    NotificationComponent nc;
+    nc.AddNotification("1", "m1");
+    nc.AddNotification("2", "m2");
+    nc.AddNotification("3", "m3");
+    TEST("Unread before", nc.GetUnreadCount() == 3);
+
+    nc.MarkAllAsRead();
+    TEST("Unread after", nc.GetUnreadCount() == 0);
+}
+
+static void TestNotificationComponentRemove() {
+    std::cout << "[NotificationComponent::RemoveNotification]\n";
+    NotificationComponent nc;
+    int id = nc.AddNotification("Test", "msg");
+    TEST("Remove returns true", nc.RemoveNotification(id));
+    TEST("Count after remove", nc.GetActiveCount() == 0);
+    TEST("Remove nonexistent", !nc.RemoveNotification(999));
+}
+
+static void TestNotificationComponentGetByCategory() {
+    std::cout << "[NotificationComponent::GetByCategory]\n";
+    NotificationComponent nc;
+    nc.AddNotification("Combat 1", "m", NotificationCategory::Combat);
+    nc.AddNotification("Trade 1", "m", NotificationCategory::Trade);
+    nc.AddNotification("Combat 2", "m", NotificationCategory::Combat);
+
+    auto combat = nc.GetByCategory(NotificationCategory::Combat);
+    TEST("Combat count", combat.size() == 2);
+    auto trade = nc.GetByCategory(NotificationCategory::Trade);
+    TEST("Trade count", trade.size() == 1);
+    auto nav = nc.GetByCategory(NotificationCategory::Navigation);
+    TEST("Navigation count", nav.empty());
+}
+
+static void TestNotificationComponentGetByMinPriority() {
+    std::cout << "[NotificationComponent::GetByMinPriority]\n";
+    NotificationComponent nc;
+    nc.AddNotification("Low", "m", NotificationCategory::System, NotificationPriority::Low);
+    nc.AddNotification("Normal", "m", NotificationCategory::System, NotificationPriority::Normal);
+    nc.AddNotification("High", "m", NotificationCategory::System, NotificationPriority::High);
+    nc.AddNotification("Critical", "m", NotificationCategory::System, NotificationPriority::Critical);
+
+    auto all = nc.GetByMinPriority(NotificationPriority::Low);
+    TEST("All priorities", all.size() == 4);
+    auto highPlus = nc.GetByMinPriority(NotificationPriority::High);
+    TEST("High and above", highPlus.size() == 2);
+    auto critical = nc.GetByMinPriority(NotificationPriority::Critical);
+    TEST("Critical only", critical.size() == 1);
+}
+
+static void TestNotificationComponentHasCriticalUnread() {
+    std::cout << "[NotificationComponent::HasCriticalUnread]\n";
+    NotificationComponent nc;
+    nc.AddNotification("Normal", "m", NotificationCategory::System, NotificationPriority::Normal);
+    TEST("No critical yet", !nc.HasCriticalUnread());
+
+    int critId = nc.AddNotification("Alert!", "m", NotificationCategory::Combat, NotificationPriority::Critical);
+    TEST("Has critical unread", nc.HasCriticalUnread());
+
+    nc.MarkAsRead(critId);
+    TEST("No critical unread after read", !nc.HasCriticalUnread());
+}
+
+static void TestNotificationComponentSerialization() {
+    std::cout << "[NotificationComponent serialization]\n";
+    NotificationComponent nc;
+    nc.maxNotifications = 30;
+    nc.autoRemoveExpired = false;
+    int id1 = nc.AddNotification("Alert", "Something happened",
+                                 NotificationCategory::Combat, NotificationPriority::High, 60.0f);
+    nc.AddNotification("Info", "FYI",
+                       NotificationCategory::Trade, NotificationPriority::Low);
+    nc.MarkAsRead(id1);
+
+    ComponentData cd = nc.Serialize();
+
+    NotificationComponent nc2;
+    nc2.Deserialize(cd);
+    TEST("Max round-trip", nc2.maxNotifications == 30);
+    TEST("AutoRemove round-trip", !nc2.autoRemoveExpired);
+    TEST("Count round-trip", nc2.notifications.size() == 2);
+
+    const auto* n = nc2.FindNotification(id1);
+    TEST("First notif found", n != nullptr);
+    TEST("Title round-trip", n != nullptr && n->title == "Alert");
+    TEST("Message round-trip", n != nullptr && n->message == "Something happened");
+    TEST("Category round-trip", n != nullptr && n->category == NotificationCategory::Combat);
+    TEST("Priority round-trip", n != nullptr && n->priority == NotificationPriority::High);
+    TEST("IsRead round-trip", n != nullptr && n->isRead);
+}
+
+static void TestNotificationComponentDeserializeInvalidEnum() {
+    std::cout << "[NotificationComponent deserialize invalid enum]\n";
+    ComponentData cd;
+    cd.componentType = "NotificationComponent";
+    cd.data["notifCount"] = "1";
+    cd.data["notif_0_id"] = "1";
+    cd.data["notif_0_title"] = "test";
+    cd.data["notif_0_message"] = "msg";
+    cd.data["notif_0_category"] = "999";   // invalid
+    cd.data["notif_0_priority"] = "999";   // invalid
+
+    NotificationComponent nc;
+    nc.Deserialize(cd);
+    TEST("Invalid category -> System", nc.notifications[0].category == NotificationCategory::System);
+    TEST("Invalid priority -> Normal", nc.notifications[0].priority == NotificationPriority::Normal);
+}
+
+static void TestNotificationSystem() {
+    std::cout << "[NotificationSystem default ctor]\n";
+    NotificationSystem sys;
+    TEST("System name", sys.GetName() == "NotificationSystem");
+    sys.Update(1.0f);
+    TEST("No crash on empty Update", true);
+}
+
+static void TestNotificationSystemExpiry() {
+    std::cout << "[NotificationSystem expiry]\n";
+    EntityManager em;
+    NotificationSystem sys(em);
+
+    auto& ent = em.CreateEntity("player");
+    auto* nc = em.AddComponent<NotificationComponent>(ent.id, std::make_unique<NotificationComponent>());
+    nc->autoRemoveExpired = false; // so we can inspect
+
+    nc->AddNotification("Timed", "Will expire", NotificationCategory::System,
+                       NotificationPriority::Normal, 2.0f);
+    nc->AddNotification("Persistent", "Won't expire");
+
+    sys.Update(1.0f);
+    TEST("Active after 1s", nc->GetActiveCount() == 2);
+
+    sys.Update(1.5f);
+    TEST("Timed expired after 2.5s", nc->GetActiveCount() == 1);
+}
+
+static void TestNotificationSystemAutoRemove() {
+    std::cout << "[NotificationSystem auto-remove]\n";
+    EntityManager em;
+    NotificationSystem sys(em);
+
+    auto& ent = em.CreateEntity("player");
+    auto* nc = em.AddComponent<NotificationComponent>(ent.id, std::make_unique<NotificationComponent>());
+    nc->autoRemoveExpired = true;
+
+    nc->AddNotification("Timed", "Will expire", NotificationCategory::System,
+                       NotificationPriority::Normal, 0.5f);
+
+    sys.Update(1.0f);
+    TEST("Auto-removed expired", nc->notifications.empty());
+}
+
+// ===================================================================
+// Diplomacy/Research/Notification GameEvents tests
+// ===================================================================
+
+static void TestDiplomacyResearchNotificationGameEvents() {
+    std::cout << "[Diplomacy/Research/Notification GameEvents]\n";
+    // Diplomacy events
+    TEST("WarDeclared event", std::string(GameEvents::WarDeclared) == "diplomacy.war.declared");
+    TEST("PeaceProposed event", std::string(GameEvents::PeaceProposed) == "diplomacy.peace.proposed");
+    TEST("TreatyProposed event", std::string(GameEvents::TreatyProposed) == "diplomacy.treaty.proposed");
+    TEST("TreatySigned event", std::string(GameEvents::TreatySigned) == "diplomacy.treaty.signed");
+    TEST("TreatyBroken event", std::string(GameEvents::TreatyBroken) == "diplomacy.treaty.broken");
+    TEST("TreatyExpired event", std::string(GameEvents::TreatyExpired) == "diplomacy.treaty.expired");
+    TEST("DiplomaticStatusChanged event", std::string(GameEvents::DiplomaticStatusChanged) == "diplomacy.status.changed");
+    // Research events
+    TEST("ResearchStarted event", std::string(GameEvents::ResearchStarted) == "research.started");
+    TEST("ResearchCompleted event", std::string(GameEvents::ResearchCompleted) == "research.completed");
+    TEST("ResearchCancelled event", std::string(GameEvents::ResearchCancelled) == "research.cancelled");
+    TEST("TechUnlocked event", std::string(GameEvents::TechUnlocked) == "research.tech.unlocked");
+    // Notification events
+    TEST("NotificationAdded event", std::string(GameEvents::NotificationAdded) == "notification.added");
+    TEST("NotificationRead event", std::string(GameEvents::NotificationRead) == "notification.read");
+    TEST("NotificationExpired event", std::string(GameEvents::NotificationExpired) == "notification.expired");
+    TEST("NotificationDismissed event", std::string(GameEvents::NotificationDismissed) == "notification.dismissed");
+    TEST("CriticalAlert event", std::string(GameEvents::CriticalAlert) == "notification.critical");
+}
+
+// ===================================================================
 // Main
 // ===================================================================
 int main() {
@@ -11091,6 +11886,55 @@ int main() {
     TestPerformanceMonitorReset();
     TestPerformanceMonitorEndSectionWithoutBegin();
     TestCapabilityDebugPerfGameEvents();
+    TestTreatyGetName();
+    TestTreatyProgress();
+    TestDiplomaticRelationStatusName();
+    TestDiplomaticRelationTrust();
+    TestDiplomacyDatabase();
+    TestDiplomacyDatabaseDefaults();
+    TestDiplomacyComponentDefaults();
+    TestDiplomacyComponentAddRelation();
+    TestDiplomacyComponentDeclareWar();
+    TestDiplomacyComponentSetStatus();
+    TestDiplomacyComponentGetFactionsWithStatus();
+    TestDiplomacyComponentSerialization();
+    TestDiplomacyComponentDeserializeInvalidEnum();
+    TestDiplomacySystem();
+    TestDiplomacySystemWarWeariness();
+    TestDiplomacySystemTrustGain();
+    TestResearchNodeCategoryName();
+    TestResearchJobPercentage();
+    TestResearchTree();
+    TestResearchTreeDefaults();
+    TestResearchTreePrerequisites();
+    TestResearchComponentDefaults();
+    TestResearchComponentStartResearch();
+    TestResearchComponentPrerequisites();
+    TestResearchComponentLevelRequirement();
+    TestResearchComponentCancel();
+    TestResearchComponentAlreadyCompleted();
+    TestResearchComponentGetAvailable();
+    TestResearchComponentSerialization();
+    TestResearchSystem();
+    TestResearchSystemProgress();
+    TestResearchSystemNoOvershoot();
+    TestNotificationCategoryName();
+    TestNotificationPriorityName();
+    TestNotificationComponentDefaults();
+    TestNotificationComponentAddNotification();
+    TestNotificationComponentMaxCapacity();
+    TestNotificationComponentMarkAsRead();
+    TestNotificationComponentMarkAllAsRead();
+    TestNotificationComponentRemove();
+    TestNotificationComponentGetByCategory();
+    TestNotificationComponentGetByMinPriority();
+    TestNotificationComponentHasCriticalUnread();
+    TestNotificationComponentSerialization();
+    TestNotificationComponentDeserializeInvalidEnum();
+    TestNotificationSystem();
+    TestNotificationSystemExpiry();
+    TestNotificationSystemAutoRemove();
+    TestDiplomacyResearchNotificationGameEvents();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
               << testsFailed << " failed ===\n";

@@ -210,6 +210,28 @@ namespace GameEvents {
     constexpr const char* PerfFrameRecorded     = "perf.frame.recorded";
     constexpr const char* PerfSectionRecorded   = "perf.section.recorded";
     constexpr const char* PerfCounterRecorded   = "perf.counter.recorded";
+
+    // Diplomacy events
+    constexpr const char* WarDeclared            = "diplomacy.war.declared";
+    constexpr const char* PeaceProposed          = "diplomacy.peace.proposed";
+    constexpr const char* TreatyProposed         = "diplomacy.treaty.proposed";
+    constexpr const char* TreatySigned           = "diplomacy.treaty.signed";
+    constexpr const char* TreatyBroken           = "diplomacy.treaty.broken";
+    constexpr const char* TreatyExpired          = "diplomacy.treaty.expired";
+    constexpr const char* DiplomaticStatusChanged = "diplomacy.status.changed";
+
+    // Research events
+    constexpr const char* ResearchStarted        = "research.started";
+    constexpr const char* ResearchCompleted       = "research.completed";
+    constexpr const char* ResearchCancelled       = "research.cancelled";
+    constexpr const char* TechUnlocked            = "research.tech.unlocked";
+
+    // Notification events
+    constexpr const char* NotificationAdded       = "notification.added";
+    constexpr const char* NotificationRead        = "notification.read";
+    constexpr const char* NotificationExpired     = "notification.expired";
+    constexpr const char* NotificationDismissed   = "notification.dismissed";
+    constexpr const char* CriticalAlert           = "notification.critical";
 } // namespace GameEvents
 
 } // namespace subspace
