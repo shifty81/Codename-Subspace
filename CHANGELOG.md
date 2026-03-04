@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **C++ Engine: Full Ship Editor Tooling** — Six new subsystems completing the ship editor infrastructure (2026-03-04):
+  - `EditorAction` + `EditorHistory`: Undo/redo system supporting 5 action types (PlaceBlock, RemoveBlock, PaintBlock, MultiPlace, MultiRemove) with configurable max history size
+  - `EditorClipboard`: Copy/paste/cut with anchor-relative block positioning for duplicating ship sections
+  - `EditorSelection`: Multi-block selection with add/remove/toggle, box select, bounds computation, and block gathering from ship
+  - `ShipValidator`: Ship design validation with connectivity checks (BFS), engine/generator presence warnings, mass and block count limits
+  - `BlockPalette`: Categorized block catalog (Structure, Functional, Weapons) with 11 default entries, category filtering, and type lookup
+  - `EditorGrid`: Grid snapping utilities with configurable cell size, world↔grid conversion, visibility toggle, and extent control
+  - All systems integrated into `ShipEditorController` with undo/redo-aware Place, Remove, Paint, Cut, Paste, and RemoveSelected operations
+- **C++ Engine: 118 new unit tests** for EditorHistory (push/undo/redo/clear/max-size), EditorAction factories, EditorClipboard (copy/paste/clear), EditorSelection (add/remove/toggle/box-select/bounds/gather), ShipValidator (empty/connected/disconnected/engine/generator/limits), BlockPalette (categories/filter/lookup), EditorGrid (snap/cell-to-world/visibility/extent), and integrated editor workflows (undo-place/undo-remove/undo-paint/copy-paste/cut-paste/remove-selected/validation) (2170 → 2288 total tests)
 - **C++ Engine: Shield Module System** — New `ShieldModuleComponent` ECS component with 4 shield types (Standard, Hardened, Phase, Regenerative), type-specific absorption multipliers, regen delay, overcharge mechanics with decay, and save-game serialization. New `ShieldSystem` updates shield regen and overcharge decay each frame (2026-03-04)
 - **C++ Engine: Status Effect System** — New `StatusEffectComponent` ECS component with 6 status effect types (EMP Disruption, Fire DOT, Radiation DOT, Shield Drain, Engine Jam, Sensor Scramble), resistance multipliers, timed expiry, tick intervals, immunity support, and save-game serialization. New `StatusEffectSystem` ticks effects and removes expired ones each frame (2026-03-04)
 - **C++ Engine: Loot/Drop System** — New `LootTableEntry`, `LootTable`, `LootDrop`, `LootComponent`, and `LootSystem` classes provide deterministic seed-based loot rolling with 5 rarity tiers (Common, Uncommon, Rare, Epic, Legendary), luck multipliers, 3 preset loot tables (StandardEnemy, BossEnemy, Asteroid), and save-game serialization (2026-03-04)
