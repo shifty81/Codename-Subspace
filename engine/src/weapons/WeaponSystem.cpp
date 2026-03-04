@@ -4,6 +4,47 @@
 namespace subspace {
 
 // ---------------------------------------------------------------------------
+// AmmoPool
+// ---------------------------------------------------------------------------
+bool AmmoPool::CanFire() const {
+    return !isReloading && currentAmmo > 0;
+}
+
+bool AmmoPool::ConsumeAmmo() {
+    if (!CanFire()) return false;
+    --currentAmmo;
+    return true;
+}
+
+void AmmoPool::StartReload() {
+    isReloading = true;
+    currentReloadTimer = reloadTime;
+}
+
+bool AmmoPool::UpdateReload(float deltaTime) {
+    if (!isReloading) return false;
+    currentReloadTimer -= deltaTime;
+    if (currentReloadTimer <= 0.0f) {
+        currentAmmo = maxAmmo;
+        isReloading = false;
+        currentReloadTimer = 0.0f;
+        return true;
+    }
+    return false;
+}
+
+void AmmoPool::Refill() {
+    currentAmmo = maxAmmo;
+    isReloading = false;
+    currentReloadTimer = 0.0f;
+}
+
+float AmmoPool::GetAmmoPercentage() const {
+    if (maxAmmo <= 0) return 0.0f;
+    return (currentAmmo / (float)maxAmmo) * 100.0f;
+}
+
+// ---------------------------------------------------------------------------
 // WeaponStats
 // ---------------------------------------------------------------------------
 float WeaponStats::EffectiveDPS() const {
@@ -48,6 +89,54 @@ bool WeaponSystem::IsValidHardpoint(const Ship& ship, const Block& block) {
         }
     }
     return false;
+}
+
+AmmoPool WeaponSystem::GetDefaultAmmoPool(WeaponType type) {
+    AmmoPool pool;
+    switch (type) {
+        case WeaponType::BroadsideCannon:
+            pool.type = AmmoType::Standard;
+            pool.maxAmmo = 30;
+            pool.currentAmmo = 30;
+            pool.reloadTime = 4.0f;
+            break;
+        case WeaponType::SpinalRailgun:
+            pool.type = AmmoType::ArmorPiercing;
+            pool.maxAmmo = 5;
+            pool.currentAmmo = 5;
+            pool.reloadTime = 8.0f;
+            break;
+        case WeaponType::InwardFlak:
+            pool.type = AmmoType::Explosive;
+            pool.maxAmmo = 60;
+            pool.currentAmmo = 60;
+            pool.reloadTime = 3.0f;
+            break;
+        case WeaponType::BurstLancer:
+            pool.type = AmmoType::Incendiary;
+            pool.maxAmmo = 8;
+            pool.currentAmmo = 8;
+            pool.reloadTime = 6.0f;
+            break;
+        case WeaponType::BeamArray:
+            pool.type = AmmoType::EMP;
+            pool.maxAmmo = 200;
+            pool.currentAmmo = 200;
+            pool.reloadTime = 2.0f;
+            break;
+    }
+    return pool;
+}
+
+float WeaponSystem::GetAmmoDamageMultiplier(AmmoType ammoType) {
+    switch (ammoType) {
+        case AmmoType::Standard:      return 1.0f;
+        case AmmoType::ArmorPiercing: return 1.3f;
+        case AmmoType::Explosive:     return 1.5f;
+        case AmmoType::EMP:           return 0.5f;
+        case AmmoType::Incendiary:    return 1.2f;
+    }
+    return 1.0f; // fallback
 }
 
 } // namespace subspace
