@@ -67,6 +67,7 @@
 #include "navigation/PathfindingComponent.h"
 #include "navigation/PathfindingSystem.h"
 #include "core/Engine.h"
+#include "combat/TargetLockSystem.h"
 
 using namespace subspace;
 
@@ -7878,6 +7879,387 @@ static void TestEngine() {
 }
 
 // ===================================================================
+// Ammunition System tests
+// ===================================================================
+static void TestAmmoPoolCanFire() {
+    std::cout << "[AmmoPool CanFire]\n";
+    AmmoPool pool;
+    pool.maxAmmo = 10;
+    pool.currentAmmo = 10;
+    pool.isReloading = false;
+    TEST("CanFire with ammo", pool.CanFire());
+
+    pool.currentAmmo = 0;
+    TEST("Cannot fire empty", !pool.CanFire());
+
+    pool.currentAmmo = 5;
+    pool.isReloading = true;
+    TEST("Cannot fire while reloading", !pool.CanFire());
+}
+
+static void TestAmmoPoolConsumeAmmo() {
+    std::cout << "[AmmoPool ConsumeAmmo]\n";
+    AmmoPool pool;
+    pool.maxAmmo = 5;
+    pool.currentAmmo = 3;
+    pool.isReloading = false;
+
+    TEST("Consume succeeds", pool.ConsumeAmmo());
+    TEST("Ammo decremented", pool.currentAmmo == 2);
+
+    TEST("Consume again", pool.ConsumeAmmo());
+    TEST("Consume again", pool.ConsumeAmmo());
+    TEST("Ammo at zero", pool.currentAmmo == 0);
+    TEST("Consume fails when empty", !pool.ConsumeAmmo());
+}
+
+static void TestAmmoPoolReload() {
+    std::cout << "[AmmoPool Reload]\n";
+    AmmoPool pool;
+    pool.maxAmmo = 30;
+    pool.currentAmmo = 0;
+    pool.reloadTime = 4.0f;
+
+    pool.StartReload();
+    TEST("Is reloading", pool.isReloading);
+    TEST("Timer set", ApproxEq(pool.currentReloadTimer, 4.0f));
+
+    bool done = pool.UpdateReload(2.0f);
+    TEST("Reload not done at half", !done);
+    TEST("Still reloading", pool.isReloading);
+
+    done = pool.UpdateReload(2.0f);
+    TEST("Reload complete", done);
+    TEST("No longer reloading", !pool.isReloading);
+    TEST("Ammo refilled to max", pool.currentAmmo == 30);
+    TEST("Timer zeroed", ApproxEq(pool.currentReloadTimer, 0.0f));
+}
+
+static void TestAmmoPoolRefill() {
+    std::cout << "[AmmoPool Refill]\n";
+    AmmoPool pool;
+    pool.maxAmmo = 50;
+    pool.currentAmmo = 10;
+    pool.isReloading = true;
+    pool.currentReloadTimer = 2.0f;
+
+    pool.Refill();
+    TEST("Ammo at max", pool.currentAmmo == 50);
+    TEST("Not reloading", !pool.isReloading);
+    TEST("Timer zeroed", ApproxEq(pool.currentReloadTimer, 0.0f));
+}
+
+static void TestAmmoPoolPercentage() {
+    std::cout << "[AmmoPool Percentage]\n";
+    AmmoPool pool;
+    pool.maxAmmo = 100;
+    pool.currentAmmo = 75;
+    TEST("75% ammo", ApproxEq(pool.GetAmmoPercentage(), 75.0f));
+
+    pool.currentAmmo = 0;
+    TEST("0% ammo", ApproxEq(pool.GetAmmoPercentage(), 0.0f));
+
+    pool.currentAmmo = 100;
+    TEST("100% ammo", ApproxEq(pool.GetAmmoPercentage(), 100.0f));
+
+    pool.maxAmmo = 0;
+    TEST("0 max ammo returns 0%", ApproxEq(pool.GetAmmoPercentage(), 0.0f));
+}
+
+static void TestDefaultAmmoPools() {
+    std::cout << "[DefaultAmmoPools]\n";
+    auto broadside = WeaponSystem::GetDefaultAmmoPool(WeaponType::BroadsideCannon);
+    TEST("Broadside ammo type Standard", broadside.type == AmmoType::Standard);
+    TEST("Broadside max ammo 30", broadside.maxAmmo == 30);
+    TEST("Broadside current == max", broadside.currentAmmo == broadside.maxAmmo);
+
+    auto railgun = WeaponSystem::GetDefaultAmmoPool(WeaponType::SpinalRailgun);
+    TEST("Railgun ammo type ArmorPiercing", railgun.type == AmmoType::ArmorPiercing);
+    TEST("Railgun max ammo 5", railgun.maxAmmo == 5);
+
+    auto flak = WeaponSystem::GetDefaultAmmoPool(WeaponType::InwardFlak);
+    TEST("Flak ammo type Explosive", flak.type == AmmoType::Explosive);
+    TEST("Flak max ammo 60", flak.maxAmmo == 60);
+
+    auto lancer = WeaponSystem::GetDefaultAmmoPool(WeaponType::BurstLancer);
+    TEST("Lancer ammo type Incendiary", lancer.type == AmmoType::Incendiary);
+    TEST("Lancer max ammo 8", lancer.maxAmmo == 8);
+
+    auto beam = WeaponSystem::GetDefaultAmmoPool(WeaponType::BeamArray);
+    TEST("Beam ammo type EMP", beam.type == AmmoType::EMP);
+    TEST("Beam max ammo 200", beam.maxAmmo == 200);
+}
+
+static void TestAmmoDamageMultiplier() {
+    std::cout << "[AmmoDamageMultiplier]\n";
+    TEST("Standard multiplier 1.0", ApproxEq(WeaponSystem::GetAmmoDamageMultiplier(AmmoType::Standard), 1.0f));
+    TEST("ArmorPiercing multiplier 1.3", ApproxEq(WeaponSystem::GetAmmoDamageMultiplier(AmmoType::ArmorPiercing), 1.3f));
+    TEST("Explosive multiplier 1.5", ApproxEq(WeaponSystem::GetAmmoDamageMultiplier(AmmoType::Explosive), 1.5f));
+    TEST("EMP multiplier 0.5", ApproxEq(WeaponSystem::GetAmmoDamageMultiplier(AmmoType::EMP), 0.5f));
+    TEST("Incendiary multiplier 1.2", ApproxEq(WeaponSystem::GetAmmoDamageMultiplier(AmmoType::Incendiary), 1.2f));
+}
+
+static void TestAmmoReloadNotReloading() {
+    std::cout << "[AmmoPool UpdateReload not reloading]\n";
+    AmmoPool pool;
+    pool.isReloading = false;
+    bool done = pool.UpdateReload(1.0f);
+    TEST("UpdateReload returns false when not reloading", !done);
+}
+
+// ===================================================================
+// Target Lock System tests
+// ===================================================================
+static void TestTargetLockComponent() {
+    std::cout << "[TargetLockComponent]\n";
+
+    TargetLockComponent tlc;
+    TEST("Default state None", tlc.lockState == LockState::None);
+    TEST("Default target invalid", tlc.targetId == InvalidEntityId);
+    TEST("Default not locked", !tlc.IsLocked());
+    TEST("Default not acquiring", !tlc.IsAcquiring());
+    TEST("Default progress 0", ApproxEq(tlc.GetLockProgress(), 0.0f));
+
+    tlc.BeginLock(42);
+    TEST("BeginLock sets target", tlc.targetId == 42);
+    TEST("BeginLock sets Acquiring", tlc.IsAcquiring());
+    TEST("Not yet locked", !tlc.IsLocked());
+    TEST("Progress 0 after begin", ApproxEq(tlc.GetLockProgress(), 0.0f));
+
+    // Simulate partial lock progress
+    tlc.lockTimer = 1.0f; // half of 2.0s acquire time
+    TEST("Progress 50%", ApproxEq(tlc.GetLockProgress(), 50.0f));
+
+    tlc.lockTimer = 2.0f;
+    TEST("Progress 100%", ApproxEq(tlc.GetLockProgress(), 100.0f));
+
+    tlc.ClearLock();
+    TEST("ClearLock resets target", tlc.targetId == InvalidEntityId);
+    TEST("ClearLock sets None", tlc.lockState == LockState::None);
+    TEST("ClearLock resets timer", ApproxEq(tlc.lockTimer, 0.0f));
+}
+
+static void TestTargetLockComponentZeroAcquireTime() {
+    std::cout << "[TargetLockComponent zero acquire time]\n";
+
+    TargetLockComponent tlc;
+    tlc.lockAcquireTime = 0.0f;
+    TEST("Zero acquire time returns 100% progress", ApproxEq(tlc.GetLockProgress(), 100.0f));
+}
+
+static void TestTargetLockSystem() {
+    std::cout << "[TargetLockSystem]\n";
+
+    TargetLockSystem tls;
+    TEST("TargetLockSystem name", tls.GetName() == "TargetLockSystem");
+
+    // No EntityManager - should not crash
+    tls.Update(1.0f);
+    TEST("Update without EM does not crash", true);
+}
+
+static void TestTargetLockSystemAcquire() {
+    std::cout << "[TargetLockSystem Acquire]\n";
+
+    EntityManager em;
+    auto& ship = em.CreateEntity("Ship");
+    auto* phys = em.AddComponent<PhysicsComponent>(ship.id, std::make_unique<PhysicsComponent>());
+    phys->position = Vector3(0, 0, 0);
+    auto* lock = em.AddComponent<TargetLockComponent>(ship.id, std::make_unique<TargetLockComponent>());
+    lock->lockRange = 500.0f;
+    lock->lockAcquireTime = 2.0f;
+    lock->lockBreakRange = 600.0f;
+
+    auto& target = em.CreateEntity("Target");
+    auto* tPhys = em.AddComponent<PhysicsComponent>(target.id, std::make_unique<PhysicsComponent>());
+    tPhys->position = Vector3(100, 0, 0); // 100 units away (within range)
+
+    lock->BeginLock(target.id);
+    TEST("Acquiring after BeginLock", lock->IsAcquiring());
+
+    TargetLockSystem tls(em);
+
+    // Update for 1 second: should still be acquiring
+    tls.Update(1.0f);
+    TEST("Still acquiring after 1s", lock->IsAcquiring());
+    TEST("Timer advanced", ApproxEq(lock->lockTimer, 1.0f));
+
+    // Update for another 1 second: should be locked
+    tls.Update(1.0f);
+    TEST("Locked after 2s", lock->IsLocked());
+}
+
+static void TestTargetLockSystemBreak() {
+    std::cout << "[TargetLockSystem Break]\n";
+
+    EntityManager em;
+    auto& ship = em.CreateEntity("Ship");
+    auto* phys = em.AddComponent<PhysicsComponent>(ship.id, std::make_unique<PhysicsComponent>());
+    phys->position = Vector3(0, 0, 0);
+    auto* lock = em.AddComponent<TargetLockComponent>(ship.id, std::make_unique<TargetLockComponent>());
+    lock->lockRange = 500.0f;
+    lock->lockAcquireTime = 1.0f;
+    lock->lockBreakRange = 600.0f;
+
+    auto& target = em.CreateEntity("Target");
+    auto* tPhys = em.AddComponent<PhysicsComponent>(target.id, std::make_unique<PhysicsComponent>());
+    tPhys->position = Vector3(100, 0, 0);
+
+    lock->BeginLock(target.id);
+
+    TargetLockSystem tls(em);
+    tls.Update(1.0f); // Lock acquired
+    TEST("Lock acquired", lock->IsLocked());
+
+    // Move target beyond break range
+    tPhys->position = Vector3(700, 0, 0);
+    tls.Update(0.1f);
+    TEST("Lock broken beyond break range", lock->lockState == LockState::None);
+    TEST("Target cleared", lock->targetId == InvalidEntityId);
+}
+
+static void TestTargetLockSystemOutOfRange() {
+    std::cout << "[TargetLockSystem OutOfRange]\n";
+
+    EntityManager em;
+    auto& ship = em.CreateEntity("Ship");
+    auto* phys = em.AddComponent<PhysicsComponent>(ship.id, std::make_unique<PhysicsComponent>());
+    phys->position = Vector3(0, 0, 0);
+    auto* lock = em.AddComponent<TargetLockComponent>(ship.id, std::make_unique<TargetLockComponent>());
+    lock->lockRange = 200.0f;
+
+    auto& target = em.CreateEntity("Target");
+    auto* tPhys = em.AddComponent<PhysicsComponent>(target.id, std::make_unique<PhysicsComponent>());
+    tPhys->position = Vector3(300, 0, 0); // out of range
+
+    lock->BeginLock(target.id);
+
+    TargetLockSystem tls(em);
+    tls.Update(0.5f);
+    TEST("Lock cancelled when target out of range", lock->lockState == LockState::None);
+}
+
+static void TestTargetLockSystemDistance() {
+    std::cout << "[TargetLockSystem Distance]\n";
+
+    EntityManager em;
+    auto& e1 = em.CreateEntity("E1");
+    auto* p1 = em.AddComponent<PhysicsComponent>(e1.id, std::make_unique<PhysicsComponent>());
+    p1->position = Vector3(0, 0, 0);
+
+    auto& e2 = em.CreateEntity("E2");
+    auto* p2 = em.AddComponent<PhysicsComponent>(e2.id, std::make_unique<PhysicsComponent>());
+    p2->position = Vector3(3, 4, 0);
+
+    TargetLockSystem tls(em);
+    float dist = tls.GetDistanceBetween(e1.id, e2.id);
+    TEST("Distance 3-4-5 triangle", ApproxEq(dist, 5.0f));
+
+    // Entity without physics
+    auto& e3 = em.CreateEntity("E3");
+    float dist2 = tls.GetDistanceBetween(e1.id, e3.id);
+    TEST("Distance -1 when no physics", ApproxEq(dist2, -1.0f));
+}
+
+static void TestTargetLockSystemNoPhysics() {
+    std::cout << "[TargetLockSystem NoPhysics]\n";
+
+    EntityManager em;
+    TargetLockSystem tls(em);
+    float dist = tls.GetDistanceBetween(999, 998);
+    TEST("Distance -1 for nonexistent entities", ApproxEq(dist, -1.0f));
+}
+
+// ===================================================================
+// Anomaly System tests
+// ===================================================================
+static void TestAnomalyGeneration() {
+    std::cout << "[AnomalyGeneration]\n";
+
+    GalaxyGenerator gen(42);
+    gen.anomalyProbability = 1.0f; // force anomalies in every sector
+
+    GalaxySector sector = gen.GenerateSector(5, 5, 0);
+    TEST("Anomalies generated", !sector.anomalies.empty());
+
+    for (const auto& a : sector.anomalies) {
+        TEST("Anomaly has name", !a.name.empty());
+        TEST("Anomaly has positive radius", a.radius > 0.0f);
+        TEST("Anomaly has positive intensity", a.intensity > 0.0f);
+        int typeVal = static_cast<int>(a.type);
+        TEST("Anomaly type in valid range", typeVal >= 0 && typeVal <= 4);
+    }
+}
+
+static void TestAnomalyDeterminism() {
+    std::cout << "[AnomalyDeterminism]\n";
+
+    GalaxyGenerator gen1(123);
+    gen1.anomalyProbability = 1.0f;
+    GalaxySector s1 = gen1.GenerateSector(10, 20, 0);
+
+    GalaxyGenerator gen2(123);
+    gen2.anomalyProbability = 1.0f;
+    GalaxySector s2 = gen2.GenerateSector(10, 20, 0);
+
+    TEST("Same number of anomalies", s1.anomalies.size() == s2.anomalies.size());
+
+    for (size_t i = 0; i < s1.anomalies.size() && i < s2.anomalies.size(); ++i) {
+        TEST("Same anomaly type", s1.anomalies[i].type == s2.anomalies[i].type);
+        TEST("Same anomaly name", s1.anomalies[i].name == s2.anomalies[i].name);
+        TEST("Same anomaly radius", ApproxEq(s1.anomalies[i].radius, s2.anomalies[i].radius));
+        TEST("Same anomaly intensity", ApproxEq(s1.anomalies[i].intensity, s2.anomalies[i].intensity));
+    }
+}
+
+static void TestAnomalyProbabilityZero() {
+    std::cout << "[AnomalyProbabilityZero]\n";
+
+    GalaxyGenerator gen(99);
+    gen.anomalyProbability = 0.0f; // never generate anomalies
+
+    // Check many sectors
+    bool anyAnomalies = false;
+    for (int i = 0; i < 50; ++i) {
+        GalaxySector s = gen.GenerateSector(i, i, 0);
+        if (!s.anomalies.empty()) anyAnomalies = true;
+    }
+    TEST("No anomalies with probability 0", !anyAnomalies);
+}
+
+static void TestAnomalyTypes() {
+    std::cout << "[AnomalyTypes]\n";
+    // Verify all anomaly types are valid enum values
+    AnomalyData a;
+    a.type = AnomalyType::Nebula;
+    TEST("Nebula type", static_cast<int>(a.type) == 0);
+    a.type = AnomalyType::BlackHole;
+    TEST("BlackHole type", static_cast<int>(a.type) == 1);
+    a.type = AnomalyType::RadiationZone;
+    TEST("RadiationZone type", static_cast<int>(a.type) == 2);
+    a.type = AnomalyType::IonStorm;
+    TEST("IonStorm type", static_cast<int>(a.type) == 3);
+    a.type = AnomalyType::GravityWell;
+    TEST("GravityWell type", static_cast<int>(a.type) == 4);
+}
+
+// ===================================================================
+// New Game Event Constants tests
+// ===================================================================
+static void TestAdvancedCombatGameEvents() {
+    std::cout << "[AdvancedCombatGameEvents]\n";
+    // Ammunition events
+    TEST("AmmoDepleted event", std::string(GameEvents::AmmoDepleted) == "combat.ammo.depleted");
+    TEST("AmmoReloaded event", std::string(GameEvents::AmmoReloaded) == "combat.ammo.reloaded");
+    // Target lock events
+    TEST("TargetLocked event", std::string(GameEvents::TargetLocked) == "combat.target.locked");
+    TEST("TargetLost event", std::string(GameEvents::TargetLost) == "combat.target.lost");
+    // Anomaly events
+    TEST("AnomalyDiscovered event", std::string(GameEvents::AnomalyDiscovered) == "sector.anomaly.discovered");
+    TEST("AnomalyEffect event", std::string(GameEvents::AnomalyEffect) == "sector.anomaly.effect");
+}
+
+// ===================================================================
 // Main
 // ===================================================================
 int main() {
@@ -8044,6 +8426,27 @@ int main() {
     TestPathfinderInvalidNodes();
     TestNavGraphEdgeWeight();
     TestEngine();
+    TestAmmoPoolCanFire();
+    TestAmmoPoolConsumeAmmo();
+    TestAmmoPoolReload();
+    TestAmmoPoolRefill();
+    TestAmmoPoolPercentage();
+    TestDefaultAmmoPools();
+    TestAmmoDamageMultiplier();
+    TestAmmoReloadNotReloading();
+    TestTargetLockComponent();
+    TestTargetLockComponentZeroAcquireTime();
+    TestTargetLockSystem();
+    TestTargetLockSystemAcquire();
+    TestTargetLockSystemBreak();
+    TestTargetLockSystemOutOfRange();
+    TestTargetLockSystemDistance();
+    TestTargetLockSystemNoPhysics();
+    TestAnomalyGeneration();
+    TestAnomalyDeterminism();
+    TestAnomalyProbabilityZero();
+    TestAnomalyTypes();
+    TestAdvancedCombatGameEvents();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
               << testsFailed << " failed ===\n";

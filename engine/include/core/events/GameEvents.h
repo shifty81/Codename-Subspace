@@ -148,6 +148,18 @@ namespace GameEvents {
     constexpr const char* WaypointReached  = "navigation.waypoint.reached";
     constexpr const char* PathCompleted    = "navigation.path.completed";
     constexpr const char* NavGridBuilt     = "navigation.grid.built";
+
+    // Ammunition events
+    constexpr const char* AmmoDepleted   = "combat.ammo.depleted";
+    constexpr const char* AmmoReloaded   = "combat.ammo.reloaded";
+
+    // Target lock events
+    constexpr const char* TargetLocked   = "combat.target.locked";
+    constexpr const char* TargetLost     = "combat.target.lost";
+
+    // Anomaly events
+    constexpr const char* AnomalyDiscovered = "sector.anomaly.discovered";
+    constexpr const char* AnomalyEffect     = "sector.anomaly.effect";
 } // namespace GameEvents
 
 } // namespace subspace
