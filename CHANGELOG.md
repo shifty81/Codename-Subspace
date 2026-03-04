@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **C++ Engine: Ammunition System** — New `AmmoType` enum (Standard, ArmorPiercing, Explosive, EMP, Incendiary), `AmmoPool` struct with current/max ammo tracking, reload mechanics (`StartReload`, `UpdateReload`), `CanFire`/`ConsumeAmmo` per-shot consumption, `Refill`, and `GetAmmoPercentage`. `WeaponSystem` provides `GetDefaultAmmoPool()` per weapon archetype and `GetAmmoDamageMultiplier()` per ammo type (2026-03-04)
+- **C++ Engine: Target Lock System** — New `TargetLockComponent` ECS component with lock-on acquisition, `LockState` (None/Acquiring/Locked), configurable lock range, acquire time, break range, lock progress percentage, and tracked-target list. New `TargetLockSystem` updates lock state each frame with distance-based acquisition and break logic (2026-03-04)
+- **C++ Engine: Sector Anomalies** — New `AnomalyType` enum (Nebula, BlackHole, RadiationZone, IonStorm, GravityWell), `AnomalyData` struct with position, radius, intensity, and generated names. `GalaxyGenerator` now spawns anomalies per sector with configurable `anomalyProbability`, deterministic seeding, and type-specific name generation (2026-03-04)
+- **C++ Engine: Advanced Combat & Anomaly events** — `GameEvents` namespace now includes `AmmoDepleted`, `AmmoReloaded`, `TargetLocked`, `TargetLost`, `AnomalyDiscovered`, and `AnomalyEffect` event constants (2026-03-04)
+- **C++ Engine: 95 new unit tests** for AmmoPool (CanFire, ConsumeAmmo, Reload, Refill, Percentage), DefaultAmmoPools, AmmoDamageMultiplier, TargetLockComponent (states, progress, zero acquire time), TargetLockSystem (acquire, break, out-of-range, distance, no-physics), AnomalyGeneration (spawn, determinism, probability, types), and event constants (1912 → 2007 total tests)
 - **C++ Engine: Collision Layer System** — New `CollisionCategory` bitmask enum with 10 categories (Player, Enemy, Projectile, Asteroid, Station, Debris, Shield, Sensor, Pickup, Missile), bitwise operators, `CollisionPresets` with 10 ready-made presets, `ShouldCollide()` bidirectional filtering, `isTrigger` support for non-physics volumes, and `GetCategoryName()` debug helper. PhysicsSystem now checks collision layers before resolving collisions, and trigger volumes skip physics response (2026-03-02)
 - **C++ Engine: 3D A* Pathfinding System** — New `NavGraph` class with add/remove nodes and edges, blocked-node support, cost-weighted edges, `FindNearest()`, and `BuildGrid()` for automatic 3D grid generation with 6-connected neighbors. New `Pathfinder` class with A* search, Euclidean/Manhattan/custom heuristics, and `FindPathByPosition()`. New `PathfindingComponent` ECS component with waypoint tracking, arrival threshold, repath timer, and target management. New `PathfindingSystem` that owns a shared NavGraph/Pathfinder and auto-repaths entities on timer. `SmoothPath()` utility removes collinear waypoints (2026-03-02)
 - **C++ Engine: Collision & Pathfinding events** — `GameEvents` namespace now includes `CollisionLayerChanged`, `TriggerEntered`, `TriggerExited`, `PathFound`, `PathNotFound`, `WaypointReached`, `PathCompleted`, and `NavGridBuilt` event constants (2026-03-02)
@@ -366,8 +371,8 @@ See [NEXT_STEPS.md](NEXT_STEPS.md) for detailed development roadmap and prioriti
 ### Planned Features
 - ~~**AI System**~~ ✅ NPC behaviors, pathfinding, decision making (implemented — A* pathfinding, collision layers, AI steering)
 - ~~**Voxel Damage**~~ ✅ Destructible blocks, structural integrity, splash/penetrating damage, repair (implemented)
-- **Advanced Combat** - Weapon variety, ammunition, targeting systems
-- **Enhanced Procedural Generation** - Unique sectors, special events, anomalies
+- ~~**Advanced Combat**~~ ✅ Ammunition system, target locking, ammo types and damage multipliers (implemented)
+- ~~**Enhanced Procedural Generation**~~ ✅ Sector anomalies (nebulas, black holes, radiation zones, ion storms, gravity wells) (implemented)
 - ~~**Performance Optimizations**~~ ✅ Spatial partitioning (SpatialHash + Octree), collision layers, collision queries (implemented)
 - **Network Enhancements** - Client prediction, lag compensation, better synchronization
 - ~~**Tutorial System**~~ ✅ Interactive tutorials, tooltips, help system (implemented)
