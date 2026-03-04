@@ -77,6 +77,7 @@
 #include "combat/ShieldSystem.h"
 #include "combat/StatusEffectSystem.h"
 #include "combat/LootSystem.h"
+#include "crafting/CraftingSystem.h"
 
 using namespace subspace;
 
@@ -9436,6 +9437,315 @@ static void TestShieldStatusLootGameEvents() {
 }
 
 // ===================================================================
+// Crafting System tests
+// ===================================================================
+static void TestCraftingRecipeStationName() {
+    std::cout << "[CraftingRecipe::GetStationName]\n";
+    TEST("Basic name", CraftingRecipe::GetStationName(CraftingStationType::Basic) == "Basic Workshop");
+    TEST("Forge name", CraftingRecipe::GetStationName(CraftingStationType::Forge) == "Forge");
+    TEST("Laboratory name", CraftingRecipe::GetStationName(CraftingStationType::Laboratory) == "Laboratory");
+    TEST("Shipyard name", CraftingRecipe::GetStationName(CraftingStationType::Shipyard) == "Shipyard");
+    TEST("Refinery name", CraftingRecipe::GetStationName(CraftingStationType::Refinery) == "Refinery");
+}
+
+static void TestCraftingJobProgress() {
+    std::cout << "[CraftingJob::GetProgress]\n";
+    CraftingJob job;
+    job.totalTime = 10.0f;
+    job.timeRemaining = 10.0f;
+    TEST("Progress at start", ApproxEq(job.GetProgress(), 0.0f));
+
+    job.timeRemaining = 5.0f;
+    TEST("Progress at half", ApproxEq(job.GetProgress(), 50.0f));
+
+    job.timeRemaining = 0.0f;
+    TEST("Progress at end", ApproxEq(job.GetProgress(), 100.0f));
+
+    CraftingJob zeroJob;
+    zeroJob.totalTime = 0.0f;
+    zeroJob.timeRemaining = 0.0f;
+    TEST("Progress zero totalTime", ApproxEq(zeroJob.GetProgress(), 100.0f));
+}
+
+static void TestRecipeDatabase() {
+    std::cout << "[RecipeDatabase]\n";
+    RecipeDatabase db;
+    TEST("Empty db count", db.GetRecipeCount() == 0);
+
+    CraftingRecipe r;
+    r.recipeId = "test_recipe";
+    r.resultItem = "Test Item";
+    r.resultQuantity = 1;
+    r.ingredients = {{"Ore", 2}};
+    r.requiredStation = CraftingStationType::Basic;
+    r.craftTime = 3.0f;
+    db.AddRecipe(r);
+
+    TEST("Count after add", db.GetRecipeCount() == 1);
+    TEST("FindRecipe exists", db.FindRecipe("test_recipe") != nullptr);
+    TEST("FindRecipe id", db.FindRecipe("test_recipe")->recipeId == "test_recipe");
+    TEST("FindRecipe missing", db.FindRecipe("nonexistent") == nullptr);
+
+    auto basicRecipes = db.GetRecipesForStation(CraftingStationType::Basic);
+    TEST("Station filter count", basicRecipes.size() == 1);
+    auto forgeRecipes = db.GetRecipesForStation(CraftingStationType::Forge);
+    TEST("Station filter empty", forgeRecipes.empty());
+
+    TEST("GetAllRecipes size", db.GetAllRecipes().size() == 1);
+}
+
+static void TestRecipeDatabaseDefaults() {
+    std::cout << "[RecipeDatabase::CreateDefaultDatabase]\n";
+    RecipeDatabase db = RecipeDatabase::CreateDefaultDatabase();
+    TEST("Default recipe count", db.GetRecipeCount() == 8);
+    TEST("iron_plate exists", db.FindRecipe("iron_plate") != nullptr);
+    TEST("steel_beam exists", db.FindRecipe("steel_beam") != nullptr);
+    TEST("circuit_board exists", db.FindRecipe("circuit_board") != nullptr);
+    TEST("hull_panel exists", db.FindRecipe("hull_panel") != nullptr);
+    TEST("energy_cell exists", db.FindRecipe("energy_cell") != nullptr);
+    TEST("engine_component exists", db.FindRecipe("engine_component") != nullptr);
+    TEST("shield_capacitor exists", db.FindRecipe("shield_capacitor") != nullptr);
+    TEST("refined_fuel exists", db.FindRecipe("refined_fuel") != nullptr);
+
+    const auto* fuel = db.FindRecipe("refined_fuel");
+    TEST("refined_fuel quantity", fuel->resultQuantity == 2);
+    TEST("refined_fuel station", fuel->requiredStation == CraftingStationType::Refinery);
+
+    const auto* engine = db.FindRecipe("engine_component");
+    TEST("engine_component level", engine->requiredLevel == 3);
+    TEST("engine_component station", engine->requiredStation == CraftingStationType::Shipyard);
+}
+
+static void TestCraftingComponentDefaults() {
+    std::cout << "[CraftingComponent defaults]\n";
+    CraftingComponent cc;
+    TEST("Default stationType", cc.stationType == CraftingStationType::Basic);
+    TEST("Default crafterLevel", cc.crafterLevel == 1);
+    TEST("Default maxConcurrentJobs", cc.maxConcurrentJobs == 1);
+    TEST("Default speedMultiplier", ApproxEq(cc.speedMultiplier, 1.0f));
+    TEST("Default activeJobs empty", cc.activeJobs.empty());
+    TEST("Default CanStartJob", cc.CanStartJob());
+    TEST("Default GetActiveJobCount", cc.GetActiveJobCount() == 0);
+}
+
+static void TestCraftingComponentStartCrafting() {
+    std::cout << "[CraftingComponent::StartCrafting]\n";
+    CraftingComponent cc;
+    cc.stationType = CraftingStationType::Basic;
+    cc.crafterLevel = 1;
+    cc.maxConcurrentJobs = 2;
+
+    CraftingRecipe recipe;
+    recipe.recipeId = "iron_plate";
+    recipe.resultItem = "Iron Plate";
+    recipe.craftTime = 2.0f;
+    recipe.requiredStation = CraftingStationType::Basic;
+    recipe.requiredLevel = 1;
+
+    TEST("Start first job", cc.StartCrafting(recipe));
+    TEST("Active count after 1", cc.GetActiveJobCount() == 1);
+    TEST("Can start second", cc.CanStartJob());
+
+    TEST("Start second job", cc.StartCrafting(recipe));
+    TEST("Active count after 2", cc.GetActiveJobCount() == 2);
+    TEST("Cannot start third", !cc.CanStartJob());
+    TEST("Third job rejected", !cc.StartCrafting(recipe));
+}
+
+static void TestCraftingComponentLevelRequirement() {
+    std::cout << "[CraftingComponent level requirement]\n";
+    CraftingComponent cc;
+    cc.stationType = CraftingStationType::Shipyard;
+    cc.crafterLevel = 1;
+
+    CraftingRecipe recipe;
+    recipe.recipeId = "engine_component";
+    recipe.requiredStation = CraftingStationType::Shipyard;
+    recipe.requiredLevel = 3;
+    recipe.craftTime = 10.0f;
+
+    TEST("Level too low", !cc.MeetsLevelRequirement(recipe));
+    TEST("Start rejected by level", !cc.StartCrafting(recipe));
+
+    cc.crafterLevel = 3;
+    TEST("Level met", cc.MeetsLevelRequirement(recipe));
+    TEST("Start accepted", cc.StartCrafting(recipe));
+}
+
+static void TestCraftingComponentStationRequirement() {
+    std::cout << "[CraftingComponent station requirement]\n";
+    CraftingComponent cc;
+    cc.stationType = CraftingStationType::Basic;
+
+    CraftingRecipe recipe;
+    recipe.recipeId = "steel_beam";
+    recipe.requiredStation = CraftingStationType::Forge;
+    recipe.requiredLevel = 1;
+    recipe.craftTime = 5.0f;
+
+    TEST("Wrong station", !cc.HasRequiredStation(recipe));
+    TEST("Start rejected by station", !cc.StartCrafting(recipe));
+
+    cc.stationType = CraftingStationType::Forge;
+    TEST("Correct station", cc.HasRequiredStation(recipe));
+    TEST("Start accepted", cc.StartCrafting(recipe));
+}
+
+static void TestCraftingComponentCollectCompleted() {
+    std::cout << "[CraftingComponent::CollectCompletedJobs]\n";
+    CraftingComponent cc;
+    cc.maxConcurrentJobs = 3;
+
+    CraftingJob j1; j1.recipeId = "a"; j1.isComplete = true;
+    CraftingJob j2; j2.recipeId = "b"; j2.isComplete = false;
+    CraftingJob j3; j3.recipeId = "c"; j3.isComplete = true;
+    cc.activeJobs = {j1, j2, j3};
+
+    auto completed = cc.CollectCompletedJobs();
+    TEST("Collected 2 completed", completed.size() == 2);
+    TEST("1 remaining", cc.activeJobs.size() == 1);
+    TEST("Remaining is incomplete", cc.activeJobs[0].recipeId == "b");
+}
+
+static void TestCraftingComponentSerialization() {
+    std::cout << "[CraftingComponent Serialization]\n";
+    CraftingComponent original;
+    original.stationType = CraftingStationType::Laboratory;
+    original.crafterLevel = 5;
+    original.maxConcurrentJobs = 3;
+    original.speedMultiplier = 1.5f;
+
+    CraftingJob job;
+    job.recipeId = "circuit_board";
+    job.timeRemaining = 1.5f;
+    job.totalTime = 3.0f;
+    job.isComplete = false;
+    original.activeJobs.push_back(job);
+
+    CraftingJob completedJob;
+    completedJob.recipeId = "energy_cell";
+    completedJob.timeRemaining = 0.0f;
+    completedJob.totalTime = 6.0f;
+    completedJob.isComplete = true;
+    original.activeJobs.push_back(completedJob);
+
+    ComponentData cd = original.Serialize();
+    TEST("Serialized type", cd.componentType == "CraftingComponent");
+
+    CraftingComponent restored;
+    restored.Deserialize(cd);
+    TEST("Restored stationType", restored.stationType == CraftingStationType::Laboratory);
+    TEST("Restored crafterLevel", restored.crafterLevel == 5);
+    TEST("Restored maxConcurrentJobs", restored.maxConcurrentJobs == 3);
+    TEST("Restored speedMultiplier", ApproxEq(restored.speedMultiplier, 1.5f));
+    TEST("Restored job count", restored.activeJobs.size() == 2);
+    TEST("Restored job0 recipeId", restored.activeJobs[0].recipeId == "circuit_board");
+    TEST("Restored job0 timeRemaining", ApproxEq(restored.activeJobs[0].timeRemaining, 1.5f));
+    TEST("Restored job0 totalTime", ApproxEq(restored.activeJobs[0].totalTime, 3.0f));
+    TEST("Restored job0 not complete", !restored.activeJobs[0].isComplete);
+    TEST("Restored job1 recipeId", restored.activeJobs[1].recipeId == "energy_cell");
+    TEST("Restored job1 complete", restored.activeJobs[1].isComplete);
+}
+
+static void TestCraftingComponentDeserializeInvalidEnum() {
+    std::cout << "[CraftingComponent Deserialize invalid enum]\n";
+    ComponentData cd;
+    cd.componentType = "CraftingComponent";
+    cd.data["stationType"] = "999";
+    cd.data["crafterLevel"] = "1";
+    cd.data["maxConcurrentJobs"] = "1";
+    cd.data["speedMultiplier"] = "1.0";
+    cd.data["jobCount"] = "0";
+
+    CraftingComponent cc;
+    cc.Deserialize(cd);
+    TEST("Invalid enum defaults to Basic", cc.stationType == CraftingStationType::Basic);
+}
+
+static void TestCraftingSystem() {
+    std::cout << "[CraftingSystem]\n";
+    EntityManager em;
+    CraftingSystem sys(em);
+
+    auto& ent = em.CreateEntity("crafter");
+    auto* cc = em.AddComponent<CraftingComponent>(ent.id, std::make_unique<CraftingComponent>());
+    cc->stationType = CraftingStationType::Basic;
+    cc->maxConcurrentJobs = 2;
+    cc->speedMultiplier = 1.0f;
+
+    CraftingRecipe recipe;
+    recipe.recipeId = "iron_plate";
+    recipe.requiredStation = CraftingStationType::Basic;
+    recipe.requiredLevel = 1;
+    recipe.craftTime = 2.0f;
+    cc->StartCrafting(recipe);
+
+    TEST("Job not complete before update", !cc->activeJobs[0].isComplete);
+
+    sys.Update(1.0f);
+    TEST("Job not complete after 1s", !cc->activeJobs[0].isComplete);
+    TEST("Time remaining ~1s", ApproxEq(cc->activeJobs[0].timeRemaining, 1.0f));
+
+    sys.Update(1.0f);
+    TEST("Job complete after 2s", cc->activeJobs[0].isComplete);
+    TEST("Time remaining 0", ApproxEq(cc->activeJobs[0].timeRemaining, 0.0f));
+}
+
+static void TestCraftingSystemSpeedMultiplier() {
+    std::cout << "[CraftingSystem speed multiplier]\n";
+    EntityManager em;
+    CraftingSystem sys(em);
+
+    auto& ent = em.CreateEntity("fast_crafter");
+    auto* cc = em.AddComponent<CraftingComponent>(ent.id, std::make_unique<CraftingComponent>());
+    cc->stationType = CraftingStationType::Basic;
+    cc->speedMultiplier = 2.0f;
+
+    CraftingRecipe recipe;
+    recipe.recipeId = "iron_plate";
+    recipe.requiredStation = CraftingStationType::Basic;
+    recipe.requiredLevel = 1;
+    recipe.craftTime = 4.0f;
+    cc->StartCrafting(recipe);
+
+    sys.Update(1.0f);
+    TEST("2x speed: 2s elapsed after 1s dt", ApproxEq(cc->activeJobs[0].timeRemaining, 2.0f));
+
+    sys.Update(1.0f);
+    TEST("2x speed: complete after 2s dt", cc->activeJobs[0].isComplete);
+}
+
+static void TestCraftingSystemMultipleJobs() {
+    std::cout << "[CraftingSystem multiple jobs]\n";
+    EntityManager em;
+    CraftingSystem sys(em);
+
+    auto& ent = em.CreateEntity("multi_crafter");
+    auto* cc = em.AddComponent<CraftingComponent>(ent.id, std::make_unique<CraftingComponent>());
+    cc->stationType = CraftingStationType::Basic;
+    cc->maxConcurrentJobs = 3;
+
+    CraftingRecipe r1;
+    r1.recipeId = "fast"; r1.requiredStation = CraftingStationType::Basic;
+    r1.requiredLevel = 1; r1.craftTime = 1.0f;
+    CraftingRecipe r2;
+    r2.recipeId = "slow"; r2.requiredStation = CraftingStationType::Basic;
+    r2.requiredLevel = 1; r2.craftTime = 3.0f;
+
+    cc->StartCrafting(r1);
+    cc->StartCrafting(r2);
+    TEST("Two active jobs", cc->GetActiveJobCount() == 2);
+
+    sys.Update(1.0f);
+    TEST("Fast job complete", cc->activeJobs[0].isComplete);
+    TEST("Slow job still active", !cc->activeJobs[1].isComplete);
+
+    auto completed = cc->CollectCompletedJobs();
+    TEST("Collected 1 completed", completed.size() == 1);
+    TEST("1 job remaining", cc->activeJobs.size() == 1);
+}
+
+// ===================================================================
 // Main
 // ===================================================================
 int main() {
@@ -9673,6 +9983,20 @@ int main() {
     TestLootSystem();
     TestLootSystemWithEM();
     TestShieldStatusLootGameEvents();
+    TestCraftingRecipeStationName();
+    TestCraftingJobProgress();
+    TestRecipeDatabase();
+    TestRecipeDatabaseDefaults();
+    TestCraftingComponentDefaults();
+    TestCraftingComponentStartCrafting();
+    TestCraftingComponentLevelRequirement();
+    TestCraftingComponentStationRequirement();
+    TestCraftingComponentCollectCompleted();
+    TestCraftingComponentSerialization();
+    TestCraftingComponentDeserializeInvalidEnum();
+    TestCraftingSystem();
+    TestCraftingSystemSpeedMultiplier();
+    TestCraftingSystemMultipleJobs();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
               << testsFailed << " failed ===\n";
