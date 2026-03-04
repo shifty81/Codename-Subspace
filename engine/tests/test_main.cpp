@@ -78,6 +78,7 @@
 #include "combat/StatusEffectSystem.h"
 #include "combat/LootSystem.h"
 #include "crafting/CraftingSystem.h"
+#include "reputation/ReputationSystem.h"
 
 using namespace subspace;
 
@@ -9745,6 +9746,254 @@ static void TestCraftingSystemMultipleJobs() {
     TEST("1 job remaining", cc->activeJobs.size() == 1);
 }
 
+// ---------------------------------------------------------------------------
+// Reputation system tests
+// ---------------------------------------------------------------------------
+
+static void TestFactionReputationDefaults() {
+    std::cout << "[FactionReputation Defaults]\n";
+    FactionReputation fr;
+    TEST("Default reputation is 0", fr.reputation == 0);
+    TEST("Default standing is Neutral", fr.GetStanding() == Standing::Neutral);
+    TEST("Default minReputation is -1000", fr.minReputation == -1000);
+    TEST("Default maxReputation is 1000", fr.maxReputation == 1000);
+    TEST("Default factionId is empty", fr.factionId.empty());
+    TEST("Default normalized rep is 0", ApproxEq(fr.GetNormalizedReputation(), 0.0f));
+}
+
+static void TestFactionReputationModify() {
+    std::cout << "[FactionReputation Modify]\n";
+    FactionReputation fr;
+    fr.ModifyReputation(200);
+    TEST("Add 200 rep", fr.reputation == 200);
+    fr.ModifyReputation(-300);
+    TEST("Subtract 300 rep", fr.reputation == -100);
+    fr.ModifyReputation(-2000);
+    TEST("Clamped to min", fr.reputation == -1000);
+    fr.ModifyReputation(5000);
+    TEST("Clamped to max", fr.reputation == 1000);
+}
+
+static void TestFactionReputationStandings() {
+    std::cout << "[FactionReputation Standings]\n";
+    FactionReputation fr;
+
+    fr.reputation = -1000;
+    TEST("Hostile at -1000", fr.GetStanding() == Standing::Hostile);
+    fr.reputation = -500;
+    TEST("Hostile at -500", fr.GetStanding() == Standing::Hostile);
+    fr.reputation = -499;
+    TEST("Unfriendly at -499", fr.GetStanding() == Standing::Unfriendly);
+    fr.reputation = -100;
+    TEST("Unfriendly at -100", fr.GetStanding() == Standing::Unfriendly);
+    fr.reputation = -99;
+    TEST("Neutral at -99", fr.GetStanding() == Standing::Neutral);
+    fr.reputation = 0;
+    TEST("Neutral at 0", fr.GetStanding() == Standing::Neutral);
+    fr.reputation = 100;
+    TEST("Neutral at 100", fr.GetStanding() == Standing::Neutral);
+    fr.reputation = 101;
+    TEST("Friendly at 101", fr.GetStanding() == Standing::Friendly);
+    fr.reputation = 500;
+    TEST("Friendly at 500", fr.GetStanding() == Standing::Friendly);
+    fr.reputation = 501;
+    TEST("Allied at 501", fr.GetStanding() == Standing::Allied);
+    fr.reputation = 1000;
+    TEST("Allied at 1000", fr.GetStanding() == Standing::Allied);
+}
+
+static void TestFactionReputationNormalized() {
+    std::cout << "[FactionReputation Normalized]\n";
+    FactionReputation fr;
+    fr.maxReputation = 1000;
+
+    fr.reputation = 500;
+    TEST("Normalized 0.5", ApproxEq(fr.GetNormalizedReputation(), 0.5f));
+    fr.reputation = -1000;
+    TEST("Normalized -1.0", ApproxEq(fr.GetNormalizedReputation(), -1.0f));
+    fr.reputation = 1000;
+    TEST("Normalized 1.0", ApproxEq(fr.GetNormalizedReputation(), 1.0f));
+    fr.reputation = 0;
+    TEST("Normalized 0.0", ApproxEq(fr.GetNormalizedReputation(), 0.0f));
+
+    FactionReputation frZero;
+    frZero.maxReputation = 0;
+    TEST("Normalized with max=0 returns 0", ApproxEq(frZero.GetNormalizedReputation(), 0.0f));
+}
+
+static void TestStandingNames() {
+    std::cout << "[Standing Names]\n";
+    TEST("Hostile name", FactionReputation::GetStandingName(Standing::Hostile) == "Hostile");
+    TEST("Unfriendly name", FactionReputation::GetStandingName(Standing::Unfriendly) == "Unfriendly");
+    TEST("Neutral name", FactionReputation::GetStandingName(Standing::Neutral) == "Neutral");
+    TEST("Friendly name", FactionReputation::GetStandingName(Standing::Friendly) == "Friendly");
+    TEST("Allied name", FactionReputation::GetStandingName(Standing::Allied) == "Allied");
+}
+
+static void TestStandingThresholds() {
+    std::cout << "[Standing Thresholds]\n";
+    TEST("Hostile threshold", FactionReputation::GetStandingThreshold(Standing::Hostile) == -500);
+    TEST("Unfriendly threshold", FactionReputation::GetStandingThreshold(Standing::Unfriendly) == -100);
+    TEST("Neutral threshold", FactionReputation::GetStandingThreshold(Standing::Neutral) == 100);
+    TEST("Friendly threshold", FactionReputation::GetStandingThreshold(Standing::Friendly) == 500);
+    TEST("Allied threshold", FactionReputation::GetStandingThreshold(Standing::Allied) == 500);
+}
+
+static void TestReputationComponentAddFaction() {
+    std::cout << "[ReputationComponent AddFaction]\n";
+    ReputationComponent rc;
+    TEST("Initial faction count is 0", rc.GetFactionCount() == 0);
+
+    rc.AddFaction("pirates", 0);
+    TEST("Count after 1 add", rc.GetFactionCount() == 1);
+
+    rc.AddFaction("traders", 200);
+    TEST("Count after 2 adds", rc.GetFactionCount() == 2);
+
+    // Adding same faction again should not duplicate
+    rc.AddFaction("pirates", 500);
+    TEST("No duplicate on re-add", rc.GetFactionCount() == 2);
+
+    auto* pirates = rc.GetFaction("pirates");
+    TEST("Pirates found", pirates != nullptr);
+    TEST("Pirates rep unchanged on re-add", pirates->reputation == 0);
+
+    auto* traders = rc.GetFaction("traders");
+    TEST("Traders found", traders != nullptr);
+    TEST("Traders initial rep", traders->reputation == 200);
+}
+
+static void TestReputationComponentModifyRep() {
+    std::cout << "[ReputationComponent ModifyRep]\n";
+    ReputationComponent rc;
+    rc.ModifyReputation("alliance", 300, "Quest completed");
+    TEST("Faction created on modify", rc.GetFactionCount() == 1);
+    TEST("Rep set correctly", rc.GetFaction("alliance")->reputation == 300);
+    TEST("Event recorded", rc.recentEvents.size() == 1);
+    TEST("Event factionId", rc.recentEvents[0].factionId == "alliance");
+    TEST("Event amount", rc.recentEvents[0].amount == 300);
+    TEST("Event reason", rc.recentEvents[0].reason == "Quest completed");
+
+    rc.ModifyReputation("alliance", -100, "Attacked ship");
+    TEST("Rep modified", rc.GetFaction("alliance")->reputation == 200);
+    TEST("Two events", rc.recentEvents.size() == 2);
+
+    // Test history trimming
+    rc.maxEventHistory = 3;
+    for (int i = 0; i < 5; ++i) {
+        rc.ModifyReputation("alliance", 1, "spam");
+    }
+    TEST("Event history trimmed", static_cast<int>(rc.recentEvents.size()) == 3);
+}
+
+static void TestReputationComponentGetStanding() {
+    std::cout << "[ReputationComponent GetStanding]\n";
+    ReputationComponent rc;
+    TEST("Untracked faction is Neutral", rc.GetStanding("unknown") == Standing::Neutral);
+
+    rc.AddFaction("enemies", -600);
+    TEST("Hostile faction", rc.GetStanding("enemies") == Standing::Hostile);
+
+    rc.AddFaction("friends", 300);
+    TEST("Friendly faction", rc.GetStanding("friends") == Standing::Friendly);
+}
+
+static void TestReputationComponentGetFactionsWithStanding() {
+    std::cout << "[ReputationComponent GetFactionsWithStanding]\n";
+    ReputationComponent rc;
+    rc.AddFaction("pirates", -700);
+    rc.AddFaction("rebels", -600);
+    rc.AddFaction("traders", 50);
+    rc.AddFaction("alliance", 300);
+    rc.AddFaction("empire", 800);
+
+    auto hostile = rc.GetFactionsWithStanding(Standing::Hostile);
+    TEST("2 hostile factions", hostile.size() == 2);
+
+    auto neutral = rc.GetFactionsWithStanding(Standing::Neutral);
+    TEST("1 neutral faction", neutral.size() == 1);
+    TEST("Traders are neutral", neutral[0] == "traders");
+
+    auto friendly = rc.GetFactionsWithStanding(Standing::Friendly);
+    TEST("1 friendly faction", friendly.size() == 1);
+
+    auto allied = rc.GetFactionsWithStanding(Standing::Allied);
+    TEST("1 allied faction", allied.size() == 1);
+    TEST("Empire is allied", allied[0] == "empire");
+}
+
+static void TestReputationComponentSerialization() {
+    std::cout << "[ReputationComponent Serialization]\n";
+    ReputationComponent original;
+    original.decayRate = 5.0f;
+    original.maxEventHistory = 10;
+    original.AddFaction("pirates", -700);
+    original.AddFaction("traders", 300);
+    original.ModifyReputation("pirates", 100, "Bribe");
+
+    ComponentData cd = original.Serialize();
+    TEST("Component type", cd.componentType == "ReputationComponent");
+
+    ReputationComponent restored;
+    restored.Deserialize(cd);
+    TEST("Decay rate restored", ApproxEq(restored.decayRate, 5.0f));
+    TEST("Max event history restored", restored.maxEventHistory == 10);
+    TEST("Faction count restored", restored.GetFactionCount() == 2);
+
+    auto* pirates = restored.GetFaction("pirates");
+    TEST("Pirates restored", pirates != nullptr);
+    TEST("Pirates rep restored", pirates->reputation == -600);
+
+    auto* traders = restored.GetFaction("traders");
+    TEST("Traders restored", traders != nullptr);
+    TEST("Traders rep restored", traders->reputation == 300);
+
+    TEST("Events restored", restored.recentEvents.size() == 1);
+    TEST("Event reason restored", restored.recentEvents[0].reason == "Bribe");
+}
+
+static void TestReputationSystem() {
+    std::cout << "[ReputationSystem]\n";
+    ReputationSystem sys;
+    TEST("System name", sys.GetName() == "ReputationSystem");
+    TEST("System enabled", sys.IsEnabled());
+
+    // Update without entity manager should not crash
+    sys.Update(1.0f);
+    TEST("Update without EM ok", true);
+}
+
+static void TestReputationSystemDecay() {
+    std::cout << "[ReputationSystem Decay]\n";
+    EntityManager em;
+    ReputationSystem sys(em);
+
+    auto& ent = em.CreateEntity("player");
+    auto* rc = em.AddComponent<ReputationComponent>(ent.id, std::make_unique<ReputationComponent>());
+    rc->decayRate = 10.0f;
+    rc->AddFaction("pirates", -100);
+    rc->AddFaction("traders", 200);
+    rc->AddFaction("neutral_faction", 0);
+
+    sys.Update(1.0f);
+
+    auto* pirates = rc->GetFaction("pirates");
+    TEST("Negative rep decays toward 0", pirates->reputation > -100);
+
+    auto* traders = rc->GetFaction("traders");
+    TEST("Positive rep decays toward 0", traders->reputation < 200);
+
+    auto* neutralFaction = rc->GetFaction("neutral_faction");
+    TEST("Zero rep stays at 0", neutralFaction->reputation == 0);
+
+    // Decay should not overshoot past 0
+    rc->AddFaction("small_pos", 5);
+    rc->decayRate = 100.0f;
+    sys.Update(1.0f);
+    auto* smallPos = rc->GetFaction("small_pos");
+    TEST("Decay does not overshoot past 0", smallPos->reputation == 0);
+}
+
 // ===================================================================
 // Main
 // ===================================================================
@@ -9997,6 +10246,19 @@ int main() {
     TestCraftingSystem();
     TestCraftingSystemSpeedMultiplier();
     TestCraftingSystemMultipleJobs();
+    TestFactionReputationDefaults();
+    TestFactionReputationModify();
+    TestFactionReputationStandings();
+    TestFactionReputationNormalized();
+    TestStandingNames();
+    TestStandingThresholds();
+    TestReputationComponentAddFaction();
+    TestReputationComponentModifyRep();
+    TestReputationComponentGetStanding();
+    TestReputationComponentGetFactionsWithStanding();
+    TestReputationComponentSerialization();
+    TestReputationSystem();
+    TestReputationSystemDecay();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
               << testsFailed << " failed ===\n";

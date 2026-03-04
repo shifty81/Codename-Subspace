@@ -78,6 +78,7 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/mining/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/procedural/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/quest/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/reputation/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/scripting/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/tutorial/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/achievement/*.cpp"
