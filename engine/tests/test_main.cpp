@@ -9885,6 +9885,9 @@ static void TestReputationComponentModifyRep() {
         rc.ModifyReputation("alliance", 1, "spam");
     }
     TEST("Event history trimmed", static_cast<int>(rc.recentEvents.size()) == 3);
+    // Verify FIFO: oldest events (Quest completed, Attacked ship, first spams) dropped
+    TEST("FIFO: all remaining are spam", rc.recentEvents[0].reason == "spam");
+    TEST("FIFO: newest at end", rc.recentEvents[2].reason == "spam");
 }
 
 static void TestReputationComponentGetStanding() {
