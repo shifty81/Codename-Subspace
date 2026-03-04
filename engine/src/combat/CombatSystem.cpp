@@ -3,6 +3,24 @@
 namespace subspace {
 
 // ---------------------------------------------------------------------------
+// Armor reduction multipliers per damage type
+// ---------------------------------------------------------------------------
+static constexpr float kArmorReduction_Kinetic   = 0.50f;
+static constexpr float kArmorReduction_Energy    = 0.25f;
+static constexpr float kArmorReduction_Explosive = 0.75f;
+static constexpr float kArmorReduction_Thermal   = 0.10f;
+static constexpr float kArmorReduction_EMP       = 0.00f;
+
+// ---------------------------------------------------------------------------
+// Shield effectiveness multipliers per damage type
+// ---------------------------------------------------------------------------
+static constexpr float kShieldEffect_Kinetic   = 0.80f;
+static constexpr float kShieldEffect_Energy    = 1.00f;
+static constexpr float kShieldEffect_Explosive = 0.60f;
+static constexpr float kShieldEffect_Thermal   = 0.90f;
+static constexpr float kShieldEffect_EMP       = 1.20f;
+
+// ---------------------------------------------------------------------------
 // ShieldComponent
 // ---------------------------------------------------------------------------
 float ShieldComponent::GetShieldPercentage() const {
@@ -140,22 +158,22 @@ int CombatSystem::GetActiveProjectileCount() const {
 
 float CombatSystem::GetArmorReduction(float armorRating, DamageType type) {
     switch (type) {
-        case DamageType::Kinetic:   return armorRating * 0.50f;
-        case DamageType::Energy:    return armorRating * 0.25f;
-        case DamageType::Explosive: return armorRating * 0.75f;
-        case DamageType::Thermal:   return armorRating * 0.10f;
-        case DamageType::EMP:       return armorRating * 0.00f;
+        case DamageType::Kinetic:   return armorRating * kArmorReduction_Kinetic;
+        case DamageType::Energy:    return armorRating * kArmorReduction_Energy;
+        case DamageType::Explosive: return armorRating * kArmorReduction_Explosive;
+        case DamageType::Thermal:   return armorRating * kArmorReduction_Thermal;
+        case DamageType::EMP:       return armorRating * kArmorReduction_EMP;
     }
     return 0.0f; // fallback
 }
 
 float CombatSystem::GetShieldEffectiveness(DamageType type) {
     switch (type) {
-        case DamageType::Kinetic:   return 0.80f;
-        case DamageType::Energy:    return 1.00f;
-        case DamageType::Explosive: return 0.60f;
-        case DamageType::Thermal:   return 0.90f;
-        case DamageType::EMP:       return 1.20f;
+        case DamageType::Kinetic:   return kShieldEffect_Kinetic;
+        case DamageType::Energy:    return kShieldEffect_Energy;
+        case DamageType::Explosive: return kShieldEffect_Explosive;
+        case DamageType::Thermal:   return kShieldEffect_Thermal;
+        case DamageType::EMP:       return kShieldEffect_EMP;
     }
     return 1.0f; // fallback
 }

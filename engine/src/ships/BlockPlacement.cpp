@@ -105,6 +105,26 @@ static bool PlaceNoRecalc(Ship& ship, std::shared_ptr<Block> block) {
     return true;
 }
 
+// Mirror blocks along a single axis (0=X, 1=Y, 2=Z) and place them.
+static void ApplySymmetryAxis(Ship& ship,
+                              std::vector<std::shared_ptr<Block>>& toMirror,
+                              int axis, bool appendToMirror) {
+    std::vector<std::shared_ptr<Block>> newBlocks;
+    for (const auto& src : toMirror) {
+        auto mirrored = std::make_shared<Block>(*src);
+        if (axis == 0)      mirrored->gridPos.x = -src->gridPos.x - src->size.x;
+        else if (axis == 1) mirrored->gridPos.y = -src->gridPos.y - src->size.y;
+        else                mirrored->gridPos.z = -src->gridPos.z - src->size.z;
+        newBlocks.push_back(mirrored);
+    }
+    for (auto& b : newBlocks) {
+        PlaceNoRecalc(ship, b);
+        if (appendToMirror) {
+            toMirror.push_back(b);
+        }
+    }
+}
+
 void BlockPlacement::PlaceWithSymmetry(Ship& ship, std::shared_ptr<Block> block,
                                        uint8_t symmetryFlags) {
     PlaceNoRecalc(ship, block);
@@ -113,43 +133,9 @@ void BlockPlacement::PlaceWithSymmetry(Ship& ship, std::shared_ptr<Block> block,
     std::vector<std::shared_ptr<Block>> toMirror;
     toMirror.push_back(block);
 
-    if (symmetryFlags & MirrorX) {
-        std::vector<std::shared_ptr<Block>> newBlocks;
-        for (const auto& src : toMirror) {
-            auto mirrored = std::make_shared<Block>(*src);
-            mirrored->gridPos.x = -src->gridPos.x - src->size.x;
-            newBlocks.push_back(mirrored);
-        }
-        for (auto& b : newBlocks) {
-            PlaceNoRecalc(ship, b);
-            toMirror.push_back(b);
-        }
-    }
-
-    if (symmetryFlags & MirrorY) {
-        std::vector<std::shared_ptr<Block>> newBlocks;
-        for (const auto& src : toMirror) {
-            auto mirrored = std::make_shared<Block>(*src);
-            mirrored->gridPos.y = -src->gridPos.y - src->size.y;
-            newBlocks.push_back(mirrored);
-        }
-        for (auto& b : newBlocks) {
-            PlaceNoRecalc(ship, b);
-            toMirror.push_back(b);
-        }
-    }
-
-    if (symmetryFlags & MirrorZ) {
-        std::vector<std::shared_ptr<Block>> newBlocks;
-        for (const auto& src : toMirror) {
-            auto mirrored = std::make_shared<Block>(*src);
-            mirrored->gridPos.z = -src->gridPos.z - src->size.z;
-            newBlocks.push_back(mirrored);
-        }
-        for (auto& b : newBlocks) {
-            PlaceNoRecalc(ship, b);
-        }
-    }
+    if (symmetryFlags & MirrorX) ApplySymmetryAxis(ship, toMirror, 0, true);
+    if (symmetryFlags & MirrorY) ApplySymmetryAxis(ship, toMirror, 1, true);
+    if (symmetryFlags & MirrorZ) ApplySymmetryAxis(ship, toMirror, 2, false);
 
     // Single recalculation after all placements
     ShipStats::Recalculate(ship);

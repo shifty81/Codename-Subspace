@@ -48,6 +48,34 @@ Vector3Int ShipChunk::GetChunkPos(const Vector3Int& gridPos) {
 // Key for grouping blocks by (shape, material)
 using BatchKey = std::pair<BlockShape, MaterialType>;
 
+// Shared helper: add a block's data to the batch group map.
+static void AddBlockToBatch(std::map<BatchKey, MeshBatch>& groups, const Block& block) {
+    BatchKey key{block.shape, block.material};
+    auto& batch = groups[key];
+    batch.shape = block.shape;
+    batch.material = block.material;
+    batch.positions.push_back({
+        static_cast<float>(block.gridPos.x),
+        static_cast<float>(block.gridPos.y),
+        static_cast<float>(block.gridPos.z)
+    });
+    batch.scales.push_back({
+        static_cast<float>(block.size.x),
+        static_cast<float>(block.size.y),
+        static_cast<float>(block.size.z)
+    });
+    batch.rotationIndices.push_back(block.rotationIndex);
+}
+
+// Move finished batch groups into a ShipMeshData's batch vector.
+static void MoveBatchesToMeshData(std::map<BatchKey, MeshBatch>& groups,
+                                  ShipMeshData& meshData) {
+    meshData.batches.reserve(meshData.batches.size() + groups.size());
+    for (auto& [key, batch] : groups) {
+        meshData.batches.push_back(std::move(batch));
+    }
+}
+
 ShipMeshData ShipRenderer::BuildMeshData(const Ship& ship) {
     ShipMeshData result;
 
@@ -56,30 +84,10 @@ ShipMeshData ShipRenderer::BuildMeshData(const Ship& ship) {
 
     for (const auto& blockPtr : ship.blocks) {
         if (!blockPtr) continue;
-        const Block& block = *blockPtr;
-
-        BatchKey key{block.shape, block.material};
-        auto& batch = groups[key];
-        batch.shape = block.shape;
-        batch.material = block.material;
-        batch.positions.push_back({
-            static_cast<float>(block.gridPos.x),
-            static_cast<float>(block.gridPos.y),
-            static_cast<float>(block.gridPos.z)
-        });
-        batch.scales.push_back({
-            static_cast<float>(block.size.x),
-            static_cast<float>(block.size.y),
-            static_cast<float>(block.size.z)
-        });
-        batch.rotationIndices.push_back(block.rotationIndex);
+        AddBlockToBatch(groups, *blockPtr);
     }
 
-    result.batches.reserve(groups.size());
-    for (auto& [key, batch] : groups) {
-        result.batches.push_back(std::move(batch));
-    }
-
+    MoveBatchesToMeshData(groups, result);
     return result;
 }
 
@@ -119,27 +127,11 @@ void ShipRenderer::RebuildDirtyChunks(
                 block.gridPos.y >= minY && block.gridPos.y < maxY &&
                 block.gridPos.z >= minZ && block.gridPos.z < maxZ)
             {
-                BatchKey key{block.shape, block.material};
-                auto& batch = groups[key];
-                batch.shape = block.shape;
-                batch.material = block.material;
-                batch.positions.push_back({
-                    static_cast<float>(block.gridPos.x),
-                    static_cast<float>(block.gridPos.y),
-                    static_cast<float>(block.gridPos.z)
-                });
-                batch.scales.push_back({
-                    static_cast<float>(block.size.x),
-                    static_cast<float>(block.size.y),
-                    static_cast<float>(block.size.z)
-                });
-                batch.rotationIndices.push_back(block.rotationIndex);
+                AddBlockToBatch(groups, block);
             }
         }
 
-        for (auto& [key, batch] : groups) {
-            chunk.meshData.batches.push_back(std::move(batch));
-        }
+        MoveBatchesToMeshData(groups, chunk.meshData);
 
         chunk.dirty = false;
     }
