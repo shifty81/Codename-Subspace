@@ -10264,6 +10264,25 @@ static void TestFormationSystemWithEM() {
     TEST("FormationSystem with EM does not crash", true);
 }
 
+static void TestCraftingReputationFormationGameEvents() {
+    std::cout << "[Crafting/Reputation/Formation GameEvents]\n";
+    // Crafting events
+    TEST("CraftingStarted event", std::string(GameEvents::CraftingStarted) == "crafting.started");
+    TEST("CraftingCompleted event", std::string(GameEvents::CraftingCompleted) == "crafting.completed");
+    TEST("CraftingFailed event", std::string(GameEvents::CraftingFailed) == "crafting.failed");
+    TEST("RecipeLearned event", std::string(GameEvents::RecipeLearned) == "crafting.recipe.learned");
+    // Reputation events
+    TEST("ReputationModified event", std::string(GameEvents::ReputationModified) == "reputation.changed");
+    TEST("StandingChanged event", std::string(GameEvents::StandingChanged) == "reputation.standing.changed");
+    TEST("ReputationDecayed event", std::string(GameEvents::ReputationDecayed) == "reputation.decayed");
+    // Formation events
+    TEST("FormationCreated event", std::string(GameEvents::FormationCreated) == "formation.created");
+    TEST("FormationDisbanded event", std::string(GameEvents::FormationDisbanded) == "formation.disbanded");
+    TEST("FormationChanged event", std::string(GameEvents::FormationChanged) == "formation.changed");
+    TEST("MemberJoined event", std::string(GameEvents::MemberJoined) == "formation.member.joined");
+    TEST("MemberLeft event", std::string(GameEvents::MemberLeft) == "formation.member.left");
+}
+
 // ===================================================================
 // Main
 // ===================================================================
@@ -10543,6 +10562,7 @@ int main() {
     TestFormationComponentSerialization();
     TestFormationSystem();
     TestFormationSystemWithEM();
+    TestCraftingReputationFormationGameEvents();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
               << testsFailed << " failed ===\n";
