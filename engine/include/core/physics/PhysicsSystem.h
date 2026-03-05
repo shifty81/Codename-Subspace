@@ -24,7 +24,8 @@ public:
 
 private:
     void DetectCollisions(std::vector<PhysicsComponent*>& components);
-    void HandleCollision(PhysicsComponent& obj1, PhysicsComponent& obj2);
+    void HandleCollision(PhysicsComponent& obj1, PhysicsComponent& obj2,
+                         float distance, float minDistance);
     void RebuildSpatialHash(std::vector<PhysicsComponent*>& components);
 
     EntityManager& _entityManager;

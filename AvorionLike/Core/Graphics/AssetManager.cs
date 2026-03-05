@@ -222,7 +222,7 @@ public class AssetManager
         if (!Directory.Exists(modelsPath))
             return Array.Empty<string>();
         
-        var supportedExtensions = new[] { ".obj", ".fbx", ".gltf", ".glb", ".dae", ".blend", ".3ds" };
+        var supportedExtensions = new[] { ".obj", ".fbx", ".gltf", ".glb", ".dae", ".3ds" };
         var files = Directory.GetFiles(modelsPath, "*.*", SearchOption.AllDirectories)
             .Where(file => supportedExtensions.Contains(Path.GetExtension(file).ToLower()))
             .Select(file => Path.GetRelativePath(modelsPath, file))

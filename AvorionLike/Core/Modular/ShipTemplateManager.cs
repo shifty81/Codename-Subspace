@@ -224,7 +224,7 @@ public class ShipTemplate
     public string Id { get; set; } = "";
     public string Name { get; set; } = "";
     public string Description { get; set; } = "";
-    public string ModelPath { get; set; } = ""; // Path to 3D model file (.blend, .obj, .fbx, etc.)
+    public string ModelPath { get; set; } = ""; // Path to 3D model file (.obj, .fbx, .gltf, etc.)
     
     // Classification
     public X4ShipClass ShipClass { get; set; }

@@ -43,6 +43,7 @@ public class PhysicsComponent : IComponent, ISerializable
     
     // Collision
     public float CollisionRadius { get; set; } = 10f;
+    public float Restitution { get; set; } = 0.8f; // Coefficient of restitution (0 = perfectly inelastic, 1 = perfectly elastic)
     public bool IsStatic { get; set; } = false;
 
     /// <summary>
@@ -111,6 +112,7 @@ public class PhysicsComponent : IComponent, ISerializable
             ["MaxThrust"] = MaxThrust,
             ["MaxTorque"] = MaxTorque,
             ["CollisionRadius"] = CollisionRadius,
+            ["Restitution"] = Restitution,
             ["IsStatic"] = IsStatic
         };
     }
@@ -134,6 +136,7 @@ public class PhysicsComponent : IComponent, ISerializable
         MaxThrust = SerializationHelper.GetValue(data, "MaxThrust", 100f);
         MaxTorque = SerializationHelper.GetValue(data, "MaxTorque", 50f);
         CollisionRadius = SerializationHelper.GetValue(data, "CollisionRadius", 10f);
+        Restitution = SerializationHelper.GetValue(data, "Restitution", 0.8f);
         IsStatic = SerializationHelper.GetValue(data, "IsStatic", false);
         
         // Reset applied forces (these should not be persisted)
