@@ -444,6 +444,8 @@ int QuestSystem::DistributeRewards(EntityId entityId,
         case RewardType::Reputation: {
             auto* faction = _entityManager->GetComponent<FactionComponent>(entityId);
             if (faction) {
+                // When rewardId is empty, reputation is applied to the
+                // entity's own faction; otherwise use the named faction.
                 std::string targetFaction = reward.rewardId.empty()
                     ? faction->factionName : reward.rewardId;
                 faction->ModifyReputation(targetFaction, reward.amount);
@@ -468,8 +470,8 @@ int QuestSystem::DistributeRewards(EntityId entityId,
             break;
         }
         case RewardType::Unlock:
-            // Unlock rewards are tracked but not yet distributed to a system.
-            ++distributed;
+            // Unlock rewards are not yet distributed to a specific system;
+            // they are tracked in the quest but do not count as distributed.
             break;
         }
     }
