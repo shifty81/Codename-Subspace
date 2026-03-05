@@ -232,6 +232,30 @@ namespace GameEvents {
     constexpr const char* NotificationExpired     = "notification.expired";
     constexpr const char* NotificationDismissed   = "notification.dismissed";
     constexpr const char* CriticalAlert           = "notification.critical";
+
+    // Inventory events
+    constexpr const char* ItemAdded               = "inventory.item.added";
+    constexpr const char* ItemRemoved             = "inventory.item.removed";
+    constexpr const char* ItemTransferred         = "inventory.item.transferred";
+    constexpr const char* InventoryOverweight     = "inventory.overweight";
+    constexpr const char* InventorySorted         = "inventory.sorted";
+
+    // Trade route events
+    constexpr const char* TradeRouteStarted       = "trade_route.started";
+    constexpr const char* TradeRouteStopped       = "trade_route.stopped";
+    constexpr const char* TradeRouteCompleted     = "trade_route.completed";
+    constexpr const char* TradeWaypointReached    = "trade_route.waypoint.reached";
+    constexpr const char* TradeBuyCompleted       = "trade_route.buy.completed";
+    constexpr const char* TradeSellCompleted      = "trade_route.sell.completed";
+
+    // Hangar/Docking events
+    constexpr const char* DockingRequested        = "hangar.docking.requested";
+    constexpr const char* DockingCompleted        = "hangar.docking.completed";
+    constexpr const char* DockingCancelled        = "hangar.docking.cancelled";
+    constexpr const char* LaunchRequested         = "hangar.launch.requested";
+    constexpr const char* LaunchCompleted         = "hangar.launch.completed";
+    constexpr const char* ShipStored              = "hangar.ship.stored";
+    constexpr const char* ShipRetrieved           = "hangar.ship.retrieved";
 } // namespace GameEvents
 
 } // namespace subspace

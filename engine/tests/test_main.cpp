@@ -86,6 +86,9 @@
 #include "diplomacy/DiplomacySystem.h"
 #include "research/ResearchSystem.h"
 #include "notification/NotificationSystem.h"
+#include "inventory/InventorySystem.h"
+#include "trade_route/TradeRouteSystem.h"
+#include "hangar/HangarSystem.h"
 
 using namespace subspace;
 
@@ -11573,6 +11576,868 @@ static void TestDiplomacyResearchNotificationGameEvents() {
 }
 
 // ===================================================================
+// Inventory System Tests
+// ===================================================================
+
+static void TestItemRarityNames() {
+    std::cout << "[InventoryItem Rarity Names]\n";
+    TEST("Common name", InventoryItem::GetRarityName(ItemRarity::Common) == "Common");
+    TEST("Uncommon name", InventoryItem::GetRarityName(ItemRarity::Uncommon) == "Uncommon");
+    TEST("Rare name", InventoryItem::GetRarityName(ItemRarity::Rare) == "Rare");
+    TEST("Epic name", InventoryItem::GetRarityName(ItemRarity::Epic) == "Epic");
+    TEST("Legendary name", InventoryItem::GetRarityName(ItemRarity::Legendary) == "Legendary");
+}
+
+static void TestInventoryComponentDefaults() {
+    std::cout << "[InventoryComponent Defaults]\n";
+    InventoryComponent inv;
+    TEST("Default max slots", inv.GetMaxSlots() == 20);
+    TEST("Default max weight", inv.GetMaxWeight() == 100.0f);
+    TEST("Default current weight", inv.GetCurrentWeight() == 0.0f);
+    TEST("Default weight pct", inv.GetWeightPercentage() == 0.0f);
+    TEST("Default used slots", inv.GetUsedSlotCount() == 0);
+    TEST("Default free slots", inv.GetFreeSlotCount() == 20);
+}
+
+static void TestInventoryComponentCustomInit() {
+    std::cout << "[InventoryComponent Custom Init]\n";
+    InventoryComponent inv(10, 50.0f);
+    TEST("Custom max slots", inv.GetMaxSlots() == 10);
+    TEST("Custom max weight", inv.GetMaxWeight() == 50.0f);
+    TEST("Custom free slots", inv.GetFreeSlotCount() == 10);
+}
+
+static void TestInventoryComponentAddItem() {
+    std::cout << "[InventoryComponent AddItem]\n";
+    InventoryComponent inv(5, 100.0f);
+    InventoryItem item;
+    item.itemId = "iron_ore";
+    item.name = "Iron Ore";
+    item.category = "material";
+    item.rarity = ItemRarity::Common;
+    item.weight = 2.0f;
+    item.stackSize = 5;
+    item.maxStackSize = 50;
+    item.value = 10;
+
+    TEST("Add item succeeds", inv.AddItem(item));
+    TEST("Used slot count", inv.GetUsedSlotCount() == 1);
+    TEST("Item count", inv.GetItemCount("iron_ore") == 5);
+    TEST("Current weight", inv.GetCurrentWeight() == 10.0f);
+    TEST("Has item", inv.HasItem("iron_ore", 5));
+    TEST("Has item insufficient", !inv.HasItem("iron_ore", 10));
+}
+
+static void TestInventoryComponentStacking() {
+    std::cout << "[InventoryComponent Stacking]\n";
+    InventoryComponent inv(5, 200.0f);
+    InventoryItem item;
+    item.itemId = "iron_ore";
+    item.name = "Iron Ore";
+    item.weight = 1.0f;
+    item.stackSize = 10;
+    item.maxStackSize = 20;
+
+    TEST("First add", inv.AddItem(item));
+    TEST("Second add", inv.AddItem(item));
+    TEST("Stacked into one slot", inv.GetUsedSlotCount() == 1);
+    TEST("Total count", inv.GetItemCount("iron_ore") == 20);
+
+    // Third add should go to new slot since first is full
+    TEST("Third add", inv.AddItem(item));
+    TEST("Two slots used", inv.GetUsedSlotCount() == 2);
+    TEST("Total count 30", inv.GetItemCount("iron_ore") == 30);
+}
+
+static void TestInventoryComponentRemoveItem() {
+    std::cout << "[InventoryComponent RemoveItem]\n";
+    InventoryComponent inv(5, 200.0f);
+    InventoryItem item;
+    item.itemId = "crystal";
+    item.name = "Crystal";
+    item.weight = 5.0f;
+    item.stackSize = 3;
+    item.maxStackSize = 10;
+
+    inv.AddItem(item);
+    TEST("Has 3 crystals", inv.GetItemCount("crystal") == 3);
+    TEST("Remove 2", inv.RemoveItem("crystal", 2));
+    TEST("Has 1 crystal", inv.GetItemCount("crystal") == 1);
+    TEST("Remove all", inv.RemoveItem("crystal", 1));
+    TEST("Has 0 crystals", inv.GetItemCount("crystal") == 0);
+    TEST("Slot freed", inv.GetUsedSlotCount() == 0);
+    TEST("Remove nonexistent fails", !inv.RemoveItem("crystal", 1));
+}
+
+static void TestInventoryComponentOverweight() {
+    std::cout << "[InventoryComponent Overweight]\n";
+    InventoryComponent inv(5, 10.0f);
+    InventoryItem item;
+    item.itemId = "heavy";
+    item.name = "Heavy Item";
+    item.weight = 6.0f;
+    item.stackSize = 1;
+    item.maxStackSize = 10;
+
+    TEST("First heavy item fits", inv.AddItem(item));
+    TEST("Second heavy item overweight", !inv.AddItem(item));
+    TEST("Only one added", inv.GetItemCount("heavy") == 1);
+}
+
+static void TestInventoryComponentGetSlot() {
+    std::cout << "[InventoryComponent GetSlot]\n";
+    InventoryComponent inv(3, 100.0f);
+    InventoryItem item;
+    item.itemId = "test_item";
+    item.name = "Test";
+    item.weight = 1.0f;
+    item.stackSize = 1;
+
+    inv.AddItem(item);
+    const InventorySlot* slot0 = inv.GetSlot(0);
+    TEST("Slot 0 exists", slot0 != nullptr);
+    TEST("Slot 0 not empty", !slot0->isEmpty);
+    TEST("Slot 0 item", slot0->item.itemId == "test_item");
+
+    const InventorySlot* slot1 = inv.GetSlot(1);
+    TEST("Slot 1 exists", slot1 != nullptr);
+    TEST("Slot 1 empty", slot1->isEmpty);
+
+    TEST("Out of range returns null", inv.GetSlot(100) == nullptr);
+    TEST("Negative returns null", inv.GetSlot(-1) == nullptr);
+}
+
+static void TestInventoryComponentFilterByCategory() {
+    std::cout << "[InventoryComponent FilterByCategory]\n";
+    InventoryComponent inv(10, 200.0f);
+
+    InventoryItem weapon;
+    weapon.itemId = "laser_mk1";
+    weapon.name = "Laser Mk1";
+    weapon.category = "weapon";
+    weapon.weight = 5.0f;
+    weapon.stackSize = 1;
+    inv.AddItem(weapon);
+
+    InventoryItem material;
+    material.itemId = "iron";
+    material.name = "Iron";
+    material.category = "material";
+    material.weight = 1.0f;
+    material.stackSize = 10;
+    inv.AddItem(material);
+
+    auto weapons = inv.GetItemsByCategory("weapon");
+    TEST("One weapon", weapons.size() == 1);
+    auto materials = inv.GetItemsByCategory("material");
+    TEST("One material", materials.size() == 1);
+    auto empty = inv.GetItemsByCategory("consumable");
+    TEST("No consumables", empty.size() == 0);
+}
+
+static void TestInventoryComponentFilterByRarity() {
+    std::cout << "[InventoryComponent FilterByRarity]\n";
+    InventoryComponent inv(10, 200.0f);
+
+    InventoryItem common;
+    common.itemId = "common1";
+    common.name = "Common Item";
+    common.rarity = ItemRarity::Common;
+    common.weight = 1.0f;
+    common.stackSize = 1;
+    inv.AddItem(common);
+
+    InventoryItem rare;
+    rare.itemId = "rare1";
+    rare.name = "Rare Item";
+    rare.rarity = ItemRarity::Rare;
+    rare.weight = 1.0f;
+    rare.stackSize = 1;
+    inv.AddItem(rare);
+
+    InventoryItem epic;
+    epic.itemId = "epic1";
+    epic.name = "Epic Item";
+    epic.rarity = ItemRarity::Epic;
+    epic.weight = 1.0f;
+    epic.stackSize = 1;
+    inv.AddItem(epic);
+
+    auto allItems = inv.GetItemsByRarity(ItemRarity::Common);
+    TEST("All items (min Common)", allItems.size() == 3);
+    auto rareUp = inv.GetItemsByRarity(ItemRarity::Rare);
+    TEST("Rare+ items", rareUp.size() == 2);
+    auto epicUp = inv.GetItemsByRarity(ItemRarity::Epic);
+    TEST("Epic+ items", epicUp.size() == 1);
+    auto legendaryUp = inv.GetItemsByRarity(ItemRarity::Legendary);
+    TEST("Legendary+ items", legendaryUp.size() == 0);
+}
+
+static void TestInventoryComponentTransfer() {
+    std::cout << "[InventoryComponent Transfer]\n";
+    InventoryComponent src(5, 100.0f);
+    InventoryComponent dst(5, 100.0f);
+
+    InventoryItem item;
+    item.itemId = "gem";
+    item.name = "Gem";
+    item.weight = 3.0f;
+    item.stackSize = 5;
+    item.maxStackSize = 10;
+    src.AddItem(item);
+
+    TEST("Transfer succeeds", src.TransferItem("gem", 3, dst));
+    TEST("Source has 2", src.GetItemCount("gem") == 2);
+    TEST("Dest has 3", dst.GetItemCount("gem") == 3);
+    TEST("Transfer too many fails", !src.TransferItem("gem", 5, dst));
+}
+
+static void TestInventoryComponentSortByName() {
+    std::cout << "[InventoryComponent SortByName]\n";
+    InventoryComponent inv(5, 200.0f);
+
+    InventoryItem b;
+    b.itemId = "b"; b.name = "Banana"; b.weight = 1.0f; b.stackSize = 1;
+    InventoryItem a;
+    a.itemId = "a"; a.name = "Apple"; a.weight = 1.0f; a.stackSize = 1;
+    InventoryItem c;
+    c.itemId = "c"; c.name = "Cherry"; c.weight = 1.0f; c.stackSize = 1;
+
+    inv.AddItem(b);
+    inv.AddItem(a);
+    inv.AddItem(c);
+
+    inv.SortByName();
+    TEST("First is Apple", inv.GetSlot(0)->item.name == "Apple");
+    TEST("Second is Banana", inv.GetSlot(1)->item.name == "Banana");
+    TEST("Third is Cherry", inv.GetSlot(2)->item.name == "Cherry");
+    TEST("Fourth is empty", inv.GetSlot(3)->isEmpty);
+}
+
+static void TestInventoryComponentSortByRarity() {
+    std::cout << "[InventoryComponent SortByRarity]\n";
+    InventoryComponent inv(5, 200.0f);
+
+    InventoryItem common;
+    common.itemId = "c"; common.name = "Common"; common.rarity = ItemRarity::Common; common.weight = 1.0f; common.stackSize = 1;
+    InventoryItem epic;
+    epic.itemId = "e"; epic.name = "Epic"; epic.rarity = ItemRarity::Epic; epic.weight = 1.0f; epic.stackSize = 1;
+    InventoryItem rare;
+    rare.itemId = "r"; rare.name = "Rare"; rare.rarity = ItemRarity::Rare; rare.weight = 1.0f; rare.stackSize = 1;
+
+    inv.AddItem(common);
+    inv.AddItem(epic);
+    inv.AddItem(rare);
+
+    inv.SortByRarity();
+    TEST("First is Epic", inv.GetSlot(0)->item.rarity == ItemRarity::Epic);
+    TEST("Second is Rare", inv.GetSlot(1)->item.rarity == ItemRarity::Rare);
+    TEST("Third is Common", inv.GetSlot(2)->item.rarity == ItemRarity::Common);
+}
+
+static void TestInventoryComponentClear() {
+    std::cout << "[InventoryComponent Clear]\n";
+    InventoryComponent inv(5, 100.0f);
+    InventoryItem item;
+    item.itemId = "stuff"; item.name = "Stuff"; item.weight = 2.0f; item.stackSize = 3;
+    inv.AddItem(item);
+    TEST("Has items before clear", inv.GetUsedSlotCount() > 0);
+    inv.Clear();
+    TEST("No items after clear", inv.GetUsedSlotCount() == 0);
+    TEST("Weight zero after clear", inv.GetCurrentWeight() == 0.0f);
+}
+
+static void TestInventoryComponentSerialization() {
+    std::cout << "[InventoryComponent Serialization]\n";
+    InventoryComponent inv(10, 75.0f);
+
+    InventoryItem item1;
+    item1.itemId = "iron_ore";
+    item1.name = "Iron Ore";
+    item1.description = "Raw iron";
+    item1.rarity = ItemRarity::Common;
+    item1.weight = 2.0f;
+    item1.stackSize = 5;
+    item1.maxStackSize = 50;
+    item1.value = 10;
+    item1.category = "material";
+    inv.AddItem(item1);
+
+    InventoryItem item2;
+    item2.itemId = "rare_gem";
+    item2.name = "Rare Gem";
+    item2.description = "A shiny gem";
+    item2.rarity = ItemRarity::Rare;
+    item2.weight = 0.5f;
+    item2.stackSize = 1;
+    item2.maxStackSize = 5;
+    item2.value = 500;
+    item2.category = "treasure";
+    inv.AddItem(item2);
+
+    ComponentData cd = inv.Serialize();
+    TEST("Component type", cd.componentType == "InventoryComponent");
+
+    InventoryComponent inv2;
+    inv2.Deserialize(cd);
+    TEST("Restored max slots", inv2.GetMaxSlots() == 10);
+    TEST("Restored max weight", inv2.GetMaxWeight() == 75.0f);
+    TEST("Restored iron count", inv2.GetItemCount("iron_ore") == 5);
+    TEST("Restored gem count", inv2.GetItemCount("rare_gem") == 1);
+    TEST("Restored weight", std::abs(inv2.GetCurrentWeight() - 10.5f) < 0.01f);
+    TEST("Restored used slots", inv2.GetUsedSlotCount() == 2);
+}
+
+static void TestInventorySystem() {
+    std::cout << "[InventorySystem]\n";
+    InventorySystem sys;
+    TEST("System created", true);
+    sys.Update(0.016f);  // should not crash without entity manager
+    TEST("Update without EM", true);
+}
+
+// ===================================================================
+// Trade Route System Tests
+// ===================================================================
+
+static void TestTradeRouteStateNames() {
+    std::cout << "[TradeWaypoint State Names]\n";
+    TEST("Idle", TradeWaypoint::GetStateName(TradeRouteState::Idle) == "Idle");
+    TEST("Traveling", TradeWaypoint::GetStateName(TradeRouteState::Traveling) == "Traveling");
+    TEST("Buying", TradeWaypoint::GetStateName(TradeRouteState::Buying) == "Buying");
+    TEST("Selling", TradeWaypoint::GetStateName(TradeRouteState::Selling) == "Selling");
+    TEST("WaitingForCargo", TradeWaypoint::GetStateName(TradeRouteState::WaitingForCargo) == "Waiting for Cargo");
+    TEST("Completed", TradeWaypoint::GetStateName(TradeRouteState::Completed) == "Completed");
+}
+
+static void TestTradeRouteValidity() {
+    std::cout << "[TradeRoute Validity]\n";
+    TradeRoute route;
+    TEST("Empty route invalid", !route.IsValid());
+
+    TradeWaypoint wp1;
+    wp1.stationId = "station_1";
+    wp1.stationName = "Station Alpha";
+    wp1.x = 0; wp1.y = 0; wp1.z = 0;
+    route.waypoints.push_back(wp1);
+    TEST("One waypoint invalid", !route.IsValid());
+
+    TradeWaypoint wp2;
+    wp2.stationId = "station_2";
+    wp2.stationName = "Station Beta";
+    wp2.x = 30; wp2.y = 40; wp2.z = 0;
+    route.waypoints.push_back(wp2);
+    TEST("Two waypoints valid", route.IsValid());
+}
+
+static void TestTradeRouteDistance() {
+    std::cout << "[TradeRoute Distance]\n";
+    TradeRoute route;
+    TradeWaypoint wp1;
+    wp1.x = 0; wp1.y = 0; wp1.z = 0;
+    TradeWaypoint wp2;
+    wp2.x = 3; wp2.y = 4; wp2.z = 0;
+    route.waypoints.push_back(wp1);
+    route.waypoints.push_back(wp2);
+
+    float dist = route.CalculateDistance();
+    TEST("Distance 3-4-5 triangle", std::abs(dist - 5.0f) < 0.01f);
+}
+
+static void TestTradeRouteComponentDefaults() {
+    std::cout << "[TradeRouteComponent Defaults]\n";
+    TradeRouteComponent comp;
+    TEST("Default state Idle", comp.GetState() == TradeRouteState::Idle);
+    TEST("Default waypoint index 0", comp.GetCurrentWaypointIndex() == 0);
+    TEST("Default progress 0", comp.GetTravelProgress() == 0.0f);
+    TEST("Default speed 10", comp.GetTravelSpeed() == 10.0f);
+    TEST("Not active", !comp.IsActive());
+    TEST("No current waypoint", comp.GetCurrentWaypoint() == nullptr);
+    TEST("No cargo", comp.GetCargoManifest().empty());
+    TEST("No completed runs", comp.GetTotalCompletedRuns() == 0);
+    TEST("No profit", comp.GetTotalProfit() == 0.0f);
+}
+
+static void TestTradeRouteComponentStartStop() {
+    std::cout << "[TradeRouteComponent Start/Stop]\n";
+    TradeRouteComponent comp;
+    TradeRoute route;
+    route.routeId = "route_1";
+    route.routeName = "Iron Run";
+    TradeWaypoint wp1; wp1.stationId = "s1"; wp1.x = 0; wp1.y = 0; wp1.z = 0;
+    TradeWaypoint wp2; wp2.stationId = "s2"; wp2.x = 10; wp2.y = 0; wp2.z = 0;
+    route.waypoints.push_back(wp1);
+    route.waypoints.push_back(wp2);
+    comp.SetRoute(route);
+
+    comp.StartRoute();
+    TEST("Active after start", comp.IsActive());
+    TEST("Traveling state", comp.GetState() == TradeRouteState::Traveling);
+    TEST("Current waypoint", comp.GetCurrentWaypoint() != nullptr);
+
+    comp.StopRoute();
+    TEST("Not active after stop", !comp.IsActive());
+    TEST("Idle after stop", comp.GetState() == TradeRouteState::Idle);
+}
+
+static void TestTradeRouteComponentCargo() {
+    std::cout << "[TradeRouteComponent Cargo]\n";
+    TradeRouteComponent comp;
+    comp.AddCargo("iron");
+    comp.AddCargo("titanium");
+    TEST("Two cargo items", comp.GetCargoManifest().size() == 2);
+    comp.RemoveCargo("iron");
+    TEST("One cargo item", comp.GetCargoManifest().size() == 1);
+    TEST("Remaining is titanium", comp.GetCargoManifest()[0] == "titanium");
+    comp.ClearCargo();
+    TEST("Empty after clear", comp.GetCargoManifest().empty());
+}
+
+static void TestTradeRouteComponentProfit() {
+    std::cout << "[TradeRouteComponent Profit]\n";
+    TradeRouteComponent comp;
+    comp.AddProfit(100.0f);
+    comp.AddProfit(50.0f);
+    TEST("Current run profit", comp.GetCurrentRunProfit() == 150.0f);
+}
+
+static void TestTradeRouteComponentAdvance() {
+    std::cout << "[TradeRouteComponent Advance]\n";
+    TradeRouteComponent comp;
+    TradeRoute route;
+    route.routeId = "r1";
+    route.isLoop = false;
+    TradeWaypoint wp1; wp1.stationId = "s1"; wp1.x = 0; wp1.y = 0; wp1.z = 0;
+    TradeWaypoint wp2; wp2.stationId = "s2"; wp2.x = 10; wp2.y = 0; wp2.z = 0;
+    TradeWaypoint wp3; wp3.stationId = "s3"; wp3.x = 20; wp3.y = 0; wp3.z = 0;
+    route.waypoints.push_back(wp1);
+    route.waypoints.push_back(wp2);
+    route.waypoints.push_back(wp3);
+    comp.SetRoute(route);
+    comp.StartRoute();
+
+    TEST("Advance to wp2", comp.AdvanceToNextWaypoint());
+    TEST("Index is 1", comp.GetCurrentWaypointIndex() == 1);
+    TEST("Advance to wp3", comp.AdvanceToNextWaypoint());
+    TEST("Index is 2", comp.GetCurrentWaypointIndex() == 2);
+    TEST("No more waypoints (non-loop)", !comp.AdvanceToNextWaypoint());
+    TEST("Completed 1 run", comp.GetTotalCompletedRuns() == 1);
+}
+
+static void TestTradeRouteComponentLoop() {
+    std::cout << "[TradeRouteComponent Loop]\n";
+    TradeRouteComponent comp;
+    TradeRoute route;
+    route.routeId = "r_loop";
+    route.isLoop = true;
+    TradeWaypoint wp1; wp1.stationId = "s1"; wp1.x = 0; wp1.y = 0; wp1.z = 0;
+    TradeWaypoint wp2; wp2.stationId = "s2"; wp2.x = 10; wp2.y = 0; wp2.z = 0;
+    route.waypoints.push_back(wp1);
+    route.waypoints.push_back(wp2);
+    comp.SetRoute(route);
+    comp.StartRoute();
+
+    comp.AddProfit(200.0f);
+    // Advance from wp0 -> wp1
+    TEST("Advance to wp1", comp.AdvanceToNextWaypoint());
+    TEST("Index is 1", comp.GetCurrentWaypointIndex() == 1);
+
+    // Advance from wp1 -> loops back to wp0
+    TEST("Advance loops back", comp.AdvanceToNextWaypoint());
+    TEST("Index back to 0", comp.GetCurrentWaypointIndex() == 0);
+    TEST("Completed 1 loop run", comp.GetTotalCompletedRuns() == 1);
+    TEST("Total profit recorded", comp.GetTotalProfit() == 200.0f);
+}
+
+static void TestTradeRouteComponentSerialization() {
+    std::cout << "[TradeRouteComponent Serialization]\n";
+    TradeRouteComponent comp;
+    TradeRoute route;
+    route.routeId = "test_route";
+    route.routeName = "Test Route";
+    route.isLoop = true;
+    TradeWaypoint wp1;
+    wp1.stationId = "s1"; wp1.stationName = "Station 1";
+    wp1.x = 0; wp1.y = 0; wp1.z = 0;
+    wp1.buyGoods.push_back("iron");
+    wp1.sellGoods.push_back("gold");
+    wp1.waitTime = 3.0f;
+    TradeWaypoint wp2;
+    wp2.stationId = "s2"; wp2.stationName = "Station 2";
+    wp2.x = 100; wp2.y = 0; wp2.z = 0;
+    wp2.buyGoods.push_back("gold");
+    wp2.sellGoods.push_back("iron");
+    wp2.waitTime = 4.0f;
+    route.waypoints.push_back(wp1);
+    route.waypoints.push_back(wp2);
+
+    comp.SetRoute(route);
+    comp.SetTravelSpeed(20.0f);
+    comp.AddCargo("iron");
+    comp.AddCargo("gold");
+
+    ComponentData cd = comp.Serialize();
+    TEST("Component type", cd.componentType == "TradeRouteComponent");
+
+    TradeRouteComponent comp2;
+    comp2.Deserialize(cd);
+    TEST("Restored route id", comp2.GetRoute().routeId == "test_route");
+    TEST("Restored route name", comp2.GetRoute().routeName == "Test Route");
+    TEST("Restored loop", comp2.GetRoute().isLoop);
+    TEST("Restored waypoints", comp2.GetRoute().waypoints.size() == 2);
+    TEST("Restored speed", comp2.GetTravelSpeed() == 20.0f);
+    TEST("Restored cargo", comp2.GetCargoManifest().size() == 2);
+    TEST("Restored wp1 station", comp2.GetRoute().waypoints[0].stationId == "s1");
+    TEST("Restored wp1 buy goods", comp2.GetRoute().waypoints[0].buyGoods.size() == 1);
+    TEST("Restored wp2 sell goods", comp2.GetRoute().waypoints[1].sellGoods.size() == 1);
+}
+
+static void TestTradeRouteSystem() {
+    std::cout << "[TradeRouteSystem]\n";
+    TradeRouteSystem sys;
+    TEST("System created", true);
+    sys.Update(0.016f);
+    TEST("Update without EM", true);
+}
+
+static void TestTradeRouteSystemTravel() {
+    std::cout << "[TradeRouteSystem Travel]\n";
+    EntityManager em;
+    TradeRouteSystem sys(em);
+
+    auto& entity = em.CreateEntity("trader");
+    auto* comp = em.AddComponent<TradeRouteComponent>(entity.id, std::make_unique<TradeRouteComponent>());
+
+    TradeRoute route;
+    route.routeId = "r1";
+    route.isLoop = false;
+    TradeWaypoint wp1; wp1.stationId = "s1"; wp1.x = 0; wp1.y = 0; wp1.z = 0; wp1.waitTime = 0.1f;
+    TradeWaypoint wp2; wp2.stationId = "s2"; wp2.x = 10; wp2.y = 0; wp2.z = 0; wp2.waitTime = 0.1f;
+    route.waypoints.push_back(wp1);
+    route.waypoints.push_back(wp2);
+    comp->SetRoute(route);
+    comp->SetTravelSpeed(100.0f);  // fast travel
+    comp->StartRoute();
+
+    // Simulate enough time to travel
+    sys.Update(1.0f);
+    TEST("Arrived at buying", comp->GetState() == TradeRouteState::Buying);
+
+    // Wait through buying phase
+    sys.Update(0.2f);
+    TEST("Moved to selling", comp->GetState() == TradeRouteState::Selling);
+
+    // Wait through selling phase
+    sys.Update(0.2f);
+    TEST("Moved to waiting", comp->GetState() == TradeRouteState::WaitingForCargo);
+
+    // Advance to next state
+    sys.Update(0.01f);
+    bool endState = comp->GetState() == TradeRouteState::Traveling ||
+                    comp->GetState() == TradeRouteState::Completed ||
+                    comp->GetState() == TradeRouteState::Idle;
+    TEST("Route progressed to end state", endState);
+}
+
+// ===================================================================
+// Hangar/Docking System Tests
+// ===================================================================
+
+static void TestDockingBaySizeNames() {
+    std::cout << "[DockingBay Size Names]\n";
+    TEST("Small", DockingBay::GetSizeName(BaySize::Small) == "Small");
+    TEST("Medium", DockingBay::GetSizeName(BaySize::Medium) == "Medium");
+    TEST("Large", DockingBay::GetSizeName(BaySize::Large) == "Large");
+    TEST("Capital", DockingBay::GetSizeName(BaySize::Capital) == "Capital");
+}
+
+static void TestDockingStateNames() {
+    std::cout << "[DockingBay State Names]\n";
+    TEST("Undocked", DockingBay::GetStateName(DockingState::Undocked) == "Undocked");
+    TEST("Requesting", DockingBay::GetStateName(DockingState::RequestingDock) == "Requesting Dock");
+    TEST("Approaching", DockingBay::GetStateName(DockingState::Approaching) == "Approaching");
+    TEST("Docking", DockingBay::GetStateName(DockingState::Docking) == "Docking");
+    TEST("Docked", DockingBay::GetStateName(DockingState::Docked) == "Docked");
+    TEST("Undocking", DockingBay::GetStateName(DockingState::Undocking) == "Undocking");
+    TEST("Launching", DockingBay::GetStateName(DockingState::Launching) == "Launching");
+}
+
+static void TestHangarComponentDefaults() {
+    std::cout << "[HangarComponent Defaults]\n";
+    HangarComponent hangar;
+    TEST("Default max bays", hangar.GetMaxBays() == 4);
+    TEST("No occupied bays", hangar.GetOccupiedBayCount() == 0);
+    TEST("No free bays (none added)", hangar.GetFreeBayCount() == 0);
+    TEST("No stored ships", hangar.GetStoredShipCount() == 0);
+    TEST("No active requests", hangar.GetActiveRequests().empty());
+}
+
+static void TestHangarComponentAddBays() {
+    std::cout << "[HangarComponent AddBays]\n";
+    HangarComponent hangar(3);
+    DockingBay bay1; bay1.bayId = 1; bay1.bayName = "Bay 1"; bay1.size = BaySize::Small;
+    DockingBay bay2; bay2.bayId = 2; bay2.bayName = "Bay 2"; bay2.size = BaySize::Medium;
+    DockingBay bay3; bay3.bayId = 3; bay3.bayName = "Bay 3"; bay3.size = BaySize::Large;
+
+    hangar.AddBay(bay1);
+    hangar.AddBay(bay2);
+    hangar.AddBay(bay3);
+    TEST("Three bays added", hangar.GetAllBays().size() == 3);
+    TEST("Three free bays", hangar.GetFreeBayCount() == 3);
+
+    // Max bays is 3, adding a 4th should be ignored
+    DockingBay bay4; bay4.bayId = 4; bay4.bayName = "Bay 4";
+    hangar.AddBay(bay4);
+    TEST("Still three bays", hangar.GetAllBays().size() == 3);
+}
+
+static void TestHangarComponentGetBay() {
+    std::cout << "[HangarComponent GetBay]\n";
+    HangarComponent hangar(4);
+    DockingBay bay; bay.bayId = 42; bay.bayName = "Special Bay";
+    hangar.AddBay(bay);
+
+    const DockingBay* found = hangar.GetBay(42);
+    TEST("Found bay 42", found != nullptr);
+    TEST("Bay name", found->bayName == "Special Bay");
+    TEST("Not found bay 99", hangar.GetBay(99) == nullptr);
+}
+
+static void TestHangarComponentRequestDocking() {
+    std::cout << "[HangarComponent RequestDocking]\n";
+    HangarComponent hangar(4);
+    DockingBay smallBay; smallBay.bayId = 1; smallBay.size = BaySize::Small;
+    DockingBay medBay; medBay.bayId = 2; medBay.size = BaySize::Medium;
+    hangar.AddBay(smallBay);
+    hangar.AddBay(medBay);
+
+    EntityId ship1 = 100;
+    EntityId ship2 = 200;
+    EntityId ship3 = 300;
+
+    TEST("Request dock ship1", hangar.RequestDocking(ship1, BaySize::Small));
+    TEST("Ship1 approaching", hangar.GetShipDockingState(ship1) == DockingState::Approaching);
+    TEST("One active request", hangar.GetActiveRequests().size() == 1);
+
+    TEST("Request dock ship2", hangar.RequestDocking(ship2, BaySize::Small));
+    TEST("Two active requests", hangar.GetActiveRequests().size() == 2);
+
+    // No more bays
+    TEST("Request dock ship3 fails (no bays)", !hangar.RequestDocking(ship3));
+    TEST("Still two requests", hangar.GetActiveRequests().size() == 2);
+
+    // Duplicate request fails
+    TEST("Duplicate request fails", !hangar.RequestDocking(ship1));
+}
+
+static void TestHangarComponentRequestDockingBySize() {
+    std::cout << "[HangarComponent RequestDocking BySize]\n";
+    HangarComponent hangar(4);
+    DockingBay smallBay; smallBay.bayId = 1; smallBay.size = BaySize::Small;
+    DockingBay largeBay; largeBay.bayId = 2; largeBay.size = BaySize::Large;
+    hangar.AddBay(smallBay);
+    hangar.AddBay(largeBay);
+
+    // Request Large bay for ship - should get bay 2
+    EntityId ship1 = 100;
+    TEST("Request large dock", hangar.RequestDocking(ship1, BaySize::Large));
+    const DockingRequest* req = hangar.GetDockingRequest(ship1);
+    TEST("Assigned to large bay", req != nullptr && req->assignedBayId == 2);
+
+    // Request Capital bay - no capital bays available
+    EntityId ship2 = 200;
+    TEST("Request capital fails", !hangar.RequestDocking(ship2, BaySize::Capital));
+}
+
+static void TestHangarComponentCancelDocking() {
+    std::cout << "[HangarComponent CancelDocking]\n";
+    HangarComponent hangar(4);
+    DockingBay bay; bay.bayId = 1; bay.size = BaySize::Medium;
+    hangar.AddBay(bay);
+
+    EntityId ship1 = 100;
+    hangar.RequestDocking(ship1);
+    TEST("One request", hangar.GetActiveRequests().size() == 1);
+    TEST("Bay occupied", hangar.GetOccupiedBayCount() == 1);
+
+    TEST("Cancel succeeds", hangar.CancelDocking(ship1));
+    TEST("No requests", hangar.GetActiveRequests().empty());
+    TEST("Bay freed", hangar.GetOccupiedBayCount() == 0);
+
+    TEST("Cancel nonexistent fails", !hangar.CancelDocking(999));
+}
+
+static void TestHangarComponentIsShipDocked() {
+    std::cout << "[HangarComponent IsShipDocked]\n";
+    HangarComponent hangar(4);
+    DockingBay bay; bay.bayId = 1; bay.size = BaySize::Medium;
+    hangar.AddBay(bay);
+
+    EntityId ship1 = 100;
+    TEST("Not docked initially", !hangar.IsShipDocked(ship1));
+    TEST("Undocked state", hangar.GetShipDockingState(ship1) == DockingState::Undocked);
+    hangar.RequestDocking(ship1);
+    TEST("Not yet docked (approaching)", !hangar.IsShipDocked(ship1));
+}
+
+static void TestHangarComponentShipStorage() {
+    std::cout << "[HangarComponent Ship Storage]\n";
+    HangarComponent hangar;
+    EntityId ship1 = 100;
+    EntityId ship2 = 200;
+
+    hangar.StoreShip(ship1);
+    hangar.StoreShip(ship2);
+    TEST("Two stored ships", hangar.GetStoredShipCount() == 2);
+
+    // Storing duplicate should not add again
+    hangar.StoreShip(ship1);
+    TEST("Still two stored", hangar.GetStoredShipCount() == 2);
+
+    TEST("Retrieve ship1", hangar.RetrieveShip(ship1));
+    TEST("One stored", hangar.GetStoredShipCount() == 1);
+    TEST("Retrieve nonexistent fails", !hangar.RetrieveShip(999));
+}
+
+static void TestHangarComponentRequestLaunch() {
+    std::cout << "[HangarComponent RequestLaunch]\n";
+    HangarComponent hangar(4);
+    DockingBay bay; bay.bayId = 1; bay.size = BaySize::Medium;
+    hangar.AddBay(bay);
+
+    EntityId ship1 = 100;
+    // Can't launch if not docked
+    TEST("Launch fails (not docked)", !hangar.RequestLaunch(ship1));
+
+    hangar.RequestDocking(ship1);
+    // Ship is Approaching, not Docked yet
+    TEST("Launch fails (approaching)", !hangar.RequestLaunch(ship1));
+}
+
+static void TestHangarComponentFreeBaysBySize() {
+    std::cout << "[HangarComponent FreeBaysBySize]\n";
+    HangarComponent hangar(4);
+    DockingBay small1; small1.bayId = 1; small1.size = BaySize::Small;
+    DockingBay med1; med1.bayId = 2; med1.size = BaySize::Medium;
+    DockingBay large1; large1.bayId = 3; large1.size = BaySize::Large;
+    hangar.AddBay(small1);
+    hangar.AddBay(med1);
+    hangar.AddBay(large1);
+
+    auto medPlus = hangar.GetFreeBaysBySize(BaySize::Medium);
+    TEST("Medium+ bays: 2", medPlus.size() == 2);
+    auto largePlus = hangar.GetFreeBaysBySize(BaySize::Large);
+    TEST("Large+ bays: 1", largePlus.size() == 1);
+    auto capitalPlus = hangar.GetFreeBaysBySize(BaySize::Capital);
+    TEST("Capital+ bays: 0", capitalPlus.size() == 0);
+}
+
+static void TestHangarComponentSerialization() {
+    std::cout << "[HangarComponent Serialization]\n";
+    HangarComponent hangar(6);
+    DockingBay bay1; bay1.bayId = 1; bay1.bayName = "Bay Alpha"; bay1.size = BaySize::Small;
+    bay1.repairRate = 10.0f; bay1.refuelRate = 20.0f;
+    DockingBay bay2; bay2.bayId = 2; bay2.bayName = "Bay Beta"; bay2.size = BaySize::Large;
+    hangar.AddBay(bay1);
+    hangar.AddBay(bay2);
+
+    hangar.StoreShip(500);
+    hangar.StoreShip(600);
+
+    hangar.RequestDocking(100, BaySize::Small);
+
+    ComponentData cd = hangar.Serialize();
+    TEST("Component type", cd.componentType == "HangarComponent");
+
+    HangarComponent hangar2;
+    hangar2.Deserialize(cd);
+    TEST("Restored max bays", hangar2.GetMaxBays() == 6);
+    TEST("Restored bay count", hangar2.GetAllBays().size() == 2);
+    TEST("Restored bay 1 name", hangar2.GetBay(1)->bayName == "Bay Alpha");
+    TEST("Restored bay 2 size", hangar2.GetBay(2)->size == BaySize::Large);
+    TEST("Restored stored ships", hangar2.GetStoredShipCount() == 2);
+    TEST("Restored active requests", hangar2.GetActiveRequests().size() == 1);
+    TEST("Restored request ship", hangar2.GetActiveRequests()[0].shipId == 100);
+}
+
+static void TestHangarSystem() {
+    std::cout << "[HangarSystem]\n";
+    HangarSystem sys;
+    TEST("System created", true);
+    sys.Update(0.016f);
+    TEST("Update without EM", true);
+}
+
+static void TestHangarSystemDockingSequence() {
+    std::cout << "[HangarSystem Docking Sequence]\n";
+    EntityManager em;
+    HangarSystem sys(em);
+
+    auto& entity = em.CreateEntity("station");
+    auto* hangar = em.AddComponent<HangarComponent>(entity.id, std::make_unique<HangarComponent>(4));
+    DockingBay bay; bay.bayId = 1; bay.size = BaySize::Medium;
+    hangar->AddBay(bay);
+
+    EntityId ship1 = 999;
+    hangar->RequestDocking(ship1);
+    TEST("Ship approaching", hangar->GetShipDockingState(ship1) == DockingState::Approaching);
+
+    // Simulate approach (default 2 seconds)
+    sys.Update(1.0f);
+    TEST("Still approaching", hangar->GetShipDockingState(ship1) == DockingState::Approaching);
+    sys.Update(1.5f);
+    TEST("Now docking", hangar->GetShipDockingState(ship1) == DockingState::Docking);
+
+    // Simulate docking (default 3 seconds)
+    sys.Update(3.5f);
+    TEST("Now docked", hangar->GetShipDockingState(ship1) == DockingState::Docked);
+    TEST("Ship is docked", hangar->IsShipDocked(ship1));
+
+    // Request launch
+    TEST("Launch request", hangar->RequestLaunch(ship1));
+    TEST("Undocking state", hangar->GetShipDockingState(ship1) == DockingState::Undocking);
+
+    // Simulate undocking (3 seconds)
+    sys.Update(3.5f);
+    TEST("Now launching", hangar->GetShipDockingState(ship1) == DockingState::Launching);
+
+    // Simulate launch (2 seconds)
+    sys.Update(2.5f);
+    TEST("Launch complete", hangar->GetShipDockingState(ship1) == DockingState::Undocked);
+    TEST("Request removed", hangar->GetActiveRequests().empty());
+    TEST("Bay freed", hangar->GetFreeBayCount() == 1);
+}
+
+// ===================================================================
+// Inventory/TradeRoute/Hangar GameEvents Tests
+// ===================================================================
+
+static void TestInventoryTradeRouteHangarGameEvents() {
+    std::cout << "[Inventory/TradeRoute/Hangar GameEvents]\n";
+    // Inventory events
+    TEST("ItemAdded event", std::string(GameEvents::ItemAdded) == "inventory.item.added");
+    TEST("ItemRemoved event", std::string(GameEvents::ItemRemoved) == "inventory.item.removed");
+    TEST("ItemTransferred event", std::string(GameEvents::ItemTransferred) == "inventory.item.transferred");
+    TEST("InventoryOverweight event", std::string(GameEvents::InventoryOverweight) == "inventory.overweight");
+    TEST("InventorySorted event", std::string(GameEvents::InventorySorted) == "inventory.sorted");
+    // Trade route events
+    TEST("TradeRouteStarted event", std::string(GameEvents::TradeRouteStarted) == "trade_route.started");
+    TEST("TradeRouteStopped event", std::string(GameEvents::TradeRouteStopped) == "trade_route.stopped");
+    TEST("TradeRouteCompleted event", std::string(GameEvents::TradeRouteCompleted) == "trade_route.completed");
+    TEST("TradeWaypointReached event", std::string(GameEvents::TradeWaypointReached) == "trade_route.waypoint.reached");
+    TEST("TradeBuyCompleted event", std::string(GameEvents::TradeBuyCompleted) == "trade_route.buy.completed");
+    TEST("TradeSellCompleted event", std::string(GameEvents::TradeSellCompleted) == "trade_route.sell.completed");
+    // Hangar events
+    TEST("DockingRequested event", std::string(GameEvents::DockingRequested) == "hangar.docking.requested");
+    TEST("DockingCompleted event", std::string(GameEvents::DockingCompleted) == "hangar.docking.completed");
+    TEST("DockingCancelled event", std::string(GameEvents::DockingCancelled) == "hangar.docking.cancelled");
+    TEST("LaunchRequested event", std::string(GameEvents::LaunchRequested) == "hangar.launch.requested");
+    TEST("LaunchCompleted event", std::string(GameEvents::LaunchCompleted) == "hangar.launch.completed");
+    TEST("ShipStored event", std::string(GameEvents::ShipStored) == "hangar.ship.stored");
+    TEST("ShipRetrieved event", std::string(GameEvents::ShipRetrieved) == "hangar.ship.retrieved");
+}
+
+// ===================================================================
 // Main
 // ===================================================================
 int main() {
@@ -11935,6 +12800,50 @@ int main() {
     TestNotificationSystemExpiry();
     TestNotificationSystemAutoRemove();
     TestDiplomacyResearchNotificationGameEvents();
+    TestItemRarityNames();
+    TestInventoryComponentDefaults();
+    TestInventoryComponentCustomInit();
+    TestInventoryComponentAddItem();
+    TestInventoryComponentStacking();
+    TestInventoryComponentRemoveItem();
+    TestInventoryComponentOverweight();
+    TestInventoryComponentGetSlot();
+    TestInventoryComponentFilterByCategory();
+    TestInventoryComponentFilterByRarity();
+    TestInventoryComponentTransfer();
+    TestInventoryComponentSortByName();
+    TestInventoryComponentSortByRarity();
+    TestInventoryComponentClear();
+    TestInventoryComponentSerialization();
+    TestInventorySystem();
+    TestTradeRouteStateNames();
+    TestTradeRouteValidity();
+    TestTradeRouteDistance();
+    TestTradeRouteComponentDefaults();
+    TestTradeRouteComponentStartStop();
+    TestTradeRouteComponentCargo();
+    TestTradeRouteComponentProfit();
+    TestTradeRouteComponentAdvance();
+    TestTradeRouteComponentLoop();
+    TestTradeRouteComponentSerialization();
+    TestTradeRouteSystem();
+    TestTradeRouteSystemTravel();
+    TestDockingBaySizeNames();
+    TestDockingStateNames();
+    TestHangarComponentDefaults();
+    TestHangarComponentAddBays();
+    TestHangarComponentGetBay();
+    TestHangarComponentRequestDocking();
+    TestHangarComponentRequestDockingBySize();
+    TestHangarComponentCancelDocking();
+    TestHangarComponentIsShipDocked();
+    TestHangarComponentShipStorage();
+    TestHangarComponentRequestLaunch();
+    TestHangarComponentFreeBaysBySize();
+    TestHangarComponentSerialization();
+    TestHangarSystem();
+    TestHangarSystemDockingSequence();
+    TestInventoryTradeRouteHangarGameEvents();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
               << testsFailed << " failed ===\n";
