@@ -390,6 +390,9 @@ Based on impact and dependencies:
 | **Diplomacy System** | 100% | ✅ Complete (6 statuses, 5 treaty types, trust, war weariness, serialization) |
 | **Research System** | 100% | ✅ Complete (6 categories, 8 tech nodes, prerequisites, level gating, serialization) |
 | **Notification System** | 100% | ✅ Complete (6 categories, 4 priorities, expiry, filtering, serialization) |
+| **Inventory System** | 100% | ✅ Complete (5 rarity tiers, weight limits, stacking, filtering, transfers, serialization) |
+| **Trade Route System** | 100% | ✅ Complete (6 states, waypoint navigation, cargo manifest, profit tracking, loop support) |
+| **Hangar/Docking System** | 100% | ✅ Complete (4 bay sizes, 7 docking states, sequences, ship storage, serialization) |
 | **Steam Integration** | 0% | ❌ Not started |
 | **Content (ships, weapons)** | 60% | ⚠️ Expansion needed |
 | **Polish & QoL** | 40% | ⚠️ Ongoing |
