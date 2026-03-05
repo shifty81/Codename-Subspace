@@ -9,9 +9,12 @@ An Avorion-inspired space exploration and combat game engine, actively transitio
 > **📂 Documentation:** Reorganized into [`docs/`](docs/) — guides, architecture, implementation notes
 
 > **✨ LATEST (Mar 2026):**
-> - 🔨 **C++ CRAFTING SYSTEM** — 5 station types, 8 default recipes, concurrent job queues, level gating, speed multipliers ✨ **NEW!**
-> - 🤝 **C++ REPUTATION SYSTEM** — Per-faction reputation tracking, 5 standing levels, reputation decay, event history ✨ **NEW!**
-> - 🎖️ **C++ FORMATION SYSTEM** — 6 formation patterns (Line, V, Diamond, Circle, Wedge, Column), slot-based positioning ✨ **NEW!**
+> - 🎒 **C++ INVENTORY SYSTEM** — Per-entity item inventory with 5 rarity tiers, weight limits, stacking, category/rarity filtering, transfers, sorting ✨ **NEW!**
+> - 🚚 **C++ TRADE ROUTE SYSTEM** — Automated trade routes with waypoint navigation, cargo manifest, profit tracking, loop support ✨ **NEW!**
+> - 🚀 **C++ HANGAR/DOCKING SYSTEM** — Ship docking at stations/carriers, 4 bay sizes, approach/docking/launch sequences, ship storage ✨ **NEW!**
+> - 🔨 **C++ CRAFTING SYSTEM** — 5 station types, 8 default recipes, concurrent job queues, level gating, speed multipliers
+> - 🤝 **C++ REPUTATION SYSTEM** — Per-faction reputation tracking, 5 standing levels, reputation decay, event history
+> - 🎖️ **C++ FORMATION SYSTEM** — 6 formation patterns (Line, V, Diamond, Circle, Wedge, Column), slot-based positioning
 > - 🛡️ **C++ SHIELD MODULE SYSTEM** — 4 shield types with absorption multipliers, overcharge mechanics, regen delay
 > - ⚡ **C++ STATUS EFFECT SYSTEM** — 6 effect types (EMP, Fire, Radiation, Shield Drain, Engine Jam, Sensor Scramble) with timed expiry
 > - 💎 **C++ LOOT/DROP SYSTEM** — 5 rarity tiers, deterministic seeded rolling, luck multipliers, 3 preset loot tables
@@ -22,7 +25,7 @@ An Avorion-inspired space exploration and combat game engine, actively transitio
 > - 🌳 **C++ OCTREE SPATIAL PARTITIONING** — Hierarchical spatial indexing with sphere/box/nearest-neighbor queries
 > - 🎆 **C++ PARTICLE SYSTEM** — Configurable emitters with 5 effect presets (Explosion, Engine Thrust, Shield Hit, Mining, Hyperdrive)
 > - 🏆 **C++ ACHIEVEMENT SYSTEM** — Event-driven milestones with criteria tracking, serialization, and 8 template achievements
-> - 🧪 **2543 unit tests** passing across all C++ engine systems
+> - 🧪 **3144 unit tests** passing across all C++ engine systems
 > - 📁 **Repository restructured** — docs, scripts, and assets organized into dedicated directories
 > - 🔧 **C++ MODULAR SHIP SYSTEM** — Hardpoint-based module assembly with 12 module types, 5 ship archetypes, and faction-aware procedural generation
 > - 🚀 **MODULAR SHIP SYSTEM** — Ships built from pre-defined modular parts with hardpoint attachment
@@ -37,7 +40,7 @@ Codename-Subspace/
 ├── engine/              # C++ engine (primary development focus)
 │   ├── include/         #   Public headers (ships, rendering, factions, weapons, AI, networking)
 │   ├── src/             #   Implementations
-│   ├── tests/           #   1563 unit tests
+│   ├── tests/           #   3144 unit tests
 │   ├── data/            #   JSON faction definitions
 │   └── CMakeLists.txt   #   CMake build configuration
 ├── AvorionLike/         # C# prototype (playable reference)
@@ -64,7 +67,7 @@ cd engine
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 
-# Run tests (2543 tests)
+# Run tests (3144 tests)
 ./build/subspace_tests
 
 # Run the game
@@ -98,6 +101,9 @@ cmake --build build
 | **Crafting System** | ✅ **New** | **5 station types, 8 default recipes, concurrent job queues, level gating, speed multipliers** |
 | **Reputation System** | ✅ **New** | **Per-faction reputation tracking, 5 standing levels, reputation decay, event history** |
 | **Formation System** | ✅ **New** | **6 formation patterns (Line, V, Diamond, Circle, Wedge, Column), slot-based positioning** |
+| **Inventory System** | ✅ **New** | **Per-entity item inventory, 5 rarity tiers, weight limits, stacking, category/rarity filtering, transfers** |
+| **Trade Route System** | ✅ **New** | **Automated trade routes, waypoint navigation, cargo manifest, profit tracking, loop support** |
+| **Hangar/Docking System** | ✅ **New** | **Ship docking at stations/carriers, 4 bay sizes, docking sequences, ship storage** |
 
 ## 🎮 C# Prototype
 
