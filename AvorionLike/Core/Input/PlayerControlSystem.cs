@@ -83,9 +83,10 @@ public class PlayerControlSystem
                       * Matrix4x4.CreateRotationZ(physics.Rotation.Z);
         
         // Extract ship-local axes from rotation matrix
+        // Row 1 = forward (X-axis), Row 2 = right (Y-axis), Row 3 = up (Z-axis)
         Vector3 shipForward = Vector3.Normalize(new Vector3(rotMatrix.M11, rotMatrix.M12, rotMatrix.M13));
-        Vector3 shipUp = Vector3.Normalize(new Vector3(rotMatrix.M31, rotMatrix.M32, rotMatrix.M33));
         Vector3 shipRight = Vector3.Normalize(new Vector3(rotMatrix.M21, rotMatrix.M22, rotMatrix.M23));
+        Vector3 shipUp = Vector3.Normalize(new Vector3(rotMatrix.M31, rotMatrix.M32, rotMatrix.M33));
         
         // Check boost state (Tab key for afterburner)
         _boostActive = _keysPressed.Contains(Key.Tab);
@@ -107,12 +108,12 @@ public class PlayerControlSystem
         }
         if (_keysPressed.Contains(Key.A))
         {
-            thrustForce += shipRight * _lateralThrustRatio;
+            thrustForce -= shipRight * _lateralThrustRatio;  // Strafe left
             anyThrustInput = true;
         }
         if (_keysPressed.Contains(Key.D))
         {
-            thrustForce -= shipRight * _lateralThrustRatio;
+            thrustForce += shipRight * _lateralThrustRatio;  // Strafe right
             anyThrustInput = true;
         }
         if (_keysPressed.Contains(Key.Space))

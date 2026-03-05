@@ -797,7 +797,7 @@ public class GameHUD
                             // Show abbreviated item name at bottom
                             string itemName = slot.EquippedItem.Name;
                             if (itemName.Length > 6)
-                                itemName = itemName[..5] + "…";
+                                itemName = itemName[..5] + "..";
                             
                             ImGui.SetCursorPosY(slotSize - _layout.Scale(16f));
                             ImGui.SetWindowFontScale(0.6f * fontScale);
