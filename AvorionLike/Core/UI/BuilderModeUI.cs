@@ -15,6 +15,7 @@ public class BuilderModeUI
 {
     private readonly GameEngine _gameEngine;
     private readonly EnhancedBuildSystem _buildSystem;
+    private ResponsiveUILayout _layout;
     private bool _isActive = false;
     
     // Current selections
@@ -56,6 +57,7 @@ public class BuilderModeUI
     {
         _gameEngine = gameEngine;
         _buildSystem = new EnhancedBuildSystem(gameEngine.EntityManager);
+        _layout = new ResponsiveUILayout(1920f, 1080f);
     }
     
     /// <summary>
@@ -131,9 +133,18 @@ public class BuilderModeUI
     /// </summary>
     public void Render()
     {
-        if (!_isActive) return;
-        
         var io = ImGui.GetIO();
+        if (io.DisplaySize.X != _layout.ScreenWidth || io.DisplaySize.Y != _layout.ScreenHeight)
+        {
+            _layout.UpdateScreenSize(io.DisplaySize.X, io.DisplaySize.Y);
+        }
+        
+        if (!_isActive)
+        {
+            RenderKeyboardHints();
+            return;
+        }
+        
         var displaySize = io.DisplaySize;
         
         // Make window fullscreen, no decorations
@@ -163,9 +174,11 @@ public class BuilderModeUI
     /// </summary>
     private void RenderTopResourcePanel()
     {
-        var io = ImGui.GetIO();
-        ImGui.SetNextWindowPos(new Vector2(10, 10));
-        ImGui.SetNextWindowSize(new Vector2(400, 120));
+        float margin = _layout.GetMargin();
+        var panelSize = _layout.GetPanelSize(300, 500, 90, 150, 0.21f, 0.11f);
+        
+        ImGui.SetNextWindowPos(new Vector2(margin, margin));
+        ImGui.SetNextWindowSize(panelSize);
         
         ImGuiWindowFlags flags = ImGuiWindowFlags.NoTitleBar | 
                                 ImGuiWindowFlags.NoResize | 
@@ -176,15 +189,15 @@ public class BuilderModeUI
         {
             // Credits and Sector
             ImGui.Text("Credits");
-            ImGui.SameLine(120);
+            ImGui.SameLine(_layout.Scale(120));
             
             var inventory = GetCurrentInventory();
             int credits = inventory?.GetResourceAmount(ResourceType.Credits) ?? 0;
             ImGui.Text($"£{credits:N0}");
             
-            ImGui.SameLine(250);
+            ImGui.SameLine(_layout.Scale(250));
             ImGui.Text("Sector");
-            ImGui.SameLine(320);
+            ImGui.SameLine(_layout.Scale(320));
             ImGui.Text("-134 : 429"); // Placeholder - would be actual sector coords
             
             ImGui.Separator();
@@ -199,7 +212,7 @@ public class BuilderModeUI
             }
             ImGui.EndGroup();
             
-            ImGui.SameLine(220);
+            ImGui.SameLine(_layout.Scale(220));
             
             ImGui.BeginGroup();
             {
@@ -218,7 +231,7 @@ public class BuilderModeUI
         int amount = inventory?.GetResourceAmount(type) ?? 0;
         
         ImGui.TextColored(color, name);
-        ImGui.SameLine(120);
+        ImGui.SameLine(_layout.Scale(120));
         
         if (amount > 0)
         {
@@ -235,9 +248,13 @@ public class BuilderModeUI
     /// </summary>
     private void RenderLeftToolbar()
     {
-        var io = ImGui.GetIO();
-        ImGui.SetNextWindowPos(new Vector2(10, 150));
-        ImGui.SetNextWindowSize(new Vector2(60, 500));
+        float margin = _layout.GetMargin();
+        var resourcePanelSize = _layout.GetPanelSize(300, 500, 90, 150, 0.21f, 0.11f);
+        float topY = margin + resourcePanelSize.Y + _layout.Scale(20);
+        var toolbarSize = _layout.Scale(new Vector2(60, 500));
+        
+        ImGui.SetNextWindowPos(new Vector2(margin, topY));
+        ImGui.SetNextWindowSize(toolbarSize);
         
         ImGuiWindowFlags flags = ImGuiWindowFlags.NoTitleBar | 
                                 ImGuiWindowFlags.NoResize | 
@@ -283,7 +300,7 @@ public class BuilderModeUI
             ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.4f, 0.6f, 0.8f, 1.0f));
         }
         
-        if (ImGui.Button(label, new Vector2(50, 30)))
+        if (ImGui.Button(label, _layout.Scale(new Vector2(50, 30))))
         {
             _currentTool = tool;
         }
@@ -304,14 +321,12 @@ public class BuilderModeUI
     /// </summary>
     private void RenderBlockSelectionPanel()
     {
-        var io = ImGui.GetIO();
-        float panelWidth = 630;
-        float panelHeight = 550;
-        float centerX = (io.DisplaySize.X - panelWidth) / 2;
-        float centerY = (io.DisplaySize.Y - panelHeight) / 2;
+        var panelSize = _layout.GetPanelSize(400, 750, 350, 650, 0.33f, 0.51f);
+        float centerX = (_layout.ScreenWidth - panelSize.X) / 2;
+        float centerY = (_layout.ScreenHeight - panelSize.Y) / 2;
         
         ImGui.SetNextWindowPos(new Vector2(centerX, centerY));
-        ImGui.SetNextWindowSize(new Vector2(panelWidth, panelHeight));
+        ImGui.SetNextWindowSize(panelSize);
         
         ImGuiWindowFlags flags = ImGuiWindowFlags.NoMove |
                                 ImGuiWindowFlags.NoResize |
@@ -360,7 +375,7 @@ public class BuilderModeUI
         // Block types
         var blockTypes = Enum.GetValues<BlockType>();
         int columns = 8;
-        int buttonSize = 65;
+        float buttonSize = _layout.Scale(65);
         
         for (int i = 0; i < blockTypes.Length; i++)
         {
@@ -413,7 +428,7 @@ public class BuilderModeUI
                 ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0.4f, 0.6f, 0.8f, 1.0f));
             }
             
-            if (ImGui.Button(shape.ToString(), new Vector2(85, 30)))
+            if (ImGui.Button(shape.ToString(), _layout.Scale(new Vector2(85, 30))))
             {
                 _selectedBlockShape = shape;
             }
@@ -458,13 +473,12 @@ public class BuilderModeUI
     /// </summary>
     private void RenderRightStatsPanel()
     {
-        var io = ImGui.GetIO();
-        float panelWidth = 300;
-        float panelHeight = 600;
-        float rightX = io.DisplaySize.X - panelWidth - 10;
+        float margin = _layout.GetMargin();
+        var panelSize = _layout.GetPanelSize(220, 400, 400, 700, 0.16f, 0.56f);
+        float rightX = _layout.ScreenWidth - panelSize.X - margin;
         
-        ImGui.SetNextWindowPos(new Vector2(rightX, 10));
-        ImGui.SetNextWindowSize(new Vector2(panelWidth, panelHeight));
+        ImGui.SetNextWindowPos(new Vector2(rightX, margin));
+        ImGui.SetNextWindowSize(panelSize);
         
         ImGuiWindowFlags flags = ImGuiWindowFlags.NoTitleBar | 
                                 ImGuiWindowFlags.NoResize | 
@@ -534,10 +548,9 @@ public class BuilderModeUI
     /// </summary>
     private void RenderBottomToolbar()
     {
-        var io = ImGui.GetIO();
-        float toolbarHeight = 60;
-        ImGui.SetNextWindowPos(new Vector2(0, io.DisplaySize.Y - toolbarHeight));
-        ImGui.SetNextWindowSize(new Vector2(io.DisplaySize.X, toolbarHeight));
+        float toolbarHeight = _layout.Scale(60);
+        ImGui.SetNextWindowPos(new Vector2(0, _layout.ScreenHeight - toolbarHeight));
+        ImGui.SetNextWindowSize(new Vector2(_layout.ScreenWidth, toolbarHeight));
         
         ImGuiWindowFlags flags = ImGuiWindowFlags.NoTitleBar | 
                                 ImGuiWindowFlags.NoResize | 
@@ -548,18 +561,48 @@ public class BuilderModeUI
         if (ImGui.Begin("##BottomToolbar", flags))
         {
             ImGui.Text("Rotate Camera [WASD+Shift]");
-            ImGui.SameLine(250);
+            ImGui.SameLine(_layout.Scale(250));
             ImGui.Text("Select [H]");
-            ImGui.SameLine(350);
+            ImGui.SameLine(_layout.Scale(350));
             ImGui.Text("Place Block [F]");
-            ImGui.SameLine(500);
+            ImGui.SameLine(_layout.Scale(500));
             ImGui.Text("[Shift] Show Hotkeys");
-            ImGui.SameLine(650);
+            ImGui.SameLine(_layout.Scale(650));
             ImGui.Text("[Ctrl] Match Block");
-            ImGui.SameLine(800);
+            ImGui.SameLine(_layout.Scale(800));
             ImGui.Text("[Ctrl] Match Shape");
             
             ImGui.Text("Number Keys 1-9: Quick select blocks");
+        }
+        ImGui.End();
+    }
+    
+    /// <summary>
+    /// Render keyboard shortcut hints when NOT in build mode
+    /// </summary>
+    private void RenderKeyboardHints()
+    {
+        var hintSize = _layout.GetPanelSize(400, 700, 30, 50, 0.35f, 0.04f);
+        float margin = _layout.GetMargin();
+        float posX = (_layout.ScreenWidth - hintSize.X) / 2;
+        float posY = _layout.ScreenHeight - hintSize.Y - margin;
+        
+        ImGui.SetNextWindowPos(new Vector2(posX, posY));
+        ImGui.SetNextWindowSize(hintSize);
+        ImGui.SetNextWindowBgAlpha(0.5f);
+        
+        ImGuiWindowFlags flags = ImGuiWindowFlags.NoTitleBar |
+                                ImGuiWindowFlags.NoResize |
+                                ImGuiWindowFlags.NoMove |
+                                ImGuiWindowFlags.NoCollapse |
+                                ImGuiWindowFlags.NoScrollbar |
+                                ImGuiWindowFlags.NoFocusOnAppearing |
+                                ImGuiWindowFlags.NoInputs;
+        
+        if (ImGui.Begin("##KeyboardHints", flags))
+        {
+            ImGui.TextColored(new Vector4(0.8f, 0.8f, 0.8f, 0.9f),
+                "[B] Build Mode   [F4] HUD   [I] Inventory   [Tab] Toggle HUD");
         }
         ImGui.End();
     }

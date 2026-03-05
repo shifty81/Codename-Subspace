@@ -9,10 +9,10 @@ namespace AvorionLike.Core.Procedural;
 /// </summary>
 public enum StationSize
 {
-    Small,      // 2000-3000 blocks (minimum)
-    Medium,     // 3000-5000 blocks
-    Large,      // 5000-8000 blocks
-    Massive     // 8000+ blocks
+    Small,      // 1000-1500 blocks (minimum)
+    Medium,     // 1500-2500 blocks
+    Large,      // 2500-4000 blocks
+    Massive     // 4000+ blocks
 }
 
 /// <summary>
@@ -60,7 +60,7 @@ public class GeneratedStation
 }
 
 /// <summary>
-/// Procedurally generates massive space stations (minimum 2000 blocks)
+/// Procedurally generates space stations (minimum 1000 blocks)
 /// </summary>
 public class ProceduralStationGenerator
 {
@@ -114,7 +114,7 @@ public class ProceduralStationGenerator
         
         _logger.Info("StationGenerator", $"Generating {config.Size} {config.StationType} station with {config.Architecture} architecture");
         
-        // Step 1: Determine station dimensions based on size (ensure 2000+ blocks)
+        // Step 1: Determine station dimensions based on size (ensure 1000+ blocks)
         var coreDimensions = GetStationCoreDimensions(config.Size);
         
         // Step 2: Generate core structure based on architecture
@@ -144,17 +144,17 @@ public class ProceduralStationGenerator
     }
     
     /// <summary>
-    /// Get core dimensions ensuring minimum 2000 block count
+    /// Get core dimensions for station generation (reduced for faster loading)
     /// </summary>
     private Vector3 GetStationCoreDimensions(StationSize size)
     {
         return size switch
         {
-            StationSize.Small => new Vector3(40, 40, 40),      // ~2000-3000 blocks
-            StationSize.Medium => new Vector3(60, 60, 60),     // ~3000-5000 blocks
-            StationSize.Large => new Vector3(80, 80, 80),      // ~5000-8000 blocks
-            StationSize.Massive => new Vector3(120, 120, 120), // ~8000+ blocks
-            _ => new Vector3(60, 60, 60)
+            StationSize.Small => new Vector3(28, 28, 28),      // ~1000-1500 blocks
+            StationSize.Medium => new Vector3(40, 40, 40),     // ~1500-2500 blocks
+            StationSize.Large => new Vector3(55, 55, 55),      // ~2500-4000 blocks
+            StationSize.Massive => new Vector3(75, 75, 75),    // ~4000+ blocks
+            _ => new Vector3(40, 40, 40)
         };
     }
     
@@ -731,11 +731,11 @@ public class ProceduralStationGenerator
         var existingBlocks = station.Structure.Blocks.ToList();
         int targetBlocks = config.Size switch
         {
-            StationSize.Small => 2000,
-            StationSize.Medium => 3000,
-            StationSize.Large => 5000,
-            StationSize.Massive => 8000,
-            _ => 3000
+            StationSize.Small => 1000,
+            StationSize.Medium => 1500,
+            StationSize.Large => 2500,
+            StationSize.Massive => 4000,
+            _ => 1500
         };
         
         float blockSize = 2.5f;  // Fixed size, no random variation

@@ -25,7 +25,7 @@ public class AIShipGenerationParameters
 {
     public ShipDesignGoal Goal { get; set; } = ShipDesignGoal.Frigate;
     public string Material { get; set; } = "Iron";
-    public int TargetBlockCount { get; set; } = 100;
+    public int TargetBlockCount { get; set; } = 70;
     public int Seed { get; set; } = 0;
     
     // Design constraints
