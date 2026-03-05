@@ -48,6 +48,8 @@ Codename-Subspace/
 │   ├── design/          #   Design documents and brainstorming
 │   └── images/          #   Screenshots and diagrams
 ├── scripts/             # Build and test scripts
+├── tools/               # Development tools
+│   └── blender/         #   Blender addons (NovaForge, PCGExporter)
 ├── assets/              # Game assets and module packs
 ├── GameData/            # Game data files
 └── README.md            # This file
@@ -448,6 +450,47 @@ Real-time OpenGL rendering with enhanced visual quality:
 - AI behavior control
 - Real-time system testing without restart
 - See [IN_GAME_TESTING_GUIDE.md](IN_GAME_TESTING_GUIDE.md) for complete documentation
+
+### 18. Blender Integration Tools ✨ **NEW!**
+
+Production-ready Blender addons for asset creation and procedural content generation:
+
+**NovaForge Asset Generator:**
+- Project profile management with JSON-based configurations
+- Procedural panel and door generators with customizable parameters
+- Material presets (Metal, Wood, etc.) with diffuse and specular properties
+- Animation presets with automatic keyframe generation
+- FBX and JSON export for engine integration
+
+**PCG Exporter:**
+- Automatic LOD (Level of Detail) generation with configurable levels
+- Collision mesh export with triangle optimization
+- Snap point JSON generation for modular construction
+- Metadata export (bounding boxes, volume, custom properties)
+- Warp mining zone support for space game mechanics
+- Adjacency matrix export for structural intelligence learning
+- Thumbnail generation for asset preview
+- Project profile support with customizable export settings
+
+**Key Features:**
+- Seamless integration with C++/OpenGL engine
+- Export folder structure optimized for engine consumption
+- Support for planets, moons, asteroid belts, and ship modules
+- Procedural asset generation with profile-based defaults
+- Full documentation in [tools/blender/README.md](tools/blender/README.md)
+
+**Export Structure:**
+```
+Export_Project/
+├── Meshes/         # FBX meshes organized by type
+├── LOD/            # Progressive LOD levels
+├── Collision/      # Collision meshes
+├── SnapPoints/     # Snap point JSON files
+├── Metadata/       # Asset metadata and matrices
+└── Thumbnails/     # Preview images
+```
+
+**See [tools/blender/README.md](tools/blender/README.md) for installation and usage**
 
 ## Getting Started
 
