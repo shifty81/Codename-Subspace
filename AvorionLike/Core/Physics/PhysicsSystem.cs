@@ -104,6 +104,8 @@ public class PhysicsSystem : SystemBase
         }
     }
 
+    private const float SeparationMargin = 0.01f;
+
     private void HandleCollision(PhysicsComponent obj1, PhysicsComponent obj2,
                                   float distance, float minDistance)
     {
@@ -118,7 +120,7 @@ public class PhysicsSystem : SystemBase
         float overlap = minDistance - distance;
         if (overlap > 0f)
         {
-            float separation = overlap + 0.01f;
+            float separation = overlap + SeparationMargin;
 
             if (!obj1.IsStatic && !obj2.IsStatic)
             {

@@ -149,8 +149,7 @@ void PhysicsSystem::HandleCollision(PhysicsComponent& obj1, PhysicsComponent& ob
     // --- Positional separation to prevent objects from getting stuck ---
     float overlap = minDistance - distance;
     if (overlap > 0.0f) {
-        // Small extra margin to ensure clean separation
-        float separation = overlap + 0.01f;
+        float separation = overlap + kSeparationMargin;
 
         if (!obj1.isStatic && !obj2.isStatic) {
             // Distribute separation inversely proportional to mass

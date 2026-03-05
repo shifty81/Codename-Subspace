@@ -32,6 +32,7 @@ private:
     SpatialHash _spatialHash;
     static constexpr float kMaxVelocity = 1000.0f;
     static constexpr float kDefaultCellSize = 50.0f;
+    static constexpr float kSeparationMargin = 0.01f;
 };
 
 } // namespace subspace
