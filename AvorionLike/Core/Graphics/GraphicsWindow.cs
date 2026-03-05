@@ -157,6 +157,7 @@ public class GraphicsWindow : IDisposable
         _window.Update += OnUpdate;
         _window.Render += OnRender;
         _window.Closing += OnClosing;
+        _window.FramebufferResize += OnFramebufferResize;
 
         _window.Run();
     }
@@ -230,6 +231,9 @@ public class GraphicsWindow : IDisposable
         _gl.Enable(EnableCap.CullFace);
         _gl.CullFace(TriangleFace.Back);
         _gl.FrontFace(FrontFaceDirection.Ccw);
+        
+        // Set initial viewport to match window framebuffer size
+        _gl.Viewport(0, 0, (uint)_window!.FramebufferSize.X, (uint)_window.FramebufferSize.Y);
 
         // Set up input
         foreach (var keyboard in _inputContext.Keyboards)
@@ -250,12 +254,15 @@ public class GraphicsWindow : IDisposable
         Console.WriteLine("\n=== 3D Graphics Window Active ===");
         Console.WriteLine("Controls:");
         Console.WriteLine("  Ship Control Mode (Third-Person - DEFAULT):");
-        Console.WriteLine("    WASD - Thrust (Forward/Back/Left/Right)");
-        Console.WriteLine("    Space/Shift - Thrust Up/Down");
+        Console.WriteLine("    WASD - Thruster-based movement (Forward/Back/Strafe)");
+        Console.WriteLine("    Space/Shift - Vertical thrusters (Up/Down)");
         Console.WriteLine("    Arrow Keys - Pitch/Yaw");
         Console.WriteLine("    Q/E - Roll");
+        Console.WriteLine("    Tab - Boost (Afterburner)");
+        Console.WriteLine("    V - Toggle Inertial Dampening");
         Console.WriteLine("    X - Emergency Brake");
         Console.WriteLine("    Mouse - Look around (camera follows ship)");
+        Console.WriteLine("    1-9 - Select hotbar slot");
         Console.WriteLine("  Free Camera Mode (Press C to toggle):");
         Console.WriteLine("    WASD - Move camera");
         Console.WriteLine("    Space/Shift - Move up/down");
@@ -263,7 +270,7 @@ public class GraphicsWindow : IDisposable
         Console.WriteLine("  UI Controls:");
         Console.WriteLine("    M - Toggle Galaxy Map");
         Console.WriteLine("    ~ (Tilde) - Toggle In-Game Testing Console");
-        Console.WriteLine("    Console Button - Click bottom-left button to open/close console ✨ NEW!");
+        Console.WriteLine("    Console Button - Click bottom-left button to open/close console");
         Console.WriteLine("    ALT - Show mouse cursor (hold, doesn't affect free-look)");
         Console.WriteLine("    ESC - Pause Menu (press again to close)");
         Console.WriteLine("    F1 - Toggle Debug HUD (enabled by default)");
@@ -718,6 +725,13 @@ public class GraphicsWindow : IDisposable
             return; // Don't process other inputs when console is open
         }
         
+        // Hotbar slot selection with number keys 1-9
+        if (key >= Key.Number1 && key <= Key.Number9)
+        {
+            int slot = key - Key.Number1;
+            _gameHUD?.SetActiveHotbarSlot(slot);
+        }
+        
         // Pass to player control system
         _playerControlSystem?.OnKeyDown(key);
 
@@ -958,6 +972,22 @@ public class GraphicsWindow : IDisposable
     private void OnClosing()
     {
         Dispose();
+    }
+    
+    private void OnFramebufferResize(Silk.NET.Maths.Vector2D<int> newSize)
+    {
+        if (_gl == null) return;
+        
+        // Update the OpenGL viewport to match the new framebuffer size
+        _gl.Viewport(0, 0, (uint)newSize.X, (uint)newSize.Y);
+        
+        // Propagate new screen size to all UI components
+        float width = newSize.X;
+        float height = newSize.Y;
+        
+        _customUIRenderer?.UpdateScreenSize(width, height);
+        _gameHUD?.UpdateScreenSize(width, height);
+        _gameMenuSystem?.UpdateScreenSize(width, height);
     }
     
     /// <summary>

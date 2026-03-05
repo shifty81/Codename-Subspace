@@ -6,6 +6,7 @@ using AvorionLike.Core.Resources;
 using AvorionLike.Core.Combat;
 using AvorionLike.Core.Navigation;
 using AvorionLike.Core.Power;
+using AvorionLike.Core.Modular;
 using ImGuiNET;
 
 namespace AvorionLike.Core.UI;
@@ -22,6 +23,8 @@ public class GameHUD
     private readonly ResponsiveUILayout _layout;
     private bool _enabled = true;
     private Guid? _playerShipId;
+    private int _activeHotbarSlot = 0;
+    private const int HotbarSlotCount = 9;
     
     public bool Enabled
     {
@@ -47,6 +50,17 @@ public class GameHUD
         _layout.UpdateScreenSize(width, height);
     }
     
+    /// <summary>
+    /// Set the active hotbar slot (0-8, corresponding to keys 1-9)
+    /// </summary>
+    public void SetActiveHotbarSlot(int slot)
+    {
+        if (slot >= 0 && slot < HotbarSlotCount)
+            _activeHotbarSlot = slot;
+    }
+    
+    public int ActiveHotbarSlot => _activeHotbarSlot;
+    
     public void Update(float deltaTime)
     {
         _renderer.Update(deltaTime);
@@ -62,11 +76,13 @@ public class GameHUD
         RenderCornerFrames();
         RenderShipStatusShapes();
         RenderRadar();
+        RenderHotbarShapes();
         _renderer.EndRender();
         
         // Render text with ImGui
         RenderShipStatusText();
         RenderRadarText();
+        RenderHotbarText();
     }
     
     private void RenderCrosshair()
@@ -630,6 +646,173 @@ public class GameHUD
         }
         
         ImGui.End();
+        ImGui.PopStyleVar(2);
+        ImGui.PopStyleColor(2);
+    }
+    
+    /// <summary>
+    /// Render hotbar slot shapes (backgrounds, borders, selection highlight)
+    /// Uses CustomUIRenderer for OpenGL-drawn shapes
+    /// </summary>
+    private void RenderHotbarShapes()
+    {
+        float slotSize = _layout.Scale(52f);
+        float slotSpacing = _layout.Scale(4f);
+        float totalWidth = HotbarSlotCount * slotSize + (HotbarSlotCount - 1) * slotSpacing;
+        float margin = _layout.GetMargin(0.015f);
+        
+        // Center the hotbar horizontally, position above bottom margin
+        float startX = (_layout.ScreenWidth - totalWidth) / 2f;
+        float startY = _layout.ScreenHeight - margin - slotSize - _layout.Scale(8f);
+        
+        // Hotbar background panel
+        float panelPadding = _layout.Scale(6f);
+        Vector2 panelPos = new Vector2(startX - panelPadding, startY - panelPadding);
+        Vector2 panelSize = new Vector2(totalWidth + panelPadding * 2, slotSize + panelPadding * 2);
+        
+        Vector4 panelBg = new Vector4(0.0f, 0.05f, 0.08f, 0.75f);
+        Vector4 panelBorder = new Vector4(0.0f, 0.6f, 0.8f, 0.6f);
+        Vector4 panelGlow = new Vector4(0.0f, 0.5f, 0.7f, 0.15f);
+        
+        _renderer.DrawRectWithGlow(panelPos, panelSize, panelBg, panelGlow, _layout.Scale(6f));
+        _renderer.DrawRect(panelPos, panelSize, panelBorder, _layout.GetLineThickness(1.5f));
+        
+        // Draw each slot
+        for (int i = 0; i < HotbarSlotCount; i++)
+        {
+            float slotX = startX + i * (slotSize + slotSpacing);
+            Vector2 slotPos = new Vector2(slotX, startY);
+            Vector2 slotSizeVec = new Vector2(slotSize, slotSize);
+            
+            bool isActive = (i == _activeHotbarSlot);
+            
+            // Slot background
+            Vector4 slotBg = isActive 
+                ? new Vector4(0.0f, 0.2f, 0.3f, 0.85f)   // Active slot: brighter
+                : new Vector4(0.02f, 0.06f, 0.1f, 0.8f);  // Inactive: dark
+            _renderer.DrawRectFilled(slotPos, slotSizeVec, slotBg);
+            
+            // Slot border
+            Vector4 slotBorder = isActive
+                ? new Vector4(0.0f, 1.0f, 1.0f, 1.0f)     // Active: bright cyan
+                : new Vector4(0.0f, 0.5f, 0.7f, 0.5f);    // Inactive: dim
+            float borderThickness = isActive 
+                ? _layout.GetLineThickness(2.5f)
+                : _layout.GetLineThickness(1f);
+            _renderer.DrawRect(slotPos, slotSizeVec, slotBorder, borderThickness);
+            
+            // Active slot glow effect
+            if (isActive)
+            {
+                Vector4 activeGlow = new Vector4(0.0f, 0.8f, 1.0f, 0.25f);
+                _renderer.DrawRectWithGlow(slotPos, slotSizeVec, 
+                    new Vector4(0, 0, 0, 0), activeGlow, _layout.Scale(8f));
+            }
+            
+            // Draw item indicator if slot has equipment
+            if (_playerShipId.HasValue)
+            {
+                var equipment = _gameEngine.EntityManager.GetComponent<ShipEquipmentComponent>(_playerShipId.Value);
+                if (equipment != null && i < equipment.EquipmentSlots.Count)
+                {
+                    var slot = equipment.EquipmentSlots[i];
+                    if (slot.IsOccupied && slot.EquippedItem != null)
+                    {
+                        // Draw filled indicator square inside the slot
+                        float indicatorSize = slotSize * 0.5f;
+                        float indicatorOffset = (slotSize - indicatorSize) / 2f;
+                        Vector2 indicatorPos = slotPos + new Vector2(indicatorOffset, indicatorOffset);
+                        
+                        Vector4 itemColor = slot.EquippedItem.Type switch
+                        {
+                            EquipmentType.PrimaryWeapon => new Vector4(1.0f, 0.3f, 0.2f, 0.9f),   // Red
+                            EquipmentType.Turret => new Vector4(1.0f, 0.6f, 0.0f, 0.9f),           // Orange
+                            EquipmentType.Missile => new Vector4(1.0f, 0.8f, 0.0f, 0.9f),          // Yellow
+                            EquipmentType.MiningLaser => new Vector4(0.3f, 0.8f, 1.0f, 0.9f),      // Light blue
+                            EquipmentType.SalvageBeam => new Vector4(0.6f, 1.0f, 0.3f, 0.9f),      // Green
+                            EquipmentType.TractorBeam => new Vector4(0.7f, 0.5f, 1.0f, 0.9f),      // Purple
+                            EquipmentType.Shield => new Vector4(0.0f, 0.9f, 1.0f, 0.9f),           // Cyan
+                            _ => new Vector4(0.5f, 0.5f, 0.5f, 0.9f)                               // Gray
+                        };
+                        
+                        _renderer.DrawRectFilled(indicatorPos, new Vector2(indicatorSize, indicatorSize), itemColor);
+                    }
+                }
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Render hotbar slot labels (key numbers, item names) using ImGui text
+    /// </summary>
+    private void RenderHotbarText()
+    {
+        float slotSize = _layout.Scale(52f);
+        float slotSpacing = _layout.Scale(4f);
+        float totalWidth = HotbarSlotCount * slotSize + (HotbarSlotCount - 1) * slotSpacing;
+        float margin = _layout.GetMargin(0.015f);
+        float fontScale = _layout.GetFontScale();
+        
+        float startX = (_layout.ScreenWidth - totalWidth) / 2f;
+        float startY = _layout.ScreenHeight - margin - slotSize - _layout.Scale(8f);
+        
+        // Style for transparent background
+        ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0, 0, 0, 0));
+        ImGui.PushStyleColor(ImGuiCol.Border, new Vector4(0, 0, 0, 0));
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0f);
+        
+        for (int i = 0; i < HotbarSlotCount; i++)
+        {
+            float slotX = startX + i * (slotSize + slotSpacing);
+            bool isActive = (i == _activeHotbarSlot);
+            
+            // Position label at top-left of each slot
+            ImGui.SetNextWindowPos(new Vector2(slotX + _layout.Scale(3f), startY + _layout.Scale(2f)));
+            ImGui.SetNextWindowSize(new Vector2(slotSize, slotSize));
+            
+            if (ImGui.Begin($"##HotbarSlot{i}", ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | 
+                            ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoInputs))
+            {
+                // Key number label
+                float keyFontScale = isActive ? 0.9f * fontScale : 0.75f * fontScale;
+                ImGui.SetWindowFontScale(keyFontScale);
+                
+                Vector4 keyColor = isActive
+                    ? new Vector4(0.0f, 1.0f, 1.0f, 1.0f)
+                    : new Vector4(0.5f, 0.7f, 0.8f, 0.7f);
+                ImGui.PushStyleColor(ImGuiCol.Text, keyColor);
+                ImGui.Text($"{i + 1}");
+                ImGui.PopStyleColor();
+                
+                // Item name at bottom of slot
+                if (_playerShipId.HasValue)
+                {
+                    var equipment = _gameEngine.EntityManager.GetComponent<ShipEquipmentComponent>(_playerShipId.Value);
+                    if (equipment != null && i < equipment.EquipmentSlots.Count)
+                    {
+                        var slot = equipment.EquipmentSlots[i];
+                        if (slot.IsOccupied && slot.EquippedItem != null)
+                        {
+                            // Show abbreviated item name at bottom
+                            string itemName = slot.EquippedItem.Name;
+                            if (itemName.Length > 6)
+                                itemName = itemName[..5] + "…";
+                            
+                            ImGui.SetCursorPosY(slotSize - _layout.Scale(16f));
+                            ImGui.SetWindowFontScale(0.6f * fontScale);
+                            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.8f, 0.9f, 1.0f, 0.8f));
+                            ImGui.Text(itemName);
+                            ImGui.PopStyleColor();
+                        }
+                    }
+                }
+                
+                ImGui.SetWindowFontScale(1.0f);
+            }
+            ImGui.End();
+        }
+        
         ImGui.PopStyleVar(2);
         ImGui.PopStyleColor(2);
     }
