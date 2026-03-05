@@ -89,6 +89,9 @@
 #include "inventory/InventorySystem.h"
 #include "trade_route/TradeRouteSystem.h"
 #include "hangar/HangarSystem.h"
+#include "navigation/WormholeSystem.h"
+#include "ships/ShipClassSystem.h"
+#include "crafting/RefinerySystem.h"
 
 using namespace subspace;
 
@@ -12557,6 +12560,585 @@ static void TestInventoryTradeRouteHangarGameEvents() {
 }
 
 // ===================================================================
+// Wormhole System Tests
+// ===================================================================
+
+static void TestWormholeTypeNames() {
+    std::cout << "[WormholeLink Type Names]\n";
+    TEST("Natural name", WormholeLink::GetTypeName(WormholeType::Natural) == "Natural");
+    TEST("Artificial name", WormholeLink::GetTypeName(WormholeType::Artificial) == "Artificial");
+    TEST("Unstable name", WormholeLink::GetTypeName(WormholeType::Unstable) == "Unstable");
+    TEST("Persistent name", WormholeLink::GetTypeName(WormholeType::Persistent) == "Persistent");
+}
+
+static void TestWormholeStateNames() {
+    std::cout << "[WormholeLink State Names]\n";
+    TEST("Dormant name", WormholeLink::GetStateName(WormholeState::Dormant) == "Dormant");
+    TEST("Activating name", WormholeLink::GetStateName(WormholeState::Activating) == "Activating");
+    TEST("Active name", WormholeLink::GetStateName(WormholeState::Active) == "Active");
+    TEST("Destabilizing name", WormholeLink::GetStateName(WormholeState::Destabilizing) == "Destabilizing");
+    TEST("Collapsed name", WormholeLink::GetStateName(WormholeState::Collapsed) == "Collapsed");
+}
+
+static void TestWormholeComponentDefaults() {
+    std::cout << "[WormholeComponent Defaults]\n";
+    WormholeComponent wc;
+    TEST("Default max links", wc.GetMaxLinks() == 8);
+    TEST("No links", wc.GetLinkCount() == 0);
+    TEST("No active links", wc.GetActiveLinks().empty());
+}
+
+static void TestWormholeComponentAddLink() {
+    std::cout << "[WormholeComponent AddLink]\n";
+    WormholeComponent wc(2);
+    WormholeLink link1;
+    link1.linkId = 1;
+    link1.state = WormholeState::Active;
+    link1.endpointA.sectorX = 0; link1.endpointA.sectorY = 0;
+    link1.endpointB.sectorX = 5; link1.endpointB.sectorY = 5;
+
+    WormholeLink link2;
+    link2.linkId = 2;
+    link2.state = WormholeState::Dormant;
+
+    wc.AddLink(link1);
+    wc.AddLink(link2);
+    TEST("Two links added", wc.GetLinkCount() == 2);
+
+    // Max is 2, adding a 3rd should be ignored
+    WormholeLink link3;
+    link3.linkId = 3;
+    wc.AddLink(link3);
+    TEST("Still two links", wc.GetLinkCount() == 2);
+}
+
+static void TestWormholeComponentGetLink() {
+    std::cout << "[WormholeComponent GetLink]\n";
+    WormholeComponent wc;
+    WormholeLink link;
+    link.linkId = 42;
+    link.endpointA.name = "Alpha Gate";
+    wc.AddLink(link);
+
+    const WormholeLink* found = wc.GetLink(42);
+    TEST("Found link 42", found != nullptr);
+    TEST("Link name", found->endpointA.name == "Alpha Gate");
+    TEST("Not found link 99", wc.GetLink(99) == nullptr);
+}
+
+static void TestWormholeComponentActiveLinks() {
+    std::cout << "[WormholeComponent ActiveLinks]\n";
+    WormholeComponent wc;
+    WormholeLink active;
+    active.linkId = 1;
+    active.state = WormholeState::Active;
+    WormholeLink dormant;
+    dormant.linkId = 2;
+    dormant.state = WormholeState::Dormant;
+    wc.AddLink(active);
+    wc.AddLink(dormant);
+
+    auto activeLinks = wc.GetActiveLinks();
+    TEST("One active link", activeLinks.size() == 1);
+    TEST("Active link id", activeLinks[0]->linkId == 1);
+}
+
+static void TestWormholeComponentLinksToSector() {
+    std::cout << "[WormholeComponent LinksToSector]\n";
+    WormholeComponent wc;
+    WormholeLink link;
+    link.linkId = 1;
+    link.endpointA.sectorX = 0; link.endpointA.sectorY = 0;
+    link.endpointB.sectorX = 5; link.endpointB.sectorY = 5;
+    wc.AddLink(link);
+
+    auto toSector5 = wc.GetLinksToSector(5, 5);
+    TEST("Found link to sector 5,5", toSector5.size() == 1);
+    auto toSector9 = wc.GetLinksToSector(9, 9);
+    TEST("No link to sector 9,9", toSector9.empty());
+}
+
+static void TestWormholeComponentFindLink() {
+    std::cout << "[WormholeComponent FindLink]\n";
+    WormholeComponent wc;
+    WormholeLink link;
+    link.linkId = 1;
+    link.endpointA.sectorX = 0; link.endpointA.sectorY = 0;
+    link.endpointB.sectorX = 5; link.endpointB.sectorY = 5;
+    wc.AddLink(link);
+
+    TEST("Find forward", wc.FindLink(0, 0, 5, 5) != nullptr);
+    TEST("Find reverse", wc.FindLink(5, 5, 0, 0) != nullptr);
+    TEST("Not found", wc.FindLink(1, 1, 9, 9) == nullptr);
+}
+
+static void TestWormholeComponentTraversal() {
+    std::cout << "[WormholeComponent Traversal]\n";
+    WormholeComponent wc;
+    WormholeLink link;
+    link.linkId = 1;
+    link.state = WormholeState::Active;
+    link.stability = 0.8f;
+    link.maxMass = 1000.0f;
+    link.currentMass = 0.0f;
+    wc.AddLink(link);
+
+    EntityId ship1 = 100;
+    TEST("Request traversal", wc.RequestTraversal(1, ship1, 500.0f));
+    TEST("Mass increased", wc.GetLink(1)->currentMass == 500.0f);
+
+    // Over mass limit
+    EntityId ship2 = 200;
+    TEST("Over mass fails", !wc.RequestTraversal(1, ship2, 600.0f));
+
+    // Complete traversal
+    TEST("Complete traversal", wc.CompleteTraversal(1, ship1, 500.0f));
+    TEST("Mass decreased", wc.GetLink(1)->currentMass == 0.0f);
+}
+
+static void TestWormholeComponentTraversalRequirements() {
+    std::cout << "[WormholeComponent Traversal Requirements]\n";
+    WormholeComponent wc;
+
+    // Dormant wormhole - can't traverse
+    WormholeLink dormant;
+    dormant.linkId = 1;
+    dormant.state = WormholeState::Dormant;
+    dormant.stability = 0.8f;
+    dormant.maxMass = 1000.0f;
+    wc.AddLink(dormant);
+    TEST("Dormant traversal fails", !wc.RequestTraversal(1, 100, 100.0f));
+
+    // Low stability - can't traverse
+    WormholeLink lowStab;
+    lowStab.linkId = 2;
+    lowStab.state = WormholeState::Active;
+    lowStab.stability = 0.05f; // below 0.1 threshold
+    lowStab.maxMass = 1000.0f;
+    wc.AddLink(lowStab);
+    TEST("Low stability traversal fails", !wc.RequestTraversal(2, 100, 100.0f));
+}
+
+static void TestWormholeComponentSerialization() {
+    std::cout << "[WormholeComponent Serialization]\n";
+    WormholeComponent wc(4);
+    WormholeLink link;
+    link.linkId = 1;
+    link.type = WormholeType::Artificial;
+    link.state = WormholeState::Active;
+    link.stability = 0.75f;
+    link.maxMass = 5000.0f;
+    link.currentMass = 100.0f;
+    link.traversalTime = 3.0f;
+    link.bidirectional = true;
+    link.endpointA.sectorX = 1; link.endpointA.sectorY = 2;
+    link.endpointA.name = "Gate Alpha";
+    link.endpointB.sectorX = 5; link.endpointB.sectorY = 6;
+    link.endpointB.name = "Gate Beta";
+    wc.AddLink(link);
+
+    ComponentData cd = wc.Serialize();
+    TEST("Component type", cd.componentType == "WormholeComponent");
+
+    WormholeComponent wc2;
+    wc2.Deserialize(cd);
+    TEST("Restored max links", wc2.GetMaxLinks() == 4);
+    TEST("Restored link count", wc2.GetLinkCount() == 1);
+    const WormholeLink* restored = wc2.GetLink(1);
+    TEST("Restored link exists", restored != nullptr);
+    TEST("Restored type", restored->type == WormholeType::Artificial);
+    TEST("Restored state", restored->state == WormholeState::Active);
+    TEST("Restored endpoint A name", restored->endpointA.name == "Gate Alpha");
+    TEST("Restored endpoint B sector", restored->endpointB.sectorX == 5);
+}
+
+static void TestWormholeSystem() {
+    std::cout << "[WormholeSystem]\n";
+    WormholeSystem sys;
+    TEST("System created", true);
+    sys.Update(0.016f);
+    TEST("Update without EM", true);
+}
+
+static void TestWormholeSystemActivation() {
+    std::cout << "[WormholeSystem Activation]\n";
+    EntityManager em;
+    WormholeSystem sys(em);
+
+    auto& entity = em.CreateEntity("wormhole_network");
+    auto* wc = em.AddComponent<WormholeComponent>(
+        entity.id, std::make_unique<WormholeComponent>(4));
+
+    WormholeLink link;
+    link.linkId = 1;
+    link.state = WormholeState::Activating;
+    link.stability = 0.4f;
+    wc->AddLink(link);
+
+    // Stability should increase toward 0.5 activation threshold
+    // Default regen rate is 0.005 per second
+    sys.Update(100.0f); // 100 * 0.005 = 0.5 added, 0.4 + 0.5 = 0.9 => active
+    TEST("Became active", wc->GetLink(1)->state == WormholeState::Active);
+}
+
+static void TestWormholeSystemDestabilization() {
+    std::cout << "[WormholeSystem Destabilization]\n";
+    EntityManager em;
+    WormholeSystem sys(em);
+
+    auto& entity = em.CreateEntity("wormhole_network");
+    auto* wc = em.AddComponent<WormholeComponent>(
+        entity.id, std::make_unique<WormholeComponent>(4));
+
+    WormholeLink link;
+    link.linkId = 1;
+    link.state = WormholeState::Destabilizing;
+    link.stability = 0.005f;
+    wc->AddLink(link);
+
+    // Default decay rate 0.01 per second, should collapse quickly
+    sys.Update(1.0f); // 0.005 - 0.01*1.0 = -0.005 => collapse
+    TEST("Collapsed", wc->GetLink(1)->state == WormholeState::Collapsed);
+    TEST("Stability zero", wc->GetLink(1)->stability == 0.0f);
+}
+
+// ===================================================================
+// Ship Class System Tests
+// ===================================================================
+
+static void TestShipClassNames() {
+    std::cout << "[ShipClassDefinition Class Names]\n";
+    TEST("Fighter name", ShipClassDefinition::GetClassName(ShipClass::Fighter) == "Fighter");
+    TEST("Corvette name", ShipClassDefinition::GetClassName(ShipClass::Corvette) == "Corvette");
+    TEST("Frigate name", ShipClassDefinition::GetClassName(ShipClass::Frigate) == "Frigate");
+    TEST("Destroyer name", ShipClassDefinition::GetClassName(ShipClass::Destroyer) == "Destroyer");
+    TEST("Cruiser name", ShipClassDefinition::GetClassName(ShipClass::Cruiser) == "Cruiser");
+    TEST("Battleship name", ShipClassDefinition::GetClassName(ShipClass::Battleship) == "Battleship");
+    TEST("Carrier name", ShipClassDefinition::GetClassName(ShipClass::Carrier) == "Carrier");
+    TEST("Freighter name", ShipClassDefinition::GetClassName(ShipClass::Freighter) == "Freighter");
+    TEST("Miner name", ShipClassDefinition::GetClassName(ShipClass::Miner) == "Miner");
+    TEST("Explorer name", ShipClassDefinition::GetClassName(ShipClass::Explorer) == "Explorer");
+}
+
+static void TestShipRoleNames() {
+    std::cout << "[ShipClassDefinition Role Names]\n";
+    TEST("Combat role", ShipClassDefinition::GetRoleName(ShipRole::Combat) == "Combat");
+    TEST("Trade role", ShipClassDefinition::GetRoleName(ShipRole::Trade) == "Trade");
+    TEST("Mining role", ShipClassDefinition::GetRoleName(ShipRole::Mining) == "Mining");
+    TEST("Exploration role", ShipClassDefinition::GetRoleName(ShipRole::Exploration) == "Exploration");
+    TEST("Support role", ShipClassDefinition::GetRoleName(ShipRole::Support) == "Support");
+    TEST("MultiRole role", ShipClassDefinition::GetRoleName(ShipRole::MultiRole) == "Multi-Role");
+}
+
+static void TestShipClassDefaults() {
+    std::cout << "[ShipClassDefinition Defaults]\n";
+    auto fighter = ShipClassDefinition::GetDefaultDefinition(ShipClass::Fighter);
+    TEST("Fighter display name", fighter.displayName == "Fighter");
+    TEST("Fighter role", fighter.role == ShipRole::Combat);
+    TEST("Fighter tech level", fighter.techLevel == 1);
+    TEST("Fighter speed bonus > 1", fighter.bonus.speedMultiplier > 1.0f);
+
+    auto freighter = ShipClassDefinition::GetDefaultDefinition(ShipClass::Freighter);
+    TEST("Freighter role", freighter.role == ShipRole::Trade);
+    TEST("Freighter cargo bonus", freighter.bonus.cargoMultiplier == 2.0f);
+
+    auto miner = ShipClassDefinition::GetDefaultDefinition(ShipClass::Miner);
+    TEST("Miner role", miner.role == ShipRole::Mining);
+    TEST("Miner mining bonus", miner.bonus.miningMultiplier == 2.0f);
+
+    auto explorer = ShipClassDefinition::GetDefaultDefinition(ShipClass::Explorer);
+    TEST("Explorer role", explorer.role == ShipRole::Exploration);
+    TEST("Explorer sensor bonus", explorer.bonus.sensorMultiplier == 2.0f);
+}
+
+static void TestShipClassComponentDefaults() {
+    std::cout << "[ShipClassComponent Defaults]\n";
+    ShipClassComponent comp;
+    TEST("Default class is Fighter", comp.GetShipClass() == ShipClass::Fighter);
+    TEST("Default role is Combat", comp.GetRole() == ShipRole::Combat);
+    TEST("Default tech level 1", comp.GetTechLevel() == 1);
+    TEST("Display name", comp.GetDisplayName() == "Fighter");
+}
+
+static void TestShipClassComponentExplicit() {
+    std::cout << "[ShipClassComponent Explicit]\n";
+    ShipClassComponent comp(ShipClass::Miner);
+    TEST("Miner class", comp.GetShipClass() == ShipClass::Miner);
+    TEST("Mining role", comp.GetRole() == ShipRole::Mining);
+    TEST("Mining bonus 2x", ApproxEq(comp.GetEffectiveMining(100.0f), 200.0f));
+}
+
+static void TestShipClassComponentSetClass() {
+    std::cout << "[ShipClassComponent SetClass]\n";
+    ShipClassComponent comp;
+    comp.SetShipClass(ShipClass::Battleship);
+    TEST("Battleship class", comp.GetShipClass() == ShipClass::Battleship);
+    TEST("Battleship tech 8", comp.GetTechLevel() == 8);
+    TEST("Battleship damage bonus", comp.GetEffectiveDamage(100.0f) > 100.0f);
+}
+
+static void TestShipClassComponentEffective() {
+    std::cout << "[ShipClassComponent Effective Stats]\n";
+    ShipClassComponent comp(ShipClass::Freighter);
+    // Freighter: speed 0.8, damage 0.3, shield 0.9, cargo 2.0, mining 0.5, sensor 0.8
+    TEST("Effective speed", ApproxEq(comp.GetEffectiveSpeed(100.0f), 80.0f));
+    TEST("Effective damage", ApproxEq(comp.GetEffectiveDamage(100.0f), 30.0f));
+    TEST("Effective shield", ApproxEq(comp.GetEffectiveShield(100.0f), 90.0f));
+    TEST("Effective cargo", ApproxEq(comp.GetEffectiveCargo(100.0f), 200.0f));
+    TEST("Effective mining", ApproxEq(comp.GetEffectiveMining(100.0f), 50.0f));
+    TEST("Effective sensor", ApproxEq(comp.GetEffectiveSensor(100.0f), 80.0f));
+}
+
+static void TestShipClassComponentSerialization() {
+    std::cout << "[ShipClassComponent Serialization]\n";
+    ShipClassComponent comp(ShipClass::Cruiser);
+    ComponentData cd = comp.Serialize();
+    TEST("Component type", cd.componentType == "ShipClassComponent");
+
+    ShipClassComponent comp2;
+    comp2.Deserialize(cd);
+    TEST("Restored class", comp2.GetShipClass() == ShipClass::Cruiser);
+    TEST("Restored role", comp2.GetRole() == ShipRole::Combat);
+    TEST("Restored tech level", comp2.GetTechLevel() == 6);
+    TEST("Restored display name", comp2.GetDisplayName() == "Cruiser");
+}
+
+static void TestShipClassSystem() {
+    std::cout << "[ShipClassSystem]\n";
+    ShipClassSystem sys;
+    TEST("System created", true);
+    sys.Update(0.016f);
+    TEST("Update without EM", true);
+}
+
+static void TestShipClassSystemUpgrades() {
+    std::cout << "[ShipClassSystem Upgrades]\n";
+    ShipClassSystem sys;
+
+    // Fighter (tech 1) -> can upgrade to tech 1,2,3
+    TEST("Fighter->Corvette (tech 2)", sys.CanUpgradeClass(ShipClass::Fighter, ShipClass::Corvette));
+    TEST("Fighter->Frigate (tech 3)", sys.CanUpgradeClass(ShipClass::Fighter, ShipClass::Frigate));
+    TEST("Fighter->Destroyer (tech 4) fails", !sys.CanUpgradeClass(ShipClass::Fighter, ShipClass::Destroyer));
+    TEST("Fighter->Battleship (tech 8) fails", !sys.CanUpgradeClass(ShipClass::Fighter, ShipClass::Battleship));
+
+    auto upgrades = sys.GetAvailableUpgrades(ShipClass::Fighter);
+    TEST("Fighter has multiple upgrades", upgrades.size() > 0);
+}
+
+// ===================================================================
+// Refinery System Tests
+// ===================================================================
+
+static void TestRefineryTierNames() {
+    std::cout << "[RefineryRecipe Tier Names]\n";
+    TEST("Basic tier", RefineryRecipe::GetTierName(RefineryTier::Basic) == "Basic");
+    TEST("Advanced tier", RefineryRecipe::GetTierName(RefineryTier::Advanced) == "Advanced");
+    TEST("Industrial tier", RefineryRecipe::GetTierName(RefineryTier::Industrial) == "Industrial");
+    TEST("Military tier", RefineryRecipe::GetTierName(RefineryTier::Military) == "Military");
+    TEST("Experimental tier", RefineryRecipe::GetTierName(RefineryTier::Experimental) == "Experimental");
+}
+
+static void TestRefiningStateNames() {
+    std::cout << "[RefineryRecipe State Names]\n";
+    TEST("Idle state", RefineryRecipe::GetStateName(RefiningState::Idle) == "Idle");
+    TEST("Loading state", RefineryRecipe::GetStateName(RefiningState::Loading) == "Loading");
+    TEST("Processing state", RefineryRecipe::GetStateName(RefiningState::Processing) == "Processing");
+    TEST("Completed state", RefineryRecipe::GetStateName(RefiningState::Completed) == "Completed");
+    TEST("Failed state", RefineryRecipe::GetStateName(RefiningState::Failed) == "Failed");
+}
+
+static void TestRefineryDefaultRecipes() {
+    std::cout << "[RefineryRecipe Default Recipes]\n";
+    auto recipes = RefineryRecipe::GetDefaultRecipes();
+    TEST("Eight default recipes", recipes.size() == 8);
+    TEST("First recipe is Iron Ore", recipes[0].inputMaterial == "Iron Ore");
+    TEST("First recipe output", recipes[0].outputMaterial == "Iron Ingot");
+    TEST("Last recipe is Scrap Metal", recipes[7].inputMaterial == "Scrap Metal");
+}
+
+static void TestRefineryComponentDefaults() {
+    std::cout << "[RefineryComponent Defaults]\n";
+    RefineryComponent rc;
+    TEST("Default tier Basic", rc.GetTier() == RefineryTier::Basic);
+    TEST("Default max jobs 3", rc.GetMaxJobs() == 3);
+    TEST("No active jobs", rc.GetActiveJobCount() == 0);
+    TEST("No completed jobs", rc.GetCompletedJobCount() == 0);
+    TEST("Empty job list", rc.GetAllJobs().empty());
+    TEST("Efficiency 1.0 for Basic", ApproxEq(rc.GetEfficiencyMultiplier(), 1.0f));
+    TEST("Speed 1.0 for Basic", ApproxEq(rc.GetProcessingSpeedMultiplier(), 1.0f));
+}
+
+static void TestRefineryComponentCustomTier() {
+    std::cout << "[RefineryComponent Custom Tier]\n";
+    RefineryComponent rc(RefineryTier::Industrial, 5);
+    TEST("Industrial tier", rc.GetTier() == RefineryTier::Industrial);
+    TEST("Max jobs 5", rc.GetMaxJobs() == 5);
+    // Industrial = tier index 2, efficiency = 1.0 + 0.1*2 = 1.2
+    TEST("Efficiency 1.2", ApproxEq(rc.GetEfficiencyMultiplier(), 1.2f));
+    // Speed = 1.0 + 0.15*2 = 1.3
+    TEST("Speed 1.3", ApproxEq(rc.GetProcessingSpeedMultiplier(), 1.3f));
+}
+
+static void TestRefineryComponentStartJob() {
+    std::cout << "[RefineryComponent StartJob]\n";
+    RefineryComponent rc(RefineryTier::Advanced, 2);
+    auto recipes = RefineryRecipe::GetDefaultRecipes();
+    // Recipe 0: Iron Ore (Basic tier) - should succeed on Advanced
+    TEST("Start basic recipe", rc.StartJob(recipes[0]));
+    TEST("One active job", rc.GetActiveJobCount() == 1);
+
+    // Recipe 2: Naonite Ore (Advanced tier) - should succeed
+    TEST("Start advanced recipe", rc.StartJob(recipes[2]));
+    TEST("Two active jobs", rc.GetActiveJobCount() == 2);
+
+    // Max jobs reached - should fail
+    TEST("Third job fails (max)", !rc.StartJob(recipes[0]));
+}
+
+static void TestRefineryComponentTierRequirement() {
+    std::cout << "[RefineryComponent Tier Requirement]\n";
+    RefineryComponent rc(RefineryTier::Basic, 3);
+    auto recipes = RefineryRecipe::GetDefaultRecipes();
+    // Recipe 2: Naonite Ore requires Advanced tier - should fail on Basic
+    TEST("Advanced recipe on Basic fails", !rc.StartJob(recipes[2]));
+    // Recipe 0: Iron Ore requires Basic tier - should succeed
+    TEST("Basic recipe on Basic succeeds", rc.StartJob(recipes[0]));
+}
+
+static void TestRefineryComponentCancelJob() {
+    std::cout << "[RefineryComponent CancelJob]\n";
+    RefineryComponent rc;
+    auto recipes = RefineryRecipe::GetDefaultRecipes();
+    rc.StartJob(recipes[0]);
+    int jobId = rc.GetAllJobs()[0].jobId;
+    TEST("One job", rc.GetAllJobs().size() == 1);
+    TEST("Cancel succeeds", rc.CancelJob(jobId));
+    TEST("No jobs", rc.GetAllJobs().empty());
+    TEST("Cancel nonexistent fails", !rc.CancelJob(999));
+}
+
+static void TestRefineryComponentCollectJob() {
+    std::cout << "[RefineryComponent CollectJob]\n";
+    RefineryComponent rc;
+    auto recipes = RefineryRecipe::GetDefaultRecipes();
+    rc.StartJob(recipes[0]); // Iron Ore -> Iron Ingot
+    int jobId = rc.GetAllJobs()[0].jobId;
+
+    // Job is Loading, not completed - collect should fail
+    auto result = rc.CollectJob(jobId);
+    TEST("Collect incomplete returns empty", result.first.empty() && result.second == 0);
+}
+
+static void TestRefineryComponentSetTier() {
+    std::cout << "[RefineryComponent SetTier]\n";
+    RefineryComponent rc;
+    TEST("Initially Basic", rc.GetTier() == RefineryTier::Basic);
+    rc.SetTier(RefineryTier::Experimental);
+    TEST("Now Experimental", rc.GetTier() == RefineryTier::Experimental);
+    // Experimental = tier index 4, efficiency = 1.0 + 0.1*4 = 1.4
+    TEST("Efficiency 1.4", ApproxEq(rc.GetEfficiencyMultiplier(), 1.4f));
+}
+
+static void TestRefineryComponentSerialization() {
+    std::cout << "[RefineryComponent Serialization]\n";
+    RefineryComponent rc(RefineryTier::Military, 4);
+    auto recipes = RefineryRecipe::GetDefaultRecipes();
+    rc.StartJob(recipes[0]); // Iron Ore
+    rc.StartJob(recipes[1]); // Titanium Ore
+
+    ComponentData cd = rc.Serialize();
+    TEST("Component type", cd.componentType == "RefineryComponent");
+
+    RefineryComponent rc2;
+    rc2.Deserialize(cd);
+    TEST("Restored tier", rc2.GetTier() == RefineryTier::Military);
+    TEST("Restored max jobs", rc2.GetMaxJobs() == 4);
+    TEST("Restored job count", rc2.GetAllJobs().size() == 2);
+    TEST("Restored job recipe", rc2.GetAllJobs()[0].recipe.inputMaterial == "Iron Ore");
+}
+
+static void TestRefinerySystem() {
+    std::cout << "[RefinerySystem]\n";
+    RefinerySystem sys;
+    TEST("System created", true);
+    sys.Update(0.016f);
+    TEST("Update without EM", true);
+}
+
+static void TestRefinerySystemProcessing() {
+    std::cout << "[RefinerySystem Processing]\n";
+    EntityManager em;
+    RefinerySystem sys(em);
+
+    auto& entity = em.CreateEntity("refinery_station");
+    auto* rc = em.AddComponent<RefineryComponent>(
+        entity.id, std::make_unique<RefineryComponent>(RefineryTier::Basic, 3));
+
+    auto recipes = RefineryRecipe::GetDefaultRecipes();
+    rc->StartJob(recipes[0]); // Iron Ore: 5s processing, batch 1
+    int jobId = rc->GetAllJobs()[0].jobId;
+
+    // First update transitions Loading -> Processing
+    sys.Update(0.1f);
+    TEST("Job processing", rc->GetJob(jobId)->state == RefiningState::Processing);
+
+    // Process for enough time to complete (5s processing, speed 1.0 for Basic)
+    sys.Update(5.5f);
+    TEST("Job completed", rc->GetJob(jobId)->state == RefiningState::Completed);
+
+    // Collect the output
+    auto output = rc->CollectJob(jobId);
+    TEST("Output material", output.first == "Iron Ingot");
+    TEST("Output amount > 0", output.second > 0);
+    TEST("Job removed", rc->GetAllJobs().empty());
+}
+
+static void TestRefinerySystemSpeedMultiplier() {
+    std::cout << "[RefinerySystem Speed Multiplier]\n";
+    EntityManager em;
+    RefinerySystem sys(em);
+
+    auto& entity = em.CreateEntity("fast_refinery");
+    // Experimental tier: speed mult = 1.0 + 0.15*4 = 1.6
+    auto* rc = em.AddComponent<RefineryComponent>(
+        entity.id, std::make_unique<RefineryComponent>(RefineryTier::Experimental, 3));
+
+    auto recipes = RefineryRecipe::GetDefaultRecipes();
+    rc->StartJob(recipes[0]); // 5s processing at Basic speed
+    int jobId = rc->GetAllJobs()[0].jobId;
+
+    sys.Update(0.1f); // Loading -> Processing
+    // At 1.6x speed, 5s becomes ~3.125s effective
+    sys.Update(3.5f);
+    TEST("Fast tier completes sooner", rc->GetJob(jobId)->state == RefiningState::Completed);
+}
+
+// ===================================================================
+// Wormhole/ShipClass/Refinery GameEvents Tests
+// ===================================================================
+
+static void TestWormholeShipClassRefineryGameEvents() {
+    std::cout << "[Wormhole/ShipClass/Refinery GameEvents]\n";
+    // Wormhole events
+    TEST("WormholeActivated event", std::string(GameEvents::WormholeActivated) == "wormhole.activated");
+    TEST("WormholeCollapsed event", std::string(GameEvents::WormholeCollapsed) == "wormhole.collapsed");
+    TEST("WormholeTraversalStarted event", std::string(GameEvents::WormholeTraversalStarted) == "wormhole.traversal.started");
+    TEST("WormholeTraversalCompleted event", std::string(GameEvents::WormholeTraversalCompleted) == "wormhole.traversal.completed");
+    TEST("WormholeDestabilizing event", std::string(GameEvents::WormholeDestabilizing) == "wormhole.destabilizing");
+    TEST("WormholeLinkAdded event", std::string(GameEvents::WormholeLinkAdded) == "wormhole.link.added");
+    // Ship class events
+    TEST("ShipClassAssigned event", std::string(GameEvents::ShipClassAssigned) == "ship_class.assigned");
+    TEST("ShipClassChanged event", std::string(GameEvents::ShipClassChanged) == "ship_class.changed");
+    TEST("ShipClassUpgraded event", std::string(GameEvents::ShipClassUpgraded) == "ship_class.upgraded");
+    // Refinery events
+    TEST("RefiningStarted event", std::string(GameEvents::RefiningStarted) == "refinery.job.started");
+    TEST("RefiningCompleted event", std::string(GameEvents::RefiningCompleted) == "refinery.job.completed");
+    TEST("RefiningCancelled event", std::string(GameEvents::RefiningCancelled) == "refinery.job.cancelled");
+    TEST("RefiningCollected event", std::string(GameEvents::RefiningCollected) == "refinery.job.collected");
+    TEST("RefineryTierChanged event", std::string(GameEvents::RefineryTierChanged) == "refinery.tier.changed");
+}
+
+// ===================================================================
 // Main
 // ===================================================================
 int main() {
@@ -12964,6 +13546,45 @@ int main() {
     TestHangarSystem();
     TestHangarSystemDockingSequence();
     TestInventoryTradeRouteHangarGameEvents();
+    TestWormholeTypeNames();
+    TestWormholeStateNames();
+    TestWormholeComponentDefaults();
+    TestWormholeComponentAddLink();
+    TestWormholeComponentGetLink();
+    TestWormholeComponentActiveLinks();
+    TestWormholeComponentLinksToSector();
+    TestWormholeComponentFindLink();
+    TestWormholeComponentTraversal();
+    TestWormholeComponentTraversalRequirements();
+    TestWormholeComponentSerialization();
+    TestWormholeSystem();
+    TestWormholeSystemActivation();
+    TestWormholeSystemDestabilization();
+    TestShipClassNames();
+    TestShipRoleNames();
+    TestShipClassDefaults();
+    TestShipClassComponentDefaults();
+    TestShipClassComponentExplicit();
+    TestShipClassComponentSetClass();
+    TestShipClassComponentEffective();
+    TestShipClassComponentSerialization();
+    TestShipClassSystem();
+    TestShipClassSystemUpgrades();
+    TestRefineryTierNames();
+    TestRefiningStateNames();
+    TestRefineryDefaultRecipes();
+    TestRefineryComponentDefaults();
+    TestRefineryComponentCustomTier();
+    TestRefineryComponentStartJob();
+    TestRefineryComponentTierRequirement();
+    TestRefineryComponentCancelJob();
+    TestRefineryComponentCollectJob();
+    TestRefineryComponentSetTier();
+    TestRefineryComponentSerialization();
+    TestRefinerySystem();
+    TestRefinerySystemProcessing();
+    TestRefinerySystemSpeedMultiplier();
+    TestWormholeShipClassRefineryGameEvents();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
               << testsFailed << " failed ===\n";

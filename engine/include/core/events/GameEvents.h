@@ -256,6 +256,26 @@ namespace GameEvents {
     constexpr const char* LaunchCompleted         = "hangar.launch.completed";
     constexpr const char* ShipStored              = "hangar.ship.stored";
     constexpr const char* ShipRetrieved           = "hangar.ship.retrieved";
+
+    // Wormhole events
+    constexpr const char* WormholeActivated        = "wormhole.activated";
+    constexpr const char* WormholeCollapsed         = "wormhole.collapsed";
+    constexpr const char* WormholeTraversalStarted  = "wormhole.traversal.started";
+    constexpr const char* WormholeTraversalCompleted = "wormhole.traversal.completed";
+    constexpr const char* WormholeDestabilizing     = "wormhole.destabilizing";
+    constexpr const char* WormholeLinkAdded         = "wormhole.link.added";
+
+    // Ship class events
+    constexpr const char* ShipClassAssigned         = "ship_class.assigned";
+    constexpr const char* ShipClassChanged          = "ship_class.changed";
+    constexpr const char* ShipClassUpgraded         = "ship_class.upgraded";
+
+    // Refinery events
+    constexpr const char* RefiningStarted           = "refinery.job.started";
+    constexpr const char* RefiningCompleted          = "refinery.job.completed";
+    constexpr const char* RefiningCancelled          = "refinery.job.cancelled";
+    constexpr const char* RefiningCollected           = "refinery.job.collected";
+    constexpr const char* RefineryTierChanged        = "refinery.tier.changed";
 } // namespace GameEvents
 
 } // namespace subspace
