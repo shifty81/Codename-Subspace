@@ -67,6 +67,7 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/core/resources/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/factions/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/formation/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/hangar/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/inventory/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/navigation/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/networking/*.cpp"
