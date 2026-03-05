@@ -40,6 +40,7 @@ struct PhysicsComponent : IComponent {
 
     // Collision
     float collisionRadius = 10.0f;
+    float restitution     = 0.8f;   // Coefficient of restitution (0 = perfectly inelastic, 1 = perfectly elastic)
     bool  isStatic        = false;
 
     // Collision layers

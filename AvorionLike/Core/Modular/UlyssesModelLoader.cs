@@ -18,13 +18,7 @@ public static class UlyssesModelLoader
     /// </summary>
     private static readonly string[] ModelSearchPaths = new[]
     {
-        // Primary location - actual user location
-        "Models/ships/Ulysses/source/ulysses.blend",
-        "Models/ships/Ulysses/source/Ulysses.blend",
-        "Models/ships/Ulysses/ulysses.blend",
-        "Models/ships/Ulysses/Ulysses.blend",
-        
-        // Alternative formats in Ulysses folder
+        // Primary location - exported formats (Assimp-compatible)
         "Models/ships/Ulysses/source/ulysses.obj",
         "Models/ships/Ulysses/source/ulysses.fbx",
         "Models/ships/Ulysses/source/ulysses.gltf",
@@ -34,33 +28,24 @@ public static class UlyssesModelLoader
         "Models/ships/Ulysses/ulysses.gltf",
         "Models/ships/Ulysses/ulysses.glb",
         
-        // Alternative locations (prefer Assets folder)
-        "Models/ships/hulls/ulysses.blend",
-        "Models/ships/hulls/Ulysses.blend",
-        "Models/ships/ulysses.blend",
-        "Models/ulysses.blend",
-        
-        // Alternative formats in hulls
+        // Alternative locations in hulls
         "Models/ships/hulls/ulysses.obj",
         "Models/ships/hulls/ulysses.fbx",
         "Models/ships/hulls/ulysses.gltf",
         "Models/ships/hulls/ulysses.glb",
         
         // GameData locations (legacy support)
-        "../GameData/Assets/Models/ships/Ulysses/source/ulysses.blend",
-        "../GameData/Assets/Models/ships/Ulysses/ulysses.blend",
-        "../GameData/Assets/Models/ships/hulls/ulysses.blend",
-        "../GameData/Assets/Models/ships/ulysses.blend",
+        "../GameData/Assets/Models/ships/Ulysses/source/ulysses.obj",
+        "../GameData/Assets/Models/ships/Ulysses/ulysses.obj",
+        "../GameData/Assets/Models/ships/hulls/ulysses.obj",
         
         // Root Assets locations
-        "../Assets/Models/ships/Ulysses/source/ulysses.blend",
-        "../Assets/Models/ships/Ulysses/ulysses.blend",
-        "../Assets/Models/ships/hulls/ulysses.blend",
-        "../Assets/Models/ships/ulysses.blend",
-        "Assets/Models/ships/Ulysses/source/ulysses.blend",
-        "Assets/Models/ships/Ulysses/ulysses.blend",
-        "Assets/Models/ships/hulls/ulysses.blend",
-        "Assets/Models/ships/ulysses.blend"
+        "../Assets/Models/ships/Ulysses/source/ulysses.obj",
+        "../Assets/Models/ships/Ulysses/ulysses.obj",
+        "../Assets/Models/ships/hulls/ulysses.obj",
+        "Assets/Models/ships/Ulysses/source/ulysses.obj",
+        "Assets/Models/ships/Ulysses/ulysses.obj",
+        "Assets/Models/ships/hulls/ulysses.obj"
     };
     
     /// <summary>
@@ -81,11 +66,11 @@ public static class UlyssesModelLoader
                     var extension = Path.GetExtension(fullPath).ToLower();
                     var format = extension switch
                     {
-                        ".blend" => "Blender",
                         ".obj" => "Wavefront OBJ",
                         ".fbx" => "Autodesk FBX",
                         ".gltf" => "glTF",
                         ".glb" => "glTF Binary",
+                        ".dae" => "Collada",
                         _ => "Unknown"
                     };
                     
@@ -203,20 +188,20 @@ public static class UlyssesModelLoader
     private static void LogExpectedLocations()
     {
         _logger.Info("UlyssesLoader", "Expected Ulysses model locations (in order of preference):");
-        _logger.Info("UlyssesLoader", "  1. Assets/Models/ships/Ulysses/source/ulysses.blend (Blender file)");
-        _logger.Info("UlyssesLoader", "  2. Assets/Models/ships/Ulysses/ulysses.blend");
-        _logger.Info("UlyssesLoader", "  3. Assets/Models/ships/hulls/ulysses.blend");
-        _logger.Info("UlyssesLoader", "  4. Assets/Models/ships/Ulysses/source/ulysses.obj (Wavefront OBJ)");
+        _logger.Info("UlyssesLoader", "  1. Assets/Models/ships/Ulysses/source/ulysses.obj (Wavefront OBJ)");
+        _logger.Info("UlyssesLoader", "  2. Assets/Models/ships/Ulysses/source/ulysses.fbx (Autodesk FBX)");
+        _logger.Info("UlyssesLoader", "  3. Assets/Models/ships/Ulysses/source/ulysses.gltf (glTF)");
+        _logger.Info("UlyssesLoader", "  4. Assets/Models/ships/Ulysses/source/ulysses.glb (glTF Binary)");
         _logger.Info("UlyssesLoader", "  5. Assets/Models/ships/hulls/ulysses.obj");
-        _logger.Info("UlyssesLoader", "  6. Assets/Models/ships/Ulysses/source/ulysses.fbx (Autodesk FBX)");
-        _logger.Info("UlyssesLoader", "  7. Assets/Models/ships/Ulysses/source/ulysses.gltf (glTF)");
         _logger.Info("UlyssesLoader", "");
         _logger.Info("UlyssesLoader", "To use a custom Ulysses model:");
-        _logger.Info("UlyssesLoader", "  1. Place your model file in Assets/Models/ships/Ulysses/source/");
-        _logger.Info("UlyssesLoader", "  2. Name it 'ulysses' with appropriate extension");
-        _logger.Info("UlyssesLoader", "  3. Restart the game to load the model");
+        _logger.Info("UlyssesLoader", "  1. Export your model from Blender to OBJ, FBX, or glTF format");
+        _logger.Info("UlyssesLoader", "  2. Place the exported file in Assets/Models/ships/Ulysses/source/");
+        _logger.Info("UlyssesLoader", "  3. Name it 'ulysses' with appropriate extension (.obj, .fbx, .gltf, .glb)");
+        _logger.Info("UlyssesLoader", "  4. Restart the game to load the model");
         _logger.Info("UlyssesLoader", "");
-        _logger.Info("UlyssesLoader", "Supported formats: .blend .obj .fbx .gltf .glb .dae and 40+ more via Assimp");
+        _logger.Info("UlyssesLoader", "Note: .blend files are not supported directly. Please export from Blender first.");
+        _logger.Info("UlyssesLoader", "Supported formats: .obj .fbx .gltf .glb .dae and 40+ more via Assimp");
     }
     
     /// <summary>
@@ -229,19 +214,28 @@ public static class UlyssesModelLoader
 ## Where to Place the File
 
 Place your Ulysses model in one of these locations:
-- **Preferred**: `Assets/Models/ships/Ulysses/source/ulysses.blend`
-- Alternative: `Assets/Models/ships/Ulysses/ulysses.blend`
-- Alternative: `Assets/Models/ships/hulls/ulysses.blend`
-- Legacy: `GameData/Assets/Models/ships/Ulysses/source/ulysses.blend`
+- **Preferred**: `Assets/Models/ships/Ulysses/source/ulysses.obj`
+- Alternative: `Assets/Models/ships/Ulysses/ulysses.fbx`
+- Alternative: `Assets/Models/ships/hulls/ulysses.gltf`
 
 ## Supported Formats
 
-The game supports multiple 3D model formats:
-1. **.blend** (Blender) - Recommended, loads directly
-2. **.obj** (Wavefront) - Simple, widely supported
-3. **.fbx** (Autodesk) - Good for animations
-4. **.gltf/.glb** - Modern, efficient
+The game supports multiple 3D model formats via Assimp:
+1. **.obj** (Wavefront) - Simple, widely supported
+2. **.fbx** (Autodesk) - Good for animations
+3. **.gltf/.glb** - Modern, efficient
+4. **.dae** (Collada) - Open standard
 5. Many others via Assimp library
+
+**Note**: .blend (Blender) files are NOT supported directly.
+Please export your model from Blender to one of the above formats first.
+
+## Blender Export Instructions
+
+To export from Blender:
+- **OBJ**: File > Export > Wavefront (.obj) — Triangulate Faces, Write Normals, Include UVs
+- **FBX**: File > Export > FBX (.fbx) — Apply Scalings, Include Mesh/Normals/UVs
+- **GLTF**: File > Export > glTF 2.0 (.glb/.gltf) — Binary format, Include Normals/Textures
 
 ## Model Specifications
 
@@ -261,13 +255,6 @@ Your Ulysses model should have:
 - Visible thruster nozzles
 - Landing gear (optional)
 - Interior space (if doing interiors)
-
-## Blender Export Settings
-
-If exporting from Blender:
-- **OBJ**: Triangulate Faces, Write Normals, Include UVs
-- **FBX**: Apply Scalings, Include Mesh/Normals/UVs
-- **GLTF**: Binary format, Include Normals/Textures
 
 ## No Model? No Problem!
 

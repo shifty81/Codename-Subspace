@@ -7558,6 +7558,125 @@ static void TestCollisionLayerGameEvents() {
          std::string(GameEvents::TriggerExited) == "physics.trigger.exited");
 }
 
+static void TestPhysicsCollisionSeparation() {
+    std::cout << "[PhysicsSystem Collision Separation]\n";
+
+    // Test 1: Default restitution value
+    {
+        PhysicsComponent pc;
+        TEST("Default restitution 0.8", ApproxEq(pc.restitution, 0.8f));
+    }
+
+    // Test 2: Two overlapping dynamic objects get separated after collision
+    {
+        EntityManager em;
+        PhysicsSystem physSys(em);
+
+        auto& obj1 = em.CreateEntity("Ship1");
+        auto c1 = std::make_unique<PhysicsComponent>();
+        c1->mass = 100.0f;
+        c1->drag = 0.0f;
+        c1->angularDrag = 0.0f;
+        c1->position = Vector3(0.0f, 0.0f, 0.0f);
+        c1->velocity = Vector3(5.0f, 0.0f, 0.0f);
+        c1->collisionRadius = 5.0f;
+        c1->restitution = 1.0f; // Perfectly elastic for predictable test
+        auto* pc1 = em.AddComponent<PhysicsComponent>(obj1.id, std::move(c1));
+
+        auto& obj2 = em.CreateEntity("Ship2");
+        auto c2 = std::make_unique<PhysicsComponent>();
+        c2->mass = 100.0f;
+        c2->drag = 0.0f;
+        c2->angularDrag = 0.0f;
+        c2->position = Vector3(8.0f, 0.0f, 0.0f); // Overlap: distance 8 < radius sum 10
+        c2->velocity = Vector3(-5.0f, 0.0f, 0.0f);
+        c2->collisionRadius = 5.0f;
+        c2->restitution = 1.0f;
+        auto* pc2 = em.AddComponent<PhysicsComponent>(obj2.id, std::move(c2));
+
+        physSys.Update(0.001f);
+
+        // After collision, objects should be separated (distance >= sum of radii)
+        float postDistance = (pc2->position - pc1->position).length();
+        float minDistance = pc1->collisionRadius + pc2->collisionRadius;
+        TEST("Collision separates overlapping objects", postDistance >= minDistance - 0.1f);
+    }
+
+    // Test 3: Dynamic object colliding with static gets separated
+    {
+        EntityManager em;
+        PhysicsSystem physSys(em);
+
+        auto& staticObj = em.CreateEntity("Wall");
+        auto sc = std::make_unique<PhysicsComponent>();
+        sc->mass = 9999.0f;
+        sc->isStatic = true;
+        sc->position = Vector3(8.0f, 0.0f, 0.0f);
+        sc->collisionRadius = 5.0f;
+        sc->restitution = 1.0f;
+        auto* spc = em.AddComponent<PhysicsComponent>(staticObj.id, std::move(sc));
+
+        auto& dynObj = em.CreateEntity("Ship");
+        auto dc = std::make_unique<PhysicsComponent>();
+        dc->mass = 100.0f;
+        dc->drag = 0.0f;
+        dc->angularDrag = 0.0f;
+        dc->position = Vector3(0.0f, 0.0f, 0.0f);
+        dc->velocity = Vector3(5.0f, 0.0f, 0.0f);
+        dc->collisionRadius = 5.0f;
+        dc->restitution = 1.0f;
+        auto* dpc = em.AddComponent<PhysicsComponent>(dynObj.id, std::move(dc));
+
+        physSys.Update(0.001f);
+
+        // Static object should not move
+        TEST("Static obj unchanged", ApproxEq(spc->position.x, 8.0f));
+
+        // Dynamic object should be pushed away
+        float postDist = (spc->position - dpc->position).length();
+        float minDist = spc->collisionRadius + dpc->collisionRadius;
+        TEST("Dynamic separated from static", postDist >= minDist - 0.1f);
+
+        // Dynamic object should bounce (velocity reversed direction)
+        TEST("Dynamic bounces off static", dpc->velocity.x < 0.0f);
+    }
+
+    // Test 4: Low restitution reduces bounce
+    {
+        EntityManager em;
+        PhysicsSystem physSys(em);
+
+        auto& obj1 = em.CreateEntity("Ship1");
+        auto c1 = std::make_unique<PhysicsComponent>();
+        c1->mass = 100.0f;
+        c1->drag = 0.0f;
+        c1->angularDrag = 0.0f;
+        c1->position = Vector3(0.0f, 0.0f, 0.0f);
+        c1->velocity = Vector3(10.0f, 0.0f, 0.0f);
+        c1->collisionRadius = 5.0f;
+        c1->restitution = 0.5f;
+        auto* pc1 = em.AddComponent<PhysicsComponent>(obj1.id, std::move(c1));
+
+        auto& obj2 = em.CreateEntity("Ship2");
+        auto c2 = std::make_unique<PhysicsComponent>();
+        c2->mass = 100.0f;
+        c2->drag = 0.0f;
+        c2->angularDrag = 0.0f;
+        c2->position = Vector3(8.0f, 0.0f, 0.0f);
+        c2->velocity = Vector3(0.0f, 0.0f, 0.0f);
+        c2->collisionRadius = 5.0f;
+        c2->restitution = 0.5f;
+        auto* pc2 = em.AddComponent<PhysicsComponent>(obj2.id, std::move(c2));
+
+        physSys.Update(0.001f);
+
+        // With restitution 0.5, the bounce should be less energetic
+        // obj2 should gain some velocity but less than the full 10
+        TEST("Low restitution obj2 gains velocity", pc2->velocity.x > 0.0f);
+        TEST("Low restitution obj2 less than full transfer", pc2->velocity.x < 10.0f);
+    }
+}
+
 // ===================================================================
 // NavGraph tests
 // ===================================================================
@@ -12589,6 +12708,7 @@ int main() {
     TestPhysicsSystemCollisionLayers();
     TestPhysicsSystemTrigger();
     TestCollisionLayerGameEvents();
+    TestPhysicsCollisionSeparation();
     TestNavGraphAddNode();
     TestNavGraphAddEdge();
     TestNavGraphDirectedEdge();

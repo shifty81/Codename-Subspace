@@ -24,13 +24,15 @@ public:
 
 private:
     void DetectCollisions(std::vector<PhysicsComponent*>& components);
-    void HandleCollision(PhysicsComponent& obj1, PhysicsComponent& obj2);
+    void HandleCollision(PhysicsComponent& obj1, PhysicsComponent& obj2,
+                         float distance, float minDistance);
     void RebuildSpatialHash(std::vector<PhysicsComponent*>& components);
 
     EntityManager& _entityManager;
     SpatialHash _spatialHash;
     static constexpr float kMaxVelocity = 1000.0f;
     static constexpr float kDefaultCellSize = 50.0f;
+    static constexpr float kSeparationMargin = 0.01f;
 };
 
 } // namespace subspace
