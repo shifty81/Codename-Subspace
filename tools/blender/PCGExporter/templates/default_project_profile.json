@@ -1,0 +1,27 @@
+{
+  "project_name": "Default PCG Project",
+  "unit_scale": 1.0,
+  "lod_levels": 3,
+  "material_tags": ["metal", "hull", "planet_surface", "asteroid"],
+  "warp_mining_density": 0.5,
+  "snap_rules": ["wing", "panel", "hardpoint", "weapon", "module"],
+  "export_settings": {
+    "fbx_scale": 1.0,
+    "apply_modifiers": true,
+    "use_triangles": true
+  },
+  "collision_settings": {
+    "auto_generate": true,
+    "simplify_ratio": 0.3
+  },
+  "lod_settings": {
+    "lod1_ratio": 0.5,
+    "lod2_ratio": 0.25,
+    "lod3_ratio": 0.125
+  },
+  "thumbnail_settings": {
+    "resolution": 512,
+    "camera_distance": 10.0,
+    "background_transparent": true
+  }
+}
