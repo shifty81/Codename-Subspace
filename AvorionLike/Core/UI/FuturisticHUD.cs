@@ -14,6 +14,7 @@ namespace AvorionLike.Core.UI;
 public class FuturisticHUD
 {
     private readonly GameEngine _gameEngine;
+    private ResponsiveUILayout _layout;
     private bool _isEnabled = false;
     private Guid _selectedTargetId = Guid.Empty;
     private float _radarRange = 1000f;
@@ -32,6 +33,7 @@ public class FuturisticHUD
     public FuturisticHUD(GameEngine gameEngine)
     {
         _gameEngine = gameEngine;
+        _layout = new ResponsiveUILayout(1920f, 1080f);
     }
     
     /// <summary>
@@ -64,6 +66,10 @@ public class FuturisticHUD
     public void Render()
     {
         if (!_isEnabled) return;
+        
+        // Update layout for current screen resolution
+        var io = ImGui.GetIO();
+        _layout.UpdateScreenSize(io.DisplaySize.X, io.DisplaySize.Y);
         
         // Update animation time
         _animationTime += ImGui.GetIO().DeltaTime;
@@ -105,9 +111,9 @@ public class FuturisticHUD
         var drawList = ImGui.GetBackgroundDrawList();
         var displaySize = ImGui.GetIO().DisplaySize;
         
-        float cornerSize = 80f;
-        float thickness = 3f;
-        float innerOffset = 15f;
+        float cornerSize = _layout.Scale(80f);
+        float thickness = _layout.GetLineThickness(3f);
+        float innerOffset = _layout.Scale(15f);
         
         // Animate corner brightness
         float pulse = 0.7f + 0.3f * MathF.Sin(_animationTime * 2f);
@@ -139,7 +145,7 @@ public class FuturisticHUD
                         new Vector2(displaySize.X - innerOffset, displaySize.Y - cornerSize), color, thickness);
         
         // Add diagonal accents
-        float accentSize = 15f;
+        float accentSize = _layout.Scale(15f);
         drawList.AddLine(new Vector2(cornerSize, innerOffset), 
                         new Vector2(cornerSize - accentSize, innerOffset + accentSize), color, thickness);
         drawList.AddLine(new Vector2(displaySize.X - cornerSize, innerOffset), 
@@ -152,8 +158,8 @@ public class FuturisticHUD
     private void RenderRadar()
     {
         var displaySize = ImGui.GetIO().DisplaySize;
-        float radarSize = 200f;
-        var radarPos = new Vector2(displaySize.X - radarSize - 30, 30);
+        float radarSize = _layout.Scale(200f);
+        var radarPos = new Vector2(displaySize.X - radarSize - _layout.Scale(30f), _layout.Scale(30f));
         
         ImGui.SetNextWindowPos(radarPos);
         ImGui.SetNextWindowSize(new Vector2(radarSize, radarSize));
@@ -170,7 +176,7 @@ public class FuturisticHUD
         {
             var drawList = ImGui.GetWindowDrawList();
             var center = new Vector2(radarPos.X + radarSize / 2, radarPos.Y + radarSize / 2);
-            float radius = radarSize / 2 - 10;
+            float radius = radarSize / 2 - _layout.Scale(10f);
             
             // Draw radar circles
             uint circleColor = ImGui.ColorConvertFloat4ToU32(_lineColor);
@@ -227,13 +233,13 @@ public class FuturisticHUD
                                 var blipColor = entity.Id == _selectedTargetId ? _warningColor : _secondaryColor;
                                 uint blipU32 = ImGui.ColorConvertFloat4ToU32(blipColor);
                                 
-                                drawList.AddCircleFilled(blipPos, 4f, blipU32);
+                                drawList.AddCircleFilled(blipPos, _layout.Scale(4f), blipU32);
                                 
                                 // Pulse selected target
                                 if (entity.Id == _selectedTargetId)
                                 {
-                                    float pulseRadius = 8f + 4f * MathF.Sin(_animationTime * 4f);
-                                    drawList.AddCircle(blipPos, pulseRadius, blipU32, 16, 2f);
+                                    float pulseRadius = _layout.Scale(8f) + _layout.Scale(4f) * MathF.Sin(_animationTime * 4f);
+                                    drawList.AddCircle(blipPos, pulseRadius, blipU32, 16, _layout.GetLineThickness(2f));
                                 }
                             }
                         }
@@ -242,13 +248,13 @@ public class FuturisticHUD
             }
             
             // Radar label
-            ImGui.SetCursorPos(new Vector2(5, 5));
+            ImGui.SetCursorPos(new Vector2(_layout.Scale(5f), _layout.Scale(5f)));
             ImGui.PushStyleColor(ImGuiCol.Text, _primaryColor);
             ImGui.Text("RADAR");
             ImGui.PopStyleColor();
             
             // Range indicator
-            ImGui.SetCursorPos(new Vector2(5, radarSize - 25));
+            ImGui.SetCursorPos(new Vector2(_layout.Scale(5f), radarSize - _layout.Scale(25f)));
             ImGui.PushStyleColor(ImGuiCol.Text, _lineColor);
             ImGui.Text($"RNG: {_radarRange:F0}m");
             ImGui.PopStyleColor();
@@ -263,9 +269,9 @@ public class FuturisticHUD
     private void RenderShipStatus()
     {
         var displaySize = ImGui.GetIO().DisplaySize;
-        float panelWidth = 280f;
-        float panelHeight = 180f;
-        var panelPos = new Vector2(30, displaySize.Y - panelHeight - 30);
+        float panelWidth = _layout.Scale(280f);
+        float panelHeight = _layout.Scale(180f);
+        var panelPos = new Vector2(_layout.Scale(30f), displaySize.Y - panelHeight - _layout.Scale(30f));
         
         ImGui.SetNextWindowPos(panelPos);
         ImGui.SetNextWindowSize(new Vector2(panelWidth, panelHeight));
@@ -351,7 +357,7 @@ public class FuturisticHUD
         ImGui.PushStyleColor(ImGuiCol.PlotHistogram, barColor);
         ImGui.PushStyleColor(ImGuiCol.FrameBg, new Vector4(0.1f, 0.1f, 0.15f, 0.8f));
         
-        ImGui.ProgressBar(percent, new Vector2(-1, 20), $"{percent * 100:F0}%");
+        ImGui.ProgressBar(percent, new Vector2(-1, _layout.Scale(20f)), $"{percent * 100:F0}%");
         
         ImGui.PopStyleColor(2);
     }
@@ -364,9 +370,9 @@ public class FuturisticHUD
         if (_selectedTargetId == Guid.Empty) return;
         
         var displaySize = ImGui.GetIO().DisplaySize;
-        float panelWidth = 280f;
-        float panelHeight = 200f;
-        var panelPos = new Vector2(displaySize.X - panelWidth - 30, displaySize.Y / 2 - panelHeight / 2);
+        float panelWidth = _layout.Scale(280f);
+        float panelHeight = _layout.Scale(200f);
+        var panelPos = new Vector2(displaySize.X - panelWidth - _layout.Scale(30f), displaySize.Y / 2 - panelHeight / 2);
         
         ImGui.SetNextWindowPos(panelPos);
         ImGui.SetNextWindowSize(new Vector2(panelWidth, panelHeight));
@@ -458,8 +464,8 @@ public class FuturisticHUD
     private void RenderNavigationCompass()
     {
         var displaySize = ImGui.GetIO().DisplaySize;
-        float compassSize = 120f;
-        var compassPos = new Vector2(displaySize.X / 2 - compassSize / 2, 30);
+        float compassSize = _layout.Scale(120f);
+        var compassPos = new Vector2(displaySize.X / 2 - compassSize / 2, _layout.Scale(30f));
         
         ImGui.SetNextWindowPos(compassPos);
         ImGui.SetNextWindowSize(new Vector2(compassSize, compassSize));
@@ -476,39 +482,39 @@ public class FuturisticHUD
         {
             var drawList = ImGui.GetWindowDrawList();
             var center = new Vector2(compassPos.X + compassSize / 2, compassPos.Y + compassSize / 2);
-            float radius = compassSize / 2 - 15;
+            float radius = compassSize / 2 - _layout.Scale(15f);
             
             // Draw compass circle
             uint circleColor = ImGui.ColorConvertFloat4ToU32(_lineColor);
-            drawList.AddCircle(center, radius, circleColor, 64, 2f);
+            drawList.AddCircle(center, radius, circleColor, 64, _layout.GetLineThickness(2f));
             
             // Draw cardinal directions
-            float textOffset = radius + 8;
+            float textOffset = radius + _layout.Scale(8f);
             
             // North
             var northPos = new Vector2(center.X, center.Y - textOffset);
-            ImGui.SetCursorScreenPos(new Vector2(northPos.X - 6, northPos.Y - 8));
+            ImGui.SetCursorScreenPos(new Vector2(northPos.X - _layout.Scale(6f), northPos.Y - _layout.Scale(8f)));
             ImGui.PushStyleColor(ImGuiCol.Text, _primaryColor);
             ImGui.Text("N");
             ImGui.PopStyleColor();
             
             // East
             var eastPos = new Vector2(center.X + textOffset, center.Y);
-            ImGui.SetCursorScreenPos(new Vector2(eastPos.X - 6, eastPos.Y - 8));
+            ImGui.SetCursorScreenPos(new Vector2(eastPos.X - _layout.Scale(6f), eastPos.Y - _layout.Scale(8f)));
             ImGui.PushStyleColor(ImGuiCol.Text, _lineColor);
             ImGui.Text("E");
             ImGui.PopStyleColor();
             
             // South
             var southPos = new Vector2(center.X, center.Y + textOffset);
-            ImGui.SetCursorScreenPos(new Vector2(southPos.X - 6, southPos.Y - 8));
+            ImGui.SetCursorScreenPos(new Vector2(southPos.X - _layout.Scale(6f), southPos.Y - _layout.Scale(8f)));
             ImGui.PushStyleColor(ImGuiCol.Text, _lineColor);
             ImGui.Text("S");
             ImGui.PopStyleColor();
             
             // West
             var westPos = new Vector2(center.X - textOffset, center.Y);
-            ImGui.SetCursorScreenPos(new Vector2(westPos.X - 6, westPos.Y - 8));
+            ImGui.SetCursorScreenPos(new Vector2(westPos.X - _layout.Scale(6f), westPos.Y - _layout.Scale(8f)));
             ImGui.PushStyleColor(ImGuiCol.Text, _lineColor);
             ImGui.Text("W");
             ImGui.PopStyleColor();
@@ -520,10 +526,10 @@ public class FuturisticHUD
                 center.Y - MathF.Cos(heading) * radius * 0.7f
             );
             uint headingColor = ImGui.ColorConvertFloat4ToU32(_warningColor);
-            drawList.AddLine(center, headingEnd, headingColor, 3f);
+            drawList.AddLine(center, headingEnd, headingColor, _layout.GetLineThickness(3f));
             
             // Draw arrow at the end
-            float arrowSize = 8f;
+            float arrowSize = _layout.Scale(8f);
             var arrowLeft = new Vector2(
                 headingEnd.X - MathF.Cos(heading) * arrowSize,
                 headingEnd.Y - MathF.Sin(heading) * arrowSize
@@ -551,15 +557,15 @@ public class FuturisticHUD
         var scanColor = new Vector4(_secondaryColor.X, _secondaryColor.Y, _secondaryColor.Z, 0.1f);
         uint color = ImGui.ColorConvertFloat4ToU32(scanColor);
         
-        drawList.AddLine(new Vector2(0, scanY), new Vector2(displaySize.X, scanY), color, 2f);
+        drawList.AddLine(new Vector2(0, scanY), new Vector2(displaySize.X, scanY), color, _layout.GetLineThickness(2f));
         
         // Horizontal grid lines
-        int lineSpacing = 60;
+        int lineSpacing = (int)_layout.Scale(60f);
         for (int i = 0; i < displaySize.Y; i += lineSpacing)
         {
             var gridColor = new Vector4(_lineColor.X, _lineColor.Y, _lineColor.Z, 0.02f);
             uint gridU32 = ImGui.ColorConvertFloat4ToU32(gridColor);
-            drawList.AddLine(new Vector2(0, i), new Vector2(displaySize.X, i), gridU32, 1f);
+            drawList.AddLine(new Vector2(0, i), new Vector2(displaySize.X, i), gridU32, _layout.GetLineThickness(1f));
         }
     }
     

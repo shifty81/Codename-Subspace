@@ -54,7 +54,7 @@ public class EnhancedGenerationExample
     }
     
     /// <summary>
-    /// Demonstrate massive station generation (2000+ blocks)
+    /// Demonstrate station generation (1000+ blocks)
     /// </summary>
     public void DemonstrateMassiveStations()
     {
@@ -258,7 +258,7 @@ public class EnhancedGenerationExample
         Console.WriteLine("\n=== ALL DEMOS COMPLETE ===\n");
         Console.WriteLine("Summary of Enhancements:");
         Console.WriteLine("  ✓ Ship blocks increased by 1.5x with varied sizes");
-        Console.WriteLine("  ✓ Massive stations with 2000+ blocks");
+        Console.WriteLine("  ✓ Stations with 1000+ blocks (reduced for faster loading)");
         Console.WriteLine("  ✓ Hireable captains at all stations");
         Console.WriteLine("  ✓ Refinery ore processing system");
         Console.WriteLine("  ✓ Massive claimable asteroids (5% spawn rate)");

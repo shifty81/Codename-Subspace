@@ -9,13 +9,13 @@ namespace AvorionLike.Core.Procedural;
 /// </summary>
 public enum ShipSize
 {
-    Fighter,      // 10-20 blocks, single pilot
-    Corvette,     // 20-50 blocks, small crew
-    Frigate,      // 50-100 blocks, medium crew
-    Destroyer,    // 100-200 blocks, large crew
-    Cruiser,      // 200-400 blocks, major vessel
-    Battleship,   // 400-800 blocks, capital ship
-    Carrier       // 800+ blocks, massive carrier
+    Fighter,      // 7-14 blocks, single pilot
+    Corvette,     // 14-35 blocks, small crew
+    Frigate,      // 35-70 blocks, medium crew
+    Destroyer,    // 70-140 blocks, large crew
+    Cruiser,      // 140-280 blocks, major vessel
+    Battleship,   // 280-560 blocks, capital ship
+    Carrier       // 560+ blocks, massive carrier
 }
 
 /// <summary>
@@ -231,16 +231,17 @@ public class ProceduralShipGenerator
     /// </summary>
     private Vector3 GetShipDimensions(ShipSize size)
     {
+        // Dimensions reduced ~30% from previous values for faster loading
         return size switch
         {
-            ShipSize.Fighter => new Vector3(9, 6, 15),      // 1.5x increase (min Z ensures safe division)
-            ShipSize.Corvette => new Vector3(12, 8, 21),    // 1.5x increase
-            ShipSize.Frigate => new Vector3(18, 9, 30),     // 1.5x increase
-            ShipSize.Destroyer => new Vector3(24, 12, 42),  // 1.5x increase
-            ShipSize.Cruiser => new Vector3(33, 18, 57),    // 1.5x increase
-            ShipSize.Battleship => new Vector3(45, 24, 75), // 1.5x increase
-            ShipSize.Carrier => new Vector3(60, 33, 98),    // 1.5x increase
-            _ => new Vector3(18, 9, 30)                     // Safe default
+            ShipSize.Fighter => new Vector3(7, 5, 11),      // ~30% reduction
+            ShipSize.Corvette => new Vector3(9, 6, 15),     // ~30% reduction
+            ShipSize.Frigate => new Vector3(13, 7, 21),     // ~30% reduction
+            ShipSize.Destroyer => new Vector3(17, 9, 30),   // ~30% reduction
+            ShipSize.Cruiser => new Vector3(23, 13, 40),    // ~30% reduction
+            ShipSize.Battleship => new Vector3(32, 17, 53), // ~30% reduction
+            ShipSize.Carrier => new Vector3(42, 23, 69),    // ~30% reduction
+            _ => new Vector3(13, 7, 21)                     // Safe default
         };
     }
     
