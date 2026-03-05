@@ -170,12 +170,20 @@ public class BuilderModeUI
     }
     
     /// <summary>
+    /// Get the resource panel size (shared between top panel and toolbar positioning)
+    /// </summary>
+    private Vector2 GetResourcePanelSize()
+    {
+        return _layout.GetPanelSize(300, 500, 90, 150, 0.21f, 0.11f);
+    }
+    
+    /// <summary>
     /// Render top-left resource panel
     /// </summary>
     private void RenderTopResourcePanel()
     {
         float margin = _layout.GetMargin();
-        var panelSize = _layout.GetPanelSize(300, 500, 90, 150, 0.21f, 0.11f);
+        var panelSize = GetResourcePanelSize();
         
         ImGui.SetNextWindowPos(new Vector2(margin, margin));
         ImGui.SetNextWindowSize(panelSize);
@@ -249,7 +257,7 @@ public class BuilderModeUI
     private void RenderLeftToolbar()
     {
         float margin = _layout.GetMargin();
-        var resourcePanelSize = _layout.GetPanelSize(300, 500, 90, 150, 0.21f, 0.11f);
+        var resourcePanelSize = GetResourcePanelSize();
         float topY = margin + resourcePanelSize.Y + _layout.Scale(20);
         var toolbarSize = _layout.Scale(new Vector2(60, 500));
         
