@@ -1,4 +1,6 @@
 #include "quest/QuestSystem.h"
+#include "inventory/InventorySystem.h"
+#include "rpg/ProgressionSystem.h"
 
 namespace subspace {
 
@@ -385,6 +387,96 @@ const std::unordered_map<std::string, Quest>& QuestSystem::GetQuestTemplates() c
 
 size_t QuestSystem::GetTemplateCount() const {
     return _questTemplates.size();
+}
+
+void QuestSystem::SetEntityManager(EntityManager* em) {
+    _entityManager = em;
+}
+
+int QuestSystem::DistributeRewards(EntityId entityId,
+                                    const std::vector<QuestReward>& rewards) {
+    if (!_entityManager) return 0;
+
+    int distributed = 0;
+
+    for (const auto& reward : rewards) {
+        switch (reward.type) {
+        case RewardType::Credits: {
+            auto* inv = _entityManager->GetComponent<InventoryComponent>(entityId);
+            if (inv) {
+                InventoryItem creditItem;
+                creditItem.itemId = "credits";
+                creditItem.name = "Credits";
+                creditItem.description = "Currency";
+                creditItem.category = "currency";
+                creditItem.weight = 0.0f;
+                creditItem.stackSize = reward.amount;
+                creditItem.maxStackSize = 999999;
+                creditItem.value = reward.amount;
+                if (inv->AddItem(creditItem)) ++distributed;
+            }
+            break;
+        }
+        case RewardType::Resource: {
+            auto* inv = _entityManager->GetComponent<InventoryComponent>(entityId);
+            if (inv) {
+                InventoryItem resourceItem;
+                resourceItem.itemId = reward.rewardId;
+                resourceItem.name = reward.rewardId;
+                resourceItem.description = reward.description;
+                resourceItem.category = "resource";
+                resourceItem.weight = 1.0f;
+                resourceItem.stackSize = reward.amount;
+                resourceItem.maxStackSize = 9999;
+                resourceItem.value = reward.amount;
+                if (inv->AddItem(resourceItem)) ++distributed;
+            }
+            break;
+        }
+        case RewardType::Experience: {
+            auto* prog = _entityManager->GetComponent<ProgressionComponent>(entityId);
+            if (prog) {
+                prog->AddExperience(reward.amount);
+                ++distributed;
+            }
+            break;
+        }
+        case RewardType::Reputation: {
+            auto* faction = _entityManager->GetComponent<FactionComponent>(entityId);
+            if (faction) {
+                // When rewardId is empty, reputation is applied to the
+                // entity's own faction; otherwise use the named faction.
+                std::string targetFaction = reward.rewardId.empty()
+                    ? faction->factionName : reward.rewardId;
+                faction->ModifyReputation(targetFaction, reward.amount);
+                ++distributed;
+            }
+            break;
+        }
+        case RewardType::Item: {
+            auto* inv = _entityManager->GetComponent<InventoryComponent>(entityId);
+            if (inv) {
+                InventoryItem item;
+                item.itemId = reward.rewardId;
+                item.name = reward.rewardId;
+                item.description = reward.description;
+                item.category = "item";
+                item.weight = 1.0f;
+                item.stackSize = reward.amount;
+                item.maxStackSize = 99;
+                item.value = reward.amount * 10;
+                if (inv->AddItem(item)) ++distributed;
+            }
+            break;
+        }
+        case RewardType::Unlock:
+            // Unlock rewards are not yet distributed to a specific system;
+            // they are tracked in the quest but do not count as distributed.
+            break;
+        }
+    }
+
+    return distributed;
 }
 
 // ---------------------------------------------------------------------------

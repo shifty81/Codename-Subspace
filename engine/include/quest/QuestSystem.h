@@ -3,6 +3,7 @@
 #include "core/ecs/Entity.h"
 #include "core/ecs/IComponent.h"
 #include "core/ecs/SystemBase.h"
+#include "core/ecs/EntityManager.h"
 #include "core/persistence/SaveGameManager.h"
 
 #include <algorithm>
@@ -143,6 +144,10 @@ public:
 
     void Update(float deltaTime) override;
 
+    /// Set the entity manager used to look up entity components for reward
+    /// distribution.
+    void SetEntityManager(EntityManager* em);
+
     /// Register a quest template.
     void AddQuestTemplate(const Quest& quest);
 
@@ -157,6 +162,14 @@ public:
     void ProgressObjective(QuestComponent& comp, ObjectiveType type,
                            const std::string& target, int amount = 1);
 
+    /// Distribute rewards from a completed quest to the owning entity's
+    /// components (InventoryComponent for credits/resources/items,
+    /// ProgressionComponent for experience, FactionComponent for reputation).
+    /// Requires a valid EntityManager set via SetEntityManager.
+    /// Returns the number of rewards successfully distributed.
+    int DistributeRewards(EntityId entityId,
+                          const std::vector<QuestReward>& rewards);
+
     /// Get all quest templates.
     const std::unordered_map<std::string, Quest>& GetQuestTemplates() const;
 
@@ -165,6 +178,7 @@ public:
 
 private:
     std::unordered_map<std::string, Quest> _questTemplates;
+    EntityManager* _entityManager = nullptr;
 };
 
 /// Procedural quest generator that creates quests from randomized parameters.

@@ -5826,6 +5826,332 @@ static void TestQuestGeneratorIntegration() {
 }
 
 // ===================================================================
+// Quest Reward Distribution Tests
+// ===================================================================
+
+static void TestQuestRewardDistributeCredits() {
+    std::cout << "[QuestReward DistributeCredits]\n";
+
+    EntityManager em;
+    auto& entity = em.CreateEntity("Player");
+    EntityId eid = entity.id;
+
+    em.AddComponent<InventoryComponent>(eid, std::make_unique<InventoryComponent>(20, 1000.0f));
+    em.AddComponent<ProgressionComponent>(eid, std::make_unique<ProgressionComponent>());
+    em.AddComponent<FactionComponent>(eid, std::make_unique<FactionComponent>());
+
+    QuestSystem system;
+    system.SetEntityManager(&em);
+
+    std::vector<QuestReward> rewards;
+    QuestReward creditReward;
+    creditReward.type = RewardType::Credits;
+    creditReward.amount = 500;
+    creditReward.description = "Credit reward";
+    rewards.push_back(creditReward);
+
+    int count = system.DistributeRewards(eid, rewards);
+    TEST("One reward distributed", count == 1);
+
+    auto* inv = em.GetComponent<InventoryComponent>(eid);
+    TEST("Credits added to inventory", inv != nullptr && inv->HasItem("credits", 500));
+}
+
+static void TestQuestRewardDistributeExperience() {
+    std::cout << "[QuestReward DistributeExperience]\n";
+
+    EntityManager em;
+    auto& entity = em.CreateEntity("Player");
+    EntityId eid = entity.id;
+
+    em.AddComponent<ProgressionComponent>(eid, std::make_unique<ProgressionComponent>());
+
+    QuestSystem system;
+    system.SetEntityManager(&em);
+
+    std::vector<QuestReward> rewards;
+    QuestReward xpReward;
+    xpReward.type = RewardType::Experience;
+    xpReward.amount = 75;
+    xpReward.description = "XP reward";
+    rewards.push_back(xpReward);
+
+    int count = system.DistributeRewards(eid, rewards);
+    TEST("XP reward distributed", count == 1);
+
+    auto* prog = em.GetComponent<ProgressionComponent>(eid);
+    TEST("Experience added", prog != nullptr && prog->experience == 75);
+    TEST("Still level 1", prog != nullptr && prog->level == 1);
+
+    // Give enough to level up
+    QuestReward bigXp;
+    bigXp.type = RewardType::Experience;
+    bigXp.amount = 50;
+    std::vector<QuestReward> r2;
+    r2.push_back(bigXp);
+    system.DistributeRewards(eid, r2);
+    TEST("Leveled up to 2", prog != nullptr && prog->level == 2);
+}
+
+static void TestQuestRewardDistributeReputation() {
+    std::cout << "[QuestReward DistributeReputation]\n";
+
+    EntityManager em;
+    auto& entity = em.CreateEntity("Player");
+    EntityId eid = entity.id;
+
+    auto factionComp = std::make_unique<FactionComponent>();
+    factionComp->factionName = "Neutral";
+    em.AddComponent<FactionComponent>(eid, std::move(factionComp));
+
+    QuestSystem system;
+    system.SetEntityManager(&em);
+
+    // Reputation with specific faction
+    QuestReward repReward;
+    repReward.type = RewardType::Reputation;
+    repReward.rewardId = "Iron Dominion";
+    repReward.amount = 25;
+    std::vector<QuestReward> rewards;
+    rewards.push_back(repReward);
+
+    int count = system.DistributeRewards(eid, rewards);
+    TEST("Rep reward distributed", count == 1);
+
+    auto* faction = em.GetComponent<FactionComponent>(eid);
+    TEST("Reputation increased", faction != nullptr && faction->GetReputation("Iron Dominion") == 25);
+
+    // Reputation with default faction (empty rewardId)
+    QuestReward defaultRep;
+    defaultRep.type = RewardType::Reputation;
+    defaultRep.rewardId = "";
+    defaultRep.amount = 10;
+    std::vector<QuestReward> r2;
+    r2.push_back(defaultRep);
+    system.DistributeRewards(eid, r2);
+    TEST("Default faction rep", faction != nullptr && faction->GetReputation("Neutral") == 10);
+}
+
+static void TestQuestRewardDistributeResource() {
+    std::cout << "[QuestReward DistributeResource]\n";
+
+    EntityManager em;
+    auto& entity = em.CreateEntity("Player");
+    EntityId eid = entity.id;
+
+    em.AddComponent<InventoryComponent>(eid, std::make_unique<InventoryComponent>(20, 1000.0f));
+
+    QuestSystem system;
+    system.SetEntityManager(&em);
+
+    QuestReward resReward;
+    resReward.type = RewardType::Resource;
+    resReward.rewardId = "titanium_ore";
+    resReward.amount = 10;
+    resReward.description = "Titanium ore reward";
+    std::vector<QuestReward> rewards;
+    rewards.push_back(resReward);
+
+    int count = system.DistributeRewards(eid, rewards);
+    TEST("Resource reward distributed", count == 1);
+
+    auto* inv = em.GetComponent<InventoryComponent>(eid);
+    TEST("Resource added", inv != nullptr && inv->HasItem("titanium_ore", 10));
+}
+
+static void TestQuestRewardDistributeItem() {
+    std::cout << "[QuestReward DistributeItem]\n";
+
+    EntityManager em;
+    auto& entity = em.CreateEntity("Player");
+    EntityId eid = entity.id;
+
+    em.AddComponent<InventoryComponent>(eid, std::make_unique<InventoryComponent>(20, 1000.0f));
+
+    QuestSystem system;
+    system.SetEntityManager(&em);
+
+    QuestReward itemReward;
+    itemReward.type = RewardType::Item;
+    itemReward.rewardId = "laser_mk2";
+    itemReward.amount = 1;
+    itemReward.description = "A laser weapon";
+    std::vector<QuestReward> rewards;
+    rewards.push_back(itemReward);
+
+    int count = system.DistributeRewards(eid, rewards);
+    TEST("Item reward distributed", count == 1);
+
+    auto* inv = em.GetComponent<InventoryComponent>(eid);
+    TEST("Item added", inv != nullptr && inv->HasItem("laser_mk2", 1));
+}
+
+static void TestQuestRewardDistributeMultiple() {
+    std::cout << "[QuestReward DistributeMultiple]\n";
+
+    EntityManager em;
+    auto& entity = em.CreateEntity("Player");
+    EntityId eid = entity.id;
+
+    em.AddComponent<InventoryComponent>(eid, std::make_unique<InventoryComponent>(20, 5000.0f));
+    em.AddComponent<ProgressionComponent>(eid, std::make_unique<ProgressionComponent>());
+    em.AddComponent<FactionComponent>(eid, std::make_unique<FactionComponent>());
+
+    QuestSystem system;
+    system.SetEntityManager(&em);
+
+    std::vector<QuestReward> rewards;
+
+    QuestReward credit;
+    credit.type = RewardType::Credits;
+    credit.amount = 200;
+    rewards.push_back(credit);
+
+    QuestReward xp;
+    xp.type = RewardType::Experience;
+    xp.amount = 50;
+    rewards.push_back(xp);
+
+    QuestReward rep;
+    rep.type = RewardType::Reputation;
+    rep.rewardId = "Nomad Continuum";
+    rep.amount = 15;
+    rewards.push_back(rep);
+
+    int count = system.DistributeRewards(eid, rewards);
+    TEST("All three rewards distributed", count == 3);
+
+    auto* inv = em.GetComponent<InventoryComponent>(eid);
+    TEST("Credits present", inv != nullptr && inv->HasItem("credits", 200));
+
+    auto* prog = em.GetComponent<ProgressionComponent>(eid);
+    TEST("XP present", prog != nullptr && prog->experience == 50);
+
+    auto* faction = em.GetComponent<FactionComponent>(eid);
+    TEST("Rep present", faction != nullptr && faction->GetReputation("Nomad Continuum") == 15);
+}
+
+static void TestQuestRewardDistributeNoEntityManager() {
+    std::cout << "[QuestReward DistributeNoEntityManager]\n";
+
+    QuestSystem system;
+    // No EntityManager set
+
+    QuestReward r;
+    r.type = RewardType::Credits;
+    r.amount = 100;
+    std::vector<QuestReward> rewards;
+    rewards.push_back(r);
+
+    int count = system.DistributeRewards(1, rewards);
+    TEST("No EM returns 0", count == 0);
+}
+
+static void TestQuestRewardDistributeMissingComponents() {
+    std::cout << "[QuestReward DistributeMissingComponents]\n";
+
+    EntityManager em;
+    auto& entity = em.CreateEntity("Player");
+    EntityId eid = entity.id;
+    // Entity has no components
+
+    QuestSystem system;
+    system.SetEntityManager(&em);
+
+    std::vector<QuestReward> rewards;
+
+    QuestReward credit;
+    credit.type = RewardType::Credits;
+    credit.amount = 100;
+    rewards.push_back(credit);
+
+    QuestReward xp;
+    xp.type = RewardType::Experience;
+    xp.amount = 50;
+    rewards.push_back(xp);
+
+    QuestReward rep;
+    rep.type = RewardType::Reputation;
+    rep.rewardId = "TestFaction";
+    rep.amount = 10;
+    rewards.push_back(rep);
+
+    int count = system.DistributeRewards(eid, rewards);
+    TEST("Missing components returns 0", count == 0);
+}
+
+static void TestQuestRewardDistributeEndToEnd() {
+    std::cout << "[QuestReward EndToEnd]\n";
+
+    EntityManager em;
+    auto& entity = em.CreateEntity("Player");
+    EntityId eid = entity.id;
+
+    em.AddComponent<InventoryComponent>(eid, std::make_unique<InventoryComponent>(20, 5000.0f));
+    em.AddComponent<ProgressionComponent>(eid, std::make_unique<ProgressionComponent>());
+    em.AddComponent<FactionComponent>(eid, std::make_unique<FactionComponent>());
+    em.AddComponent<QuestComponent>(eid, std::make_unique<QuestComponent>());
+
+    QuestSystem system;
+    system.SetEntityManager(&em);
+
+    // Create a quest template with rewards
+    Quest tmpl;
+    tmpl.id = "reward_quest";
+    tmpl.title = "Destroy Pirates";
+    QuestObjective obj;
+    obj.id = "kill_pirates";
+    obj.type = ObjectiveType::Destroy;
+    obj.target = "pirate_ship";
+    obj.requiredQuantity = 3;
+    tmpl.objectives.push_back(obj);
+
+    QuestReward cr;
+    cr.type = RewardType::Credits;
+    cr.amount = 1000;
+    tmpl.rewards.push_back(cr);
+
+    QuestReward xp;
+    xp.type = RewardType::Experience;
+    xp.amount = 80;
+    tmpl.rewards.push_back(xp);
+
+    QuestReward rep;
+    rep.type = RewardType::Reputation;
+    rep.rewardId = "Helix Covenant";
+    rep.amount = 20;
+    tmpl.rewards.push_back(rep);
+
+    system.AddQuestTemplate(tmpl);
+
+    auto* comp = em.GetComponent<QuestComponent>(eid);
+    system.GiveQuest(eid, "reward_quest", *comp);
+    comp->AcceptQuest("reward_quest");
+
+    // Progress the quest to completion
+    system.ProgressObjective(*comp, ObjectiveType::Destroy, "pirate_ship", 3);
+    Quest* q = comp->GetQuest("reward_quest");
+    TEST("Quest completed", q != nullptr && q->status == QuestStatus::Completed);
+
+    // Turn in and distribute rewards
+    bool turnedIn = comp->TurnInQuest("reward_quest");
+    TEST("Quest turned in", turnedIn);
+    TEST("Quest status TurnedIn", q != nullptr && q->status == QuestStatus::TurnedIn);
+
+    int distributed = system.DistributeRewards(eid, q->rewards);
+    TEST("All rewards distributed", distributed == 3);
+
+    auto* inv = em.GetComponent<InventoryComponent>(eid);
+    TEST("E2E credits", inv != nullptr && inv->HasItem("credits", 1000));
+
+    auto* prog = em.GetComponent<ProgressionComponent>(eid);
+    TEST("E2E experience", prog != nullptr && prog->experience == 80);
+
+    auto* faction = em.GetComponent<FactionComponent>(eid);
+    TEST("E2E reputation", faction != nullptr && faction->GetReputation("Helix Covenant") == 20);
+}
+
+// ===================================================================
 // Particle System tests
 // ===================================================================
 
@@ -13242,6 +13568,15 @@ int main() {
     TestQuestGenerator();
     TestQuestGeneratorDifficulty();
     TestQuestGeneratorIntegration();
+    TestQuestRewardDistributeCredits();
+    TestQuestRewardDistributeExperience();
+    TestQuestRewardDistributeReputation();
+    TestQuestRewardDistributeResource();
+    TestQuestRewardDistributeItem();
+    TestQuestRewardDistributeMultiple();
+    TestQuestRewardDistributeNoEntityManager();
+    TestQuestRewardDistributeMissingComponents();
+    TestQuestRewardDistributeEndToEnd();
     TestParticle();
     TestParticleEmitterConfig();
     TestParticleEmitter();
