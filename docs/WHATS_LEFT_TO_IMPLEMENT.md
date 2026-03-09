@@ -1,6 +1,6 @@
 # What's Left to Implement - Codename:Subspace
 
-**Last Updated:** November 21, 2025  
+**Last Updated:** March 9, 2026  
 **Project Status:** ✅ PLAYABLE - Core gameplay functional, content and polish needed
 
 ---
@@ -109,7 +109,7 @@ Based on comprehensive analysis of project documentation (ROADMAP_STATUS.md, NEX
 
 ---
 
-### 3. Sound/Music System - **20% Complete** (Updated Mar 2026)
+### 3. Sound/Music System - **25% Complete** (Updated Mar 2026)
 **Priority:** Medium  
 **Estimated Time:** 2-3 weeks  
 **Impact:** Significantly enhances immersion and polish
@@ -121,7 +121,8 @@ Based on comprehensive analysis of project documentation (ROADMAP_STATUS.md, NEX
 - ✅ 3D positional audio source support (metadata-level)
 - ✅ Volume mixing via AudioSettings (master, SFX, music, voice)
 - ✅ Audio events in GameEvents namespace
-- ✅ 159 unit tests covering all audio subsystems
+- ✅ Event dispatching wired up (SoundPlayed, SoundStopped, MusicStarted, MusicStopped, MusicTrackChanged)
+- ✅ 170+ unit tests covering all audio subsystems including event dispatching
 
 **What's Missing:**
 - Platform audio backend integration (OpenAL, FMOD, or similar)
@@ -245,7 +246,7 @@ Based on comprehensive analysis of project documentation (ROADMAP_STATUS.md, NEX
 
 ---
 
-### 2. Advanced Rendering - **92% Complete**
+### 2. Advanced Rendering - **97% Complete** (Updated Mar 2026)
 **What's Working:**
 - ✅ Real-time 3D OpenGL rendering
 - ✅ PBR materials with emission
@@ -253,10 +254,11 @@ Based on comprehensive analysis of project documentation (ROADMAP_STATUS.md, NEX
 - ✅ Voxel mesh optimization (greedy meshing)
 - ✅ Starfield background
 - ✅ Particle system with 5 effect presets (Explosion, Engine Thrust, Shield Hit, Mining, Hyperdrive)
+- ✅ Particle system now updates entity components via EntityManager
+- ✅ Shadow mapping system (directional, point, spot lights; cascaded shadow maps; quality presets)
+- ✅ Post-processing pipeline (Bloom, HDR, Tone Mapping, Vignette, Chromatic Aberration, FXAA; 4 quality presets)
 
 **What's Missing:**
-- Shadows (shadow mapping)
-- Post-processing effects (bloom, HDR, etc.)
 - Advanced lighting (global illumination)
 - Texture atlas system (partially implemented)
 
@@ -265,7 +267,7 @@ Based on comprehensive analysis of project documentation (ROADMAP_STATUS.md, NEX
 - Professional appearance
 - Competitive with modern games
 
-**Remaining Work:** 2-3 weeks for shadows + post-processing
+**Remaining Work:** 1-2 weeks for global illumination + texture atlas
 
 ---
 
@@ -369,7 +371,7 @@ Based on impact and dependencies:
 |----------|------------|--------|
 | **Core Systems** | 100% | ✅ Complete |
 | **Backend Infrastructure** | 100% | ✅ Complete |
-| **3D Graphics & Rendering** | 92% | ⚠️ Particle system added, shadows/post-processing needed |
+| **3D Graphics & Rendering** | 97% | ⚠️ Shadow mapping + post-processing added, global illumination/texture atlas needed |
 | **UI/HUD** | 100% | ✅ Complete |
 | **Gameplay Mechanics** | 100% | ✅ Complete |
 | **AI System** | 100% | ✅ Complete |
@@ -377,9 +379,9 @@ Based on impact and dependencies:
 | **Multiplayer Client** | 85% | ⚠️ UI needed |
 | **Quest System** | 100% | ✅ Complete |
 | **Tutorial System** | 100% | ✅ Complete |
-| **Audio System** | 20% | ⚠️ Engine framework done, needs platform backend |
+| **Audio System** | 25% | ⚠️ Engine framework done with event dispatching, needs platform backend |
 | **Achievement System** | 100% | ✅ Complete (system, criteria, serialization, templates) |
-| **Particle System** | 100% | ✅ Complete (emitters, presets, component integration) |
+| **Particle System** | 100% | ✅ Complete (emitters, presets, component integration, EntityManager-driven Update) |
 | **Voxel Damage System** | 100% | ✅ Complete (splash, penetrating, repair, structural integrity, fragmentation) |
 | **Spatial Partitioning** | 100% | ✅ Complete (SpatialHash + Octree, queries, nearest-neighbor) |
 | **Collision Layers** | 100% | ✅ Complete (10 categories, presets, bidirectional filtering, triggers) |
@@ -401,7 +403,7 @@ Based on impact and dependencies:
 | **Polish & QoL** | 40% | ⚠️ Ongoing |
 | **Documentation** | 95% | ⚠️ Updates needed |
 | | | |
-| **OVERALL** | **~94%** | **✅ Playable with scanning, salvage, fleet command, and all core systems!** |
+| **OVERALL** | **~96%** | **✅ Playable with shadow mapping, post-processing, and all core systems!** |
 
 ---
 
