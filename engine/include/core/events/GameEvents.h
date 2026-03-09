@@ -297,6 +297,16 @@ namespace GameEvents {
     constexpr const char* FleetOrderCancelled        = "fleet.order.cancelled";
     constexpr const char* FleetMemberAdded           = "fleet.member.added";
     constexpr const char* FleetMemberRemoved         = "fleet.member.removed";
+
+    // Post-processing events
+    constexpr const char* PostProcessEffectEnabled   = "rendering.postprocess.effect_enabled";
+    constexpr const char* PostProcessEffectDisabled  = "rendering.postprocess.effect_disabled";
+    constexpr const char* PostProcessPresetApplied   = "rendering.postprocess.preset_applied";
+
+    // Shadow events
+    constexpr const char* ShadowQualityChanged       = "rendering.shadow.quality_changed";
+    constexpr const char* ShadowMapInvalidated       = "rendering.shadow.map_invalidated";
+    constexpr const char* ShadowLightAdded           = "rendering.shadow.light_added";
 } // namespace GameEvents
 
 } // namespace subspace

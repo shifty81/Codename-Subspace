@@ -95,6 +95,8 @@
 #include "scanning/ScanningSystem.h"
 #include "salvage/SalvageSystem.h"
 #include "fleet/FleetCommandSystem.h"
+#include "rendering/PostProcessingSystem.h"
+#include "rendering/ShadowSystem.h"
 
 using namespace subspace;
 
@@ -14099,6 +14101,598 @@ static void TestWormholeShipClassRefineryGameEvents() {
 }
 
 // ===================================================================
+// ParticleSystem Update with EntityManager tests
+// ===================================================================
+
+static void TestParticleSystemUpdate() {
+    std::cout << "[ParticleSystemUpdate]\n";
+
+    EntityManager em;
+    ParticleSystem sys;
+    sys.SetEntityManager(&em);
+    sys.Initialize();
+
+    // No entities — update should be safe
+    sys.Update(0.016f);
+    TEST("No entities particle count zero", sys.GetLastUpdateParticleCount() == 0);
+
+    // Create an entity with a ParticleComponent
+    auto& entity = em.CreateEntity("particle_test");
+    auto* comp = em.AddComponent<ParticleComponent>(entity.id,
+                     std::make_unique<ParticleComponent>());
+
+    // Add an emitter with burst
+    auto cfg = ParticleSystem::CreateExplosionPreset();
+    ParticleEmitter emitter("explosion", cfg);
+    emitter.SetSeed(42);
+    emitter.Emit(10);
+    comp->AddEmitter(emitter);
+
+    TEST("Component has emitter", comp->GetEmitterCount() == 1);
+    TEST("Emitter has particles", comp->GetTotalParticleCount() == 10);
+
+    // Update system — should update all emitters
+    sys.Update(0.016f);
+    TEST("System reports particle count", sys.GetLastUpdateParticleCount() > 0);
+
+    // Create second entity with particles
+    auto& entity2 = em.CreateEntity("particle_test2");
+    auto* comp2 = em.AddComponent<ParticleComponent>(entity2.id,
+                      std::make_unique<ParticleComponent>());
+    ParticleEmitter emitter2("thrust", ParticleSystem::CreateEngineThrustPreset());
+    emitter2.SetSeed(123);
+    comp2->AddEmitter(emitter2);
+
+    sys.Update(0.5f);
+    TEST("System handles multiple entities", sys.GetLastUpdateParticleCount() >= 0);
+
+    // Disable system
+    sys.SetEnabled(false);
+    sys.Update(0.016f);
+    // When disabled, count shouldn't reset
+    sys.SetEnabled(true);
+    sys.Shutdown();
+    TEST("Shutdown resets count", sys.GetLastUpdateParticleCount() == 0);
+}
+
+// ===================================================================
+// AudioSystem Event Dispatching tests
+// ===================================================================
+
+static void TestAudioEventDispatching() {
+    std::cout << "[AudioEventDispatching]\n";
+
+    EventSystem::Instance().ClearAllListeners();
+
+    int soundPlayedCount = 0;
+    int soundStoppedCount = 0;
+    int musicStartedCount = 0;
+    int musicStoppedCount = 0;
+    int trackChangedCount = 0;
+
+    EventSystem::Instance().Subscribe(GameEvents::SoundPlayed,
+        [&](const GameEvent&) { ++soundPlayedCount; });
+    EventSystem::Instance().Subscribe(GameEvents::SoundStopped,
+        [&](const GameEvent&) { ++soundStoppedCount; });
+    EventSystem::Instance().Subscribe(GameEvents::MusicStarted,
+        [&](const GameEvent&) { ++musicStartedCount; });
+    EventSystem::Instance().Subscribe(GameEvents::MusicStopped,
+        [&](const GameEvent&) { ++musicStoppedCount; });
+    EventSystem::Instance().Subscribe(GameEvents::MusicTrackChanged,
+        [&](const GameEvent&) { ++trackChangedCount; });
+
+    AudioSystem audio;
+    audio.Initialize();
+
+    AudioClip clip;
+    clip.id = "laser";
+    clip.durationSeconds = 1.0f;
+    clip.category = AudioCategory::SFX;
+    audio.RegisterClip(clip);
+
+    AudioClip clip2;
+    clip2.id = "explosion";
+    clip2.durationSeconds = 2.0f;
+    clip2.category = AudioCategory::SFX;
+    audio.RegisterClip(clip2);
+
+    // Play sound dispatches event
+    uint64_t sid = audio.PlaySound("laser");
+    TEST("SoundPlayed event fired on PlaySound", soundPlayedCount == 1);
+
+    // Play 3D sound dispatches event
+    audio.PlaySound3D("explosion", 1.0f, 2.0f, 3.0f);
+    TEST("SoundPlayed event fired on PlaySound3D", soundPlayedCount == 2);
+
+    // Stop sound dispatches event
+    audio.StopSound(sid);
+    TEST("SoundStopped event fired on StopSound", soundStoppedCount == 1);
+
+    // StopSound with invalid ID should NOT dispatch
+    audio.StopSound(99999);
+    TEST("SoundStopped not fired for invalid ID", soundStoppedCount == 1);
+
+    // Music events
+    AudioClip track1;
+    track1.id = "track1";
+    track1.durationSeconds = 3.0f;
+    track1.category = AudioCategory::Music;
+    audio.RegisterClip(track1);
+
+    AudioClip track2;
+    track2.id = "track2";
+    track2.durationSeconds = 3.0f;
+    track2.category = AudioCategory::Music;
+    audio.RegisterClip(track2);
+
+    MusicPlaylist playlist;
+    playlist.trackIds = {"track1", "track2"};
+    playlist.repeat = true;
+    audio.SetMusicPlaylist(playlist);
+
+    // PlayMusic dispatches MusicStarted
+    audio.PlayMusic();
+    TEST("MusicStarted event fired on PlayMusic", musicStartedCount == 1);
+
+    // NextTrack dispatches MusicTrackChanged
+    audio.NextTrack();
+    TEST("MusicTrackChanged event fired on NextTrack", trackChangedCount == 1);
+
+    // StopMusic dispatches MusicStopped
+    audio.StopMusic();
+    TEST("MusicStopped event fired on StopMusic", musicStoppedCount == 1);
+
+    // StopMusic again when already stopped should not fire again
+    audio.StopMusic();
+    TEST("MusicStopped not fired when already stopped", musicStoppedCount == 1);
+
+    audio.Shutdown();
+    EventSystem::Instance().ClearAllListeners();
+}
+
+// ===================================================================
+// PostProcessing Config tests
+// ===================================================================
+
+static void TestPostProcessingConfig() {
+    std::cout << "[PostProcessingConfig]\n";
+
+    PostProcessingConfig cfg;
+    TEST("Default no effects enabled", cfg.GetEnabledEffectCount() == 0);
+    TEST("Bloom disabled by default", !cfg.IsEffectEnabled(PostProcessEffect::Bloom));
+    TEST("HDR disabled by default", !cfg.IsEffectEnabled(PostProcessEffect::HDR));
+    TEST("ToneMapping disabled by default", !cfg.IsEffectEnabled(PostProcessEffect::ToneMapping));
+    TEST("Vignette disabled by default", !cfg.IsEffectEnabled(PostProcessEffect::Vignette));
+    TEST("ChromaticAberration disabled by default", !cfg.IsEffectEnabled(PostProcessEffect::ChromaticAberration));
+    TEST("FXAA disabled by default", !cfg.IsEffectEnabled(PostProcessEffect::FXAA));
+
+    // Enable individual effects
+    cfg.SetEffectEnabled(PostProcessEffect::Bloom, true);
+    TEST("Bloom enabled", cfg.IsEffectEnabled(PostProcessEffect::Bloom));
+    TEST("1 effect enabled", cfg.GetEnabledEffectCount() == 1);
+
+    cfg.SetEffectEnabled(PostProcessEffect::HDR, true);
+    cfg.SetEffectEnabled(PostProcessEffect::FXAA, true);
+    TEST("3 effects enabled", cfg.GetEnabledEffectCount() == 3);
+
+    cfg.SetEffectEnabled(PostProcessEffect::Bloom, false);
+    TEST("Bloom disabled again", !cfg.IsEffectEnabled(PostProcessEffect::Bloom));
+    TEST("2 effects enabled after disable", cfg.GetEnabledEffectCount() == 2);
+
+    // Default bloom settings
+    PostProcessingConfig defaults;
+    TEST("Default bloom threshold", ApproxEq(defaults.bloom.threshold, 0.8f));
+    TEST("Default bloom intensity", ApproxEq(defaults.bloom.intensity, 1.0f));
+    TEST("Default bloom blur passes", defaults.bloom.blurPasses == 4);
+    TEST("Default HDR exposure", ApproxEq(defaults.hdr.exposure, 1.0f));
+    TEST("Default HDR gamma", ApproxEq(defaults.hdr.gamma, 2.2f));
+    TEST("Default vignette intensity", ApproxEq(defaults.vignette.intensity, 0.3f));
+}
+
+static void TestPostProcessingPresets() {
+    std::cout << "[PostProcessingPresets]\n";
+
+    // Low preset
+    PostProcessingConfig low;
+    low.ApplyPreset(PostProcessingConfig::QualityPreset::Low);
+    TEST("Low: bloom disabled", !low.bloom.enabled);
+    TEST("Low: HDR enabled", low.hdr.enabled);
+    TEST("Low: tone mapping enabled", low.toneMapping.enabled);
+    TEST("Low: tone map Reinhard", low.toneMapping.op == ToneMappingSettings::Operator::Reinhard);
+    TEST("Low: vignette disabled", !low.vignette.enabled);
+    TEST("Low: fxaa disabled", !low.fxaa.enabled);
+
+    // Medium preset
+    PostProcessingConfig med;
+    med.ApplyPreset(PostProcessingConfig::QualityPreset::Medium);
+    TEST("Med: bloom enabled", med.bloom.enabled);
+    TEST("Med: bloom 2 passes", med.bloom.blurPasses == 2);
+    TEST("Med: fxaa enabled", med.fxaa.enabled);
+    TEST("Med: vignette enabled", med.vignette.enabled);
+    TEST("Med: chromatic aberration disabled", !med.chromaticAberration.enabled);
+
+    // High preset
+    PostProcessingConfig high;
+    high.ApplyPreset(PostProcessingConfig::QualityPreset::High);
+    TEST("High: bloom enabled", high.bloom.enabled);
+    TEST("High: bloom 4 passes", high.bloom.blurPasses == 4);
+    TEST("High: auto exposure", high.hdr.autoExposure);
+    TEST("High: chromatic aberration enabled", high.chromaticAberration.enabled);
+    TEST("High: ACES tone mapping", high.toneMapping.op == ToneMappingSettings::Operator::ACES);
+
+    // Ultra preset
+    PostProcessingConfig ultra;
+    ultra.ApplyPreset(PostProcessingConfig::QualityPreset::Ultra);
+    TEST("Ultra: bloom enabled", ultra.bloom.enabled);
+    TEST("Ultra: bloom 6 passes", ultra.bloom.blurPasses == 6);
+    TEST("Ultra: bloom threshold lower", ApproxEq(ultra.bloom.threshold, 0.6f));
+    TEST("Ultra: all effects enabled", ultra.GetEnabledEffectCount() == 6);
+}
+
+static void TestPostProcessingComponent() {
+    std::cout << "[PostProcessingComponent]\n";
+
+    PostProcessingComponent comp;
+    TEST("Default priority is 0", comp.priority == 0);
+    TEST("Default config no effects", comp.config.GetEnabledEffectCount() == 0);
+
+    comp.priority = 5;
+    comp.config.ApplyPreset(PostProcessingConfig::QualityPreset::High);
+    TEST("Priority set", comp.priority == 5);
+    TEST("Config applied", comp.config.bloom.enabled);
+}
+
+static void TestPostProcessingComponentSerialization() {
+    std::cout << "[PostProcessingComponentSerialization]\n";
+
+    PostProcessingComponent original;
+    original.priority = 3;
+    original.config.ApplyPreset(PostProcessingConfig::QualityPreset::Ultra);
+
+    // Serialize
+    auto data = original.Serialize();
+    TEST("Serialize type correct", data.componentType == "PostProcessingComponent");
+    TEST("Serialize has priority", data.data.count("priority") > 0);
+    TEST("Serialize has bloom_enabled", data.data.count("bloom_enabled") > 0);
+
+    // Deserialize into a new component
+    PostProcessingComponent restored;
+    restored.Deserialize(data);
+
+    TEST("Restored priority", restored.priority == 3);
+    TEST("Restored bloom enabled", restored.config.bloom.enabled);
+    TEST("Restored bloom threshold", ApproxEq(restored.config.bloom.threshold, 0.6f));
+    TEST("Restored bloom passes", restored.config.bloom.blurPasses == 6);
+    TEST("Restored HDR enabled", restored.config.hdr.enabled);
+    TEST("Restored HDR auto exposure", restored.config.hdr.autoExposure);
+    TEST("Restored tone mapping enabled", restored.config.toneMapping.enabled);
+    TEST("Restored vignette enabled", restored.config.vignette.enabled);
+    TEST("Restored chromatic aberration enabled", restored.config.chromaticAberration.enabled);
+    TEST("Restored FXAA enabled", restored.config.fxaa.enabled);
+    TEST("Restored all effects", restored.config.GetEnabledEffectCount() == 6);
+}
+
+static void TestPostProcessingSystem() {
+    std::cout << "[PostProcessingSystem]\n";
+
+    PostProcessingSystem sys;
+    TEST("System name", sys.GetName() == "PostProcessingSystem");
+    TEST("System enabled", sys.IsEnabled());
+
+    EntityManager em;
+    sys.SetEntityManager(&em);
+    sys.Initialize();
+
+    // No components
+    sys.Update(0.016f);
+    TEST("No components count zero", sys.GetActiveComponentCount() == 0);
+
+    // Add a PostProcessingComponent
+    auto& entity = em.CreateEntity("camera");
+    auto* comp = em.AddComponent<PostProcessingComponent>(entity.id,
+                     std::make_unique<PostProcessingComponent>());
+    comp->config.ApplyPreset(PostProcessingConfig::QualityPreset::High);
+
+    sys.Update(0.016f);
+    TEST("One component active", sys.GetActiveComponentCount() == 1);
+
+    // Global config
+    PostProcessingConfig globalCfg;
+    globalCfg.ApplyPreset(PostProcessingConfig::QualityPreset::Medium);
+    sys.SetGlobalConfig(globalCfg);
+    TEST("Global config bloom enabled", sys.GetGlobalConfig().bloom.enabled);
+
+    // Apply preset via system
+    sys.ApplyGlobalPreset(PostProcessingConfig::QualityPreset::Low);
+    TEST("Global preset applied", !sys.GetGlobalConfig().bloom.enabled);
+    TEST("Global HDR still enabled", sys.GetGlobalConfig().hdr.enabled);
+
+    sys.Shutdown();
+    TEST("Shutdown resets count", sys.GetActiveComponentCount() == 0);
+}
+
+// ===================================================================
+// Shadow System tests
+// ===================================================================
+
+static void TestShadowMapConfig() {
+    std::cout << "[ShadowMapConfig]\n";
+
+    ShadowMapConfig cfg;
+    TEST("Default resolution 1024", cfg.resolution == 1024);
+    TEST("Default near plane", ApproxEq(cfg.nearPlane, 0.1f));
+    TEST("Default far plane", ApproxEq(cfg.farPlane, 100.0f));
+    TEST("Default bias", ApproxEq(cfg.bias, 0.005f));
+    TEST("Default cascade count", cfg.cascadeCount == 3);
+    TEST("Default shadow type PCF", cfg.shadowType == ShadowType::PCF);
+
+    // Resolution for quality
+    TEST("Off resolution 0", ShadowMapConfig::ResolutionForQuality(ShadowQuality::Off) == 0);
+    TEST("Low resolution 512", ShadowMapConfig::ResolutionForQuality(ShadowQuality::Low) == 512);
+    TEST("Medium resolution 1024", ShadowMapConfig::ResolutionForQuality(ShadowQuality::Medium) == 1024);
+    TEST("High resolution 2048", ShadowMapConfig::ResolutionForQuality(ShadowQuality::High) == 2048);
+    TEST("Ultra resolution 4096", ShadowMapConfig::ResolutionForQuality(ShadowQuality::Ultra) == 4096);
+
+    // Apply quality presets
+    cfg.ApplyQuality(ShadowQuality::Off);
+    TEST("Off: no shadow type", cfg.shadowType == ShadowType::None);
+    TEST("Off: no cascades", cfg.cascadeCount == 0);
+
+    cfg.ApplyQuality(ShadowQuality::Low);
+    TEST("Low: hard shadows", cfg.shadowType == ShadowType::Hard);
+    TEST("Low: 1 cascade", cfg.cascadeCount == 1);
+    TEST("Low: resolution 512", cfg.resolution == 512);
+
+    cfg.ApplyQuality(ShadowQuality::Medium);
+    TEST("Med: PCF shadows", cfg.shadowType == ShadowType::PCF);
+    TEST("Med: 2 cascades", cfg.cascadeCount == 2);
+
+    cfg.ApplyQuality(ShadowQuality::High);
+    TEST("High: PCF shadows", cfg.shadowType == ShadowType::PCF);
+    TEST("High: 3 cascades", cfg.cascadeCount == 3);
+    TEST("High: resolution 2048", cfg.resolution == 2048);
+
+    cfg.ApplyQuality(ShadowQuality::Ultra);
+    TEST("Ultra: VSM shadows", cfg.shadowType == ShadowType::VSM);
+    TEST("Ultra: 4 cascades", cfg.cascadeCount == 4);
+    TEST("Ultra: resolution 4096", cfg.resolution == 4096);
+}
+
+static void TestLightSource() {
+    std::cout << "[LightSource]\n";
+
+    LightSource light;
+    TEST("Default type directional", light.type == LightType::Directional);
+    TEST("Default intensity", ApproxEq(light.intensity, 1.0f));
+    TEST("Default casts shadows", light.castsShadows);
+    TEST("Default color white", ApproxEq(light.colorR, 1.0f) && ApproxEq(light.colorG, 1.0f) && ApproxEq(light.colorB, 1.0f));
+
+    // Point light
+    light.type = LightType::Point;
+    light.radius = 100.0f;
+    light.position = {10.0f, 20.0f, 30.0f};
+    TEST("Point light type", light.type == LightType::Point);
+    TEST("Point light radius", ApproxEq(light.radius, 100.0f));
+
+    // Spot light
+    LightSource spot;
+    spot.type = LightType::Spot;
+    spot.innerConeAngleDeg = 20.0f;
+    spot.outerConeAngleDeg = 40.0f;
+    TEST("Spot inner cone", ApproxEq(spot.innerConeAngleDeg, 20.0f));
+    TEST("Spot outer cone", ApproxEq(spot.outerConeAngleDeg, 40.0f));
+}
+
+static void TestShadowComponent() {
+    std::cout << "[ShadowComponent]\n";
+
+    ShadowComponent comp;
+    TEST("Default dirty", comp.isDirty);
+    TEST("Default shadowMapId 0", comp.shadowMapId == 0);
+    TEST("Default light type directional", comp.light.type == LightType::Directional);
+    TEST("Default shadow config resolution", comp.shadowConfig.resolution == 1024);
+
+    comp.light.type = LightType::Point;
+    comp.light.intensity = 2.5f;
+    comp.shadowConfig.ApplyQuality(ShadowQuality::High);
+    comp.isDirty = false;
+    TEST("Light type set", comp.light.type == LightType::Point);
+    TEST("Light intensity set", ApproxEq(comp.light.intensity, 2.5f));
+    TEST("Shadow quality applied", comp.shadowConfig.cascadeCount == 3);
+}
+
+static void TestShadowComponentSerialization() {
+    std::cout << "[ShadowComponentSerialization]\n";
+
+    ShadowComponent original;
+    original.light.type = LightType::Spot;
+    original.light.position = {5.0f, 10.0f, 15.0f};
+    original.light.direction = {0.0f, -1.0f, 0.0f};
+    original.light.intensity = 2.0f;
+    original.light.colorR = 0.9f;
+    original.light.colorG = 0.8f;
+    original.light.colorB = 0.7f;
+    original.light.castsShadows = true;
+    original.light.innerConeAngleDeg = 25.0f;
+    original.light.outerConeAngleDeg = 50.0f;
+    original.light.radius = 75.0f;
+    original.shadowConfig.resolution = 2048;
+    original.shadowConfig.cascadeCount = 3;
+    original.shadowConfig.shadowType = ShadowType::PCF;
+    original.shadowConfig.bias = 0.003f;
+    original.isDirty = false;
+
+    auto data = original.Serialize();
+    TEST("Serialize type correct", data.componentType == "ShadowComponent");
+
+    ShadowComponent restored;
+    restored.Deserialize(data);
+
+    TEST("Restored light type Spot", restored.light.type == LightType::Spot);
+    TEST("Restored light pos X", ApproxEq(restored.light.position.x, 5.0f));
+    TEST("Restored light pos Y", ApproxEq(restored.light.position.y, 10.0f));
+    TEST("Restored light pos Z", ApproxEq(restored.light.position.z, 15.0f));
+    TEST("Restored light intensity", ApproxEq(restored.light.intensity, 2.0f));
+    TEST("Restored light colorR", ApproxEq(restored.light.colorR, 0.9f));
+    TEST("Restored light colorG", ApproxEq(restored.light.colorG, 0.8f));
+    TEST("Restored light colorB", ApproxEq(restored.light.colorB, 0.7f));
+    TEST("Restored casts shadows", restored.light.castsShadows);
+    TEST("Restored inner cone", ApproxEq(restored.light.innerConeAngleDeg, 25.0f));
+    TEST("Restored outer cone", ApproxEq(restored.light.outerConeAngleDeg, 50.0f));
+    TEST("Restored radius", ApproxEq(restored.light.radius, 75.0f));
+    TEST("Restored shadow resolution", restored.shadowConfig.resolution == 2048);
+    TEST("Restored cascade count", restored.shadowConfig.cascadeCount == 3);
+    TEST("Restored shadow type PCF", restored.shadowConfig.shadowType == ShadowType::PCF);
+    TEST("Restored bias", ApproxEq(restored.shadowConfig.bias, 0.003f));
+}
+
+static void TestShadowCasterComponent() {
+    std::cout << "[ShadowCasterComponent]\n";
+
+    ShadowCasterComponent caster;
+    TEST("Default casts shadows", caster.castsShadows);
+    TEST("Default receives shadows", caster.receivesShadows);
+    TEST("Default bounding radius", ApproxEq(caster.boundingRadius, 1.0f));
+
+    caster.castsShadows = false;
+    caster.boundingRadius = 5.0f;
+    TEST("Casts shadows disabled", !caster.castsShadows);
+    TEST("Bounding radius updated", ApproxEq(caster.boundingRadius, 5.0f));
+}
+
+static void TestShadowSystem() {
+    std::cout << "[ShadowSystem]\n";
+
+    ShadowSystem sys;
+    TEST("System name", sys.GetName() == "ShadowSystem");
+    TEST("System enabled", sys.IsEnabled());
+    TEST("Default quality medium", sys.GetShadowQuality() == ShadowQuality::Medium);
+
+    EntityManager em;
+    sys.SetEntityManager(&em);
+    sys.Initialize();
+
+    // No entities
+    sys.Update(0.016f);
+    TEST("No lights count zero", sys.GetActiveShadowLightCount() == 0);
+    TEST("No casters count zero", sys.GetShadowCasterCount() == 0);
+    TEST("No shadow maps", sys.GetShadowMapCount() == 0);
+
+    // Add a directional light
+    auto& lightEntity = em.CreateEntity("sun");
+    auto* shadow = em.AddComponent<ShadowComponent>(lightEntity.id,
+                       std::make_unique<ShadowComponent>());
+    shadow->light.type = LightType::Directional;
+    shadow->light.castsShadows = true;
+
+    sys.Update(0.016f);
+    TEST("One shadow light", sys.GetActiveShadowLightCount() == 1);
+    TEST("Shadow map ID assigned", shadow->shadowMapId > 0);
+    TEST("Cascaded shadow maps for directional", sys.GetShadowMapCount() >= 1);
+
+    // Add shadow casters
+    auto& casterEntity = em.CreateEntity("ship");
+    auto* caster = em.AddComponent<ShadowCasterComponent>(casterEntity.id,
+                       std::make_unique<ShadowCasterComponent>());
+    caster->castsShadows = true;
+
+    auto& casterEntity2 = em.CreateEntity("station");
+    auto* caster2 = em.AddComponent<ShadowCasterComponent>(casterEntity2.id,
+                        std::make_unique<ShadowCasterComponent>());
+    caster2->castsShadows = true;
+
+    sys.Update(0.016f);
+    TEST("Two shadow casters", sys.GetShadowCasterCount() == 2);
+
+    // Add a non-shadow-casting light
+    auto& lightEntity2 = em.CreateEntity("ambient");
+    auto* shadow2 = em.AddComponent<ShadowComponent>(lightEntity2.id,
+                        std::make_unique<ShadowComponent>());
+    shadow2->light.castsShadows = false;
+
+    sys.Update(0.016f);
+    TEST("Still one shadow light (ambient excluded)", sys.GetActiveShadowLightCount() == 1);
+
+    // Change quality
+    sys.SetShadowQuality(ShadowQuality::High);
+    TEST("Quality changed to high", sys.GetShadowQuality() == ShadowQuality::High);
+
+    // Quality Off disables shadow processing
+    sys.SetShadowQuality(ShadowQuality::Off);
+    sys.Update(0.016f);
+    TEST("Off quality: no shadow lights", sys.GetActiveShadowLightCount() == 0);
+    TEST("Off quality: no shadow maps", sys.GetShadowMapCount() == 0);
+
+    // Re-enable
+    sys.SetShadowQuality(ShadowQuality::Medium);
+    sys.Update(0.016f);
+    TEST("Re-enabled shadow lights", sys.GetActiveShadowLightCount() == 1);
+
+    // Invalidate
+    sys.InvalidateAllShadowMaps();
+    TEST("Invalidated shadow maps", shadow->isDirty);
+
+    sys.Shutdown();
+    TEST("Shutdown resets counts", sys.GetActiveShadowLightCount() == 0);
+}
+
+static void TestShadowSystemPointSpotLights() {
+    std::cout << "[ShadowSystemPointSpotLights]\n";
+
+    EntityManager em;
+    ShadowSystem sys;
+    sys.SetEntityManager(&em);
+    sys.Initialize();
+
+    // Point light — single shadow map
+    auto& pointEntity = em.CreateEntity("point_light");
+    auto* pointShadow = em.AddComponent<ShadowComponent>(pointEntity.id,
+                             std::make_unique<ShadowComponent>());
+    pointShadow->light.type = LightType::Point;
+    pointShadow->light.castsShadows = true;
+
+    sys.Update(0.016f);
+    TEST("Point light shadow map count 1", sys.GetShadowMapCount() == 1);
+
+    // Spot light — single shadow map
+    auto& spotEntity = em.CreateEntity("spot_light");
+    auto* spotShadow = em.AddComponent<ShadowComponent>(spotEntity.id,
+                            std::make_unique<ShadowComponent>());
+    spotShadow->light.type = LightType::Spot;
+    spotShadow->light.castsShadows = true;
+
+    sys.Update(0.016f);
+    TEST("Two lights total", sys.GetActiveShadowLightCount() == 2);
+    TEST("Two shadow maps (1 point + 1 spot)", sys.GetShadowMapCount() == 2);
+
+    sys.Shutdown();
+}
+
+// ===================================================================
+// New GameEvents for Post-Processing and Shadow systems
+// ===================================================================
+
+static void TestPostProcessShadowGameEvents() {
+    std::cout << "[PostProcessShadowGameEvents]\n";
+
+    // Post-processing events
+    TEST("PostProcessEffectEnabled event",
+         std::string(GameEvents::PostProcessEffectEnabled) == "rendering.postprocess.effect_enabled");
+    TEST("PostProcessEffectDisabled event",
+         std::string(GameEvents::PostProcessEffectDisabled) == "rendering.postprocess.effect_disabled");
+    TEST("PostProcessPresetApplied event",
+         std::string(GameEvents::PostProcessPresetApplied) == "rendering.postprocess.preset_applied");
+
+    // Shadow events
+    TEST("ShadowQualityChanged event",
+         std::string(GameEvents::ShadowQualityChanged) == "rendering.shadow.quality_changed");
+    TEST("ShadowMapInvalidated event",
+         std::string(GameEvents::ShadowMapInvalidated) == "rendering.shadow.map_invalidated");
+    TEST("ShadowLightAdded event",
+         std::string(GameEvents::ShadowLightAdded) == "rendering.shadow.light_added");
+}
+
+// ===================================================================
 // Main
 // ===================================================================
 int main() {
@@ -14598,6 +15192,21 @@ int main() {
     TestFleetCommandSystem();
     TestFleetCommandSystemOrderProgress();
     TestScanningScalvageFleetGameEvents();
+    TestParticleSystemUpdate();
+    TestAudioEventDispatching();
+    TestPostProcessingConfig();
+    TestPostProcessingPresets();
+    TestPostProcessingComponent();
+    TestPostProcessingComponentSerialization();
+    TestPostProcessingSystem();
+    TestShadowMapConfig();
+    TestLightSource();
+    TestShadowComponent();
+    TestShadowComponentSerialization();
+    TestShadowCasterComponent();
+    TestShadowSystem();
+    TestShadowSystemPointSpotLights();
+    TestPostProcessShadowGameEvents();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
               << testsFailed << " failed ===\n";
