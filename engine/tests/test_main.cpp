@@ -92,6 +92,9 @@
 #include "navigation/WormholeSystem.h"
 #include "ships/ShipClassSystem.h"
 #include "crafting/RefinerySystem.h"
+#include "scanning/ScanningSystem.h"
+#include "salvage/SalvageSystem.h"
+#include "fleet/FleetCommandSystem.h"
 
 using namespace subspace;
 
@@ -13440,6 +13443,637 @@ static void TestRefinerySystemSpeedMultiplier() {
 }
 
 // ===================================================================
+// Scanning System Tests
+// ===================================================================
+
+static void TestScannerTypeNames() {
+    std::cout << "[ScannerTypeNames]\n";
+    TEST("Passive name", ScanResult::GetTypeName(ScannerType::Passive) == "Passive");
+    TEST("Active name", ScanResult::GetTypeName(ScannerType::Active) == "Active");
+    TEST("Deep name", ScanResult::GetTypeName(ScannerType::Deep) == "Deep");
+    TEST("Military name", ScanResult::GetTypeName(ScannerType::Military) == "Military");
+}
+
+static void TestScanStateNames() {
+    std::cout << "[ScanStateNames]\n";
+    TEST("Idle name", ScanResult::GetStateName(ScanState::Idle) == "Idle");
+    TEST("Scanning name", ScanResult::GetStateName(ScanState::Scanning) == "Scanning");
+    TEST("Analyzing name", ScanResult::GetStateName(ScanState::Analyzing) == "Analyzing");
+    TEST("Complete name", ScanResult::GetStateName(ScanState::Complete) == "Complete");
+    TEST("Jammed name", ScanResult::GetStateName(ScanState::Jammed) == "Jammed");
+}
+
+static void TestSignatureClassNames() {
+    std::cout << "[SignatureClassNames]\n";
+    TEST("Unknown class", ScanResult::GetClassName(SignatureClass::Unknown) == "Unknown");
+    TEST("Ship class", ScanResult::GetClassName(SignatureClass::Ship) == "Ship");
+    TEST("Station class", ScanResult::GetClassName(SignatureClass::Station) == "Station");
+    TEST("Asteroid class", ScanResult::GetClassName(SignatureClass::Asteroid) == "Asteroid");
+    TEST("Anomaly class", ScanResult::GetClassName(SignatureClass::Anomaly) == "Anomaly");
+    TEST("Debris class", ScanResult::GetClassName(SignatureClass::Debris) == "Debris");
+}
+
+static void TestScannerComponentDefaults() {
+    std::cout << "[ScannerComponentDefaults]\n";
+    ScannerComponent sc;
+    TEST("Default type is Passive", sc.GetType() == ScannerType::Passive);
+    TEST("Default range", ApproxEq(sc.GetRange(), 5000.0f));  // 5000 * 1.0
+    TEST("Default resolution", ApproxEq(sc.GetResolution(), 1.0f));
+    TEST("Max concurrent scans", sc.GetMaxConcurrentScans() == 2);
+    TEST("No active scans", sc.GetActiveScanCount() == 0);
+    TEST("Not on cooldown", !sc.IsOnCooldown());
+    TEST("Scan speed multiplier", ApproxEq(sc.GetScanSpeedMultiplier(), 1.0f));
+    TEST("Range multiplier", ApproxEq(sc.GetRangeMultiplier(), 1.0f));
+}
+
+static void TestScannerComponentCustomType() {
+    std::cout << "[ScannerComponentCustomType]\n";
+    ScannerComponent sc(ScannerType::Military, 10000.0f);
+    TEST("Military type", sc.GetType() == ScannerType::Military);
+    TEST("Military range", ApproxEq(sc.GetRange(), 18000.0f));  // 10000 * 1.8
+    TEST("Military resolution", ApproxEq(sc.GetResolution(), 0.3f));
+    TEST("Military max scans", sc.GetMaxConcurrentScans() == 6);
+    TEST("Military speed mult", ApproxEq(sc.GetScanSpeedMultiplier(), 2.0f));
+    TEST("Military range mult", ApproxEq(sc.GetRangeMultiplier(), 1.8f));
+}
+
+static void TestScannerComponentStartScan() {
+    std::cout << "[ScannerComponentStartScan]\n";
+    ScannerComponent sc(ScannerType::Passive, 5000.0f);
+    TEST("Start scan 1", sc.StartScan(100, "Target Alpha", 1000.0f, 10.0f, 20.0f, 30.0f));
+    TEST("Active scan count 1", sc.GetActiveScanCount() == 1);
+    TEST("Start scan 2", sc.StartScan(200, "Target Beta", 2000.0f));
+    TEST("Active scan count 2", sc.GetActiveScanCount() == 2);
+    // Passive scanner can only have 2 concurrent scans
+    TEST("Start scan 3 fails (capacity)", !sc.StartScan(300, "Target Gamma", 3000.0f));
+    TEST("Active scan count still 2", sc.GetActiveScanCount() == 2);
+    // Can't scan same target twice
+    ScannerComponent sc2(ScannerType::Active, 5000.0f);
+    sc2.StartScan(100, "Target Alpha", 1000.0f);
+    TEST("Duplicate scan fails", !sc2.StartScan(100, "Target Alpha", 1000.0f));
+}
+
+static void TestScannerComponentCooldown() {
+    std::cout << "[ScannerComponentCooldown]\n";
+    ScannerComponent sc(ScannerType::Passive, 5000.0f);
+    TEST("Start scan triggers cooldown", sc.StartScan(100, "Target Alpha", 1000.0f));
+    TEST("Is on cooldown", sc.IsOnCooldown());
+    TEST("Cooldown remaining > 0", sc.GetCooldownRemaining() > 0.0f);
+}
+
+static void TestScannerComponentCancelScan() {
+    std::cout << "[ScannerComponentCancelScan]\n";
+    ScannerComponent sc(ScannerType::Active, 5000.0f);
+    sc.StartScan(100, "Target Alpha", 1000.0f);
+    TEST("Cancel existing scan", sc.CancelScan(100));
+    TEST("Active scans after cancel", sc.GetActiveScanCount() == 0);
+    TEST("Cancel non-existent fails", !sc.CancelScan(999));
+}
+
+static void TestScannerComponentGetScanResult() {
+    std::cout << "[ScannerComponentGetScanResult]\n";
+    ScannerComponent sc(ScannerType::Passive, 5000.0f);
+    sc.StartScan(100, "Target Alpha", 1000.0f, 10.0f, 20.0f, 30.0f);
+    const ScanResult* r = sc.GetScanResult(100);
+    TEST("Scan result exists", r != nullptr);
+    TEST("Target ID matches", r && r->targetId == 100);
+    TEST("Target name matches", r && r->targetName == "Target Alpha");
+    TEST("Distance matches", r && ApproxEq(r->distance, 1000.0f));
+    TEST("Position X", r && ApproxEq(r->posX, 10.0f));
+    TEST("Position Y", r && ApproxEq(r->posY, 20.0f));
+    TEST("Position Z", r && ApproxEq(r->posZ, 30.0f));
+    TEST("Not yet fully scanned", r && !r->isFullyScanned);
+    TEST("Non-existent scan returns null", sc.GetScanResult(999) == nullptr);
+}
+
+static void TestScannerComponentClearCompleted() {
+    std::cout << "[ScannerComponentClearCompleted]\n";
+    ScannerComponent sc(ScannerType::Active, 5000.0f);
+    sc.StartScan(100, "Target", 1000.0f);
+    // Manually mark as complete for testing
+    auto allScans = sc.GetAllScans();
+    TEST("Has 1 scan", allScans.size() == 1);
+    sc.ClearCompletedScans();  // None completed yet
+    TEST("Still 1 scan after clear (none completed)", sc.GetAllScans().size() == 1);
+}
+
+static void TestScannerComponentSerialization() {
+    std::cout << "[ScannerComponentSerialization]\n";
+    ScannerComponent sc(ScannerType::Deep, 8000.0f);
+    sc.StartScan(100, "Target Alpha", 1500.0f, 5.0f, 10.0f, 15.0f);
+
+    ComponentData cd = sc.Serialize();
+    TEST("Component type", cd.componentType == "ScannerComponent");
+
+    ScannerComponent sc2;
+    sc2.Deserialize(cd);
+    TEST("Restored type", sc2.GetType() == ScannerType::Deep);
+    TEST("Restored scan count", sc2.GetAllScans().size() == 1);
+    const ScanResult* r = sc2.GetScanResult(100);
+    TEST("Restored scan exists", r != nullptr);
+    TEST("Restored target name", r && r->targetName == "Target Alpha");
+    TEST("Restored distance", r && ApproxEq(r->distance, 1500.0f));
+    TEST("Restored posX", r && ApproxEq(r->posX, 5.0f));
+}
+
+static void TestScanningSystem() {
+    std::cout << "[ScanningSystem]\n";
+    ScanningSystem sys;
+    sys.Update(1.0f);  // Should not crash without entity manager
+    TEST("ScanningSystem name", sys.GetName() == "ScanningSystem");
+}
+
+static void TestScanningSystemProgress() {
+    std::cout << "[ScanningSystemProgress]\n";
+    EntityManager em;
+    ScanningSystem sys(em);
+
+    auto& entity = em.CreateEntity("Scanner Ship");
+    auto* sc = em.AddComponent<ScannerComponent>(
+        entity.id, std::make_unique<ScannerComponent>(ScannerType::Active, 5000.0f));
+    sc->StartScan(200, "Asteroid", 1000.0f);
+
+    // Update for several seconds to progress the scan
+    for (int i = 0; i < 100; ++i) {
+        sys.Update(0.1f);
+    }
+
+    const ScanResult* r = sc->GetScanResult(200);
+    TEST("Scan progressed", r && r->scanProgress > 0.0f);
+    TEST("Scan completed after 10s", r && r->isFullyScanned);
+    TEST("Signal strength at max", r && ApproxEq(r->signalStrength, 1.0f));
+    TEST("Classification assigned", r && r->classification != SignatureClass::Unknown);
+}
+
+static void TestScanningSystemSpeedMultiplier() {
+    std::cout << "[ScanningSystemSpeedMultiplier]\n";
+    EntityManager em;
+    ScanningSystem sys(em);
+
+    auto& entity = em.CreateEntity("Military Scanner");
+    auto* sc = em.AddComponent<ScannerComponent>(
+        entity.id, std::make_unique<ScannerComponent>(ScannerType::Military, 10000.0f));
+    sc->StartScan(300, "Enemy Ship", 2000.0f);
+
+    // Military scanner should complete faster (2.0x speed)
+    // Base scan time 10s / 2.0 speed = 5s, plus distance factor. Allow 6s.
+    for (int i = 0; i < 60; ++i) {
+        sys.Update(0.1f);
+    }
+
+    const ScanResult* r = sc->GetScanResult(300);
+    TEST("Military scan completed in 5s", r && r->isFullyScanned);
+}
+
+// ===================================================================
+// Salvage System Tests
+// ===================================================================
+
+static void TestSalvageTierNames() {
+    std::cout << "[SalvageTierNames]\n";
+    TEST("Basic name", SalvageTarget::GetTierName(SalvageTier::Basic) == "Basic");
+    TEST("Advanced name", SalvageTarget::GetTierName(SalvageTier::Advanced) == "Advanced");
+    TEST("Industrial name", SalvageTarget::GetTierName(SalvageTier::Industrial) == "Industrial");
+    TEST("Military name", SalvageTarget::GetTierName(SalvageTier::Military) == "Military");
+    TEST("Experimental name", SalvageTarget::GetTierName(SalvageTier::Experimental) == "Experimental");
+}
+
+static void TestSalvageStateNames() {
+    std::cout << "[SalvageStateNames]\n";
+    TEST("Idle name", SalvageTarget::GetStateName(SalvageState::Idle) == "Idle");
+    TEST("Approaching name", SalvageTarget::GetStateName(SalvageState::Approaching) == "Approaching");
+    TEST("Salvaging name", SalvageTarget::GetStateName(SalvageState::Salvaging) == "Salvaging");
+    TEST("Completed name", SalvageTarget::GetStateName(SalvageState::Completed) == "Completed");
+    TEST("Failed name", SalvageTarget::GetStateName(SalvageState::Failed) == "Failed");
+}
+
+static void TestSalvageDefaultWreckTypes() {
+    std::cout << "[SalvageDefaultWreckTypes]\n";
+    auto wrecks = SalvageTarget::GetDefaultWreckTypes();
+    TEST("8 default wreck types", wrecks.size() == 8);
+    TEST("First wreck is Small Debris", wrecks[0].wreckName == "Small Debris");
+    TEST("Last wreck is Cargo Container", wrecks[7].wreckName == "Cargo Container");
+    TEST("Ancient Artifact has Avorion", wrecks[6].primaryMaterial == "Avorion");
+}
+
+static void TestSalvageComponentDefaults() {
+    std::cout << "[SalvageComponentDefaults]\n";
+    SalvageComponent sc;
+    TEST("Default tier is Basic", sc.GetTier() == SalvageTier::Basic);
+    TEST("Default range", ApproxEq(sc.GetRange(), 500.0f));
+    TEST("Default max targets", sc.GetMaxTargets() == 2);
+    TEST("No active targets", sc.GetActiveTargetCount() == 0);
+    TEST("Efficiency multiplier", ApproxEq(sc.GetEfficiencyMultiplier(), 1.0f));
+    TEST("Speed multiplier", ApproxEq(sc.GetSpeedMultiplier(), 1.0f));
+    TEST("Total collected 0", sc.GetTotalMaterialsCollected() == 0);
+}
+
+static void TestSalvageComponentCustomTier() {
+    std::cout << "[SalvageComponentCustomTier]\n";
+    SalvageComponent sc(SalvageTier::Experimental, 1000.0f);
+    TEST("Experimental tier", sc.GetTier() == SalvageTier::Experimental);
+    TEST("Custom range", ApproxEq(sc.GetRange(), 1000.0f));
+    TEST("Experimental max targets", sc.GetMaxTargets() == 6);  // 2 + 4
+    TEST("Experimental efficiency", ApproxEq(sc.GetEfficiencyMultiplier(), 1.5f));
+    TEST("Experimental speed", ApproxEq(sc.GetSpeedMultiplier(), 1.8f));
+}
+
+static void TestSalvageComponentStartSalvage() {
+    std::cout << "[SalvageComponentStartSalvage]\n";
+    SalvageComponent sc(SalvageTier::Basic, 500.0f);
+    SalvageTarget t1;
+    t1.targetId = 100;
+    t1.wreckName = "Fighter Wreck";
+    t1.primaryMaterial = "Titanium";
+    t1.totalYield = 100;
+    t1.integrity = 0.5f;
+    TEST("Start salvage 1", sc.StartSalvage(t1));
+    TEST("Active target count 1", sc.GetActiveTargetCount() == 1);
+
+    SalvageTarget t2;
+    t2.targetId = 200;
+    t2.wreckName = "Frigate Wreck";
+    t2.primaryMaterial = "Naonite";
+    t2.totalYield = 250;
+    TEST("Start salvage 2", sc.StartSalvage(t2));
+    TEST("Active target count 2", sc.GetActiveTargetCount() == 2);
+
+    SalvageTarget t3;
+    t3.targetId = 300;
+    TEST("Start salvage 3 fails (capacity)", !sc.StartSalvage(t3));
+}
+
+static void TestSalvageComponentCancelSalvage() {
+    std::cout << "[SalvageComponentCancelSalvage]\n";
+    SalvageComponent sc;
+    SalvageTarget t;
+    t.targetId = 100;
+    t.wreckName = "Debris";
+    t.primaryMaterial = "Iron";
+    t.totalYield = 50;
+    sc.StartSalvage(t);
+    TEST("Cancel existing", sc.CancelSalvage(100));
+    TEST("Active count 0", sc.GetActiveTargetCount() == 0);
+    TEST("Cancel non-existent", !sc.CancelSalvage(999));
+}
+
+static void TestSalvageComponentCollectSalvage() {
+    std::cout << "[SalvageComponentCollectSalvage]\n";
+    SalvageComponent sc;
+    SalvageTarget t;
+    t.targetId = 100;
+    t.wreckName = "Fighter Wreck";
+    t.primaryMaterial = "Titanium";
+    t.totalYield = 100;
+    t.integrity = 0.5f;
+    sc.StartSalvage(t);
+    // Not completed yet
+    auto result = sc.CollectSalvage(100);
+    TEST("Collect incomplete returns empty", result.first.empty() && result.second == 0);
+}
+
+static void TestSalvageComponentSetTier() {
+    std::cout << "[SalvageComponentSetTier]\n";
+    SalvageComponent sc;
+    sc.SetTier(SalvageTier::Military);
+    TEST("SetTier to Military", sc.GetTier() == SalvageTier::Military);
+    TEST("Military max targets", sc.GetMaxTargets() == 5);  // 2 + 3
+    TEST("Military efficiency", ApproxEq(sc.GetEfficiencyMultiplier(), 1.375f));
+}
+
+static void TestSalvageComponentSerialization() {
+    std::cout << "[SalvageComponentSerialization]\n";
+    SalvageComponent sc(SalvageTier::Advanced, 750.0f);
+    SalvageTarget t;
+    t.targetId = 100;
+    t.wreckName = "Cruiser Wreck";
+    t.primaryMaterial = "Trinium";
+    t.totalYield = 500;
+    t.remainingYield = 300;
+    t.integrity = 0.7f;
+    sc.StartSalvage(t);
+
+    ComponentData cd = sc.Serialize();
+    TEST("Component type", cd.componentType == "SalvageComponent");
+
+    SalvageComponent sc2;
+    sc2.Deserialize(cd);
+    TEST("Restored tier", sc2.GetTier() == SalvageTier::Advanced);
+    TEST("Restored range", ApproxEq(sc2.GetRange(), 750.0f));
+    TEST("Restored target count", sc2.GetAllTargets().size() == 1);
+    const SalvageTarget* rt = sc2.GetTarget(100);
+    TEST("Restored target exists", rt != nullptr);
+    TEST("Restored wreck name", rt && rt->wreckName == "Cruiser Wreck");
+    TEST("Restored material", rt && rt->primaryMaterial == "Trinium");
+}
+
+static void TestSalvageSystem() {
+    std::cout << "[SalvageSystem]\n";
+    SalvageSystem sys;
+    sys.Update(1.0f);  // Should not crash without entity manager
+    TEST("SalvageSystem name", sys.GetName() == "SalvageSystem");
+}
+
+static void TestSalvageSystemProcessing() {
+    std::cout << "[SalvageSystemProcessing]\n";
+    EntityManager em;
+    SalvageSystem sys(em);
+
+    auto& entity = em.CreateEntity("Salvager Ship");
+    auto* sc = em.AddComponent<SalvageComponent>(
+        entity.id, std::make_unique<SalvageComponent>(SalvageTier::Basic, 500.0f));
+
+    SalvageTarget t;
+    t.targetId = 100;
+    t.wreckName = "Fighter Wreck";
+    t.primaryMaterial = "Titanium";
+    t.totalYield = 100;
+    t.integrity = 1.0f;
+    sc->StartSalvage(t);
+
+    // First update: Approaching -> Salvaging
+    sys.Update(0.1f);
+    const SalvageTarget* target = sc->GetTarget(100);
+    TEST("Transitioned to Salvaging", target && target->state == SalvageState::Salvaging);
+
+    // Update for 8+ seconds to complete (base salvage time is 8s at 1.0x speed)
+    for (int i = 0; i < 85; ++i) {
+        sys.Update(0.1f);
+    }
+
+    target = sc->GetTarget(100);
+    TEST("Salvage completed", target && target->state == SalvageState::Completed);
+
+    // Collect
+    auto result = sc->CollectSalvage(100);
+    TEST("Collected material name", result.first == "Titanium");
+    TEST("Collected material amount > 0", result.second > 0);
+    TEST("Total collected updated", sc->GetTotalMaterialsCollected() > 0);
+}
+
+static void TestSalvageSystemSpeedMultiplier() {
+    std::cout << "[SalvageSystemSpeedMultiplier]\n";
+    EntityManager em;
+    SalvageSystem sys(em);
+
+    auto& entity = em.CreateEntity("Experimental Salvager");
+    auto* sc = em.AddComponent<SalvageComponent>(
+        entity.id, std::make_unique<SalvageComponent>(SalvageTier::Experimental, 1000.0f));
+
+    SalvageTarget t;
+    t.targetId = 200;
+    t.wreckName = "Battleship Wreck";
+    t.primaryMaterial = "Xanion";
+    t.totalYield = 800;
+    t.integrity = 0.8f;
+    sc->StartSalvage(t);
+
+    // First update: Approaching -> Salvaging
+    sys.Update(0.1f);
+
+    // Experimental (1.8x speed): 8s / 1.8 = ~4.44s needed
+    for (int i = 0; i < 45; ++i) {
+        sys.Update(0.1f);
+    }
+
+    const SalvageTarget* target = sc->GetTarget(200);
+    TEST("Experimental salvage completed faster", target && target->state == SalvageState::Completed);
+}
+
+// ===================================================================
+// Fleet Command System Tests
+// ===================================================================
+
+static void TestFleetOrderTypeNames() {
+    std::cout << "[FleetOrderTypeNames]\n";
+    TEST("Idle name", FleetOrder::GetOrderTypeName(FleetOrderType::Idle) == "Idle");
+    TEST("Patrol name", FleetOrder::GetOrderTypeName(FleetOrderType::Patrol) == "Patrol");
+    TEST("Mine name", FleetOrder::GetOrderTypeName(FleetOrderType::Mine) == "Mine");
+    TEST("Trade name", FleetOrder::GetOrderTypeName(FleetOrderType::Trade) == "Trade");
+    TEST("Attack name", FleetOrder::GetOrderTypeName(FleetOrderType::Attack) == "Attack");
+    TEST("Escort name", FleetOrder::GetOrderTypeName(FleetOrderType::Escort) == "Escort");
+    TEST("Defend name", FleetOrder::GetOrderTypeName(FleetOrderType::Defend) == "Defend");
+    TEST("Scout name", FleetOrder::GetOrderTypeName(FleetOrderType::Scout) == "Scout");
+}
+
+static void TestFleetOrderStateNames() {
+    std::cout << "[FleetOrderStateNames]\n";
+    TEST("Pending name", FleetOrder::GetOrderStateName(FleetOrderState::Pending) == "Pending");
+    TEST("Active name", FleetOrder::GetOrderStateName(FleetOrderState::Active) == "Active");
+    TEST("Paused name", FleetOrder::GetOrderStateName(FleetOrderState::Paused) == "Paused");
+    TEST("Completed name", FleetOrder::GetOrderStateName(FleetOrderState::Completed) == "Completed");
+    TEST("Failed name", FleetOrder::GetOrderStateName(FleetOrderState::Failed) == "Failed");
+}
+
+static void TestFleetRoleNames() {
+    std::cout << "[FleetRoleNames]\n";
+    TEST("Flagship name", FleetOrder::GetRoleName(FleetRole::Flagship) == "Flagship");
+    TEST("Combat name", FleetOrder::GetRoleName(FleetRole::Combat) == "Combat");
+    TEST("Mining name", FleetOrder::GetRoleName(FleetRole::Mining) == "Mining");
+    TEST("Trading name", FleetOrder::GetRoleName(FleetRole::Trading) == "Trading");
+    TEST("Support name", FleetOrder::GetRoleName(FleetRole::Support) == "Support");
+    TEST("Scout name", FleetOrder::GetRoleName(FleetRole::Scout) == "Scout");
+}
+
+static void TestFleetCommandComponentDefaults() {
+    std::cout << "[FleetCommandComponentDefaults]\n";
+    FleetCommandComponent fc;
+    TEST("Default fleet name", fc.GetFleetName() == "Fleet");
+    TEST("Default max members", fc.GetMaxMembers() == 10);
+    TEST("No members", fc.GetMemberCount() == 0);
+    TEST("No active members", fc.GetActiveMemberCount() == 0);
+    TEST("No orders", fc.GetAllOrders().empty());
+    TEST("Average morale 0 (empty)", ApproxEq(fc.GetAverageMorale(), 0.0f));
+}
+
+static void TestFleetCommandComponentCustom() {
+    std::cout << "[FleetCommandComponentCustom]\n";
+    FleetCommandComponent fc("Alpha Squadron");
+    fc.SetMaxMembers(5);
+    TEST("Custom name", fc.GetFleetName() == "Alpha Squadron");
+    TEST("Custom max members", fc.GetMaxMembers() == 5);
+}
+
+static void TestFleetCommandComponentAddMember() {
+    std::cout << "[FleetCommandComponentAddMember]\n";
+    FleetCommandComponent fc("Test Fleet");
+    fc.SetMaxMembers(3);
+    TEST("Add member 1", fc.AddMember(100, "Fighter A", FleetRole::Combat));
+    TEST("Add member 2", fc.AddMember(200, "Mining Ship", FleetRole::Mining));
+    TEST("Add member 3", fc.AddMember(300, "Transport", FleetRole::Trading));
+    TEST("Member count 3", fc.GetMemberCount() == 3);
+    TEST("Active count 3", fc.GetActiveMemberCount() == 3);
+    TEST("Add member 4 fails (capacity)", !fc.AddMember(400, "Scout", FleetRole::Scout));
+    // Duplicate check
+    TEST("Add duplicate fails", !fc.AddMember(100, "Fighter A Copy", FleetRole::Combat));
+}
+
+static void TestFleetCommandComponentRemoveMember() {
+    std::cout << "[FleetCommandComponentRemoveMember]\n";
+    FleetCommandComponent fc;
+    fc.AddMember(100, "Fighter A", FleetRole::Combat);
+    fc.AddMember(200, "Mining Ship", FleetRole::Mining);
+    TEST("Remove existing", fc.RemoveMember(100));
+    TEST("Member count 1", fc.GetMemberCount() == 1);
+    TEST("Remove non-existent", !fc.RemoveMember(999));
+}
+
+static void TestFleetCommandComponentGetMember() {
+    std::cout << "[FleetCommandComponentGetMember]\n";
+    FleetCommandComponent fc;
+    fc.AddMember(100, "Fighter A", FleetRole::Combat);
+    const FleetMember* m = fc.GetMember(100);
+    TEST("Member exists", m != nullptr);
+    TEST("Member entity ID", m && m->entityId == 100);
+    TEST("Member ship name", m && m->shipName == "Fighter A");
+    TEST("Member role", m && m->role == FleetRole::Combat);
+    TEST("Member morale default", m && ApproxEq(m->morale, 1.0f));
+    TEST("Member active", m && m->isActive);
+    TEST("Non-existent member null", fc.GetMember(999) == nullptr);
+}
+
+static void TestFleetCommandComponentIssueOrder() {
+    std::cout << "[FleetCommandComponentIssueOrder]\n";
+    FleetCommandComponent fc;
+    TEST("Issue patrol order", fc.IssueOrder(FleetOrderType::Patrol, 100.0f, 200.0f, 300.0f));
+    TEST("Issue mine order", fc.IssueOrder(FleetOrderType::Mine, 50.0f, 60.0f, 70.0f, 0, 1));
+    TEST("Order count 2", fc.GetAllOrders().size() == 2);
+    const FleetOrder* o = fc.GetOrder(1);
+    TEST("Order 1 exists", o != nullptr);
+    TEST("Order 1 type is Patrol", o && o->type == FleetOrderType::Patrol);
+    TEST("Order 1 targetX", o && ApproxEq(o->targetX, 100.0f));
+}
+
+static void TestFleetCommandComponentOrderCapacity() {
+    std::cout << "[FleetCommandComponentOrderCapacity]\n";
+    FleetCommandComponent fc;
+    // Default max orders is 5
+    for (int i = 0; i < 5; ++i) {
+        TEST("Issue order " + std::to_string(i+1), fc.IssueOrder(FleetOrderType::Patrol));
+    }
+    TEST("6th order fails (capacity)", !fc.IssueOrder(FleetOrderType::Attack));
+}
+
+static void TestFleetCommandComponentCancelOrder() {
+    std::cout << "[FleetCommandComponentCancelOrder]\n";
+    FleetCommandComponent fc;
+    fc.IssueOrder(FleetOrderType::Patrol, 100.0f, 200.0f, 300.0f);
+    TEST("Cancel existing order", fc.CancelOrder(1));
+    TEST("Order count 0", fc.GetAllOrders().empty());
+    TEST("Cancel non-existent", !fc.CancelOrder(999));
+}
+
+static void TestFleetCommandComponentMorale() {
+    std::cout << "[FleetCommandComponentMorale]\n";
+    FleetCommandComponent fc;
+    fc.AddMember(100, "Ship A", FleetRole::Combat);
+    fc.AddMember(200, "Ship B", FleetRole::Support);
+    TEST("Average morale 1.0", ApproxEq(fc.GetAverageMorale(), 1.0f));
+    TEST("Set morale", fc.SetMemberMorale(100, 0.5f));
+    TEST("Average morale 0.75", ApproxEq(fc.GetAverageMorale(), 0.75f));
+    TEST("Set morale clamped high", fc.SetMemberMorale(200, 1.5f));
+    const FleetMember* m = fc.GetMember(200);
+    TEST("Morale clamped to 1.0", m && ApproxEq(m->morale, 1.0f));
+    TEST("Set morale non-existent fails", !fc.SetMemberMorale(999, 0.5f));
+}
+
+static void TestFleetCommandComponentSetRole() {
+    std::cout << "[FleetCommandComponentSetRole]\n";
+    FleetCommandComponent fc;
+    fc.AddMember(100, "Ship A", FleetRole::Combat);
+    TEST("Set role", fc.SetMemberRole(100, FleetRole::Scout));
+    const FleetMember* m = fc.GetMember(100);
+    TEST("Role updated", m && m->role == FleetRole::Scout);
+    TEST("Set role non-existent fails", !fc.SetMemberRole(999, FleetRole::Mining));
+}
+
+static void TestFleetCommandComponentSerialization() {
+    std::cout << "[FleetCommandComponentSerialization]\n";
+    FleetCommandComponent fc("Alpha Squadron");
+    fc.SetMaxMembers(5);
+    fc.AddMember(100, "Fighter A", FleetRole::Combat);
+    fc.AddMember(200, "Mining Ship", FleetRole::Mining);
+    fc.SetMemberMorale(100, 0.8f);
+    fc.IssueOrder(FleetOrderType::Patrol, 10.0f, 20.0f, 30.0f);
+
+    ComponentData cd = fc.Serialize();
+    TEST("Component type", cd.componentType == "FleetCommandComponent");
+
+    FleetCommandComponent fc2;
+    fc2.Deserialize(cd);
+    TEST("Restored fleet name", fc2.GetFleetName() == "Alpha Squadron");
+    TEST("Restored max members", fc2.GetMaxMembers() == 5);
+    TEST("Restored member count", fc2.GetMemberCount() == 2);
+    const FleetMember* m = fc2.GetMember(100);
+    TEST("Restored member exists", m != nullptr);
+    TEST("Restored member name", m && m->shipName == "Fighter A");
+    TEST("Restored member morale", m && ApproxEq(m->morale, 0.8f));
+    TEST("Restored order count", fc2.GetAllOrders().size() == 1);
+    const FleetOrder* o = fc2.GetOrder(1);
+    TEST("Restored order exists", o != nullptr);
+    TEST("Restored order type", o && o->type == FleetOrderType::Patrol);
+}
+
+static void TestFleetCommandSystem() {
+    std::cout << "[FleetCommandSystem]\n";
+    FleetCommandSystem sys;
+    sys.Update(1.0f);  // Should not crash without entity manager
+    TEST("FleetCommandSystem name", sys.GetName() == "FleetCommandSystem");
+}
+
+static void TestFleetCommandSystemOrderProgress() {
+    std::cout << "[FleetCommandSystemOrderProgress]\n";
+    EntityManager em;
+    FleetCommandSystem sys(em);
+
+    auto& entity = em.CreateEntity("Fleet Commander");
+    auto* fc = em.AddComponent<FleetCommandComponent>(
+        entity.id, std::make_unique<FleetCommandComponent>("Battle Fleet"));
+    fc->AddMember(100, "Fighter A", FleetRole::Combat);
+    fc->IssueOrder(FleetOrderType::Patrol, 100.0f, 200.0f, 300.0f);
+
+    // First update: Pending -> Active
+    sys.Update(0.1f);
+    const FleetOrder* o = fc->GetOrder(1);
+    TEST("Order activated", o && o->state == FleetOrderState::Active);
+
+    // Update for 15+ seconds to complete (base order time is 15s)
+    for (int i = 0; i < 160; ++i) {
+        sys.Update(0.1f);
+    }
+
+    o = fc->GetOrder(1);
+    TEST("Order completed", o && o->state == FleetOrderState::Completed);
+    TEST("Order progress at 1.0", o && ApproxEq(o->progress, 1.0f));
+}
+
+// ===================================================================
+// Scanning/Salvage/Fleet GameEvents Tests
+// ===================================================================
+
+static void TestScanningScalvageFleetGameEvents() {
+    std::cout << "[Scanning/Salvage/Fleet GameEvents]\n";
+    // Scanning events
+    TEST("ScanStarted event", std::string(GameEvents::ScanStarted) == "scanning.scan.started");
+    TEST("ScanCompleted event", std::string(GameEvents::ScanCompleted) == "scanning.scan.completed");
+    TEST("ScanCancelled event", std::string(GameEvents::ScanCancelled) == "scanning.scan.cancelled");
+    TEST("SignatureClassified event", std::string(GameEvents::SignatureClassified) == "scanning.signature.classified");
+    TEST("ScannerTypeChanged event", std::string(GameEvents::ScannerTypeChanged) == "scanning.scanner.type_changed");
+    // Salvage events
+    TEST("SalvageStarted event", std::string(GameEvents::SalvageStarted) == "salvage.operation.started");
+    TEST("SalvageCompleted event", std::string(GameEvents::SalvageCompleted) == "salvage.operation.completed");
+    TEST("SalvageCancelled event", std::string(GameEvents::SalvageCancelled) == "salvage.operation.cancelled");
+    TEST("SalvageCollected event", std::string(GameEvents::SalvageCollected) == "salvage.materials.collected");
+    TEST("SalvageTierChanged event", std::string(GameEvents::SalvageTierChanged) == "salvage.tier.changed");
+    // Fleet command events
+    TEST("FleetOrderIssued event", std::string(GameEvents::FleetOrderIssued) == "fleet.order.issued");
+    TEST("FleetOrderCompleted event", std::string(GameEvents::FleetOrderCompleted) == "fleet.order.completed");
+    TEST("FleetOrderCancelled event", std::string(GameEvents::FleetOrderCancelled) == "fleet.order.cancelled");
+    TEST("FleetMemberAdded event", std::string(GameEvents::FleetMemberAdded) == "fleet.member.added");
+    TEST("FleetMemberRemoved event", std::string(GameEvents::FleetMemberRemoved) == "fleet.member.removed");
+}
+
+// ===================================================================
 // Wormhole/ShipClass/Refinery GameEvents Tests
 // ===================================================================
 
@@ -13920,6 +14554,50 @@ int main() {
     TestRefinerySystemProcessing();
     TestRefinerySystemSpeedMultiplier();
     TestWormholeShipClassRefineryGameEvents();
+    TestScannerTypeNames();
+    TestScanStateNames();
+    TestSignatureClassNames();
+    TestScannerComponentDefaults();
+    TestScannerComponentCustomType();
+    TestScannerComponentStartScan();
+    TestScannerComponentCooldown();
+    TestScannerComponentCancelScan();
+    TestScannerComponentGetScanResult();
+    TestScannerComponentClearCompleted();
+    TestScannerComponentSerialization();
+    TestScanningSystem();
+    TestScanningSystemProgress();
+    TestScanningSystemSpeedMultiplier();
+    TestSalvageTierNames();
+    TestSalvageStateNames();
+    TestSalvageDefaultWreckTypes();
+    TestSalvageComponentDefaults();
+    TestSalvageComponentCustomTier();
+    TestSalvageComponentStartSalvage();
+    TestSalvageComponentCancelSalvage();
+    TestSalvageComponentCollectSalvage();
+    TestSalvageComponentSetTier();
+    TestSalvageComponentSerialization();
+    TestSalvageSystem();
+    TestSalvageSystemProcessing();
+    TestSalvageSystemSpeedMultiplier();
+    TestFleetOrderTypeNames();
+    TestFleetOrderStateNames();
+    TestFleetRoleNames();
+    TestFleetCommandComponentDefaults();
+    TestFleetCommandComponentCustom();
+    TestFleetCommandComponentAddMember();
+    TestFleetCommandComponentRemoveMember();
+    TestFleetCommandComponentGetMember();
+    TestFleetCommandComponentIssueOrder();
+    TestFleetCommandComponentOrderCapacity();
+    TestFleetCommandComponentCancelOrder();
+    TestFleetCommandComponentMorale();
+    TestFleetCommandComponentSetRole();
+    TestFleetCommandComponentSerialization();
+    TestFleetCommandSystem();
+    TestFleetCommandSystemOrderProgress();
+    TestScanningScalvageFleetGameEvents();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
               << testsFailed << " failed ===\n";

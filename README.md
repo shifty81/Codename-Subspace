@@ -9,9 +9,12 @@ An Avorion-inspired space exploration and combat game engine, actively transitio
 > **📂 Documentation:** Reorganized into [`docs/`](docs/) — guides, architecture, implementation notes
 
 > **✨ LATEST (Mar 2026):**
-> - 🎒 **C++ INVENTORY SYSTEM** — Per-entity item inventory with 5 rarity tiers, weight limits, stacking, category/rarity filtering, transfers, sorting ✨ **NEW!**
-> - 🚚 **C++ TRADE ROUTE SYSTEM** — Automated trade routes with waypoint navigation, cargo manifest, profit tracking, loop support ✨ **NEW!**
-> - 🚀 **C++ HANGAR/DOCKING SYSTEM** — Ship docking at stations/carriers, 4 bay sizes, approach/docking/launch sequences, ship storage ✨ **NEW!**
+> - 🔍 **C++ SCANNING SYSTEM** — Ship-mounted scanners with 4 types, 6 signature classes, distance-based scan speed, concurrent scan limits ✨ **NEW!**
+> - 🔧 **C++ SALVAGE SYSTEM** — Wreck/debris salvaging with 5 tiers, 8 wreck types, integrity-based yield, material collection ✨ **NEW!**
+> - 🚢 **C++ FLEET COMMAND SYSTEM** — Fleet management with 8 order types, 6 roles, morale tracking, order queuing ✨ **NEW!**
+> - 🎒 **C++ INVENTORY SYSTEM** — Per-entity item inventory with 5 rarity tiers, weight limits, stacking, category/rarity filtering, transfers, sorting
+> - 🚚 **C++ TRADE ROUTE SYSTEM** — Automated trade routes with waypoint navigation, cargo manifest, profit tracking, loop support
+> - 🚀 **C++ HANGAR/DOCKING SYSTEM** — Ship docking at stations/carriers, 4 bay sizes, approach/docking/launch sequences, ship storage
 > - 🔨 **C++ CRAFTING SYSTEM** — 5 station types, 8 default recipes, concurrent job queues, level gating, speed multipliers
 > - 🤝 **C++ REPUTATION SYSTEM** — Per-faction reputation tracking, 5 standing levels, reputation decay, event history
 > - 🎖️ **C++ FORMATION SYSTEM** — 6 formation patterns (Line, V, Diamond, Circle, Wedge, Column), slot-based positioning
@@ -25,7 +28,7 @@ An Avorion-inspired space exploration and combat game engine, actively transitio
 > - 🌳 **C++ OCTREE SPATIAL PARTITIONING** — Hierarchical spatial indexing with sphere/box/nearest-neighbor queries
 > - 🎆 **C++ PARTICLE SYSTEM** — Configurable emitters with 5 effect presets (Explosion, Engine Thrust, Shield Hit, Mining, Hyperdrive)
 > - 🏆 **C++ ACHIEVEMENT SYSTEM** — Event-driven milestones with criteria tracking, serialization, and 8 template achievements
-> - 🧪 **3144 unit tests** passing across all C++ engine systems
+> - 🧪 **3557 unit tests** passing across all C++ engine systems
 > - 📁 **Repository restructured** — docs, scripts, and assets organized into dedicated directories
 > - 🔧 **C++ MODULAR SHIP SYSTEM** — Hardpoint-based module assembly with 12 module types, 5 ship archetypes, and faction-aware procedural generation
 > - 🚀 **MODULAR SHIP SYSTEM** — Ships built from pre-defined modular parts with hardpoint attachment
@@ -40,7 +43,7 @@ Codename-Subspace/
 ├── engine/              # C++ engine (primary development focus)
 │   ├── include/         #   Public headers (ships, rendering, factions, weapons, AI, networking)
 │   ├── src/             #   Implementations
-│   ├── tests/           #   3144 unit tests
+│   ├── tests/           #   3557 unit tests
 │   ├── data/            #   JSON faction definitions
 │   └── CMakeLists.txt   #   CMake build configuration
 ├── AvorionLike/         # C# prototype (playable reference)
@@ -69,7 +72,7 @@ cd engine
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 
-# Run tests (3144 tests)
+# Run tests (3557 tests)
 ./build/subspace_tests
 
 # Run the game
@@ -106,6 +109,9 @@ cmake --build build
 | **Inventory System** | ✅ **New** | **Per-entity item inventory, 5 rarity tiers, weight limits, stacking, category/rarity filtering, transfers** |
 | **Trade Route System** | ✅ **New** | **Automated trade routes, waypoint navigation, cargo manifest, profit tracking, loop support** |
 | **Hangar/Docking System** | ✅ **New** | **Ship docking at stations/carriers, 4 bay sizes, docking sequences, ship storage** |
+| **Scanning System** | ✅ **New** | **4 scanner types (Passive, Active, Deep, Military), 6 signature classes, distance-based scanning** |
+| **Salvage System** | ✅ **New** | **Wreck/debris salvaging, 5 tiers, 8 wreck types, integrity-based yield, material collection** |
+| **Fleet Command System** | ✅ **New** | **8 order types (Patrol, Mine, Trade, Attack, Escort, Defend, Scout), 6 roles, morale tracking** |
 
 ## 🎮 C# Prototype
 
