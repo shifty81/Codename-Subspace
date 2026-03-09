@@ -1,4 +1,6 @@
 #include "audio/AudioSystem.h"
+#include "core/events/EventSystem.h"
+#include "core/events/GameEvents.h"
 
 #include <cmath>
 
@@ -264,6 +266,11 @@ uint64_t AudioSystem::PlaySound(const std::string& clipId, float volume, float p
     src.is3D   = false;
 
     _globalSources.push_back(src);
+
+    GameEvent evt;
+    evt.eventType = GameEvents::SoundPlayed;
+    EventSystem::Instance().Publish(GameEvents::SoundPlayed, evt);
+
     return src.sourceId;
 }
 
@@ -286,6 +293,11 @@ uint64_t AudioSystem::PlaySound3D(const std::string& clipId,
     src.posZ   = z;
 
     _globalSources.push_back(src);
+
+    GameEvent evt;
+    evt.eventType = GameEvents::SoundPlayed;
+    EventSystem::Instance().Publish(GameEvents::SoundPlayed, evt);
+
     return src.sourceId;
 }
 
@@ -294,6 +306,10 @@ void AudioSystem::StopSound(uint64_t sourceId) {
         if (s.sourceId == sourceId) {
             s.state = AudioSourceState::Stopped;
             s.playbackTime = 0.0f;
+
+            GameEvent evt;
+            evt.eventType = GameEvents::SoundStopped;
+            EventSystem::Instance().Publish(GameEvents::SoundStopped, evt);
             return;
         }
     }
@@ -360,6 +376,10 @@ void AudioSystem::PlayMusic() {
     _musicSource.playbackTime = 0.0f;
     _musicSource.loop   = false; // playlist handles advancement
     _musicSource.volume = 1.0f;
+
+    GameEvent evt;
+    evt.eventType = GameEvents::MusicStarted;
+    EventSystem::Instance().Publish(GameEvents::MusicStarted, evt);
 }
 
 void AudioSystem::PauseMusic() {
@@ -369,8 +389,14 @@ void AudioSystem::PauseMusic() {
 }
 
 void AudioSystem::StopMusic() {
-    _musicSource.state = AudioSourceState::Stopped;
-    _musicSource.playbackTime = 0.0f;
+    if (_musicSource.state != AudioSourceState::Stopped) {
+        _musicSource.state = AudioSourceState::Stopped;
+        _musicSource.playbackTime = 0.0f;
+
+        GameEvent evt;
+        evt.eventType = GameEvents::MusicStopped;
+        EventSystem::Instance().Publish(GameEvents::MusicStopped, evt);
+    }
 }
 
 bool AudioSystem::IsMusicPlaying() const {
@@ -390,6 +416,10 @@ void AudioSystem::NextTrack() {
     _musicSource.clipId = nextId;
     _musicSource.state  = AudioSourceState::Playing;
     _musicSource.playbackTime = 0.0f;
+
+    GameEvent evt;
+    evt.eventType = GameEvents::MusicTrackChanged;
+    EventSystem::Instance().Publish(GameEvents::MusicTrackChanged, evt);
 }
 
 // -- Listener ---------------------------------------------------------------

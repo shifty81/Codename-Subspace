@@ -144,6 +144,8 @@ struct ParticleComponent : public IComponent {
 // Particle system — updates all ParticleComponents each frame
 // ---------------------------------------------------------------------------
 
+class EntityManager;
+
 class ParticleSystem : public SystemBase {
 public:
     ParticleSystem();
@@ -152,12 +154,22 @@ public:
     void Update(float deltaTime) override;
     void Shutdown() override;
 
+    /// Set the entity manager used to query ParticleComponents.
+    void SetEntityManager(EntityManager* em);
+
+    /// Get the total number of particles updated during the last Update() call.
+    int GetLastUpdateParticleCount() const;
+
     // ---- preset emitter configs ----
     static ParticleEmitterConfig CreateExplosionPreset();
     static ParticleEmitterConfig CreateEngineThrustPreset();
     static ParticleEmitterConfig CreateShieldHitPreset();
     static ParticleEmitterConfig CreateMiningPreset();
     static ParticleEmitterConfig CreateHyperdrivePreset();
+
+private:
+    EntityManager* _entityManager = nullptr;
+    int _lastUpdateParticleCount = 0;
 };
 
 } // namespace subspace

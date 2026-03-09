@@ -1,4 +1,7 @@
 #include "rendering/ParticleSystem.h"
+#include "core/ecs/EntityManager.h"
+#include "core/events/EventSystem.h"
+#include "core/events/GameEvents.h"
 
 #include <algorithm>
 #include <cmath>
@@ -230,9 +233,37 @@ void ParticleComponent::ResumeAll() {
 
 ParticleSystem::ParticleSystem() : SystemBase("ParticleSystem") {}
 
-void ParticleSystem::Initialize() {}
-void ParticleSystem::Update(float /*deltaTime*/) {}
-void ParticleSystem::Shutdown() {}
+void ParticleSystem::Initialize() {
+    _lastUpdateParticleCount = 0;
+}
+
+void ParticleSystem::Update(float deltaTime) {
+    if (!_isEnabled) return;
+
+    _lastUpdateParticleCount = 0;
+
+    if (_entityManager) {
+        auto components = _entityManager->GetAllComponents<ParticleComponent>();
+        for (auto* comp : components) {
+            for (auto& emitter : comp->emitters) {
+                emitter.Update(deltaTime);
+                _lastUpdateParticleCount += emitter.GetAliveCount();
+            }
+        }
+    }
+}
+
+void ParticleSystem::Shutdown() {
+    _lastUpdateParticleCount = 0;
+}
+
+void ParticleSystem::SetEntityManager(EntityManager* em) {
+    _entityManager = em;
+}
+
+int ParticleSystem::GetLastUpdateParticleCount() const {
+    return _lastUpdateParticleCount;
+}
 
 // ---------------------------------------------------------------------------
 // Preset emitter configs
