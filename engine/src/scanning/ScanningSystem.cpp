@@ -172,13 +172,23 @@ float ScannerComponent::GetCooldownRemaining() const {
 }
 
 float ScannerComponent::GetScanSpeedMultiplier() const {
-    // Passive: 1.0, Active: 1.5, Deep: 1.2, Military: 2.0
-    return 1.0f + 0.33f * static_cast<float>(static_cast<int>(_type));
+    switch (_type) {
+        case ScannerType::Passive:  return 1.0f;
+        case ScannerType::Active:   return 1.5f;
+        case ScannerType::Deep:     return 1.2f;
+        case ScannerType::Military: return 2.0f;
+    }
+    return 1.0f;
 }
 
 float ScannerComponent::GetRangeMultiplier() const {
-    // Passive: 1.0, Active: 1.3, Deep: 1.5, Military: 1.8
-    return 1.0f + 0.27f * static_cast<float>(static_cast<int>(_type));
+    switch (_type) {
+        case ScannerType::Passive:  return 1.0f;
+        case ScannerType::Active:   return 1.3f;
+        case ScannerType::Deep:     return 1.5f;
+        case ScannerType::Military: return 1.8f;
+    }
+    return 1.0f;
 }
 
 // ---------------------------------------------------------------------------

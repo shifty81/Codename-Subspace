@@ -13477,7 +13477,7 @@ static void TestScannerComponentDefaults() {
     std::cout << "[ScannerComponentDefaults]\n";
     ScannerComponent sc;
     TEST("Default type is Passive", sc.GetType() == ScannerType::Passive);
-    TEST("Default range", sc.GetRange() > 4000.0f);  // 5000 * 1.0
+    TEST("Default range", ApproxEq(sc.GetRange(), 5000.0f));  // 5000 * 1.0
     TEST("Default resolution", ApproxEq(sc.GetResolution(), 1.0f));
     TEST("Max concurrent scans", sc.GetMaxConcurrentScans() == 2);
     TEST("No active scans", sc.GetActiveScanCount() == 0);
@@ -13490,11 +13490,11 @@ static void TestScannerComponentCustomType() {
     std::cout << "[ScannerComponentCustomType]\n";
     ScannerComponent sc(ScannerType::Military, 10000.0f);
     TEST("Military type", sc.GetType() == ScannerType::Military);
-    TEST("Military range", sc.GetRange() > 15000.0f);  // 10000 * 1.81
+    TEST("Military range", ApproxEq(sc.GetRange(), 18000.0f));  // 10000 * 1.8
     TEST("Military resolution", ApproxEq(sc.GetResolution(), 0.3f));
     TEST("Military max scans", sc.GetMaxConcurrentScans() == 6);
-    TEST("Military speed mult > 1", sc.GetScanSpeedMultiplier() > 1.5f);
-    TEST("Military range mult > 1", sc.GetRangeMultiplier() > 1.5f);
+    TEST("Military speed mult", ApproxEq(sc.GetScanSpeedMultiplier(), 2.0f));
+    TEST("Military range mult", ApproxEq(sc.GetRangeMultiplier(), 1.8f));
 }
 
 static void TestScannerComponentStartScan() {
@@ -13616,7 +13616,7 @@ static void TestScanningSystemSpeedMultiplier() {
     sc->StartScan(300, "Enemy Ship", 2000.0f);
 
     // Military scanner should complete faster (2.0x speed)
-    // Base scan time 10s / 2.0 speed ≈ 5s, plus distance factor. Allow 6s.
+    // Base scan time 10s / 2.0 speed = 5s, plus distance factor. Allow 6s.
     for (int i = 0; i < 60; ++i) {
         sys.Update(0.1f);
     }
