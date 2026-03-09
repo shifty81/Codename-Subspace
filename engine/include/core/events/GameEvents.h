@@ -276,6 +276,27 @@ namespace GameEvents {
     constexpr const char* RefiningCancelled          = "refinery.job.cancelled";
     constexpr const char* RefiningCollected           = "refinery.job.collected";
     constexpr const char* RefineryTierChanged        = "refinery.tier.changed";
+
+    // Scanning events
+    constexpr const char* ScanStarted               = "scanning.scan.started";
+    constexpr const char* ScanCompleted              = "scanning.scan.completed";
+    constexpr const char* ScanCancelled              = "scanning.scan.cancelled";
+    constexpr const char* SignatureClassified        = "scanning.signature.classified";
+    constexpr const char* ScannerTypeChanged         = "scanning.scanner.type_changed";
+
+    // Salvage events
+    constexpr const char* SalvageStarted             = "salvage.operation.started";
+    constexpr const char* SalvageCompleted           = "salvage.operation.completed";
+    constexpr const char* SalvageCancelled           = "salvage.operation.cancelled";
+    constexpr const char* SalvageCollected           = "salvage.materials.collected";
+    constexpr const char* SalvageTierChanged         = "salvage.tier.changed";
+
+    // Fleet command events
+    constexpr const char* FleetOrderIssued           = "fleet.order.issued";
+    constexpr const char* FleetOrderCompleted        = "fleet.order.completed";
+    constexpr const char* FleetOrderCancelled        = "fleet.order.cancelled";
+    constexpr const char* FleetMemberAdded           = "fleet.member.added";
+    constexpr const char* FleetMemberRemoved         = "fleet.member.removed";
 } // namespace GameEvents
 
 } // namespace subspace

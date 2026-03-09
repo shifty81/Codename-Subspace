@@ -92,6 +92,9 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/notification/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/research/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/scanning/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/salvage/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/fleet/*.cpp"
 )
 
 file(GLOB_RECURSE ENGINE_HEADERS CONFIGURE_DEPENDS
