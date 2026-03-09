@@ -393,12 +393,15 @@ Based on impact and dependencies:
 | **Inventory System** | 100% | ✅ Complete (5 rarity tiers, weight limits, stacking, filtering, transfers, serialization) |
 | **Trade Route System** | 100% | ✅ Complete (6 states, waypoint navigation, cargo manifest, profit tracking, loop support) |
 | **Hangar/Docking System** | 100% | ✅ Complete (4 bay sizes, 7 docking states, sequences, ship storage, serialization) |
+| **Scanning System** | 100% | ✅ Complete (4 scanner types, 6 signature classes, distance-based scanning, serialization) |
+| **Salvage System** | 100% | ✅ Complete (5 tiers, 8 wreck types, integrity-based yield, material collection, serialization) |
+| **Fleet Command System** | 100% | ✅ Complete (8 order types, 6 roles, morale tracking, order queuing, serialization) |
 | **Steam Integration** | 0% | ❌ Not started |
 | **Content (ships, weapons)** | 60% | ⚠️ Expansion needed |
 | **Polish & QoL** | 40% | ⚠️ Ongoing |
 | **Documentation** | 95% | ⚠️ Updates needed |
 | | | |
-| **OVERALL** | **~93%** | **✅ Playable with collision layers, pathfinding, and all core systems!** |
+| **OVERALL** | **~94%** | **✅ Playable with scanning, salvage, fleet command, and all core systems!** |
 
 ---
 
