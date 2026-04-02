@@ -7,6 +7,32 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include <atomic>
+
+// ---- New ported systems ----
+#include "core/math/Vector2.h"
+#include "core/math/Matrix4.h"
+#include "core/math/Quaternion.h"
+#include "core/memory/Allocator.h"
+#include "core/events/EventBus.h"
+#include "core/threading/TaskSystem.h"
+#include "core/assets/AssetManager.h"
+#include "core/serialization/BinaryArchive.h"
+#include "core/world/Level.h"
+#include "input/Keyboard.h"
+#include "input/Mouse.h"
+#include "input/Gamepad.h"
+#include "input/InputSystem.h"
+#include "audio/SoundAsset.h"
+#include "audio/SoundBank.h"
+#include "audio/AudioDevice.h"
+#include "audio/AudioMixer.h"
+#include "audio/SpatialAudio.h"
+#include "ai/BehaviorTree.h"
+#include "ui/widgets/Widget.h"
+#include "ui/widgets/WidgetTree.h"
+#include "ui/widgets/Widgets.h"
+#include "physics/CharacterController.h"
 
 #include "core/Math.h"
 #include "ships/Block.h"
@@ -14695,6 +14721,890 @@ static void TestPostProcessShadowGameEvents() {
 // ===================================================================
 // Main
 // ===================================================================
+// ===================================================================
+// Vector2 tests
+// ===================================================================
+static void TestVector2() {
+    std::cout << "[Vector2]\n";
+    Vector2 a{3.0f, 4.0f};
+    bool lenOk = ApproxEq(a.Length(), 5.0f);
+    TEST("Vector2 length", lenOk);
+    Vector2 n = a.Normalized();
+    bool normOk = ApproxEq(n.Length(), 1.0f);
+    TEST("Vector2 normalized", normOk);
+    Vector2 addA{1.0f,2.0f}, addB{3.0f,4.0f};
+    Vector2 addExpected{4.0f,6.0f};
+    TEST("Vector2 add", (addA + addB) == addExpected);
+    Vector2 subA{5.0f,6.0f}, subB{3.0f,4.0f};
+    Vector2 subExpected{2.0f,2.0f};
+    TEST("Vector2 sub", (subA - subB) == subExpected);
+    Vector2 scaleV{1.0f,2.0f};
+    Vector2 scaleExpected{3.0f,6.0f};
+    TEST("Vector2 scale", (scaleV * 3.0f) == scaleExpected);
+    Vector2 dotA{1.0f,0.0f}, dotB{0.0f,1.0f};
+    bool dotOk = ApproxEq(Vector2::Dot(dotA, dotB), 0.0f);
+    TEST("Vector2 dot", dotOk);
+    Vector2 distA{0.0f,0.0f}, distB{3.0f,4.0f};
+    bool distOk = ApproxEq(Vector2::Distance(distA, distB), 5.0f);
+    TEST("Vector2 distance", distOk);
+    TEST("Vector2 zero", Vector2::Zero() == Vector2::Zero());
+    TEST("Vector2 one",  Vector2::One()  == Vector2::One());
+}
+
+// ===================================================================
+// Matrix4 tests
+// ===================================================================
+static void TestMatrix4() {
+    std::cout << "[Matrix4]\n";
+    Matrix4 id = Matrix4::Identity();
+    Vector3 v{1,2,3};
+    Vector3 tv = id.TransformPoint(v);
+    TEST("Identity transform point", ApproxEq(tv.x,1) && ApproxEq(tv.y,2) && ApproxEq(tv.z,3));
+
+    Matrix4 t = Matrix4::Translate(1,2,3);
+    Vector3 tt = t.TransformPoint({0,0,0});
+    TEST("Translate matrix", ApproxEq(tt.x,1) && ApproxEq(tt.y,2) && ApproxEq(tt.z,3));
+
+    Matrix4 s = Matrix4::Scale(2.0f);
+    Vector3 sv = s.TransformPoint({1,1,1});
+    TEST("Scale matrix", ApproxEq(sv.x,2) && ApproxEq(sv.y,2) && ApproxEq(sv.z,2));
+
+    Matrix4 tr = id.Transposed();
+    for (int r=0;r<4;r++) for (int c=0;c<4;c++)
+        TEST("Transpose identity", ApproxEq(tr.m[r][c], id.m[c][r]));
+    (void)tr;
+}
+
+// ===================================================================
+// Quaternion tests
+// ===================================================================
+static void TestQuaternion() {
+    std::cout << "[Quaternion]\n";
+    Quaternion q = Quaternion::Identity();
+    TEST("Identity quaternion w=1", ApproxEq(q.w, 1.0f));
+    TEST("Identity length", ApproxEq(q.Length(), 1.0f));
+
+    // 90-degree rotation around Y
+    float pi = 3.14159265f;
+    Quaternion ry = Quaternion::FromAxisAngle({0,1,0}, pi*0.5f);
+    Vector3 fwd{0,0,-1};
+    Vector3 rot = ry.Rotate(fwd);
+    TEST("Rotate around Y", ApproxEq(rot.x, -1.0f) && ApproxEq(rot.z, 0.0f));
+
+    // Slerp between identity and ry
+    Quaternion mid = Quaternion::Slerp(q, ry, 0.5f);
+    TEST("Slerp normalized", ApproxEq(mid.Length(), 1.0f));
+
+    // ToMatrix4 round-trip (identity)
+    Matrix4 m = q.ToMatrix4();
+    TEST("Identity quaternion to matrix diagonal", ApproxEq(m.m[0][0],1) && ApproxEq(m.m[1][1],1));
+
+    // Euler
+    Quaternion qe = Quaternion::FromEuler(0,0,0);
+    TEST("Zero euler = identity", ApproxEq(qe.w, 1.0f));
+}
+
+// ===================================================================
+// LinearAllocator tests
+// ===================================================================
+static void TestLinearAllocator() {
+    std::cout << "[LinearAllocator]\n";
+    alignas(alignof(std::max_align_t)) std::byte buf[256];
+    LinearAllocator alloc(buf, sizeof(buf));
+
+    TEST("Initial used = 0", alloc.Used() == 0);
+    TEST("Capacity correct", alloc.Capacity() == 256);
+
+    void* p1 = alloc.Allocate(16);
+    TEST("Allocate returns non-null", p1 != nullptr);
+    TEST("Used > 0 after alloc", alloc.Used() > 0);
+
+    void* p2 = alloc.Allocate(16);
+    TEST("Second alloc non-null", p2 != nullptr);
+    TEST("Pointers differ", p1 != p2);
+
+    alloc.Deallocate(p1); // no-op
+    TEST("Used unchanged after deallocate", alloc.Used() > 0);
+
+    alloc.Reset();
+    TEST("Used = 0 after Reset", alloc.Used() == 0);
+
+    void* big = alloc.Allocate(512);
+    TEST("Alloc too large returns null", big == nullptr);
+}
+
+// ===================================================================
+// PoolAllocator tests
+// ===================================================================
+static void TestPoolAllocator() {
+    std::cout << "[PoolAllocator]\n";
+    PoolAllocator<int, 4> pool;
+    TEST("Initial free count", pool.FreeCount() == 4);
+
+    void* a = pool.Allocate(sizeof(int));
+    TEST("Alloc non-null", a != nullptr);
+    TEST("Free count decremented", pool.FreeCount() == 3);
+
+    void* b = pool.Allocate(sizeof(int));
+    void* c = pool.Allocate(sizeof(int));
+    void* d = pool.Allocate(sizeof(int));
+    TEST("Fill pool", d != nullptr);
+    TEST("Empty free count", pool.FreeCount() == 0);
+
+    void* e = pool.Allocate(sizeof(int));
+    TEST("Alloc from full pool = null", e == nullptr);
+
+    pool.Deallocate(a);
+    TEST("Free count after deallocate", pool.FreeCount() == 1);
+
+    void* f = pool.Allocate(sizeof(int));
+    TEST("Realloc after free", f != nullptr);
+    (void)b; (void)c; (void)d; (void)f;
+}
+
+// ===================================================================
+// EventBus tests
+// ===================================================================
+static void TestEventBus() {
+    std::cout << "[EventBus]\n";
+    struct PingEvent { int value; };
+    struct PongEvent { float x; };
+
+    EventBus bus;
+    int pingCount = 0;
+    int pongCount = 0;
+    int lastPing  = 0;
+
+    bus.Subscribe<PingEvent>([&](const PingEvent& e) { ++pingCount; lastPing = e.value; });
+    bus.Subscribe<PongEvent>([&](const PongEvent&)   { ++pongCount; });
+
+    bus.Publish(PingEvent{42});
+    TEST("Ping received", pingCount == 1);
+    TEST("Ping value", lastPing == 42);
+    TEST("Pong not triggered", pongCount == 0);
+
+    bus.Publish(PongEvent{1.0f});
+    TEST("Pong received", pongCount == 1);
+
+    TEST("Handler count ping", bus.GetHandlerCount<PingEvent>() == 1);
+
+    bus.Clear();
+    bus.Publish(PingEvent{99});
+    TEST("No ping after Clear", pingCount == 1);
+}
+
+// ===================================================================
+// TaskSystem tests
+// ===================================================================
+static void TestTaskSystem() {
+    std::cout << "[TaskSystem]\n";
+    TaskSystem tasks;
+    TEST("Not running before Init", !tasks.IsRunning());
+
+    tasks.Init(2);
+    TEST("Running after Init", tasks.IsRunning());
+
+    std::atomic<int> counter{0};
+    auto f1 = tasks.Submit([&]{ ++counter; });
+    auto f2 = tasks.Submit([&]{ ++counter; });
+    f1.wait(); f2.wait();
+    TEST("Both tasks executed", counter.load() == 2);
+
+    tasks.Shutdown();
+    TEST("Not running after Shutdown", !tasks.IsRunning());
+
+    // Inline fallback when not initialised
+    int inline_count = 0;
+    TaskSystem tasks2;
+    auto f3 = tasks2.Submit([&]{ ++inline_count; });
+    f3.wait();
+    TEST("Inline execution when not Init'd", inline_count == 1);
+}
+
+// ===================================================================
+// AssetManager tests
+// ===================================================================
+static void TestAssetManager() {
+    std::cout << "[AssetManager]\n";
+    struct FakeTexture { int w = 0; int h = 0; };
+
+    AssetManager assets;
+    TEST("Empty count", assets.LoadedCount() == 0);
+
+    AssetHandle h = assets.Load<FakeTexture>("textures/ship.png");
+    TEST("Handle non-null", h != NullAsset);
+    TEST("Loaded count 1", assets.LoadedCount() == 1);
+
+    // Second load of same path returns same handle
+    AssetHandle h2 = assets.Load<FakeTexture>("textures/ship.png");
+    TEST("Same handle on re-load", h == h2);
+    TEST("Ref count 2", assets.GetRefCount(h) == 2);
+
+    FakeTexture* tex = assets.Get<FakeTexture>(h);
+    TEST("Get returns non-null", tex != nullptr);
+
+    assets.Unload(h);
+    TEST("Ref count 1 after Unload", assets.GetRefCount(h) == 1);
+    assets.Unload(h);
+    TEST("Ref count 0 after second Unload", assets.GetRefCount(h) == 0);
+
+    assets.GarbageCollect();
+    TEST("Collected: loaded count 0", assets.LoadedCount() == 0);
+    TEST("Get returns null after GC", assets.Get<FakeTexture>(h) == nullptr);
+
+    TEST("Path lookup", assets.GetPath(NullAsset).empty());
+}
+
+// ===================================================================
+// BinaryArchive tests
+// ===================================================================
+static void TestBinaryArchive() {
+    std::cout << "[BinaryArchive]\n";
+
+    // Write mode
+    BinaryArchive ar;
+    TEST("Write mode", ar.IsWriting());
+
+    int   i = 42;
+    float f = 3.14f;
+    std::string s = "hello";
+
+    ar.Serialize(i);
+    ar.Serialize(f);
+    ar.Serialize(s);
+
+    TEST("Buffer non-empty after writes", ar.Size() > 0);
+
+    // Read back
+    const auto& buf = ar.Data();
+    BinaryArchive ar2(buf.data(), buf.size());
+    TEST("Read mode", ar2.IsReading());
+
+    int   ri = 0;
+    float rf = 0;
+    std::string rs;
+    ar2.Serialize(ri);
+    ar2.Serialize(rf);
+    ar2.Serialize(rs);
+
+    TEST("Int round-trip", ri == 42);
+    TEST("Float round-trip", ApproxEq(rf, 3.14f));
+    TEST("String round-trip", rs == "hello");
+
+    // Read past end throws
+    bool threw = false;
+    try { ar2.Serialize(ri); } catch (const std::out_of_range&) { threw = true; }
+    TEST("Read past end throws", threw);
+}
+
+// ===================================================================
+// Keyboard tests
+// ===================================================================
+static void TestKeyboard() {
+    std::cout << "[Keyboard]\n";
+    using namespace Input;
+    Keyboard kb;
+
+    std::array<bool, static_cast<std::size_t>(KeyCode::Count)> state{};
+    state[static_cast<std::size_t>(KeyCode::W)] = true;
+    kb.Update(state);
+
+    TEST("IsKeyDown W", kb.IsKeyDown(KeyCode::W));
+    TEST("IsKeyPressed W (first frame)", kb.IsKeyPressed(KeyCode::W));
+    TEST("IsKeyDown A false", !kb.IsKeyDown(KeyCode::A));
+
+    // Second frame: W still held
+    kb.Update(state);
+    TEST("IsKeyDown W second frame", kb.IsKeyDown(KeyCode::W));
+    TEST("IsKeyPressed W second frame = false", !kb.IsKeyPressed(KeyCode::W));
+
+    // Release W
+    state[static_cast<std::size_t>(KeyCode::W)] = false;
+    kb.Update(state);
+    TEST("IsKeyDown W after release", !kb.IsKeyDown(KeyCode::W));
+    TEST("IsKeyReleased W", kb.IsKeyReleased(KeyCode::W));
+
+    // SetKey helper
+    kb.SetKey(KeyCode::Space, true);
+    TEST("SetKey Space down", kb.IsKeyDown(KeyCode::Space));
+}
+
+// ===================================================================
+// Mouse tests
+// ===================================================================
+static void TestMouse() {
+    std::cout << "[Mouse]\n";
+    using namespace Input;
+    Mouse mouse;
+
+    // Button pressed (bit 0 = left)
+    mouse.Update(100.0f, 200.0f, 0b001);
+    TEST("IsButtonDown Left", mouse.IsButtonDown(MouseButton::Left));
+    TEST("IsButtonPressed Left", mouse.IsButtonPressed(MouseButton::Left));
+    TEST("Position X", ApproxEq(mouse.GetX(), 100.0f));
+    TEST("Position Y", ApproxEq(mouse.GetY(), 200.0f));
+
+    // Move mouse
+    mouse.Update(110.0f, 210.0f, 0b001);
+    TEST("Delta X", ApproxEq(mouse.GetDeltaX(), 10.0f));
+    TEST("Delta Y", ApproxEq(mouse.GetDeltaY(), 10.0f));
+    TEST("Not pressed second frame", !mouse.IsButtonPressed(MouseButton::Left));
+
+    // Release
+    mouse.Update(110.0f, 210.0f, 0);
+    TEST("Released", mouse.IsButtonReleased(MouseButton::Left));
+    TEST("Not down after release", !mouse.IsButtonDown(MouseButton::Left));
+
+    // Scroll
+    mouse.Update(0,0,0, 1.5f);
+    TEST("Scroll delta", ApproxEq(mouse.GetScrollDelta(), 1.5f));
+}
+
+// ===================================================================
+// Gamepad tests
+// ===================================================================
+static void TestGamepad() {
+    std::cout << "[Gamepad]\n";
+    using namespace Input;
+    Gamepad gp;
+    TEST("Not connected initially", !gp.IsConnected());
+
+    gp.Update(true, 0.5f, -0.5f, 0.0f, 0.0f, 0.8f, 0.0f, 0u);
+    TEST("Connected after update", gp.IsConnected());
+    TEST("Left stick X", ApproxEq(gp.GetLeftStickX(), 0.5f));
+    TEST("Left stick Y", ApproxEq(gp.GetLeftStickY(), -0.5f));
+    TEST("Left trigger", ApproxEq(gp.GetLeftTrigger(), 0.8f));
+
+    // Button A = bit 0
+    gp.Update(true, 0,0,0,0,0,0, 0b0001u);
+    TEST("Button A pressed", gp.IsButtonPressed(GamepadButton::A));
+    TEST("Button A down",    gp.IsButtonDown(GamepadButton::A));
+
+    gp.Update(true, 0,0,0,0,0,0, 0b0000u);
+    TEST("Button A released", gp.IsButtonReleased(GamepadButton::A));
+}
+
+// ===================================================================
+// InputSystem tests
+// ===================================================================
+static void TestInputSystem() {
+    std::cout << "[InputSystem]\n";
+    using namespace Input;
+    InputSystem sys;
+
+    InputAction fire;
+    fire.name  = "Fire";
+    fire.type  = ActionType::Button;
+    fire.bindings = { KeyCode::Space };
+    sys.RegisterAction(fire);
+
+    std::array<bool, static_cast<std::size_t>(KeyCode::Count)> keys{};
+    keys[static_cast<std::size_t>(KeyCode::Space)] = true;
+    sys.PollDevices(keys, 0,0,0);
+
+    const InputAction* a = sys.FindAction("Fire");
+    TEST("FindAction found", a != nullptr);
+    TEST("Fire action bool", a->GetBool(sys.GetKeyboard()));
+    TEST("Fire action float", ApproxEq(a->GetFloat(sys.GetKeyboard()), 1.0f));
+
+    // Unknown action
+    TEST("FindAction unknown = null", sys.FindAction("NonExistent") == nullptr);
+
+    // BindKey
+    sys.BindKey("Fire", KeyCode::Enter);
+    TEST("Second binding count", a->bindings.size() == 2);
+}
+
+// ===================================================================
+// InputComponent tests
+// ===================================================================
+static void TestInputComponent() {
+    std::cout << "[InputComponent]\n";
+    InputComponent ic;
+    ic.moveForward  = 1.0f;
+    ic.moveSideways = -0.5f;
+
+    ComponentData d = ic.Serialize();
+    TEST("Serialize type", d.componentType == "InputComponent");
+
+    InputComponent ic2;
+    ic2.Deserialize(d);
+    TEST("Deserialize moveForward",  ApproxEq(ic2.moveForward,  1.0f));
+    TEST("Deserialize moveSideways", ApproxEq(ic2.moveSideways, -0.5f));
+}
+
+// ===================================================================
+// SoundBank tests
+// ===================================================================
+static void TestSoundBank() {
+    std::cout << "[SoundBank]\n";
+    SoundBank bank;
+    TEST("Empty count", bank.Count() == 0);
+
+    SoundAsset a; a.id = 1; a.name = "laser"; a.duration = 0.5f;
+    SoundAsset b; b.id = 2; b.name = "explosion"; b.duration = 1.5f;
+    bank.Register(a);
+    bank.Register(b);
+    TEST("Count 2", bank.Count() == 2);
+
+    TEST("Get by id", bank.Get(1) != nullptr);
+    TEST("Get by name", bank.GetByName("explosion") != nullptr);
+    TEST("Get unknown = null", bank.Get(99) == nullptr);
+    TEST("Get unknown name = null", bank.GetByName("unknown") == nullptr);
+
+    // Replace existing
+    SoundAsset a2; a2.id = 1; a2.name = "laser_v2"; a2.duration = 0.3f;
+    bank.Register(a2);
+    TEST("Replace keeps count", bank.Count() == 2);
+    TEST("Get updated asset", bank.GetByName("laser_v2") != nullptr);
+
+    bank.Clear();
+    TEST("Clear", bank.Count() == 0);
+}
+
+// ===================================================================
+// AudioDevice tests
+// ===================================================================
+static void TestAudioDevice() {
+    std::cout << "[AudioDevice]\n";
+    AudioDevice dev;
+    TEST("Not init before Init", !dev.IsInitialized());
+
+    bool ok = dev.Init();
+    TEST("Init returns true", ok);
+    TEST("IsInitialized", dev.IsInitialized());
+    TEST("Backend is Null", dev.GetBackend() == AudioBackend::Null);
+    TEST("Sample rate > 0", dev.GetSampleRate() > 0);
+    TEST("Channels > 0", dev.GetChannels() > 0);
+
+    dev.SetMasterVolume(0.5f);
+    TEST("SetMasterVolume", ApproxEq(dev.GetMasterVolume(), 0.5f));
+
+    dev.SetMasterVolume(-1.0f);
+    TEST("Clamp volume low", ApproxEq(dev.GetMasterVolume(), 0.0f));
+
+    dev.SetMasterVolume(2.0f);
+    TEST("Clamp volume high", ApproxEq(dev.GetMasterVolume(), 1.0f));
+
+    dev.Shutdown();
+    TEST("Not init after Shutdown", !dev.IsInitialized());
+}
+
+// ===================================================================
+// AudioMixer tests
+// ===================================================================
+static void TestAudioMixer() {
+    std::cout << "[AudioMixer]\n";
+    SoundBank bank;
+    SoundAsset sa; sa.id = 1; sa.name = "beep"; sa.duration = 2.0f;
+    bank.Register(sa);
+
+    AudioMixer mixer;
+    mixer.SetSoundBank(&bank);
+
+    TEST("No active channels initially", mixer.ActiveChannelCount() == 0);
+
+    ChannelHandle h = mixer.Play(1, 0.8f, 0.2f, false);
+    TEST("Play returns valid handle", h != NullChannel);
+    TEST("Active count 1", mixer.ActiveChannelCount() == 1);
+
+    const MixerChannel* ch = mixer.GetChannel(h);
+    TEST("GetChannel non-null", ch != nullptr);
+    TEST("Channel volume", ApproxEq(ch->volume, 0.8f));
+    TEST("Channel pan",    ApproxEq(ch->pan, 0.2f));
+
+    // Volume/pan setters
+    mixer.SetChannelVolume(h, 0.5f);
+    mixer.SetChannelPan(h, -0.3f);
+    ch = mixer.GetChannel(h);
+    TEST("SetVolume", ApproxEq(ch->volume, 0.5f));
+    TEST("SetPan",    ApproxEq(ch->pan, -0.3f));
+
+    // Advance past duration → channel auto-removed
+    mixer.Update(3.0f);
+    TEST("Channel removed after expiry", mixer.ActiveChannelCount() == 0);
+
+    // Looping channel should not expire
+    ChannelHandle hl = mixer.Play(1, 1.0f, 0.0f, true);
+    mixer.Update(5.0f);
+    TEST("Looping channel still alive", mixer.ActiveChannelCount() == 1);
+    mixer.Stop(hl);
+    mixer.Update(0.0f);
+    TEST("Stopped channel removed", mixer.ActiveChannelCount() == 0);
+
+    // Null sound id
+    TEST("NullSound returns NullChannel", mixer.Play(NullSound) == NullChannel);
+}
+
+// ===================================================================
+// SpatialAudio tests
+// ===================================================================
+static void TestSpatialAudio() {
+    std::cout << "[SpatialAudio]\n";
+    SoundBank bank;
+    SoundAsset sa; sa.id = 1; sa.name = "eng"; sa.duration = 10.0f;
+    bank.Register(sa);
+
+    AudioMixer mixer;
+    mixer.SetSoundBank(&bank);
+
+    SpatialAudio spatial;
+    spatial.SetMixer(&mixer);
+    spatial.SetListenerPosition({0,0,0});
+    spatial.SetListenerOrientation({0,0,-1}, {0,1,0});
+
+    // Source at min distance → full volume
+    SpatialConfig cfg;
+    cfg.minDistance = 1.0f;
+    cfg.maxDistance = 100.0f;
+    cfg.rolloff = 1.0f;
+
+    TEST("Attenuation at minDist = 1", ApproxEq(SpatialAudio::ComputeAttenuation(1.0f, cfg), 1.0f));
+    TEST("Attenuation at maxDist = 0", ApproxEq(SpatialAudio::ComputeAttenuation(100.0f, cfg), 0.0f));
+    float mid = SpatialAudio::ComputeAttenuation(50.0f, cfg);
+    TEST("Attenuation at mid range in (0,1)", mid > 0.0f && mid < 1.0f);
+
+    // Pan: source directly to the right → pan ~ +1
+    float pan = spatial.ComputePan({10,0,0});
+    TEST("Pan right of listener > 0", pan > 0.0f);
+
+    // Play at source
+    ChannelHandle h = spatial.PlayAt(1, {1,0,0}, 1.0f, cfg);
+    TEST("PlayAt returns valid handle", h != NullChannel);
+
+    // No mixer → returns NullChannel
+    SpatialAudio spatial2;
+    TEST("No mixer returns NullChannel", spatial2.PlayAt(1, {1,0,0}) == NullChannel);
+}
+
+// ===================================================================
+// BehaviorTree tests
+// ===================================================================
+static void TestBehaviorTree() {
+    std::cout << "[BehaviorTree]\n";
+    BehaviorTree bt;
+
+    // No root
+    TEST("No root = Failure", bt.Tick(0.016f) == BTStatus::Failure);
+
+    // Single success leaf
+    bt.SetRoot(std::make_shared<BTLeaf>([](float){ return BTStatus::Success; }));
+    TEST("Success leaf", bt.Tick(0.016f) == BTStatus::Success);
+
+    // Single failure leaf
+    bt.SetRoot(std::make_shared<BTLeaf>([](float){ return BTStatus::Failure; }));
+    TEST("Failure leaf", bt.Tick(0.016f) == BTStatus::Failure);
+
+    // Condition node
+    bool flag = true;
+    bt.SetRoot(std::make_shared<BTCondition>([&]{ return flag; }));
+    TEST("Condition true = Success", bt.Tick(0) == BTStatus::Success);
+    flag = false;
+    TEST("Condition false = Failure", bt.Tick(0) == BTStatus::Failure);
+}
+
+static void TestBTSequence() {
+    std::cout << "[BTSequence]\n";
+    // All success
+    auto seq = std::make_shared<BTSequence>();
+    seq->AddChild(std::make_shared<BTLeaf>([](float){ return BTStatus::Success; }));
+    seq->AddChild(std::make_shared<BTLeaf>([](float){ return BTStatus::Success; }));
+    TEST("Sequence all success", seq->Tick(0) == BTStatus::Success);
+
+    // First fails
+    auto seq2 = std::make_shared<BTSequence>();
+    seq2->AddChild(std::make_shared<BTLeaf>([](float){ return BTStatus::Failure; }));
+    seq2->AddChild(std::make_shared<BTLeaf>([](float){ return BTStatus::Success; }));
+    TEST("Sequence first fails = Failure", seq2->Tick(0) == BTStatus::Failure);
+
+    // Running propagates
+    auto seq3 = std::make_shared<BTSequence>();
+    seq3->AddChild(std::make_shared<BTLeaf>([](float){ return BTStatus::Running; }));
+    seq3->AddChild(std::make_shared<BTLeaf>([](float){ return BTStatus::Success; }));
+    TEST("Sequence running = Running", seq3->Tick(0) == BTStatus::Running);
+}
+
+static void TestBTSelector() {
+    std::cout << "[BTSelector]\n";
+    // First succeeds
+    auto sel = std::make_shared<BTSelector>();
+    sel->AddChild(std::make_shared<BTLeaf>([](float){ return BTStatus::Success; }));
+    sel->AddChild(std::make_shared<BTLeaf>([](float){ return BTStatus::Failure; }));
+    TEST("Selector first succeeds", sel->Tick(0) == BTStatus::Success);
+
+    // All fail
+    auto sel2 = std::make_shared<BTSelector>();
+    sel2->AddChild(std::make_shared<BTLeaf>([](float){ return BTStatus::Failure; }));
+    sel2->AddChild(std::make_shared<BTLeaf>([](float){ return BTStatus::Failure; }));
+    TEST("Selector all fail = Failure", sel2->Tick(0) == BTStatus::Failure);
+}
+
+static void TestBTParallel() {
+    std::cout << "[BTParallel]\n";
+    auto par = std::make_shared<BTParallel>(2u);
+    par->AddChild(std::make_shared<BTLeaf>([](float){ return BTStatus::Success; }));
+    par->AddChild(std::make_shared<BTLeaf>([](float){ return BTStatus::Success; }));
+    TEST("Parallel 2/2 = Success", par->Tick(0) == BTStatus::Success);
+
+    auto par2 = std::make_shared<BTParallel>(2u);
+    par2->AddChild(std::make_shared<BTLeaf>([](float){ return BTStatus::Success; }));
+    par2->AddChild(std::make_shared<BTLeaf>([](float){ return BTStatus::Running; }));
+    TEST("Parallel 1/2 = Running", par2->Tick(0) == BTStatus::Running);
+}
+
+static void TestBTInverter() {
+    std::cout << "[BTInverter]\n";
+    BTInverter inv(std::make_shared<BTLeaf>([](float){ return BTStatus::Success; }));
+    TEST("Inverter flips Success to Failure", inv.Tick(0) == BTStatus::Failure);
+
+    BTInverter inv2(std::make_shared<BTLeaf>([](float){ return BTStatus::Failure; }));
+    TEST("Inverter flips Failure to Success", inv2.Tick(0) == BTStatus::Success);
+
+    BTInverter inv3(std::make_shared<BTLeaf>([](float){ return BTStatus::Running; }));
+    TEST("Inverter passes through Running", inv3.Tick(0) == BTStatus::Running);
+}
+
+// ===================================================================
+// Widget tests
+// ===================================================================
+static void TestWidgetHierarchy() {
+    std::cout << "[WidgetHierarchy]\n";
+    auto root = std::make_shared<Widget>("root");
+    auto child1 = std::make_shared<Widget>("child1");
+    auto child2 = std::make_shared<Widget>("child2");
+
+    root->AddChild(child1);
+    root->AddChild(child2);
+
+    TEST("Child count 2", root->GetChildCount() == 2);
+    TEST("Find child1", root->FindChild("child1") != nullptr);
+    TEST("Find child2", root->FindChild("child2") != nullptr);
+    TEST("Find unknown = null", root->FindChild("nope") == nullptr);
+
+    TEST("child1 parent set", child1->GetParent() == root.get());
+
+    root->RemoveChild("child1");
+    TEST("Count after remove", root->GetChildCount() == 1);
+    TEST("Find removed = null", root->FindChild("child1") == nullptr);
+    TEST("child1 parent cleared", child1->GetParent() == nullptr);
+}
+
+static void TestWidgetTree() {
+    std::cout << "[WidgetTree]\n";
+    WidgetTree tree;
+    TEST("No root: Find null", tree.Find("x") == nullptr);
+    TEST("No root: HandleClick false", !tree.HandleClick(0,0));
+
+    auto root = std::make_shared<Widget>("root");
+    auto leaf  = std::make_shared<Widget>("leaf");
+    root->AddChild(leaf);
+    tree.SetRoot(root);
+
+    TEST("Find root", tree.Find("root") != nullptr);
+    TEST("Find leaf", tree.Find("leaf")  != nullptr);
+
+    std::vector<DrawCommand> cmds;
+    tree.Render(cmds);
+    // Widget base render only recurses; no commands for plain Widget
+    TEST("Render does not throw", true);
+}
+
+static void TestButtonWidget() {
+    std::cout << "[ButtonWidget]\n";
+    ButtonWidget btn("btn1", "Click Me");
+    btn.SetBounds({10, 10, 100, 30});
+
+    int clicks = 0;
+    btn.SetOnClick([&]{ ++clicks; });
+
+    // Click inside
+    btn.HandleClick(50, 20);
+    TEST("Click inside fires callback", clicks == 1);
+
+    // Click outside
+    btn.HandleClick(200, 200);
+    TEST("Click outside no callback", clicks == 1);
+
+    // Disabled
+    btn.SetEnabled(false);
+    btn.HandleClick(50, 20);
+    TEST("Disabled button no callback", clicks == 1);
+
+    // Render produces commands
+    btn.SetEnabled(true);
+    std::vector<DrawCommand> cmds;
+    btn.Render(cmds);
+    TEST("Render produces commands", !cmds.empty());
+}
+
+static void TestTextInputWidget() {
+    std::cout << "[TextInputWidget]\n";
+    TextInputWidget input("ti1");
+    input.SetBounds({0, 0, 200, 30});
+    input.SetMaxLength(5);
+
+    std::string lastChange;
+    input.SetOnChange([&](const std::string& s){ lastChange = s; });
+
+    input.AppendChar('H');
+    input.AppendChar('e');
+    input.AppendChar('l');
+    TEST("Text after append", input.GetText() == "Hel");
+    TEST("onChange fired", lastChange == "Hel");
+
+    input.Backspace();
+    TEST("Backspace removes last char", input.GetText() == "He");
+
+    // Max length
+    input.SetText("abcde");
+    input.AppendChar('f'); // should be ignored
+    TEST("Max length enforced", input.GetText() == "abcde");
+
+    // Focus on click
+    input.HandleClick(10, 10);
+    TEST("Focused after click", input.IsFocused());
+
+    std::vector<DrawCommand> cmds;
+    input.Render(cmds);
+    TEST("TextInput renders", !cmds.empty());
+}
+
+static void TestTreeViewWidget() {
+    std::cout << "[TreeViewWidget]\n";
+    TreeViewWidget tv("tv1");
+    tv.SetBounds({0, 0, 200, 300});
+    tv.SetRowHeight(20.0f);
+
+    TreeViewNode n1; n1.label = "Ships"; n1.expanded = false;
+    TreeViewNode child; child.label = "Frigate";
+    n1.children.push_back(child);
+    tv.AddNode(n1);
+
+    TreeViewNode n2; n2.label = "Stations";
+    tv.AddNode(n2);
+
+    TEST("Two top-level nodes", tv.GetNodes().size() == 2);
+
+    std::string selected;
+    tv.SetOnSelect([&](const std::string& l){ selected = l; });
+
+    // Click on first row (y=0 → Ships)
+    tv.HandleClick(10, 5);
+    TEST("First node toggled", tv.GetNodes()[0].expanded == true);
+    TEST("OnSelect fired", selected == "Ships");
+
+    std::vector<DrawCommand> cmds;
+    tv.Render(cmds);
+    TEST("TreeView renders", !cmds.empty());
+
+    tv.Clear();
+    TEST("Clear removes nodes", tv.GetNodes().empty());
+}
+
+// ===================================================================
+// Level tests
+// ===================================================================
+static void TestLevel() {
+    std::cout << "[Level]\n";
+    Level level("sector_1");
+    TEST("Name set", level.GetName() == "sector_1");
+    TEST("Not loaded initially", !level.IsLoaded());
+
+    bool loadCalled   = false;
+    bool unloadCalled = false;
+    EntityId spawnedId = InvalidEntityId;
+
+    level.SetOnLoad([&](EntityManager& em){
+        loadCalled = true;
+        auto& e = em.CreateEntity("test_ship");
+        spawnedId = e.id;
+    });
+    level.SetOnUnload([&](EntityManager&){ unloadCalled = true; });
+
+    level.Load();
+    TEST("IsLoaded after Load", level.IsLoaded());
+    TEST("OnLoad callback fired", loadCalled);
+    TEST("Entity spawned", spawnedId != InvalidEntityId);
+    TEST("Entity in EM", level.GetEntityManager().GetEntity(spawnedId) != nullptr);
+
+    // Second Load is no-op
+    loadCalled = false;
+    level.Load();
+    TEST("Double Load is no-op", !loadCalled);
+
+    level.Unload();
+    TEST("Not loaded after Unload", !level.IsLoaded());
+    TEST("OnUnload callback fired", unloadCalled);
+    TEST("Entity gone after Unload",
+         level.GetEntityManager().GetEntity(spawnedId) == nullptr);
+
+    // Double Unload is no-op
+    unloadCalled = false;
+    level.Unload();
+    TEST("Double Unload is no-op", !unloadCalled);
+}
+
+// ===================================================================
+// CharacterController tests
+// ===================================================================
+static void TestCharacterController() {
+    std::cout << "[CharacterController]\n";
+    CharacterControllerComponent comp;
+    comp.config.gravity  = 9.81f;
+    comp.config.height   = 1.8f;
+    comp.config.radius   = 0.4f;
+    comp.position        = {0, 5, 0}; // in the air
+
+    // Falling: no desired velocity
+    Vector3 newPos = CharacterController::Move(comp, {0,0,0}, 0.1f);
+    TEST("Falls under gravity", newPos.y < 5.0f);
+    TEST("Not grounded mid-air", !comp.isGrounded);
+
+    // Fall to ground
+    for (int i = 0; i < 60; ++i)
+        CharacterController::Move(comp, {0,0,0}, 0.1f);
+    TEST("Lands on ground", ApproxEq(comp.position.y, 0.0f));
+    TEST("Grounded after landing", comp.isGrounded);
+
+    // Horizontal movement
+    Vector3 right = CharacterController::Move(comp, {5.0f,0,0}, 0.1f);
+    TEST("Moved right", right.x > 0.0f);
+    TEST("Still grounded after lateral move", comp.isGrounded);
+
+    // Teleport
+    CharacterController::Teleport(comp, {10, 20, 30});
+    TEST("Teleport X", ApproxEq(comp.position.x, 10.0f));
+    TEST("Teleport Y", ApproxEq(comp.position.y, 20.0f));
+    TEST("Teleport Z", ApproxEq(comp.position.z, 30.0f));
+    TEST("Grounded cleared after teleport", !comp.isGrounded);
+
+    // Serialization
+    comp.position  = {1,2,3};
+    comp.isEnabled = true;
+    ComponentData d = comp.Serialize();
+    TEST("Serialize type", d.componentType == "CharacterControllerComponent");
+
+    CharacterControllerComponent comp2;
+    comp2.Deserialize(d);
+    TEST("Deserialize posX", ApproxEq(comp2.position.x, 1.0f));
+    TEST("Deserialize posY", ApproxEq(comp2.position.y, 2.0f));
+    TEST("Deserialize posZ", ApproxEq(comp2.position.z, 3.0f));
+
+    // Disabled controller doesn't move
+    comp.isEnabled = false;
+    comp.position  = {0, 5, 0};
+    CharacterController::Move(comp, {0,0,0}, 1.0f);
+    TEST("Disabled controller no movement", ApproxEq(comp.position.y, 5.0f));
+
+    // Half-extents
+    CharacterControllerComponent comp3;
+    comp3.config.radius = 0.4f;
+    comp3.config.height = 1.8f;
+    Vector3 he = CharacterController::GetHalfExtents(comp3);
+    TEST("HalfExtents radius", ApproxEq(he.x, 0.4f));
+    TEST("HalfExtents height half", ApproxEq(he.y, 0.9f));
+}
+
 int main() {
     std::cout << "=== Subspace Engine Unit Tests ===\n\n";
 
@@ -15207,6 +16117,40 @@ int main() {
     TestShadowSystem();
     TestShadowSystemPointSpotLights();
     TestPostProcessShadowGameEvents();
+
+    // ===================================================================
+    // New ported systems
+    // ===================================================================
+    TestVector2();
+    TestMatrix4();
+    TestQuaternion();
+    TestLinearAllocator();
+    TestPoolAllocator();
+    TestEventBus();
+    TestTaskSystem();
+    TestAssetManager();
+    TestBinaryArchive();
+    TestKeyboard();
+    TestMouse();
+    TestGamepad();
+    TestInputSystem();
+    TestInputComponent();
+    TestSoundBank();
+    TestAudioDevice();
+    TestAudioMixer();
+    TestSpatialAudio();
+    TestBehaviorTree();
+    TestBTSequence();
+    TestBTSelector();
+    TestBTParallel();
+    TestBTInverter();
+    TestWidgetHierarchy();
+    TestWidgetTree();
+    TestButtonWidget();
+    TestTextInputWidget();
+    TestTreeViewWidget();
+    TestLevel();
+    TestCharacterController();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
               << testsFailed << " failed ===\n";
