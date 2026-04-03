@@ -101,6 +101,8 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/input/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/physics/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/widgets/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/voxel/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/building/*.cpp"
 )
 
 file(GLOB_RECURSE ENGINE_HEADERS CONFIGURE_DEPENDS

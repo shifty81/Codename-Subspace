@@ -102,8 +102,17 @@ test-pcg: ## Run PCG pipeline validation tests
 # Maintenance
 # ---------------------------------------------------------------------------
 
-.PHONY: clean
-clean: ## Clean all build artifacts
+.PHONY: cmake-validate
+cmake-validate: ## Validate CMake config and list all engine source files included in the build
+	@mkdir -p engine/build
+	@(cd engine/build && cmake .. -DCMAKE_BUILD_TYPE=Debug > /dev/null 2>&1 && \
+	  echo "CMake configure: OK" && \
+	  cmake --build . --target subspace_engine --config Debug -- --dry-run 2>&1 | \
+	  grep -E "\.(cpp|cc|cxx)" | sed 's/.*src\//  src\//' | sort -u || \
+	  cmake -LA engine/build | grep -E "ENGINE_SOURCES") && \
+	echo "All engine sources validated."
+
+
 	$(RMDIR) engine/build 2>/dev/null || true
 	$(RMDIR) logs 2>/dev/null || true
 	find . -type d -name "__pycache__" -exec $(RMDIR) {} + 2>/dev/null || true

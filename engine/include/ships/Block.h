@@ -6,8 +6,11 @@
 
 namespace subspace {
 
-enum class BlockShape  { Cube, Rect, Wedge, Corner, Slope };
-enum class BlockType   { Hull, Armor, Engine, Generator, Gyro, Cargo, WeaponMount };
+enum class BlockShape  { Cube, Rect, Wedge, Corner, Slope,
+                        HalfBlock, Tetrahedron, InnerCorner, SlopedPlate };
+enum class BlockType   { Hull, Armor, Engine, Generator, Gyro, Cargo, WeaponMount,
+                        Framework, Thruster, GyroArray, ShieldGenerator,
+                        Cockpit, CargoHold };
 enum class MaterialType { Iron, Titanium, Naonite, Trinium, Xanion, Ogonite, Avorion };
 
 struct MaterialStats {
