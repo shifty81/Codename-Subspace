@@ -3,40 +3,37 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SubspaceGame", "engine\SubspaceGame.vcxproj", "{2E356F5D-1906-4D2D-8F03-F35618718690}"
-ProjectSection(ProjectDependencies) = postProject
-{CD7389A1-1C6F-4276-843C-34CCCF05573A} = {CD7389A1-1C6F-4276-843C-34CCCF05573A}
-EndProjectSection
+	ProjectSection(ProjectDependencies) = postProject
+		{CD7389A1-1C6F-4276-843C-34CCCF05573A} = {CD7389A1-1C6F-4276-843C-34CCCF05573A}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SubspaceEngine", "engine\SubspaceEngine.vcxproj", "{CD7389A1-1C6F-4276-843C-34CCCF05573A}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SubspaceTests", "engine\SubspaceTests.vcxproj", "{CFD96AFD-1ED3-4FC8-82FF-44D007EA2366}"
-ProjectSection(ProjectDependencies) = postProject
-{CD7389A1-1C6F-4276-843C-34CCCF05573A} = {CD7389A1-1C6F-4276-843C-34CCCF05573A}
-EndProjectSection
+	ProjectSection(ProjectDependencies) = postProject
+		{CD7389A1-1C6F-4276-843C-34CCCF05573A} = {CD7389A1-1C6F-4276-843C-34CCCF05573A}
+	EndProjectSection
 EndProject
 Global
-GlobalSection(SolutionConfigurationPlatforms) = preSolution
-Debug|x64 = Debug|x64
-Release|x64 = Release|x64
-EndGlobalSection
-GlobalSection(ProjectConfigurationPlatforms) = postSolution
-{2E356F5D-1906-4D2D-8F03-F35618718690}.Debug|x64.ActiveCfg = Debug|x64
-{2E356F5D-1906-4D2D-8F03-F35618718690}.Debug|x64.Build.0 = Debug|x64
-{2E356F5D-1906-4D2D-8F03-F35618718690}.Release|x64.ActiveCfg = Release|x64
-{2E356F5D-1906-4D2D-8F03-F35618718690}.Release|x64.Build.0 = Release|x64
-{CD7389A1-1C6F-4276-843C-34CCCF05573A}.Debug|x64.ActiveCfg = Debug|x64
-{CD7389A1-1C6F-4276-843C-34CCCF05573A}.Debug|x64.Build.0 = Debug|x64
-{CD7389A1-1C6F-4276-843C-34CCCF05573A}.Release|x64.ActiveCfg = Release|x64
-{CD7389A1-1C6F-4276-843C-34CCCF05573A}.Release|x64.Build.0 = Release|x64
-{CFD96AFD-1ED3-4FC8-82FF-44D007EA2366}.Debug|x64.ActiveCfg = Debug|x64
-{CFD96AFD-1ED3-4FC8-82FF-44D007EA2366}.Debug|x64.Build.0 = Debug|x64
-{CFD96AFD-1ED3-4FC8-82FF-44D007EA2366}.Release|x64.ActiveCfg = Release|x64
-{CFD96AFD-1ED3-4FC8-82FF-44D007EA2366}.Release|x64.Build.0 = Release|x64
-EndGlobalSection
-GlobalSection(SolutionProperties) = preSolution
-HideSolutionNode = FALSE
-EndGlobalSection
-GlobalSection(ExtensibilityGlobals) = postSolution
-SolutionGuid = {A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
-EndGlobalSection
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2E356F5D-1906-4D2D-8F03-F35618718690}.Debug|x64.ActiveCfg = Debug|x64
+		{2E356F5D-1906-4D2D-8F03-F35618718690}.Debug|x64.Build.0 = Debug|x64
+		{2E356F5D-1906-4D2D-8F03-F35618718690}.Release|x64.ActiveCfg = Release|x64
+		{2E356F5D-1906-4D2D-8F03-F35618718690}.Release|x64.Build.0 = Release|x64
+		{CD7389A1-1C6F-4276-843C-34CCCF05573A}.Debug|x64.ActiveCfg = Debug|x64
+		{CD7389A1-1C6F-4276-843C-34CCCF05573A}.Debug|x64.Build.0 = Debug|x64
+		{CD7389A1-1C6F-4276-843C-34CCCF05573A}.Release|x64.ActiveCfg = Release|x64
+		{CD7389A1-1C6F-4276-843C-34CCCF05573A}.Release|x64.Build.0 = Release|x64
+		{CFD96AFD-1ED3-4FC8-82FF-44D007EA2366}.Debug|x64.ActiveCfg = Debug|x64
+		{CFD96AFD-1ED3-4FC8-82FF-44D007EA2366}.Debug|x64.Build.0 = Debug|x64
+		{CFD96AFD-1ED3-4FC8-82FF-44D007EA2366}.Release|x64.ActiveCfg = Release|x64
+		{CFD96AFD-1ED3-4FC8-82FF-44D007EA2366}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
 EndGlobal
