@@ -65,6 +65,9 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/core/persistence/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/core/physics/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/core/resources/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/core/threading/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/core/assets/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/core/world/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/factions/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/formation/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/hangar/*.cpp"
@@ -95,6 +98,9 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/scanning/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/salvage/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/fleet/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/input/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/physics/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/widgets/*.cpp"
 )
 
 file(GLOB_RECURSE ENGINE_HEADERS CONFIGURE_DEPENDS
@@ -114,8 +120,11 @@ target_include_directories(subspace_engine PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 
+find_package(Threads REQUIRED)
+
 target_link_libraries(subspace_engine PUBLIC
     OpenGL::GL
+    Threads::Threads
 )
 
 if(SUBSPACE_USE_GLFW)
