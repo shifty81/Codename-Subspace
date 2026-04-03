@@ -93,6 +93,7 @@
   <!-- ================================================================== -->
   <ItemGroup>
     <ClCompile Include="src\ai\AIShipBuilder.cpp" />
+    <ClCompile Include="src\building\BuildingSystem.cpp" />
     <ClCompile Include="src\core\Engine.cpp" />
     <ClCompile Include="src\core\Math.cpp" />
     <ClCompile Include="src\core\ecs\EntityManager.cpp" />
@@ -104,17 +105,24 @@
     <ClCompile Include="src\factions\FactionProfile.cpp" />
     <ClCompile Include="src\factions\SilhouetteProfile.cpp" />
     <ClCompile Include="src\networking\BuildCommand.cpp" />
+    <ClCompile Include="src\procedural\StarSystemGenerator.cpp" />
+    <ClCompile Include="src\procedural\StargateGenerator.cpp" />
     <ClCompile Include="src\rendering\GhostRenderer.cpp" />
     <ClCompile Include="src\rendering\ShipRenderer.cpp" />
+    <ClCompile Include="src\rpg\GalaxyProgressionSystem.cpp" />
+    <ClCompile Include="src\rpg\PodSystem.cpp" />
     <ClCompile Include="src\ship_editor\ShipEditorController.cpp" />
     <ClCompile Include="src\ship_editor\ShipEditorState.cpp" />
     <ClCompile Include="src\ship_editor\SymmetrySystem.cpp" />
     <ClCompile Include="src\ships\Block.cpp" />
     <ClCompile Include="src\ships\BlockPlacement.cpp" />
     <ClCompile Include="src\ships\Blueprint.cpp" />
+    <ClCompile Include="src\ships\ModularShipFactory.cpp" />
     <ClCompile Include="src\ships\Ship.cpp" />
     <ClCompile Include="src\ships\ShipDamage.cpp" />
     <ClCompile Include="src\ships\ShipStats.cpp" />
+    <ClCompile Include="src\trading\EconomyAgentSystem.cpp" />
+    <ClCompile Include="src\voxel\VoxelSystem.cpp" />
     <ClCompile Include="src\weapons\WeaponSystem.cpp" />
   </ItemGroup>
 
@@ -123,6 +131,7 @@
   <!-- ================================================================== -->
   <ItemGroup>
     <ClInclude Include="include\ai\AIShipBuilder.h" />
+    <ClInclude Include="include\building\BuildingSystem.h" />
     <ClInclude Include="include\core\Engine.h" />
     <ClInclude Include="include\core\Math.h" />
     <ClInclude Include="include\core\ecs\Entity.h" />
@@ -138,17 +147,25 @@
     <ClInclude Include="include\factions\FactionProfile.h" />
     <ClInclude Include="include\factions\SilhouetteProfile.h" />
     <ClInclude Include="include\networking\BuildCommand.h" />
+    <ClInclude Include="include\procedural\GalaxyGenerator.h" />
+    <ClInclude Include="include\procedural\StarSystemGenerator.h" />
+    <ClInclude Include="include\procedural\StargateGenerator.h" />
     <ClInclude Include="include\rendering\GhostRenderer.h" />
     <ClInclude Include="include\rendering\ShipRenderer.h" />
+    <ClInclude Include="include\rpg\GalaxyProgressionSystem.h" />
+    <ClInclude Include="include\rpg\PodSystem.h" />
     <ClInclude Include="include\ship_editor\ShipEditorController.h" />
     <ClInclude Include="include\ship_editor\ShipEditorState.h" />
     <ClInclude Include="include\ship_editor\SymmetrySystem.h" />
     <ClInclude Include="include\ships\Block.h" />
     <ClInclude Include="include\ships\BlockPlacement.h" />
     <ClInclude Include="include\ships\Blueprint.h" />
+    <ClInclude Include="include\ships\ModularShipFactory.h" />
     <ClInclude Include="include\ships\Ship.h" />
     <ClInclude Include="include\ships\ShipDamage.h" />
     <ClInclude Include="include\ships\ShipStats.h" />
+    <ClInclude Include="include\trading\EconomyAgentSystem.h" />
+    <ClInclude Include="include\voxel\VoxelSystem.h" />
     <ClInclude Include="include\weapons\WeaponSystem.h" />
   </ItemGroup>
 
