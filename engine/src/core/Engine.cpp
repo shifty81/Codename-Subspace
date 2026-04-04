@@ -16,6 +16,10 @@
 #include "achievement/AchievementSystem.h"
 #include "ui/UISystem.h"
 
+#ifdef SUBSPACE_USE_GLFW
+#include "rendering/GLFWWindow.h"
+#endif
+
 #include <algorithm>
 #include <iostream>
 #include <thread>
@@ -58,6 +62,18 @@ void Engine::Initialize()
     // Register all gameplay systems into the ECS.
     RegisterSystems();
 
+    // Create the platform window when GLFW is available.
+#ifdef SUBSPACE_USE_GLFW
+    _window = std::make_unique<GLFWWindow>();
+    if (_window->Create(1280, 720, "Codename: Subspace")) {
+        Logger::Instance().Info(kLogCategory, "GLFW window created (1280x720).");
+    } else {
+        Logger::Instance().Warning(kLogCategory,
+            "Failed to create GLFW window — running headless.");
+        _window.reset();
+    }
+#endif
+
     // Mark timestamps.
     _startTime    = Clock::now();
     _lastTickTime = _startTime;
@@ -83,6 +99,15 @@ void Engine::Run()
     Logger::Instance().Info(kLogCategory, "Entering main loop...");
 
     while (_state == EngineState::Running || _state == EngineState::Paused) {
+#ifdef SUBSPACE_USE_GLFW
+        if (_window) {
+            _window->PollEvents();
+            if (_window->ShouldClose()) {
+                RequestShutdown();
+                break;
+            }
+        }
+#endif
         Tick();
 
         // Honour frame cap for testing.
@@ -137,6 +162,13 @@ void Engine::Shutdown()
     if (_state == EngineState::Stopped) return;
 
     Logger::Instance().Info(kLogCategory, "Shutting down...");
+
+#ifdef SUBSPACE_USE_GLFW
+    if (_window) {
+        _window->Destroy();
+        _window.reset();
+    }
+#endif
 
     _entityManager.Shutdown();
 
@@ -221,6 +253,14 @@ void Engine::RenderFrame()
     }
 
     _uiRenderer.EndFrame();
+
+#ifdef SUBSPACE_USE_GLFW
+    if (_window) {
+        _window->BeginRender();
+        _window->RenderDrawCommands(_uiRenderer);
+        _window->EndRender();
+    }
+#endif
 }
 
 // ---------------------------------------------------------------------------
