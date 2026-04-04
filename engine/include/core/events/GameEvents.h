@@ -307,6 +307,26 @@ namespace GameEvents {
     constexpr const char* ShadowQualityChanged       = "rendering.shadow.quality_changed";
     constexpr const char* ShadowMapInvalidated       = "rendering.shadow.map_invalidated";
     constexpr const char* ShadowLightAdded           = "rendering.shadow.light_added";
+
+    // Weather events
+    constexpr const char* WeatherStarted             = "weather.started";
+    constexpr const char* WeatherPhaseChanged        = "weather.phase.changed";
+    constexpr const char* WeatherEnded               = "weather.ended";
+    constexpr const char* WeatherDamageApplied       = "weather.damage.applied";
+    constexpr const char* WeatherSeverityEscalated   = "weather.severity.escalated";
+
+    // Equipment events
+    constexpr const char* EquipmentMounted           = "equipment.mounted";
+    constexpr const char* EquipmentRemoved           = "equipment.removed";
+    constexpr const char* EquipmentBroken            = "equipment.broken";
+    constexpr const char* EquipmentRepaired          = "equipment.repaired";
+    constexpr const char* EquipmentDegraded          = "equipment.degraded";
+
+    // Waypoint events
+    constexpr const char* WaypointAdded              = "waypoint.added";
+    constexpr const char* WaypointRemoved            = "waypoint.removed";
+    constexpr const char* WaypointMarkerReached      = "waypoint.marker.reached";
+    constexpr const char* WaypointExpired            = "waypoint.expired";
 } // namespace GameEvents
 
 } // namespace subspace
