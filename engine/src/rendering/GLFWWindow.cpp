@@ -205,7 +205,8 @@ void GLFWWindow::RenderCircle(const DrawCommand& cmd, bool filled)
     const float cy     = cmd.p1.y;
     const float radius = cmd.p2.x;
     constexpr int kSegments = 48;
-    constexpr float kTwoPi  = 2.0f * 3.14159265358979f;
+    constexpr float kPi     = 3.14159265358979323846f;
+    constexpr float kTwoPi  = 2.0f * kPi;
 
     glColor4f(cmd.color.r, cmd.color.g, cmd.color.b, cmd.color.a);
 
@@ -217,7 +218,7 @@ void GLFWWindow::RenderCircle(const DrawCommand& cmd, bool filled)
         glBegin(GL_LINE_LOOP);
     }
 
-    for (int i = 0; i <= kSegments; ++i) {
+    for (int i = 0; i < kSegments; ++i) {
         float angle = kTwoPi * static_cast<float>(i) / static_cast<float>(kSegments);
         glVertex2f(cx + radius * std::cos(angle),
                    cy + radius * std::sin(angle));
