@@ -6,9 +6,15 @@
 
 #include <chrono>
 #include <cstdint>
+#include <memory>
 #include <string>
 
 namespace subspace {
+
+// Forward declarations
+#ifdef SUBSPACE_USE_GLFW
+class GLFWWindow;
+#endif
 
 // Forward declarations — systems owned via EntityManager::RegisterSystem()
 class PhysicsSystem;
@@ -126,6 +132,10 @@ private:
     GalaxyGenerator  _galaxyGenerator;
     UIRenderer       _uiRenderer;
     UISystem*        _uiSystem = nullptr;   // non-owning; owned by EntityManager
+
+#ifdef SUBSPACE_USE_GLFW
+    std::unique_ptr<GLFWWindow> _window;    // platform window (optional)
+#endif
 
     // Timing
     using Clock = std::chrono::steady_clock;

@@ -134,6 +134,7 @@ target_link_libraries(subspace_engine PUBLIC
 
 if(SUBSPACE_USE_GLFW)
     target_link_libraries(subspace_engine PUBLIC glfw)
+    target_compile_definitions(subspace_engine PUBLIC SUBSPACE_USE_GLFW)
 endif()
 
 # ---------------------------------------------------------------------------
