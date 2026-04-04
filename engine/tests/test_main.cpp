@@ -131,6 +131,9 @@
 #include "trading/EconomyAgentSystem.h"
 #include "rpg/GalaxyProgressionSystem.h"
 #include "rpg/PodSystem.h"
+#include "weather/WeatherSystem.h"
+#include "equipment/EquipmentSystem.h"
+#include "waypoint/WaypointSystem.h"
 
 using namespace subspace;
 
@@ -16109,6 +16112,895 @@ static void TestPodAbilities() {
     TEST("AbilityTypeName Active", std::string(PodAbilityTypeName(PodAbilityType::Active)) == "Active");
 }
 
+// ===================================================================
+// Phase 4 — Weather System tests
+// ===================================================================
+
+void TestWeatherTypeNames() {
+    std::cout << "\n--- WeatherTypeNames ---\n";
+    TEST("Clear name", WeatherModifiers::GetWeatherTypeName(SpaceWeatherType::Clear) == "Clear");
+    TEST("IonStorm name", WeatherModifiers::GetWeatherTypeName(SpaceWeatherType::IonStorm) == "Ion Storm");
+    TEST("SolarFlare name", WeatherModifiers::GetWeatherTypeName(SpaceWeatherType::SolarFlare) == "Solar Flare");
+    TEST("NebulaDrift name", WeatherModifiers::GetWeatherTypeName(SpaceWeatherType::NebulaDrift) == "Nebula Drift");
+    TEST("MeteorShower name", WeatherModifiers::GetWeatherTypeName(SpaceWeatherType::MeteorShower) == "Meteor Shower");
+    TEST("RadiationBurst name", WeatherModifiers::GetWeatherTypeName(SpaceWeatherType::RadiationBurst) == "Radiation Burst");
+    TEST("GravityAnomaly name", WeatherModifiers::GetWeatherTypeName(SpaceWeatherType::GravityAnomaly) == "Gravity Anomaly");
+    TEST("EMP name", WeatherModifiers::GetWeatherTypeName(SpaceWeatherType::ElectromagneticPulse) == "Electromagnetic Pulse");
+}
+
+void TestWeatherPhaseNames() {
+    std::cout << "\n--- WeatherPhaseNames ---\n";
+    TEST("Inactive name", WeatherModifiers::GetPhaseName(WeatherPhase::Inactive) == "Inactive");
+    TEST("Approaching name", WeatherModifiers::GetPhaseName(WeatherPhase::Approaching) == "Approaching");
+    TEST("Active name", WeatherModifiers::GetPhaseName(WeatherPhase::Active) == "Active");
+    TEST("Dissipating name", WeatherModifiers::GetPhaseName(WeatherPhase::Dissipating) == "Dissipating");
+}
+
+void TestWeatherSeverity() {
+    std::cout << "\n--- WeatherSeverity ---\n";
+    TEST("Mild name", WeatherModifiers::GetSeverityName(WeatherSeverity::Mild) == "Mild");
+    TEST("Moderate name", WeatherModifiers::GetSeverityName(WeatherSeverity::Moderate) == "Moderate");
+    TEST("Severe name", WeatherModifiers::GetSeverityName(WeatherSeverity::Severe) == "Severe");
+    TEST("Extreme name", WeatherModifiers::GetSeverityName(WeatherSeverity::Extreme) == "Extreme");
+    bool mildLess = WeatherModifiers::GetSeverityIntensity(WeatherSeverity::Mild)
+                  < WeatherModifiers::GetSeverityIntensity(WeatherSeverity::Extreme);
+    TEST("Mild < Extreme intensity", mildLess);
+    bool eq05 = ApproxEq(WeatherModifiers::GetSeverityIntensity(WeatherSeverity::Mild), 0.5f);
+    TEST("Mild intensity 0.5", eq05);
+    bool eq20 = ApproxEq(WeatherModifiers::GetSeverityIntensity(WeatherSeverity::Extreme), 2.0f);
+    TEST("Extreme intensity 2.0", eq20);
+}
+
+void TestWeatherModifierDefaults() {
+    std::cout << "\n--- WeatherModifierDefaults ---\n";
+    auto clearMod = WeatherModifiers::GetDefaults(SpaceWeatherType::Clear, WeatherSeverity::Moderate);
+    bool clearNoEffect = ApproxEq(clearMod.speedMultiplier, 1.0f)
+                      && ApproxEq(clearMod.damagePerSecond, 0.0f);
+    TEST("Clear has no modifiers", clearNoEffect);
+
+    auto ionMod = WeatherModifiers::GetDefaults(SpaceWeatherType::IonStorm, WeatherSeverity::Moderate);
+    bool ionReducesShield = ionMod.shieldMultiplier < 1.0f;
+    TEST("IonStorm reduces shield", ionReducesShield);
+    bool ionReducesSensor = ionMod.sensorRangeMultiplier < 1.0f;
+    TEST("IonStorm reduces sensor range", ionReducesSensor);
+
+    auto solarMod = WeatherModifiers::GetDefaults(SpaceWeatherType::SolarFlare, WeatherSeverity::Severe);
+    bool solarDamage = solarMod.damagePerSecond > 0.0f;
+    TEST("SolarFlare deals damage", solarDamage);
+    bool solarBoostsWeapons = solarMod.weaponDamageMultiplier > 1.0f;
+    TEST("SolarFlare boosts weapons", solarBoostsWeapons);
+
+    auto nebMod = WeatherModifiers::GetDefaults(SpaceWeatherType::NebulaDrift, WeatherSeverity::Mild);
+    bool nebStealth = nebMod.stealthBonus > 0.0f;
+    TEST("NebulaDrift provides stealth", nebStealth);
+
+    auto metMod = WeatherModifiers::GetDefaults(SpaceWeatherType::MeteorShower, WeatherSeverity::Moderate);
+    bool metMiningBonus = metMod.miningYieldMultiplier > 1.0f;
+    TEST("MeteorShower boosts mining", metMiningBonus);
+
+    auto empMod = WeatherModifiers::GetDefaults(SpaceWeatherType::ElectromagneticPulse, WeatherSeverity::Extreme);
+    bool empHeavy = empMod.shieldMultiplier < 0.5f;
+    TEST("EMP Extreme heavily reduces shields", empHeavy);
+}
+
+void TestWeatherEventIntensity() {
+    std::cout << "\n--- WeatherEventIntensity ---\n";
+    WeatherEvent e;
+    e.type = SpaceWeatherType::IonStorm;
+    e.totalDuration = 100.0f;
+    e.approachDuration = 20.0f;
+    e.dissipationDuration = 20.0f;
+    e.severity = WeatherSeverity::Moderate;
+
+    // Inactive
+    e.phase = WeatherPhase::Inactive;
+    e.elapsedTime = 0.0f;
+    bool inactiveZero = ApproxEq(e.GetCurrentIntensity(), 0.0f);
+    TEST("Inactive intensity 0", inactiveZero);
+
+    // Approaching midway
+    e.phase = WeatherPhase::Approaching;
+    e.elapsedTime = 10.0f;
+    bool approachHalf = ApproxEq(e.GetCurrentIntensity(), 0.5f);
+    TEST("Approaching halfway = 0.5", approachHalf);
+
+    // Active
+    e.phase = WeatherPhase::Active;
+    e.elapsedTime = 50.0f;
+    bool activeFull = ApproxEq(e.GetCurrentIntensity(), 1.0f);
+    TEST("Active phase = 1.0", activeFull);
+
+    // Dissipating midway
+    e.phase = WeatherPhase::Dissipating;
+    e.elapsedTime = 90.0f;  // 10s into 20s dissipation starting at 80
+    bool dissipHalf = ApproxEq(e.GetCurrentIntensity(), 0.5f);
+    TEST("Dissipating halfway = 0.5", dissipHalf);
+
+    // Finished
+    e.elapsedTime = 100.0f;
+    TEST("Event finished", e.IsFinished());
+}
+
+void TestWeatherComponentDefaults() {
+    std::cout << "\n--- WeatherComponentDefaults ---\n";
+    WeatherComponent wc;
+    TEST("Default sector 0", wc.GetSectorId() == 0);
+    TEST("No events initially", wc.GetActiveEventCount() == 0);
+    TEST("No most severe event", wc.GetMostSevereEvent() == nullptr);
+    bool hasIon = wc.HasWeatherType(SpaceWeatherType::IonStorm);
+    TEST("No IonStorm active", !hasIon);
+}
+
+void TestWeatherComponentWithSector() {
+    std::cout << "\n--- WeatherComponentWithSector ---\n";
+    WeatherComponent wc(42);
+    TEST("Sector set to 42", wc.GetSectorId() == 42);
+    wc.SetSectorId(99);
+    TEST("Sector changed to 99", wc.GetSectorId() == 99);
+}
+
+void TestWeatherComponentAddEvent() {
+    std::cout << "\n--- WeatherComponentAddEvent ---\n";
+    WeatherComponent wc;
+    WeatherEvent ev;
+    ev.type = SpaceWeatherType::IonStorm;
+    ev.phase = WeatherPhase::Active;
+    ev.severity = WeatherSeverity::Moderate;
+    ev.totalDuration = 60.0f;
+    ev.elapsedTime = 10.0f;
+    ev.modifiers = WeatherModifiers::GetDefaults(ev.type, ev.severity);
+
+    bool added = wc.AddWeatherEvent(ev);
+    TEST("Event added", added);
+    TEST("1 active event", wc.GetActiveEventCount() == 1);
+    bool hasIon = wc.HasWeatherType(SpaceWeatherType::IonStorm);
+    TEST("Has IonStorm", hasIon);
+
+    const auto* severe = wc.GetMostSevereEvent();
+    TEST("Most severe not null", severe != nullptr);
+}
+
+void TestWeatherComponentMaxEvents() {
+    std::cout << "\n--- WeatherComponentMaxEvents ---\n";
+    WeatherComponent wc;
+    for (size_t i = 0; i < WeatherComponent::kMaxConcurrentEvents; ++i) {
+        WeatherEvent ev;
+        ev.type = static_cast<SpaceWeatherType>(i + 1);
+        ev.totalDuration = 60.0f;
+        wc.AddWeatherEvent(ev);
+    }
+    TEST("At max capacity", wc.GetActiveEventCount() == WeatherComponent::kMaxConcurrentEvents);
+
+    WeatherEvent extra;
+    extra.type = SpaceWeatherType::SolarFlare;
+    extra.totalDuration = 60.0f;
+    bool addedExtra = wc.AddWeatherEvent(extra);
+    TEST("Cannot exceed max", !addedExtra);
+}
+
+void TestWeatherComponentClearFinished() {
+    std::cout << "\n--- WeatherComponentClearFinished ---\n";
+    WeatherComponent wc;
+    WeatherEvent done;
+    done.type = SpaceWeatherType::IonStorm;
+    done.totalDuration = 10.0f;
+    done.elapsedTime = 10.0f;
+    wc.AddWeatherEvent(done);
+
+    WeatherEvent active;
+    active.type = SpaceWeatherType::SolarFlare;
+    active.totalDuration = 60.0f;
+    active.elapsedTime = 5.0f;
+    wc.AddWeatherEvent(active);
+
+    TEST("2 events before clear", wc.GetActiveEventCount() == 2);
+    wc.ClearFinished();
+    TEST("1 event after clear", wc.GetActiveEventCount() == 1);
+    bool hasSolar = wc.HasWeatherType(SpaceWeatherType::SolarFlare);
+    TEST("SolarFlare remains", hasSolar);
+}
+
+void TestWeatherComponentCombinedModifiers() {
+    std::cout << "\n--- WeatherComponentCombinedModifiers ---\n";
+    WeatherComponent wc;
+    WeatherEvent ev;
+    ev.type = SpaceWeatherType::NebulaDrift;
+    ev.phase = WeatherPhase::Active;
+    ev.severity = WeatherSeverity::Moderate;
+    ev.totalDuration = 60.0f;
+    ev.elapsedTime = 15.0f;
+    ev.approachDuration = 10.0f;
+    ev.modifiers = WeatherModifiers::GetDefaults(ev.type, ev.severity);
+    wc.AddWeatherEvent(ev);
+
+    auto combined = wc.GetCombinedModifiers();
+    bool stealthPositive = combined.stealthBonus > 0.0f;
+    TEST("Combined stealth positive", stealthPositive);
+    bool sensorReduced = combined.sensorRangeMultiplier < 1.0f;
+    TEST("Combined sensor reduced", sensorReduced);
+}
+
+void TestWeatherComponentSerialization() {
+    std::cout << "\n--- WeatherComponentSerialization ---\n";
+    WeatherComponent wc(77);
+    WeatherEvent ev;
+    ev.type = SpaceWeatherType::MeteorShower;
+    ev.phase = WeatherPhase::Active;
+    ev.severity = WeatherSeverity::Severe;
+    ev.totalDuration = 90.0f;
+    ev.elapsedTime = 20.0f;
+    ev.sectorId = 77;
+    ev.modifiers = WeatherModifiers::GetDefaults(ev.type, ev.severity);
+    wc.AddWeatherEvent(ev);
+
+    auto cd = wc.Serialize();
+    WeatherComponent wc2;
+    wc2.Deserialize(cd);
+    TEST("Deserialized sector", wc2.GetSectorId() == 77);
+    TEST("Deserialized event count", wc2.GetActiveEventCount() == 1);
+    bool hasMeteor = wc2.HasWeatherType(SpaceWeatherType::MeteorShower);
+    TEST("Deserialized type", hasMeteor);
+}
+
+void TestWeatherSystem() {
+    std::cout << "\n--- WeatherSystem ---\n";
+    EntityManager em;
+    WeatherSystem ws(em);
+
+    auto& entity = em.CreateEntity("sector_1");
+    auto* wc = em.AddComponent<WeatherComponent>(entity.id, std::make_unique<WeatherComponent>(1));
+
+    WeatherEvent ev;
+    ev.type = SpaceWeatherType::GravityAnomaly;
+    ev.phase = WeatherPhase::Approaching;
+    ev.severity = WeatherSeverity::Moderate;
+    ev.totalDuration = 20.0f;
+    ev.elapsedTime = 0.0f;
+    ev.approachDuration = 5.0f;
+    ev.dissipationDuration = 5.0f;
+    ev.modifiers = WeatherModifiers::GetDefaults(ev.type, ev.severity);
+    wc->AddWeatherEvent(ev);
+
+    // Update to advance time
+    ws.Update(6.0f);
+    TEST("Event advanced past approach", wc->GetActiveEventCount() == 1);
+
+    // Update to finish
+    ws.Update(15.0f);
+    TEST("Event finished and removed", wc->GetActiveEventCount() == 0);
+}
+
+void TestWeatherGenerateWeather() {
+    std::cout << "\n--- WeatherGenerateWeather ---\n";
+    auto ev1 = WeatherSystem::GenerateWeather(100, 42);
+    TEST("Generated event has valid type", static_cast<int>(ev1.type) > 0);
+    TEST("Generated event starts approaching", ev1.phase == WeatherPhase::Approaching);
+    bool durationValid = ev1.totalDuration >= 30.0f && ev1.totalDuration <= 120.0f;
+    TEST("Duration in valid range", durationValid);
+    TEST("Sector set", ev1.sectorId == 100);
+
+    // Deterministic: same seed = same result
+    auto ev2 = WeatherSystem::GenerateWeather(100, 42);
+    bool sameType = ev1.type == ev2.type;
+    bool sameSev = ev1.severity == ev2.severity;
+    TEST("Same seed same type", sameType);
+    TEST("Same seed same severity", sameSev);
+}
+
+void TestWeatherGameEvents() {
+    std::cout << "\n--- WeatherGameEvents ---\n";
+    TEST("WeatherStarted defined", std::string(GameEvents::WeatherStarted) == "weather.started");
+    TEST("WeatherPhaseChanged defined", std::string(GameEvents::WeatherPhaseChanged) == "weather.phase.changed");
+    TEST("WeatherEnded defined", std::string(GameEvents::WeatherEnded) == "weather.ended");
+    TEST("WeatherDamageApplied defined", std::string(GameEvents::WeatherDamageApplied) == "weather.damage.applied");
+    TEST("WeatherSeverityEscalated defined", std::string(GameEvents::WeatherSeverityEscalated) == "weather.severity.escalated");
+}
+
+// ===================================================================
+// Phase 4 — Equipment System tests
+// ===================================================================
+
+void TestEquipmentSlotTypeNames() {
+    std::cout << "\n--- EquipmentSlotTypeNames ---\n";
+    TEST("Weapon name", EquipmentItem::GetSlotTypeName(EquipmentSlotType::Weapon) == "Weapon");
+    TEST("Shield name", EquipmentItem::GetSlotTypeName(EquipmentSlotType::Shield) == "Shield");
+    TEST("Engine name", EquipmentItem::GetSlotTypeName(EquipmentSlotType::Engine) == "Engine");
+    TEST("Sensor name", EquipmentItem::GetSlotTypeName(EquipmentSlotType::Sensor) == "Sensor");
+    TEST("Utility name", EquipmentItem::GetSlotTypeName(EquipmentSlotType::Utility) == "Utility");
+    TEST("Special name", EquipmentItem::GetSlotTypeName(EquipmentSlotType::Special) == "Special");
+}
+
+void TestEquipmentTierNames() {
+    std::cout << "\n--- EquipmentTierNames ---\n";
+    TEST("Mk1 name", EquipmentItem::GetTierName(EquipmentTier::Mk1) == "Mk1");
+    TEST("Mk2 name", EquipmentItem::GetTierName(EquipmentTier::Mk2) == "Mk2");
+    TEST("Mk3 name", EquipmentItem::GetTierName(EquipmentTier::Mk3) == "Mk3");
+    TEST("Mk4 name", EquipmentItem::GetTierName(EquipmentTier::Mk4) == "Mk4");
+    TEST("Mk5 name", EquipmentItem::GetTierName(EquipmentTier::Mk5) == "Mk5");
+}
+
+void TestEquipmentTierMultiplier() {
+    std::cout << "\n--- EquipmentTierMultiplier ---\n";
+    EquipmentItem item;
+    item.tier = EquipmentTier::Mk1;
+    bool mk1is1 = ApproxEq(item.GetTierMultiplier(), 1.0f);
+    TEST("Mk1 mult = 1.0", mk1is1);
+
+    item.tier = EquipmentTier::Mk5;
+    bool mk5is3 = ApproxEq(item.GetTierMultiplier(), 3.0f);
+    TEST("Mk5 mult = 3.0", mk5is3);
+}
+
+void TestEquipmentEffectiveStats() {
+    std::cout << "\n--- EquipmentEffectiveStats ---\n";
+    EquipmentItem item;
+    item.tier = EquipmentTier::Mk2;
+    item.stats.damageBonus = 10.0f;
+    item.stats.shieldBonus = 20.0f;
+
+    auto eff = item.GetEffectiveStats();
+    bool dmg15 = ApproxEq(eff.damageBonus, 15.0f); // 10 * 1.5
+    TEST("Mk2 damage bonus 15", dmg15);
+    bool shd30 = ApproxEq(eff.shieldBonus, 30.0f); // 20 * 1.5
+    TEST("Mk2 shield bonus 30", shd30);
+}
+
+void TestEquipmentItemBroken() {
+    std::cout << "\n--- EquipmentItemBroken ---\n";
+    EquipmentItem item;
+    item.durability = 50.0f;
+    TEST("Not broken at 50", !item.IsBroken());
+    item.durability = 0.0f;
+    TEST("Broken at 0", item.IsBroken());
+}
+
+void TestEquipmentComponentAddSlot() {
+    std::cout << "\n--- EquipmentComponentAddSlot ---\n";
+    EquipmentComponent ec;
+    TEST("No slots initially", ec.GetSlotCount() == 0);
+
+    bool added = ec.AddSlot("weapon_1", EquipmentSlotType::Weapon);
+    TEST("Slot added", added);
+    TEST("1 slot", ec.GetSlotCount() == 1);
+    TEST("0 occupied", ec.GetOccupiedSlotCount() == 0);
+
+    // Duplicate name
+    bool dup = ec.AddSlot("weapon_1", EquipmentSlotType::Weapon);
+    TEST("Cannot add duplicate name", !dup);
+}
+
+void TestEquipmentComponentEquip() {
+    std::cout << "\n--- EquipmentComponentEquip ---\n";
+    EquipmentComponent ec;
+    ec.AddSlot("weapon_1", EquipmentSlotType::Weapon);
+    ec.AddSlot("shield_1", EquipmentSlotType::Shield);
+
+    EquipmentItem gun;
+    gun.itemId = "wpn_01";
+    gun.displayName = "Laser";
+    gun.slotType = EquipmentSlotType::Weapon;
+    gun.stats.damageBonus = 10.0f;
+
+    bool equipped = ec.Equip("weapon_1", gun);
+    TEST("Gun equipped", equipped);
+    TEST("1 occupied", ec.GetOccupiedSlotCount() == 1);
+
+    // Wrong slot type
+    bool wrongSlot = ec.Equip("shield_1", gun);
+    TEST("Cannot equip weapon in shield slot", !wrongSlot);
+
+    // Already occupied
+    EquipmentItem gun2;
+    gun2.itemId = "wpn_02";
+    gun2.slotType = EquipmentSlotType::Weapon;
+    bool alreadyOccupied = ec.Equip("weapon_1", gun2);
+    TEST("Cannot equip in occupied slot", !alreadyOccupied);
+
+    // Non-existent slot
+    bool noSlot = ec.Equip("nonexistent", gun);
+    TEST("Cannot equip in nonexistent slot", !noSlot);
+}
+
+void TestEquipmentComponentUnequip() {
+    std::cout << "\n--- EquipmentComponentUnequip ---\n";
+    EquipmentComponent ec;
+    ec.AddSlot("weapon_1", EquipmentSlotType::Weapon);
+
+    EquipmentItem gun;
+    gun.itemId = "wpn_01";
+    gun.slotType = EquipmentSlotType::Weapon;
+    ec.Equip("weapon_1", gun);
+
+    auto removed = ec.Unequip("weapon_1");
+    TEST("Unequipped item id", removed.itemId == "wpn_01");
+    TEST("0 occupied after unequip", ec.GetOccupiedSlotCount() == 0);
+
+    // Unequip empty slot
+    auto empty = ec.Unequip("weapon_1");
+    TEST("Empty slot returns empty item", empty.itemId.empty());
+}
+
+void TestEquipmentComponentTotalStats() {
+    std::cout << "\n--- EquipmentComponentTotalStats ---\n";
+    EquipmentComponent ec;
+    ec.AddSlot("weapon_1", EquipmentSlotType::Weapon);
+    ec.AddSlot("shield_1", EquipmentSlotType::Shield);
+
+    EquipmentItem gun;
+    gun.itemId = "wpn_01";
+    gun.slotType = EquipmentSlotType::Weapon;
+    gun.tier = EquipmentTier::Mk1;
+    gun.stats.damageBonus = 10.0f;
+    ec.Equip("weapon_1", gun);
+
+    EquipmentItem shield;
+    shield.itemId = "shd_01";
+    shield.slotType = EquipmentSlotType::Shield;
+    shield.tier = EquipmentTier::Mk2;
+    shield.stats.shieldBonus = 20.0f;
+    ec.Equip("shield_1", shield);
+
+    auto total = ec.GetTotalStats();
+    bool dmg10 = ApproxEq(total.damageBonus, 10.0f); // Mk1 * 1.0
+    TEST("Total damage 10", dmg10);
+    bool shd30 = ApproxEq(total.shieldBonus, 30.0f); // Mk2 * 1.5
+    TEST("Total shield 30", shd30);
+}
+
+void TestEquipmentComponentBrokenItemStats() {
+    std::cout << "\n--- EquipmentComponentBrokenItemStats ---\n";
+    EquipmentComponent ec;
+    ec.AddSlot("weapon_1", EquipmentSlotType::Weapon);
+
+    EquipmentItem gun;
+    gun.itemId = "wpn_01";
+    gun.slotType = EquipmentSlotType::Weapon;
+    gun.stats.damageBonus = 10.0f;
+    gun.durability = 0.0f; // broken
+    ec.Equip("weapon_1", gun);
+
+    auto total = ec.GetTotalStats();
+    bool noDmg = ApproxEq(total.damageBonus, 0.0f);
+    TEST("Broken item contributes no stats", noDmg);
+}
+
+void TestEquipmentComponentFindAvailableSlot() {
+    std::cout << "\n--- EquipmentComponentFindAvailableSlot ---\n";
+    EquipmentComponent ec;
+    ec.AddSlot("weapon_1", EquipmentSlotType::Weapon);
+    ec.AddSlot("weapon_2", EquipmentSlotType::Weapon);
+
+    EquipmentItem gun;
+    gun.slotType = EquipmentSlotType::Weapon;
+
+    const auto* avail = ec.FindAvailableSlot(gun);
+    TEST("Available slot found", avail != nullptr);
+
+    // Fill both
+    gun.itemId = "wpn_01";
+    ec.Equip("weapon_1", gun);
+    gun.itemId = "wpn_02";
+    ec.Equip("weapon_2", gun);
+
+    const auto* avail2 = ec.FindAvailableSlot(gun);
+    TEST("No available slot when full", avail2 == nullptr);
+}
+
+void TestEquipmentComponentDegradeRepair() {
+    std::cout << "\n--- EquipmentComponentDegradeRepair ---\n";
+    EquipmentComponent ec;
+    ec.AddSlot("weapon_1", EquipmentSlotType::Weapon);
+
+    EquipmentItem gun;
+    gun.itemId = "wpn_01";
+    gun.slotType = EquipmentSlotType::Weapon;
+    gun.durability = 100.0f;
+    gun.maxDurability = 100.0f;
+    ec.Equip("weapon_1", gun);
+
+    ec.DegradeAll(30.0f);
+    const auto* slot = ec.GetSlot("weapon_1");
+    bool dur70 = slot && ApproxEq(slot->item.durability, 70.0f);
+    TEST("Degraded to 70", dur70);
+
+    ec.RepairAll(50.0f);
+    bool dur100 = slot && ApproxEq(slot->item.durability, 100.0f);
+    TEST("Repaired to cap 100", dur100);
+
+    ec.DegradeAll(200.0f);
+    bool dur0 = slot && ApproxEq(slot->item.durability, 0.0f);
+    TEST("Degraded to floor 0", dur0);
+}
+
+void TestEquipmentComponentSerialization() {
+    std::cout << "\n--- EquipmentComponentSerialization ---\n";
+    EquipmentComponent ec;
+    ec.AddSlot("weapon_1", EquipmentSlotType::Weapon);
+    ec.AddSlot("shield_1", EquipmentSlotType::Shield);
+
+    EquipmentItem gun;
+    gun.itemId = "wpn_01";
+    gun.displayName = "Mk3 Laser Cannon";
+    gun.slotType = EquipmentSlotType::Weapon;
+    gun.tier = EquipmentTier::Mk3;
+    gun.durability = 80.0f;
+    gun.maxDurability = 100.0f;
+    gun.stats.damageBonus = 15.0f;
+    ec.Equip("weapon_1", gun);
+
+    auto cd = ec.Serialize();
+    EquipmentComponent ec2;
+    ec2.Deserialize(cd);
+
+    TEST("Deserialized slot count", ec2.GetSlotCount() == 2);
+    TEST("Deserialized occupied count", ec2.GetOccupiedSlotCount() == 1);
+
+    const auto* s = ec2.GetSlot("weapon_1");
+    TEST("Deserialized slot found", s != nullptr);
+    bool idMatch = s && s->item.itemId == "wpn_01";
+    TEST("Deserialized item id", idMatch);
+    bool nameMatch = s && s->item.displayName == "Mk3 Laser Cannon";
+    TEST("Deserialized display name", nameMatch);
+    bool tierMatch = s && s->item.tier == EquipmentTier::Mk3;
+    TEST("Deserialized tier", tierMatch);
+    bool durMatch = s && ApproxEq(s->item.durability, 80.0f);
+    TEST("Deserialized durability", durMatch);
+    bool dmgMatch = s && ApproxEq(s->item.stats.damageBonus, 15.0f);
+    TEST("Deserialized damage bonus", dmgMatch);
+}
+
+void TestEquipmentSystem() {
+    std::cout << "\n--- EquipmentSystem ---\n";
+    EntityManager em;
+    EquipmentSystem es(em);
+
+    auto& entity = em.CreateEntity("ship_1");
+    auto* ec = em.AddComponent<EquipmentComponent>(entity.id, std::make_unique<EquipmentComponent>());
+    ec->AddSlot("weapon_1", EquipmentSlotType::Weapon);
+
+    // System update should run without crashing
+    es.Update(1.0f);
+    TEST("System updates without error", true);
+}
+
+void TestEquipmentSystemGenerateItem() {
+    std::cout << "\n--- EquipmentSystemGenerateItem ---\n";
+    auto weapon = EquipmentSystem::GenerateItem(EquipmentSlotType::Weapon, EquipmentTier::Mk3, 42);
+    TEST("Generated weapon slot type", weapon.slotType == EquipmentSlotType::Weapon);
+    TEST("Generated weapon tier", weapon.tier == EquipmentTier::Mk3);
+    bool hasId = !weapon.itemId.empty();
+    TEST("Generated weapon has id", hasId);
+    bool hasDmg = weapon.stats.damageBonus > 0.0f;
+    TEST("Generated weapon has damage", hasDmg);
+
+    auto shield = EquipmentSystem::GenerateItem(EquipmentSlotType::Shield, EquipmentTier::Mk1, 99);
+    TEST("Generated shield slot type", shield.slotType == EquipmentSlotType::Shield);
+    bool hasShield = shield.stats.shieldBonus > 0.0f;
+    TEST("Generated shield has shield bonus", hasShield);
+
+    // Deterministic
+    auto weapon2 = EquipmentSystem::GenerateItem(EquipmentSlotType::Weapon, EquipmentTier::Mk3, 42);
+    TEST("Same seed same item id", weapon.itemId == weapon2.itemId);
+}
+
+void TestEquipmentGameEvents() {
+    std::cout << "\n--- EquipmentGameEvents ---\n";
+    TEST("EquipmentMounted defined", std::string(GameEvents::EquipmentMounted) == "equipment.mounted");
+    TEST("EquipmentRemoved defined", std::string(GameEvents::EquipmentRemoved) == "equipment.removed");
+    TEST("EquipmentBroken defined", std::string(GameEvents::EquipmentBroken) == "equipment.broken");
+    TEST("EquipmentRepaired defined", std::string(GameEvents::EquipmentRepaired) == "equipment.repaired");
+    TEST("EquipmentDegraded defined", std::string(GameEvents::EquipmentDegraded) == "equipment.degraded");
+}
+
+// ===================================================================
+// Phase 4 — Waypoint System tests
+// ===================================================================
+
+void TestWaypointTypeNames() {
+    std::cout << "\n--- WaypointTypeNames ---\n";
+    TEST("Generic name", Waypoint::GetTypeName(WaypointType::Generic) == "Generic");
+    TEST("Navigation name", Waypoint::GetTypeName(WaypointType::Navigation) == "Navigation");
+    TEST("POI name", Waypoint::GetTypeName(WaypointType::PointOfInterest) == "Point of Interest");
+    TEST("Danger name", Waypoint::GetTypeName(WaypointType::Danger) == "Danger");
+    TEST("Mining name", Waypoint::GetTypeName(WaypointType::Mining) == "Mining");
+    TEST("Trading name", Waypoint::GetTypeName(WaypointType::Trading) == "Trading");
+    TEST("Rally name", Waypoint::GetTypeName(WaypointType::Rally) == "Rally");
+    TEST("Custom name", Waypoint::GetTypeName(WaypointType::Custom) == "Custom");
+}
+
+void TestWaypointIconNames() {
+    std::cout << "\n--- WaypointIconNames ---\n";
+    TEST("Circle icon", Waypoint::GetIconName(WaypointIcon::Circle) == "Circle");
+    TEST("Diamond icon", Waypoint::GetIconName(WaypointIcon::Diamond) == "Diamond");
+    TEST("Star icon", Waypoint::GetIconName(WaypointIcon::Star) == "Star");
+    TEST("Skull icon", Waypoint::GetIconName(WaypointIcon::Skull) == "Skull");
+    TEST("Flag icon", Waypoint::GetIconName(WaypointIcon::Flag) == "Flag");
+}
+
+void TestWaypointDistance() {
+    std::cout << "\n--- WaypointDistance ---\n";
+    Waypoint wp;
+    wp.posX = 3.0f;
+    wp.posY = 4.0f;
+    wp.posZ = 0.0f;
+    bool dist5 = ApproxEq(wp.DistanceTo(0.0f, 0.0f, 0.0f), 5.0f);
+    TEST("Distance 3-4-5 triangle", dist5);
+
+    bool distSelf = ApproxEq(wp.DistanceTo(3.0f, 4.0f, 0.0f), 0.0f);
+    TEST("Distance to self is 0", distSelf);
+}
+
+void TestWaypointExpiry() {
+    std::cout << "\n--- WaypointExpiry ---\n";
+    Waypoint wp;
+    wp.expiryTime = -1.0f;
+    TEST("Permanent not expired", !wp.IsExpired());
+
+    wp.expiryTime = 10.0f;
+    wp.elapsedTime = 5.0f;
+    TEST("Not expired yet", !wp.IsExpired());
+
+    wp.elapsedTime = 10.0f;
+    TEST("Expired at time", wp.IsExpired());
+
+    wp.elapsedTime = 15.0f;
+    TEST("Expired past time", wp.IsExpired());
+}
+
+void TestWaypointComponentDefaults() {
+    std::cout << "\n--- WaypointComponentDefaults ---\n";
+    WaypointComponent wc;
+    TEST("No waypoints initially", wc.GetCount() == 0);
+    TEST("Next ID starts at 1", wc.GetNextId() == 1);
+    TEST("Nearest returns null on empty", wc.GetNearest(0, 0, 0) == nullptr);
+}
+
+void TestWaypointComponentAdd() {
+    std::cout << "\n--- WaypointComponentAdd ---\n";
+    WaypointComponent wc;
+    Waypoint wp;
+    wp.label = "Target Alpha";
+    wp.type = WaypointType::Navigation;
+    wp.posX = 100.0f;
+    wp.posY = 200.0f;
+    wp.posZ = 300.0f;
+    wp.sectorId = 5;
+
+    bool added = wc.AddWaypoint(wp);
+    TEST("Waypoint added", added);
+    TEST("1 waypoint", wc.GetCount() == 1);
+    TEST("Next ID incremented", wc.GetNextId() == 2);
+
+    const auto* found = wc.GetWaypoint(1);
+    TEST("Found by ID", found != nullptr);
+    bool labelMatch = found && found->label == "Target Alpha";
+    TEST("Label matches", labelMatch);
+}
+
+void TestWaypointComponentRemove() {
+    std::cout << "\n--- WaypointComponentRemove ---\n";
+    WaypointComponent wc;
+    Waypoint wp;
+    wp.label = "Test";
+    wc.AddWaypoint(wp);
+
+    bool removed = wc.RemoveWaypoint(1);
+    TEST("Removed successfully", removed);
+    TEST("0 waypoints after remove", wc.GetCount() == 0);
+
+    bool notFound = wc.RemoveWaypoint(999);
+    TEST("Cannot remove nonexistent", !notFound);
+}
+
+void TestWaypointComponentByType() {
+    std::cout << "\n--- WaypointComponentByType ---\n";
+    WaypointComponent wc;
+
+    Waypoint mining;
+    mining.type = WaypointType::Mining;
+    mining.label = "Asteroid Field";
+    wc.AddWaypoint(mining);
+
+    Waypoint trading;
+    trading.type = WaypointType::Trading;
+    trading.label = "Station";
+    wc.AddWaypoint(trading);
+
+    Waypoint mining2;
+    mining2.type = WaypointType::Mining;
+    mining2.label = "Rich Vein";
+    wc.AddWaypoint(mining2);
+
+    auto miningWps = wc.GetWaypointsByType(WaypointType::Mining);
+    TEST("2 mining waypoints", miningWps.size() == 2);
+    auto tradingWps = wc.GetWaypointsByType(WaypointType::Trading);
+    TEST("1 trading waypoint", tradingWps.size() == 1);
+    auto dangerWps = wc.GetWaypointsByType(WaypointType::Danger);
+    TEST("0 danger waypoints", dangerWps.empty());
+}
+
+void TestWaypointComponentBySector() {
+    std::cout << "\n--- WaypointComponentBySector ---\n";
+    WaypointComponent wc;
+
+    Waypoint wp1;
+    wp1.sectorId = 10;
+    wp1.label = "A";
+    wc.AddWaypoint(wp1);
+
+    Waypoint wp2;
+    wp2.sectorId = 10;
+    wp2.label = "B";
+    wc.AddWaypoint(wp2);
+
+    Waypoint wp3;
+    wp3.sectorId = 20;
+    wp3.label = "C";
+    wc.AddWaypoint(wp3);
+
+    auto sector10 = wc.GetWaypointsInSector(10);
+    TEST("2 waypoints in sector 10", sector10.size() == 2);
+    auto sector20 = wc.GetWaypointsInSector(20);
+    TEST("1 waypoint in sector 20", sector20.size() == 1);
+}
+
+void TestWaypointComponentNearest() {
+    std::cout << "\n--- WaypointComponentNearest ---\n";
+    WaypointComponent wc;
+
+    Waypoint near;
+    near.label = "Near";
+    near.posX = 1.0f;
+    near.posY = 0.0f;
+    near.posZ = 0.0f;
+    wc.AddWaypoint(near);
+
+    Waypoint far;
+    far.label = "Far";
+    far.posX = 100.0f;
+    far.posY = 0.0f;
+    far.posZ = 0.0f;
+    wc.AddWaypoint(far);
+
+    const auto* nearest = wc.GetNearest(0.0f, 0.0f, 0.0f);
+    TEST("Nearest found", nearest != nullptr);
+    bool isNear = nearest && nearest->label == "Near";
+    TEST("Nearest is Near", isNear);
+}
+
+void TestWaypointComponentToggleVisibility() {
+    std::cout << "\n--- WaypointComponentToggleVisibility ---\n";
+    WaypointComponent wc;
+    Waypoint wp;
+    wp.label = "Hidden";
+    wp.isVisible = true;
+    wc.AddWaypoint(wp);
+
+    bool toggled = wc.ToggleVisibility(1);
+    TEST("Toggle succeeded", toggled);
+    const auto* found = wc.GetWaypoint(1);
+    bool nowHidden = found && !found->isVisible;
+    TEST("Now hidden", nowHidden);
+
+    wc.ToggleVisibility(1);
+    bool nowVisible = found && found->isVisible;
+    TEST("Now visible again", nowVisible);
+
+    bool badToggle = wc.ToggleVisibility(999);
+    TEST("Cannot toggle nonexistent", !badToggle);
+}
+
+void TestWaypointComponentClearExpired() {
+    std::cout << "\n--- WaypointComponentClearExpired ---\n";
+    WaypointComponent wc;
+
+    Waypoint permanent;
+    permanent.label = "Perm";
+    permanent.expiryTime = -1.0f;
+    wc.AddWaypoint(permanent);
+
+    Waypoint expired;
+    expired.label = "Expired";
+    expired.expiryTime = 10.0f;
+    expired.elapsedTime = 15.0f;
+    wc.AddWaypoint(expired);
+
+    TEST("2 before clear", wc.GetCount() == 2);
+    wc.ClearExpired();
+    TEST("1 after clear", wc.GetCount() == 1);
+
+    const auto* remaining = wc.GetWaypoint(1);
+    bool isPerm = remaining && remaining->label == "Perm";
+    TEST("Permanent remains", isPerm);
+}
+
+void TestWaypointComponentClearAll() {
+    std::cout << "\n--- WaypointComponentClearAll ---\n";
+    WaypointComponent wc;
+    Waypoint wp;
+    wp.label = "A";
+    wc.AddWaypoint(wp);
+    wp.label = "B";
+    wc.AddWaypoint(wp);
+
+    wc.ClearAll();
+    TEST("All cleared", wc.GetCount() == 0);
+}
+
+void TestWaypointComponentSerialization() {
+    std::cout << "\n--- WaypointComponentSerialization ---\n";
+    WaypointComponent wc;
+
+    Waypoint wp;
+    wp.label = "Alpha Station";
+    wp.type = WaypointType::Trading;
+    wp.icon = WaypointIcon::Star;
+    wp.posX = 42.0f;
+    wp.posY = 13.0f;
+    wp.posZ = 7.0f;
+    wp.sectorId = 99;
+    wp.isVisible = true;
+    wp.expiryTime = 120.0f;
+    wp.elapsedTime = 30.0f;
+    wc.AddWaypoint(wp);
+
+    auto cd = wc.Serialize();
+    WaypointComponent wc2;
+    wc2.Deserialize(cd);
+
+    TEST("Deserialized count", wc2.GetCount() == 1);
+    const auto* w = wc2.GetWaypoint(1);
+    TEST("Deserialized waypoint found", w != nullptr);
+    bool labelOk = w && w->label == "Alpha Station";
+    TEST("Deserialized label", labelOk);
+    bool typeOk = w && w->type == WaypointType::Trading;
+    TEST("Deserialized type", typeOk);
+    bool iconOk = w && w->icon == WaypointIcon::Star;
+    TEST("Deserialized icon", iconOk);
+    bool posOk = w && ApproxEq(w->posX, 42.0f) && ApproxEq(w->posY, 13.0f);
+    TEST("Deserialized position", posOk);
+    bool sectorOk = w && w->sectorId == 99;
+    TEST("Deserialized sector", sectorOk);
+}
+
+void TestWaypointSystem() {
+    std::cout << "\n--- WaypointSystem ---\n";
+    EntityManager em;
+    WaypointSystem ws(em);
+
+    auto& entity = em.CreateEntity("player_1");
+    auto* wc = em.AddComponent<WaypointComponent>(entity.id, std::make_unique<WaypointComponent>());
+
+    Waypoint temp;
+    temp.label = "Temp Marker";
+    temp.expiryTime = 5.0f;
+    temp.elapsedTime = 0.0f;
+    wc->AddWaypoint(temp);
+
+    Waypoint perm;
+    perm.label = "Base";
+    perm.expiryTime = -1.0f;
+    wc->AddWaypoint(perm);
+
+    TEST("2 waypoints before update", wc->GetCount() == 2);
+
+    // Advance time past expiry
+    ws.Update(6.0f);
+    TEST("Temp waypoint expired", wc->GetCount() == 1);
+
+    const auto& all = wc->GetAllWaypoints();
+    bool baseRemains = !all.empty() && all[0].label == "Base";
+    TEST("Base remains", baseRemains);
+}
+
+void TestWaypointGameEvents() {
+    std::cout << "\n--- WaypointGameEvents ---\n";
+    TEST("WaypointAdded defined", std::string(GameEvents::WaypointAdded) == "waypoint.added");
+    TEST("WaypointRemoved defined", std::string(GameEvents::WaypointRemoved) == "waypoint.removed");
+    TEST("WaypointMarkerReached defined", std::string(GameEvents::WaypointMarkerReached) == "waypoint.marker.reached");
+    TEST("WaypointExpired defined", std::string(GameEvents::WaypointExpired) == "waypoint.expired");
+}
+
 int main() {
     std::cout << "=== Subspace Engine Unit Tests ===\n\n";
 
@@ -16673,6 +17565,57 @@ int main() {
     TestGalaxyProgressionSystem();
     TestPodSkillTree();
     TestPodAbilities();
+
+    // ===================================================================
+    // Phase 4 systems
+    // ===================================================================
+    TestWeatherTypeNames();
+    TestWeatherPhaseNames();
+    TestWeatherSeverity();
+    TestWeatherModifierDefaults();
+    TestWeatherEventIntensity();
+    TestWeatherComponentDefaults();
+    TestWeatherComponentWithSector();
+    TestWeatherComponentAddEvent();
+    TestWeatherComponentMaxEvents();
+    TestWeatherComponentClearFinished();
+    TestWeatherComponentCombinedModifiers();
+    TestWeatherComponentSerialization();
+    TestWeatherSystem();
+    TestWeatherGenerateWeather();
+    TestWeatherGameEvents();
+    TestEquipmentSlotTypeNames();
+    TestEquipmentTierNames();
+    TestEquipmentTierMultiplier();
+    TestEquipmentEffectiveStats();
+    TestEquipmentItemBroken();
+    TestEquipmentComponentAddSlot();
+    TestEquipmentComponentEquip();
+    TestEquipmentComponentUnequip();
+    TestEquipmentComponentTotalStats();
+    TestEquipmentComponentBrokenItemStats();
+    TestEquipmentComponentFindAvailableSlot();
+    TestEquipmentComponentDegradeRepair();
+    TestEquipmentComponentSerialization();
+    TestEquipmentSystem();
+    TestEquipmentSystemGenerateItem();
+    TestEquipmentGameEvents();
+    TestWaypointTypeNames();
+    TestWaypointIconNames();
+    TestWaypointDistance();
+    TestWaypointExpiry();
+    TestWaypointComponentDefaults();
+    TestWaypointComponentAdd();
+    TestWaypointComponentRemove();
+    TestWaypointComponentByType();
+    TestWaypointComponentBySector();
+    TestWaypointComponentNearest();
+    TestWaypointComponentToggleVisibility();
+    TestWaypointComponentClearExpired();
+    TestWaypointComponentClearAll();
+    TestWaypointComponentSerialization();
+    TestWaypointSystem();
+    TestWaypointGameEvents();
 
     std::cout << "\n=== Summary: " << testsPassed << " passed, "
               << testsFailed << " failed ===\n";

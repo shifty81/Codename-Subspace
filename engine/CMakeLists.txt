@@ -103,6 +103,9 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/ui/widgets/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/voxel/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/building/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/weather/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/equipment/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/waypoint/*.cpp"
 )
 
 file(GLOB_RECURSE ENGINE_HEADERS CONFIGURE_DEPENDS
