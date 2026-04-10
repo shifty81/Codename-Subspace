@@ -126,7 +126,7 @@ void PhysicsSystem::DetectCollisions(std::vector<PhysicsComponent*>& components)
             float distance = diff.length();
             float minDistance = comp->collisionRadius + other->collisionRadius;
 
-            if (distance < minDistance && distance > 0.0f) {
+            if (distance < minDistance) {
                 HandleCollision(*comp, *other, distance, minDistance);
             }
         }
@@ -143,8 +143,25 @@ void PhysicsSystem::HandleCollision(PhysicsComponent& obj1, PhysicsComponent& ob
 
     Vector3 diff = obj2.position - obj1.position;
     float len = diff.length();
-    if (len == 0.0f) return;
-    Vector3 normal = diff * (1.0f / len);
+
+    // Handle the degenerate case where two objects are exactly coincident.
+    // Returning without response would leave them permanently stuck; instead
+    // pick a separation axis derived from the entity IDs so different pairs
+    // get different axes and don't all pile up in one direction.
+    Vector3 normal;
+    if (len < 1e-6f) {
+        // XOR the two IDs to produce a deterministic but varied direction.
+        uint64_t seed = static_cast<uint64_t>(obj1.entityId) ^
+                        (static_cast<uint64_t>(obj2.entityId) * 2654435761ULL);
+        float dx = ((seed & 0xFF)       / 127.5f) - 1.0f;
+        float dy = (((seed >> 8) & 0xFF) / 127.5f) - 1.0f;
+        float dz = (((seed >> 16) & 0xFF)/ 127.5f) - 1.0f;
+        float dlen = std::sqrt(dx*dx + dy*dy + dz*dz);
+        if (dlen < 1e-6f) dlen = 1.0f; // Absolute fallback
+        normal = {dx / dlen, dy / dlen, dz / dlen};
+    } else {
+        normal = diff * (1.0f / len);
+    }
 
     // --- Positional separation to prevent objects from getting stuck ---
     float overlap = minDistance - distance;
@@ -176,9 +193,25 @@ void PhysicsSystem::HandleCollision(PhysicsComponent& obj1, PhysicsComponent& ob
     if (!obj1.isStatic && !obj2.isStatic) {
         float v1 = dot(obj1.velocity, normal);
         float v2 = dot(obj2.velocity, normal);
+        float relNormalVel = v1 - v2;   // positive = converging
 
-        // Only respond if objects are moving towards each other
-        if (v1 - v2 <= 0.0f) return;
+        if (relNormalVel <= 0.0f) {
+            // Objects are already separating (or have identical velocity along
+            // the normal).  If the overlap is negligible, no further action is
+            // needed.  However, when objects are significantly embedded — which
+            // happens when thrust continuously pushes ships into each other —
+            // the positional correction alone is insufficient because the next
+            // force application can re-create the overlap.  Inject a minimum
+            // separating impulse so the ships always escape each other.
+            if (overlap <= kBaumgarteSlop) return;
+
+            float m1 = obj1.mass;
+            float m2 = obj2.mass;
+            float j = kMinSeparationSpeed / (1.0f / m1 + 1.0f / m2);
+            obj1.velocity = obj1.velocity - normal * (j / m1);
+            obj2.velocity = obj2.velocity + normal * (j / m2);
+            return;
+        }
 
         float m1 = obj1.mass;
         float m2 = obj2.mass;

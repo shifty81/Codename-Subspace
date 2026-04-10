@@ -30,9 +30,18 @@ private:
 
     EntityManager& _entityManager;
     SpatialHash _spatialHash;
-    static constexpr float kMaxVelocity = 1000.0f;
-    static constexpr float kDefaultCellSize = 50.0f;
-    static constexpr float kSeparationMargin = 0.01f;
+    static constexpr float kMaxVelocity       = 1000.0f;
+    static constexpr float kDefaultCellSize   = 50.0f;
+    static constexpr float kSeparationMargin  = 0.01f;
+    /// Minimum overlap (units) before the embedded-object correction kicks in.
+    /// Objects separated by less than this are considered close enough to
+    /// ignore the extra impulse and avoid jitter.
+    static constexpr float kBaumgarteSlop     = 0.05f;
+    /// Separating speed (units/s) injected along the collision normal when two
+    /// dynamic objects are overlapping but have zero (or same-direction) relative
+    /// velocity.  This prevents ships from permanently "sticking" inside each
+    /// other when thrust keeps pushing them together.
+    static constexpr float kMinSeparationSpeed = 0.5f;
 };
 
 } // namespace subspace

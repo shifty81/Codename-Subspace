@@ -123,6 +123,7 @@
 #include "fleet/FleetCommandSystem.h"
 #include "rendering/PostProcessingSystem.h"
 #include "rendering/ShadowSystem.h"
+#include "rendering/FrustumCuller.h"
 #include "voxel/VoxelSystem.h"
 #include "building/BuildingSystem.h"
 #include "ships/ModularShipFactory.h"
@@ -8045,6 +8046,211 @@ static void TestPhysicsCollisionSeparation() {
         // obj2 should gain some velocity but less than the full 10
         TEST("Low restitution obj2 gains velocity", pc2->velocity.x > 0.0f);
         TEST("Low restitution obj2 less than full transfer", pc2->velocity.x < 10.0f);
+    }
+
+    // Test 5: Two embedded ships with the same velocity get separated
+    // (they are overlapping but have zero relative velocity — the old code
+    // would skip the velocity response, leaving them permanently stuck).
+    {
+        EntityManager em;
+        PhysicsSystem physSys(em);
+
+        auto& obj1 = em.CreateEntity("Ship1");
+        auto c1 = std::make_unique<PhysicsComponent>();
+        c1->mass = 100.0f;
+        c1->drag = 0.0f;
+        c1->angularDrag = 0.0f;
+        c1->position = Vector3(0.0f, 0.0f, 0.0f);
+        c1->velocity = Vector3(5.0f, 0.0f, 0.0f); // Both moving in the same direction
+        c1->collisionRadius = 5.0f;
+        c1->restitution = 0.8f;
+        auto* pc1 = em.AddComponent<PhysicsComponent>(obj1.id, std::move(c1));
+
+        auto& obj2 = em.CreateEntity("Ship2");
+        auto c2 = std::make_unique<PhysicsComponent>();
+        c2->mass = 100.0f;
+        c2->drag = 0.0f;
+        c2->angularDrag = 0.0f;
+        c2->position = Vector3(8.0f, 0.0f, 0.0f); // Overlap: distance 8 < radius sum 10
+        c2->velocity = Vector3(5.0f, 0.0f, 0.0f); // Same velocity as obj1 — zero relative vel
+        c2->collisionRadius = 5.0f;
+        c2->restitution = 0.8f;
+        auto* pc2 = em.AddComponent<PhysicsComponent>(obj2.id, std::move(c2));
+
+        physSys.Update(0.016f);
+
+        // After update, objects must be separated
+        float postDist = (pc2->position - pc1->position).length();
+        float minDist = pc1->collisionRadius + pc2->collisionRadius;
+        bool separated = postDist >= minDist - 0.1f;
+        TEST("Same-velocity embedded ships separated", separated);
+
+        // After separation obj1 should be moving slower along x (pushed back)
+        // and obj2 should be moving faster (pushed forward)
+        bool obj1Slower = pc1->velocity.x < 5.0f;
+        bool obj2Faster = pc2->velocity.x > 5.0f;
+        TEST("Embedded ship1 pushed backward", obj1Slower);
+        TEST("Embedded ship2 pushed forward", obj2Faster);
+    }
+
+    // Test 6: Exactly coincident ships (distance == 0) do not deadlock
+    {
+        EntityManager em;
+        PhysicsSystem physSys(em);
+
+        auto& obj1 = em.CreateEntity("Ship1");
+        auto c1 = std::make_unique<PhysicsComponent>();
+        c1->mass = 100.0f;
+        c1->drag = 0.0f;
+        c1->angularDrag = 0.0f;
+        c1->position = Vector3(0.0f, 0.0f, 0.0f);
+        c1->velocity = Vector3(0.0f, 0.0f, 0.0f);
+        c1->collisionRadius = 5.0f;
+        auto* pc1 = em.AddComponent<PhysicsComponent>(obj1.id, std::move(c1));
+
+        auto& obj2 = em.CreateEntity("Ship2");
+        auto c2 = std::make_unique<PhysicsComponent>();
+        c2->mass = 100.0f;
+        c2->drag = 0.0f;
+        c2->angularDrag = 0.0f;
+        c2->position = Vector3(0.0f, 0.0f, 0.0f); // Exactly coincident
+        c2->velocity = Vector3(0.0f, 0.0f, 0.0f);
+        c2->collisionRadius = 5.0f;
+        auto* pc2 = em.AddComponent<PhysicsComponent>(obj2.id, std::move(c2));
+
+        // Should not crash or deadlock; objects should gain a separating velocity
+        physSys.Update(0.016f);
+        physSys.Update(0.016f);
+
+        float postDist = (pc2->position - pc1->position).length();
+        bool startedSeparating = postDist > 0.0f;
+        TEST("Coincident ships start separating", startedSeparating);
+    }
+}
+
+// ===================================================================
+// FrustumCuller tests
+// ===================================================================
+
+static void TestFrustumCuller()
+{
+    std::cout << "[FrustumCuller]\n";
+
+    // Test 1: Not valid before ExtractPlanes
+    {
+        FrustumCuller culler;
+        TEST("FrustumCuller not valid before extract", !culler.IsValid());
+    }
+
+    // Helper: build a VP matrix for a camera at (0,0,5) looking at the origin
+    // with a 90-degree vertical FOV, square aspect ratio, near=0.1, far=200.
+    // VP = Projection * View
+    const float kFovY   = 3.14159265f * 0.5f; // 90 degrees
+    const float kAspect = 1.0f;
+    const float kNear   = 0.1f;
+    const float kFar    = 200.0f;
+
+    Matrix4 view = Matrix4::LookAt({0.0f, 0.0f, 5.0f},
+                                   {0.0f, 0.0f, 0.0f},
+                                   {0.0f, 1.0f, 0.0f});
+    Matrix4 proj = Matrix4::Perspective(kFovY, kAspect, kNear, kFar);
+    Matrix4 vp   = proj * view;
+
+    FrustumCuller culler;
+    culler.ExtractPlanes(vp);
+
+    // Test 2: Valid after ExtractPlanes
+    TEST("FrustumCuller valid after extract", culler.IsValid());
+
+    // Test 3: Object directly in front of camera (at the origin) is visible
+    {
+        bool vis = culler.TestSphere({0.0f, 0.0f, 0.0f}, 1.0f);
+        TEST("FrustumCuller origin sphere visible", vis);
+    }
+
+    // Test 4: Object way beyond the far plane is culled
+    {
+        // Camera at z=5 looking toward z=0; far plane at z = 5 - 200 = -195
+        bool vis = culler.TestSphere({0.0f, 0.0f, -500.0f}, 1.0f);
+        TEST("FrustumCuller far object culled", !vis);
+    }
+
+    // Test 5: Object behind the camera is culled
+    {
+        // Behind the camera means z > 5 (eye is at z=5, looks toward -Z)
+        bool vis = culler.TestSphere({0.0f, 0.0f, 100.0f}, 1.0f);
+        TEST("FrustumCuller behind-camera object culled", !vis);
+    }
+
+    // Test 6: Object far off to the side is culled
+    {
+        // With 90-degree FOV and camera looking at z=0 from z=5,
+        // the half-width at the origin is ~5 units.  x=1000 is far outside.
+        bool vis = culler.TestSphere({1000.0f, 0.0f, 0.0f}, 1.0f);
+        TEST("FrustumCuller side object culled", !vis);
+    }
+
+    // Test 7: A large sphere that straddles the far plane still passes
+    // (only fully outside spheres are culled)
+    {
+        // Center at z = -190 (just inside far plane), large radius.
+        // The sphere extends beyond the far plane but its center is inside.
+        bool vis = culler.TestSphere({0.0f, 0.0f, -190.0f}, 5.0f);
+        TEST("FrustumCuller straddling-far sphere visible", vis);
+    }
+
+    // Test 8: TestAABB — box at the origin is visible
+    {
+        bool vis = culler.TestAABB({-1.0f, -1.0f, -1.0f}, {1.0f, 1.0f, 1.0f});
+        TEST("FrustumCuller origin AABB visible", vis);
+    }
+
+    // Test 9: TestAABB — box far behind the camera is culled
+    {
+        bool vis = culler.TestAABB({-1.0f, -1.0f, 50.0f}, {1.0f, 1.0f, 52.0f});
+        TEST("FrustumCuller behind-camera AABB culled", !vis);
+    }
+
+    // Test 10: TestAABB — box far beyond the far plane is culled
+    {
+        bool vis = culler.TestAABB({-1.0f, -1.0f, -600.0f}, {1.0f, 1.0f, -500.0f});
+        TEST("FrustumCuller far AABB culled", !vis);
+    }
+
+    // Test 11: TestAABB — box far off to the side is culled
+    {
+        bool vis = culler.TestAABB({900.0f, -1.0f, -1.0f}, {902.0f, 1.0f, 1.0f});
+        TEST("FrustumCuller side AABB culled", !vis);
+    }
+
+    // Test 12: Separate culler instance is independent
+    {
+        FrustumCuller c2;
+        TEST("Second culler independent not valid", !c2.IsValid());
+        c2.ExtractPlanes(vp);
+        bool vis = c2.TestSphere({0.0f, 0.0f, 0.0f}, 1.0f);
+        TEST("Second culler origin visible", vis);
+    }
+
+    // Test 13: Extracting planes a second time updates the culler
+    {
+        // Use an orthographic projection looking in a different direction
+        Matrix4 view2 = Matrix4::LookAt({100.0f, 0.0f, 0.0f},
+                                        {0.0f,   0.0f, 0.0f},
+                                        {0.0f,   1.0f, 0.0f});
+        Matrix4 proj2 = Matrix4::Perspective(kFovY, kAspect, kNear, kFar);
+        Matrix4 vp2   = proj2 * view2;
+
+        FrustumCuller c3;
+        c3.ExtractPlanes(vp);   // Original view
+        bool visOriginal = c3.TestSphere({0.0f, 0.0f, 0.0f}, 1.0f);
+
+        c3.ExtractPlanes(vp2);  // New view from side
+        // Origin is still inside this frustum (camera at x=100 looking at origin)
+        bool visNew = c3.TestSphere({0.0f, 0.0f, 0.0f}, 1.0f);
+
+        TEST("FrustumCuller re-extract first view origin visible", visOriginal);
+        TEST("FrustumCuller re-extract second view origin visible", visNew);
     }
 }
 
@@ -17160,6 +17366,7 @@ int main() {
     TestPhysicsSystemTrigger();
     TestCollisionLayerGameEvents();
     TestPhysicsCollisionSeparation();
+    TestFrustumCuller();
     TestNavGraphAddNode();
     TestNavGraphAddEdge();
     TestNavGraphDirectedEdge();
