@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "policy": "PINNED_APPROVED_HASHED_CACHE",
+  "cacheRoot": "content/cache/sources",
+  "quarantineRoot": "content/quarantine",
+  "certificationRoot": "artifacts/gate",
+  "lockRoot": "content/cache/locks",
+  "requirements": {
+    "httpsOnly": true,
+    "explicitLicense": true,
+    "immutableRevision": true,
+    "hashFetchedPayloads": true,
+    "preserveProvenance": true,
+    "offlineAfterBootstrap": true,
+    "runtimeSourceParsingForbidden": true
+  },
+  "retention": {
+    "sourceSnapshots": 12,
+    "gateCertifications": 40,
+    "updateTransactions": 40,
+    "failedIntakeArtifacts": 20
+  }
+}

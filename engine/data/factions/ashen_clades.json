@@ -1,0 +1,59 @@
+{
+  "id": "ashen_clades",
+  "displayName": "Ashen Clades",
+  "palette": {
+    "hull": "Naonite",
+    "armor": "Trinium",
+    "accent": "Amber"
+  },
+  "silhouette": {
+    "length": "Balanced",
+    "thickness": "Medium",
+    "symmetry": "Axial",
+    "mass": "Distributed",
+    "void": "Channelled"
+  },
+  "shapeLanguage": {
+    "allowed": ["Wedge", "Corner"],
+    "wedgeChance": 0.3,
+    "cornerChance": 0.3
+  },
+  "bias": {
+    "armor": 0.8,
+    "engine": 1.1,
+    "weapons": 1.4
+  },
+  "combatAI": {
+    "preferredRange": "Close",
+    "maneuver": "Burst",
+    "priority": "HighestValue",
+    "retreat": "AtQuarterHP"
+  },
+  "fleets": {
+    "early": {
+      "name": "Strike Pack",
+      "composition": [
+        {"class": "Scout", "count": 2},
+        {"class": "Frigate", "count": 2}
+      ],
+      "formation": "Loose"
+    },
+    "mid": {
+      "name": "Breaker Swarm",
+      "composition": [
+        {"class": "Destroyer", "count": 2},
+        {"class": "Frigate", "count": 4}
+      ],
+      "formation": "Swarm"
+    },
+    "late": {
+      "name": "Alpha Horde",
+      "composition": [
+        {"class": "Battlecruiser", "count": 1},
+        {"class": "Destroyer", "count": 3},
+        {"class": "Frigate", "count": 5}
+      ],
+      "formation": "Wave"
+    }
+  }
+}

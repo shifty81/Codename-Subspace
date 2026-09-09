@@ -1,0 +1,99 @@
+{
+  "schemaVersion": 2,
+  "id": "projectops.havenwild-absorption.subspace.v2",
+  "donor": {
+    "repository": "shifty81/Havenwild",
+    "branch": "main",
+    "files": [
+      {
+        "path": "tools/control/HavenwildTools.ps1",
+        "role": "root control host/action tracking/menu",
+        "treatment": "REFRACTOR into Subspace root host + ProjectOpsCommon; no Havenwild naming retained"
+      },
+      {
+        "path": "tools/control/ProjectCommandRegistry.ps1",
+        "sha": "45b4f6b37a73e547e2d78539ddae6a0a0a57c84a",
+        "role": "stable command registry",
+        "treatment": "ABSORB into project.control.json + generic registry"
+      },
+      {
+        "path": "tools/control/HavenwildGateAuthority.py",
+        "sha": "b6e8c07aa69b12d99b31a91dcf72a8c409b72508",
+        "role": "filesystem-owned GREEN/source authority",
+        "treatment": "ABSORB into ProjectSourceAuthority.py + ProjectOpsCommon"
+      },
+      {
+        "path": "tools/control/RepairGitWorkingCopy.py",
+        "sha": "b3753455e7087f8b63d05e17c3ff9cf04c61f801",
+        "role": "safe Git history adoption",
+        "treatment": "ABSORB/GENERALIZE into RepairGitWorkingCopy.py"
+      },
+      {
+        "path": "tools/control/ProjectShell.py",
+        "sha": "74a51720ceb5c40ca4642823ec0bfdc5ccd22419",
+        "role": "logged project shell + destructive guard",
+        "treatment": "ABSORB/GENERALIZE into ProjectShell.py"
+      },
+      {
+        "path": "tools/control/InvokeRootPatchIntake.ps1",
+        "sha": "878981cab25c1830324c8136577a3d332641057e",
+        "role": "transactional patch intake",
+        "treatment": "MERGE CONTRACT/VALIDATION IDEAS; retain stronger Subspace self-update transaction engine"
+      },
+      {
+        "path": "tools/control/PackageProject.ps1",
+        "sha": "e83844de75f3fc5466c28ba1ee4f7a81c45d8d42",
+        "role": "baseline/incremental/source packaging",
+        "treatment": "MERGE POLICY into single ProjectOps source authority; Subspace packaging consumes governed file set"
+      },
+      {
+        "path": "tools/control/AuditRoot.ps1",
+        "sha": "1d64e9d3fe417d489f535ae00d24d48f9891e4e3",
+        "role": "minimal root authority",
+        "treatment": "ABSORB into project.control rootPolicy + ProjectOpsRootAudit.ps1"
+      },
+      {
+        "path": "tools/control/WorkspaceMaintenance.ps1",
+        "sha": "0edb8b479d5a847017541551848e20fb4cf368e5",
+        "role": "cache/build repair",
+        "treatment": "ABSORB cache-repair behavior into ProjectOpsMaintenance.ps1"
+      },
+      {
+        "path": "tools/control/NormalizationAudit.ps1",
+        "sha": "0a04328fc697a746fb6469f585e2ed19dbea27f4",
+        "role": "detect duplicate/retired authorities",
+        "treatment": "ABSORB into ProjectOpsNormalizationAudit.ps1; enforce one authority and report parallel ownership/cache/root-policy drift"
+      },
+      {
+        "path": "tools/control/CreateRecoveryRollup.ps1",
+        "sha": "5e10dfb10614cccb69c1c1b1733e22d16953e281",
+        "role": "recovery packaging wrapper",
+        "treatment": "DEFER implementation until generic recovery artifact contract is normalized; current Subspace snapshots/undo remain authority"
+      }
+    ]
+  },
+  "normalizedAuthorities": {
+    "rootHost": "SubspaceTools.ps1",
+    "common": "tools/control/ProjectOpsCommon.psm1",
+    "compatibilityAdapter": "tools/control/ControlCenterCommon.ps1",
+    "commandRegistry": "project.control.json",
+    "commandReader": "tools/control/ProjectCommandRegistry.ps1",
+    "machineCli": "tools/control/ProjectOpsCli.py",
+    "sourceAuthority": "tools/control/ProjectSourceAuthority.py",
+    "rootAudit": "tools/control/ProjectOpsRootAudit.ps1",
+    "maintenance": "tools/control/ProjectOpsMaintenance.ps1",
+    "gitRepair": "tools/control/RepairGitWorkingCopy.py",
+    "shell": "tools/control/ProjectShell.py",
+    "treeStage": "tools/control/UniversalTreeStage.psm1",
+    "artifactRoot": "artifacts/",
+    "normalizationAudit": "tools/control/ProjectOpsNormalizationAudit.ps1"
+  },
+  "normalizationRules": [
+    "No Havenwild game-specific names, terrain validators or paths in generic ProjectOps authorities.",
+    "No second source-enumeration policy: source rollup, baseline, incremental handoff, GREEN fingerprint and normalized repository staging use ProjectSourceAuthority.",
+    "No second root-file allowlist: ProjectOpsRootAudit consumes projectOps.rootPolicy from project.control.json.",
+    "No Python bytecode/cache files in patches or governed source.",
+    "No PowerShell $args assignment in root/control implementations; named dispatch vectors only.",
+    "Existing stronger Subspace patch transaction/undo/self-update systems remain authoritative instead of being replaced by weaker donor copies."
+  ]
+}

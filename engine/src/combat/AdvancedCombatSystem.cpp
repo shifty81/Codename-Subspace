@@ -1,0 +1,10 @@
+#include "combat/AdvancedCombatSystem.h"
+#include <algorithm>
+namespace subspace {
+bool AdvancedCombatSystem::Register(const CombatWeaponSpec& spec,int initialAmmo){ if(spec.id.empty()||spec.damage<0||spec.cooldownSeconds<0||spec.magazineCapacity<0)return false;CombatWeaponRuntime r;r.spec=spec;r.ammo=initialAmmo<0?spec.magazineCapacity:std::clamp(initialAmmo,0,spec.magazineCapacity);weapons_[spec.id]=r;return true; }
+CombatFireResult AdvancedCombatSystem::Fire(const std::string& id,double availablePower){ CombatFireResult out;auto it=weapons_.find(id);if(it==weapons_.end()){out.reason="unknown weapon";return out;}auto& w=it->second;if(!w.enabled){out.reason="disabled";return out;}if(w.cooldownRemaining>0){out.reason="cooldown";return out;}if(w.spec.ammoPerShot>0&&w.ammo<w.spec.ammoPerShot){out.reason="ammo";return out;}if(availablePower<w.spec.powerPerShot){out.reason="power";return out;}w.ammo-=w.spec.ammoPerShot;w.cooldownRemaining=w.spec.cooldownSeconds;w.accumulatedHeat+=w.spec.heatPerShot;out.fired=true;out.damage=w.spec.damage;out.heatGenerated=w.spec.heatPerShot;out.powerConsumed=w.spec.powerPerShot;out.ammoConsumed=w.spec.ammoPerShot;return out; }
+void AdvancedCombatSystem::Tick(double seconds){ if(seconds<=0)return;for(auto& kv:weapons_){auto& w=kv.second;w.cooldownRemaining=std::max(0.0,w.cooldownRemaining-seconds);w.accumulatedHeat=std::max(0.0,w.accumulatedHeat-seconds*0.5);} }
+bool AdvancedCombatSystem::Reload(const std::string& id,int rounds){auto it=weapons_.find(id);if(it==weapons_.end()||rounds<=0)return false;int before=it->second.ammo;it->second.ammo=std::min(it->second.spec.magazineCapacity,before+rounds);return it->second.ammo>before;}
+bool AdvancedCombatSystem::SetEnabled(const std::string& id,bool enabled){auto it=weapons_.find(id);if(it==weapons_.end())return false;it->second.enabled=enabled;return true;}
+const CombatWeaponRuntime* AdvancedCombatSystem::Get(const std::string& id) const {auto it=weapons_.find(id);return it==weapons_.end()?nullptr:&it->second;}
+}

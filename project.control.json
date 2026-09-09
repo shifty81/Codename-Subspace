@@ -1,0 +1,922 @@
+{
+  "schemaVersion": 1,
+  "id": "codename-subspace",
+  "name": "Codename Subspace",
+  "type": "game",
+  "adapter": "subspace-native-cpp",
+  "rootLauncher": "SubspaceTools.cmd",
+  "runtimeAuthority": "native-cpp",
+  "stateDirectory": ".subspace",
+  "commands": [
+    {
+      "key": "project.status",
+      "label": "Project status",
+      "category": "project",
+      "mutates": false,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "status"
+      ]
+    },
+    {
+      "key": "project.health",
+      "label": "Project health",
+      "category": "project",
+      "mutates": false,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "health"
+      ]
+    },
+    {
+      "key": "project.environment",
+      "label": "Environment/toolchain status",
+      "category": "project",
+      "mutates": false,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "environment-status"
+      ]
+    },
+    {
+      "key": "project.audit",
+      "label": "Project audit package",
+      "category": "audit",
+      "mutates": false,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "project-audit-package"
+      ]
+    },
+    {
+      "key": "build.full",
+      "label": "Full quality gate (incremental authoritative GREEN)",
+      "category": "build",
+      "mutates": true,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "full-gate"
+      ]
+    },
+    {
+      "key": "build.fast",
+      "label": "Fast development gate",
+      "category": "build",
+      "mutates": true,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "fast-gate"
+      ]
+    },
+    {
+      "key": "build.native",
+      "label": "Native render build",
+      "category": "build",
+      "mutates": true,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "build-render"
+      ]
+    },
+    {
+      "key": "test.native",
+      "label": "Native tests",
+      "category": "test",
+      "mutates": true,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "test"
+      ]
+    },
+    {
+      "key": "run.game",
+      "label": "Run game",
+      "category": "run",
+      "mutates": false,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "run-game"
+      ]
+    },
+    {
+      "key": "run.shipyard",
+      "label": "Run Shipyard Dev Studio",
+      "category": "run",
+      "mutates": false,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "run-shipyard"
+      ]
+    },
+    {
+      "key": "run.smoke",
+      "label": "Run native smoke",
+      "category": "run",
+      "mutates": false,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "run-smoke"
+      ]
+    },
+    {
+      "key": "gate.full",
+      "label": "Full quality gate (incremental authoritative GREEN)",
+      "category": "gate",
+      "mutates": true,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "full-gate"
+      ]
+    },
+    {
+      "key": "gate.clean-full",
+      "label": "Clean-room Full quality gate",
+      "category": "gate",
+      "mutates": true,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "clean-full-gate"
+      ]
+    },
+    {
+      "key": "gate.fast",
+      "label": "Run Fast Development Gate",
+      "category": "gate",
+      "mutates": true,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "fast-gate"
+      ]
+    },
+    {
+      "key": "patch.status",
+      "label": "Patch/update status",
+      "category": "updates",
+      "mutates": false,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "patch-status"
+      ]
+    },
+    {
+      "key": "patch.preview",
+      "label": "Preview root/inbox patch intake",
+      "category": "updates",
+      "mutates": false,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "preview-inbox"
+      ]
+    },
+    {
+      "key": "patch.apply",
+      "label": "Apply root/inbox patches",
+      "category": "updates",
+      "mutates": true,
+      "requiresConfirmation": true,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "apply-inbox"
+      ]
+    },
+    {
+      "key": "recovery.undo-last",
+      "label": "Undo last applied root patch",
+      "category": "recovery",
+      "mutates": true,
+      "requiresConfirmation": true,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "undo-last-patch"
+      ]
+    },
+    {
+      "key": "package.source-rollup",
+      "label": "Package code/source rollup",
+      "category": "package",
+      "mutates": true,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "source-rollup"
+      ]
+    },
+    {
+      "key": "package.asset-rollup",
+      "label": "Package asset/content rollup",
+      "category": "package",
+      "mutates": true,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "asset-rollup"
+      ]
+    },
+    {
+      "key": "package.baseline",
+      "label": "Capture packaging baseline",
+      "category": "package",
+      "mutates": true,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "capture-baseline"
+      ]
+    },
+    {
+      "key": "package.incremental",
+      "label": "Create incremental handoff",
+      "category": "package",
+      "mutates": true,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "incremental-handoff"
+      ]
+    },
+    {
+      "key": "diagnostics.bundle",
+      "label": "Create debug bundle",
+      "category": "diagnostics",
+      "mutates": true,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "debug-bundle"
+      ]
+    },
+    {
+      "key": "artifacts.index",
+      "label": "Refresh artifact index",
+      "category": "artifacts",
+      "mutates": true,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "artifact-index"
+      ]
+    },
+    {
+      "key": "dependencies.status",
+      "label": "Dependency status",
+      "category": "dependencies",
+      "mutates": false,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "dependency-status"
+      ]
+    },
+    {
+      "key": "audit.root",
+      "label": "Root cleanliness audit",
+      "category": "audit",
+      "mutates": false,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "root-audit"
+      ]
+    },
+    {
+      "key": "audit.continuity",
+      "label": "Pass/source continuity audit",
+      "category": "audit",
+      "mutates": false,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "pass-continuity"
+      ]
+    },
+    {
+      "key": "source.authority",
+      "label": "ProjectOps governed-source snapshot",
+      "category": "source",
+      "mutates": false,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "source-authority"
+      ]
+    },
+    {
+      "key": "git.status",
+      "label": "Git status",
+      "category": "git",
+      "mutates": false,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "git-status"
+      ]
+    },
+    {
+      "key": "git.history",
+      "label": "Git history",
+      "category": "git",
+      "mutates": false,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "git-history"
+      ]
+    },
+    {
+      "key": "git.repair-working-copy",
+      "label": "Safely attach/repair Git history without replacing source",
+      "category": "git",
+      "mutates": true,
+      "requiresConfirmation": true,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "git-repair"
+      ]
+    },
+    {
+      "key": "repo.audit",
+      "label": "Audit GitHub repository authority",
+      "category": "repository",
+      "mutates": false,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "repo-authority-audit"
+      ]
+    },
+    {
+      "key": "repo.prepare",
+      "label": "Prepare normalized GitHub authority",
+      "category": "repository",
+      "mutates": true,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "repo-authority-prepare"
+      ]
+    },
+    {
+      "key": "repo.publish",
+      "label": "Publish last GREEN normalized main",
+      "category": "repository",
+      "mutates": true,
+      "requiresConfirmation": true,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "repo-authority-publish"
+      ]
+    },
+    {
+      "key": "projectops.inspect",
+      "label": "Inspect ProjectOps machine contract",
+      "category": "projectops",
+      "mutates": false,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "projectops-inspect"
+      ]
+    },
+    {
+      "key": "projectops.commands",
+      "label": "List ProjectOps commands",
+      "category": "projectops",
+      "mutates": false,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "projectops-commands"
+      ]
+    },
+    {
+      "key": "shell.menu",
+      "label": "Open logged project shell",
+      "category": "projectops",
+      "mutates": false,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "project-shell"
+      ]
+    },
+    {
+      "key": "maintenance.repair",
+      "label": "Repair/normalize root tooling",
+      "category": "maintenance",
+      "mutates": true,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "projectops-repair"
+      ]
+    },
+    {
+      "key": "audit.normalization",
+      "label": "ProjectOps normalization audit",
+      "category": "audit",
+      "mutates": true,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "projectops-normalization-audit"
+      ]
+    }
+  ],
+  "repository": {
+    "provider": "github",
+    "remote": "https://github.com/shifty81/Codename-Subspace.git",
+    "branch": "main",
+    "authorityPolicy": "green-gate-normalized",
+    "archivePreviousMain": true
+  },
+  "projectOps": {
+    "treeStage": {
+      "contract": "content/architecture/universal_tree_stage_v1.json",
+      "module": "tools/control/UniversalTreeStage.psm1",
+      "windowsBackend": "robocopy",
+      "portableFallback": "filesystem-copy",
+      "consumers": [
+        "source-rollup",
+        "asset-rollup",
+        "repository-normalization"
+      ]
+    },
+    "artifactLayout": {
+      "contract": "content/architecture/universal_artifact_layout_v1.json",
+      "root": "artifacts",
+      "debug": "artifacts/debug",
+      "source": "artifacts/source",
+      "assets": "artifacts/assets",
+      "patches": "artifacts/patches",
+      "logs": "artifacts/logs",
+      "qualityGates": "artifacts/gates/quality",
+      "baselines": "artifacts/baselines",
+      "failureHandoff": {
+        "autoOpenDebugFolder": true,
+        "selectCurrentBundle": true
+      },
+      "commonModule": "tools/control/ProjectOpsCommon.psm1",
+      "certifications": "artifacts/gates/certifications",
+      "audits": "artifacts/audits",
+      "repository": "artifacts/repository",
+      "rootUtility": "artifacts/root-utility",
+      "temporaryStaging": "artifacts/temp"
+    },
+    "commandRegistry": {
+      "authority": "project.control.json",
+      "reader": "tools/control/ProjectCommandRegistry.ps1",
+      "stableKeyPolicy": "dot-separated project-neutral command keys",
+      "commonModule": "tools/control/ProjectOpsCommon.psm1"
+    },
+    "machineApi": {
+      "cli": "tools/control/ProjectOpsCli.py",
+      "discovery": "walk-up-to-project.control.json",
+      "commands": [
+        "inspect",
+        "commands",
+        "describe",
+        "execute",
+        "gate",
+        "artifacts",
+        "validate"
+      ],
+      "futureOwner": "Forge / Cortex ProjectOps"
+    },
+    "sourceAuthority": {
+      "contract": "content/architecture/projectops_source_authority_v1.json",
+      "implementation": "tools/control/ProjectSourceAuthority.py",
+      "independentOfGitIgnore": true,
+      "greenGateFields": [
+        "sourceFingerprint",
+        "sourcePathCount",
+        "sourceAuthorityId"
+      ],
+      "commonModule": "tools/control/ProjectOpsCommon.psm1",
+      "singleAuthorityConsumers": [
+        "full-quality-gate",
+        "source-rollup",
+        "packaging-baseline",
+        "incremental-handoff",
+        "normalized-repository-staging",
+        "git-working-copy-repair"
+      ]
+    },
+    "shell": {
+      "implementation": "tools/control/ProjectShell.py",
+      "logs": "artifacts/logs/commands",
+      "destructiveConfirmation": true
+    },
+    "gitRepair": {
+      "implementation": "tools/control/RepairGitWorkingCopy.py",
+      "preservesWorkingSource": true,
+      "divergenceRequiresGreen": true
+    },
+    "common": {
+      "module": "tools/control/ProjectOpsCommon.psm1",
+      "role": "shared project-neutral root operations authority",
+      "consumers": [
+        "root-control-host",
+        "control-center-adapters",
+        "source-rollup",
+        "packaging-baseline",
+        "repository-normalization",
+        "root-audit",
+        "maintenance",
+        "Cortex/Forge ProjectOps"
+      ]
+    },
+    "rootPolicy": {
+      "requiredFiles": [
+        ".gitignore",
+        "README.md",
+        "project.control.json",
+        "SubspaceTools.cmd",
+        "SubspaceTools.ps1"
+      ],
+      "allowedFiles": [
+        ".editorconfig",
+        ".gitattributes",
+        ".gitignore",
+        "CHANGELOG.md",
+        "CONTRIBUTING.md",
+        "CREDITS.md",
+        "Dockerfile",
+        "InstallSubspaceTools.cmd",
+        "LICENSE",
+        "Makefile",
+        "MANIFEST.md",
+        "README.md",
+        "project.control.json",
+        "SubspaceTools.cmd",
+        "SubspaceTools.ps1"
+      ],
+      "allowedDirectories": [
+        ".git",
+        ".github",
+        ".subspace",
+        ".vs",
+        "artifacts",
+        "assets",
+        "AvorionLike",
+        "content",
+        "docs",
+        "engine",
+        "GameData",
+        "implementation",
+        "scripts",
+        "tools",
+        "updates",
+        "visual_acceptance",
+        "build",
+        "reference",
+        "out"
+      ],
+      "legacyFiles": [
+        "AvorionLike.sln",
+        "FILE_SHA256S.txt",
+        "PASS472_VALIDATION.json",
+        "PATCH_MANIFEST.json",
+        "PATCH_MANIFEST.md",
+        "PATCH_MANIFEST_PASS431_450.json",
+        "PATCH_MANIFEST_PASS513_522.md",
+        "PATCH_MANIFEST_PASS523_532.md",
+        "PATCH_MANIFEST_PASS532R1.md",
+        "PATCH_MANIFEST_R3A.json",
+        "PATCH_MANIFEST_R3V1.json",
+        "SHA256SUMS.txt",
+        "SHA256SUMS_R3V1.txt",
+        "SOURCE_ROLLUP_MANIFEST.txt",
+        "VALIDATION.txt"
+      ],
+      "legacyDirectories": [
+        {
+          "path": "AvorionLike",
+          "mode": "local-reference-only",
+          "sourceAuthority": "excluded",
+          "repositoryAuthority": "excluded",
+          "note": "Retained only as local migration/reference source; never current native project authority."
+        }
+      ],
+      "forbiddenGeneratedRoots": [
+        "dist",
+        "logs",
+        "-Root"
+      ],
+      "legacyMigrationTarget": "artifacts/legacy/root-residue"
+    },
+    "maintenance": {
+      "implementation": "tools/control/ProjectOpsMaintenance.ps1",
+      "rootAudit": "tools/control/ProjectOpsRootAudit.ps1",
+      "cacheCleanup": [
+        "__pycache__",
+        ".pytest_cache",
+        ".mypy_cache"
+      ],
+      "rootPolicy": "project.control.json#projectOps.rootPolicy",
+      "normalizationAudit": "tools/control/ProjectOpsNormalizationAudit.ps1"
+    },
+    "donorNormalization": {
+      "contract": "content/architecture/projectops_havenwild_absorption_v2.json",
+      "principle": "absorb proven behavior into shared authorities; do not retain parallel Havenwild implementations"
+    },
+    "buildAuthority": {
+      "kind": "cmake-native-cpp",
+      "workspace": "engine",
+      "cmake": "engine/CMakeLists.txt",
+      "entryPoint": "engine/src/main.cpp",
+      "runtimeTarget": "subspace_game",
+      "legacyManagedSolution": {
+        "path": "AvorionLike.sln",
+        "status": "retired-root-residue",
+        "requiredForBuild": false
+      }
+    },
+    "certificationAcceleration": {
+      "schemaVersion": 1,
+      "fullGateAuthority": "incremental-authoritative",
+      "cleanRoomAction": "clean-full-gate",
+      "parallelBuild": true,
+      "parallelCTest": true,
+      "parallelJobsEnvironmentOverride": "SUBSPACE_PARALLEL_JOBS",
+      "parallelJobsAutomaticCap": 16,
+      "staticCertificationRunner": "tools/control/ProjectOpsStaticCertification.cmake",
+      "staticGateDirectory": "tools/control/static-gates",
+      "futureToolingGatesMustNotModifyNativeCMakeGraph": true,
+      "successDebugBundle": "on-demand",
+      "failureDebugBundle": "automatic-and-open-selected",
+      "certificationRecordRequiredForPass": true,
+      "cleanRoomUseCases": [
+        "release",
+        "toolchain change",
+        "dependency change requiring clean rebuild",
+        "cache-integrity investigation",
+        "explicit operator request"
+      ]
+    },
+    "powerShellCompatibility": {
+      "schemaVersion": 1,
+      "rootLauncherBaseline": "Windows PowerShell 5.1 compatible",
+      "preferredModernHost": "PowerShell 7+",
+      "supportedHosts": [
+        "Windows PowerShell 5.1",
+        "PowerShell 7+"
+      ],
+      "nativeProcessPolicy": {
+        "preferred": "ProcessStartInfo.ArgumentList when available",
+        "fallback": "ProcessStartInfo.Arguments with ProjectOps Windows argv quoting",
+        "stderr": "captured independently from PowerShell error stream",
+        "exitCode": "authoritative"
+      }
+    }
+  }
+}

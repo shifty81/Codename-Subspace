@@ -1,0 +1,35 @@
+{
+  "Id": "quest_explore_sector",
+  "Title": "First Explorer",
+  "Description": "Explore new space sectors and broaden your horizons. Visit 3 different sectors to earn rewards and prove your piloting skills.",
+  "Difficulty": "Easy",
+  "CanAbandon": true,
+  "IsRepeatable": false,
+  "TimeLimit": 0,
+  "Tags": ["exploration", "tutorial"],
+  "Objectives": [
+    {
+      "Type": "Visit",
+      "Description": "Visit 3 different sectors",
+      "Target": "sector",
+      "RequiredQuantity": 3,
+      "IsOptional": false,
+      "IsHidden": false,
+      "Prerequisites": []
+    }
+  ],
+  "Rewards": [
+    {
+      "Type": "Credits",
+      "RewardId": "credits",
+      "Amount": 2000,
+      "Description": "2,000 Credits"
+    },
+    {
+      "Type": "Experience",
+      "RewardId": "xp",
+      "Amount": 100,
+      "Description": "100 Experience Points"
+    }
+  ]
+}

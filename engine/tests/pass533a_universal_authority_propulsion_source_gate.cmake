@@ -1,0 +1,26 @@
+file(READ "${ROOT}/src/content/ShipyardModuleSystem.cpp" MOD)
+file(READ "${ROOT}/src/application/NativeBattlefieldRenderer.cpp" RENDER)
+file(READ "${ROOT}/src/content/ShipyardCanonicalAssetBridge.cpp" BRIDGE)
+foreach(token
+    "IsRearDriveSocketName"
+    "ValidatePropulsionPlacement"
+    "engine_wing_aft"
+    "main propulsion exhaust does not point ship-aft")
+  string(FIND "${MOD}" "${token}" found)
+  if(found EQUAL -1)
+    message(FATAL_ERROR "Pass533A propulsion source gate missing: ${token}")
+  endif()
+endforeach()
+string(FIND "${RENDER}" "SHIP FORWARD +Y" forward_marker)
+if(forward_marker EQUAL -1)
+  message(FATAL_ERROR "Pass533A source gate missing permanent SHIP FORWARD +Y marker")
+endif()
+string(FIND "${RENDER}" "PopulateRegistry" live_bridge)
+if(live_bridge EQUAL -1)
+  message(FATAL_ERROR "Pass533A source gate missing live CanonicalAsset registry bridge")
+endif()
+string(FIND "${BRIDGE}" "subspace.sourceFamily" canonical_metadata)
+if(canonical_metadata EQUAL -1)
+  message(FATAL_ERROR "Pass533A source gate missing canonical source-family metadata")
+endif()
+message(STATUS "Pass533A Universal Authority + Propulsion source gate passed")

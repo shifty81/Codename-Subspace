@@ -1,0 +1,5 @@
+#pragma once
+#include "content/ShipyardModuleSystem.h"
+#include <string>
+#include <vector>
+namespace subspace {struct ShipyardDesignDna{std::string id;float widthRatio=1,lengthRatio=1,heightRatio=1;bool bilateralSymmetry=false;int socketCount=0;float detailDensity=0;std::vector<std::string>allowedOperators,styleTags;};struct ShipyardDesignExemplar{std::string id,role;std::vector<ShipyardDesignDna>modules;float symmetryRatio=0,aftPropulsionRatio=0,commandForwardBias=0;};struct ShipyardDesignGrammar{std::string id,role;std::vector<std::string>preferredSemantics;float symmetryWeight=0,propulsionAftWeight=0,commandForwardWeight=0;int exemplarCount=0;};class ShipyardDesignDnaSystem{public:static ShipyardDesignDna Extract(const ShipyardModuleRecord&);static ShipyardDesignExemplar BuildExemplar(const std::string&,const std::string&,const std::vector<ShipyardModuleRecord>&,const ProceduralShipVisualRecipe&);static ShipyardDesignGrammar BuildGrammar(const std::string&,const std::vector<ShipyardDesignExemplar>&);};}

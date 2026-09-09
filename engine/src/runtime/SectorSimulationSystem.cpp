@@ -1,0 +1,5 @@
+#include "runtime/SectorSimulationSystem.h"
+#include <algorithm>
+namespace subspace {
+std::vector<SectorEvent> SectorSimulationSystem::Advance(DynamicSectorState& s,double hours) const {std::vector<SectorEvent> e;if(hours<=0)return e;s.tick++;double rate=s.lod==SimulationLod::Full?1.0:s.lod==SimulationLod::Regional?0.75:s.lod==SimulationLod::Aggregate?0.4:0.1;s.prosperity=std::clamp(s.prosperity+(s.security-s.piratePressure)*0.01*hours*rate,0.0,1.0);s.resourcePressure=std::clamp(s.resourcePressure+0.005*hours*rate,0.0,1.0);if(s.piratePressure>0.65)e.push_back({SectorEventType::PirateRaid,"pirate raid",s.piratePressure});if(s.resourcePressure>0.75)e.push_back({SectorEventType::Shortage,"resource shortage",s.resourcePressure});if(s.prosperity>0.75)e.push_back({SectorEventType::Convoy,"prosperity convoy",s.prosperity});if(s.security>0.8)e.push_back({SectorEventType::Patrol,"security patrol",s.security});if(s.tick%5==0)e.push_back({SectorEventType::Discovery,"new regional signature",0.2});return e;}
+}

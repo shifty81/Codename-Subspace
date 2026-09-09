@@ -1,0 +1,4 @@
+#include "core/persistence/SaveRecoverySystem.h"
+#include <iomanip>
+#include <sstream>
+namespace subspace { std::string SaveRecoverySystem::Checksum(const std::string&p){std::uint64_t h=1469598103934665603ULL;for(unsigned char c:p){h^=c;h*=1099511628211ULL;}std::ostringstream s;s<<std::hex<<std::setw(16)<<std::setfill('0')<<h;return s.str();} SaveRecoveryEnvelope SaveRecoverySystem::Wrap(const std::string&p,const std::string&s) const {return{1,p,Checksum(p),s.empty()?"autosave":s};} bool SaveRecoverySystem::Validate(const SaveRecoveryEnvelope&e) const {return e.schemaVersion>0&&!e.payload.empty()&&!e.recoverySlot.empty()&&e.checksum==Checksum(e.payload);} bool SaveRecoverySystem::CanMigrate(int v) const {return v>=1&&v<=2;} SaveRecoveryEnvelope SaveRecoverySystem::Migrate(SaveRecoveryEnvelope e) const {if(e.schemaVersion==1){e.schemaVersion=2;e.checksum=Checksum(e.payload);}return e;} }

@@ -1,0 +1,267 @@
+#include "core/Engine.h"
+
+#include "core/config/ConfigurationManager.h"
+#include "core/events/EventSystem.h"
+#include "core/events/GameEvents.h"
+#include "core/logging/Logger.h"
+#include "core/physics/PhysicsSystem.h"
+#include "combat/CombatSystem.h"
+#include "navigation/NavigationSystem.h"
+#include "quest/QuestSystem.h"
+#include "tutorial/TutorialSystem.h"
+#include "power/PowerSystem.h"
+#include "ai/AIDecisionSystem.h"
+#include "mining/MiningSystem.h"
+#include "rendering/ParticleSystem.h"
+#include "achievement/AchievementSystem.h"
+#include "ui/UISystem.h"
+#include "input/PlayerControlSystem.h"
+
+#include <algorithm>
+#include <iostream>
+#include <thread>
+
+namespace subspace {
+
+static constexpr const char* kVersion = "SubspaceEngine v0.3.0-native";
+static constexpr const char* kLogCategory = "Engine";
+
+// ---------------------------------------------------------------------------
+// Construction / destruction
+// ---------------------------------------------------------------------------
+
+Engine::Engine() = default;
+
+Engine::~Engine()
+{
+    if (_state != EngineState::Stopped && _state != EngineState::Uninitialized) {
+        Shutdown();
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Lifecycle
+// ---------------------------------------------------------------------------
+
+void Engine::Initialize()
+{
+    if (_state != EngineState::Uninitialized) return;
+
+    Logger::Instance().Info(kLogCategory, "Initializing engine...");
+
+    // Load configuration (best-effort; defaults are fine).
+    auto& config = ConfigurationManager::Instance();
+    config.ValidateConfiguration();
+
+    // Seed the galaxy generator from config.
+    _galaxyGenerator = GalaxyGenerator(config.GetDevelopment().galaxySeed);
+
+    // Register all gameplay systems into the ECS and initialize native runtime services.
+    RegisterSystems();
+    _runtimeServices.InitializeDefaults();
+
+    // Mark timestamps.
+    _startTime    = Clock::now();
+    _lastTickTime = _startTime;
+
+    _state = EngineState::Running;
+
+    // Notify listeners.
+    GameEvent evt;
+    evt.eventType = GameEvents::GameStarted;
+    EventSystem::Instance().Publish(GameEvents::GameStarted, evt);
+
+    Logger::Instance().Info(kLogCategory, "Engine initialized — entering Running state.");
+}
+
+void Engine::Run()
+{
+    if (_state != EngineState::Running && _state != EngineState::Paused) {
+        Logger::Instance().Warning(kLogCategory,
+            "Run() called but engine is not in Running/Paused state.");
+        return;
+    }
+
+    Logger::Instance().Info(kLogCategory, "Entering main loop...");
+
+    while (_state == EngineState::Running || _state == EngineState::Paused) {
+        Tick();
+
+        // Honour frame cap for testing.
+        if (_maxFrames > 0 && _frameCount >= _maxFrames) {
+            RequestShutdown();
+        }
+    }
+
+    Logger::Instance().Info(kLogCategory, "Main loop exited.");
+}
+
+void Engine::Tick()
+{
+    if (_state == EngineState::ShuttingDown || _state == EngineState::Stopped) return;
+
+    // Compute delta-time.
+    auto now = Clock::now();
+    float dt = std::chrono::duration<float>(now - _lastTickTime).count();
+    _lastTickTime = now;
+
+    // Clamp to avoid spiral-of-death on long hitches.
+    dt = std::min(dt, _fixedTimestep * 4.0f);
+
+    _lastDeltaTime = dt;
+    _elapsedSeconds = std::chrono::duration<double>(now - _startTime).count();
+
+    // 1. Process queued events.
+    EventSystem::Instance().ProcessQueuedEvents();
+
+    // 2. Update all systems (skipped while paused).
+    if (_state == EngineState::Running) {
+        _entityManager.UpdateSystems(dt);
+        _runtimeServices.Update(dt);
+    }
+
+    // 3. Render the frame (UI draw commands are collected even while paused
+    //    so that menus remain visible).
+    RenderFrame();
+
+    // One-frame input edges have now been consumed by all gameplay/UI systems.
+    _inputState.EndFrame();
+
+    ++_frameCount;
+}
+
+void Engine::RequestShutdown()
+{
+    if (_state == EngineState::Running || _state == EngineState::Paused) {
+        Logger::Instance().Info(kLogCategory, "Shutdown requested.");
+        _state = EngineState::ShuttingDown;
+    }
+}
+
+void Engine::Shutdown()
+{
+    if (_state == EngineState::Stopped) return;
+
+    Logger::Instance().Info(kLogCategory, "Shutting down...");
+
+    _entityManager.Shutdown();
+    _uiSystem = nullptr;
+    _playerControlSystem = nullptr;
+    _inputState.Clear();
+
+    EventSystem::Instance().ClearAllListeners();
+
+    _state = EngineState::Stopped;
+    Logger::Instance().Info(kLogCategory, "Engine shut down.");
+}
+
+void Engine::SetViewportSize(float width, float height)
+{
+    if (_uiSystem) {
+        _uiSystem->SetScreenSize(std::max(1.0f, width), std::max(1.0f, height));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// State helpers
+// ---------------------------------------------------------------------------
+
+void Engine::Pause()
+{
+    if (_state == EngineState::Running) {
+        _state = EngineState::Paused;
+
+        GameEvent evt;
+        evt.eventType = GameEvents::GamePaused;
+        EventSystem::Instance().Publish(GameEvents::GamePaused, evt);
+
+        Logger::Instance().Info(kLogCategory, "Engine paused.");
+    }
+}
+
+void Engine::Resume()
+{
+    if (_state == EngineState::Paused) {
+        _state = EngineState::Running;
+
+        // Reset the tick clock so the first frame after un-pause doesn't
+        // have a huge delta.
+        _lastTickTime = Clock::now();
+
+        GameEvent evt;
+        evt.eventType = GameEvents::GameResumed;
+        EventSystem::Instance().Publish(GameEvents::GameResumed, evt);
+
+        Logger::Instance().Info(kLogCategory, "Engine resumed.");
+    }
+}
+
+// ---------------------------------------------------------------------------
+// System registration
+// ---------------------------------------------------------------------------
+
+void Engine::RegisterSystems()
+{
+    Logger::Instance().Debug(kLogCategory, "Registering systems...");
+
+    // Input/control must run before physics so forces are consumed in the same
+    // frame rather than arriving one simulation tick late.
+    auto playerControlPtr = std::make_unique<PlayerControlSystem>(_entityManager, _inputState);
+    _playerControlSystem = playerControlPtr.get();
+    _entityManager.RegisterSystem(std::move(playerControlPtr));
+
+    _entityManager.RegisterSystem(std::make_unique<PhysicsSystem>(_entityManager));
+    _entityManager.RegisterSystem(std::make_unique<CombatSystem>(_entityManager));
+    _entityManager.RegisterSystem(std::make_unique<NavigationSystem>());
+    _entityManager.RegisterSystem(std::make_unique<PowerSystem>());
+    _entityManager.RegisterSystem(std::make_unique<AIDecisionSystem>());
+    _entityManager.RegisterSystem(std::make_unique<MiningSystem>());
+    _entityManager.RegisterSystem(std::make_unique<QuestSystem>());
+    _entityManager.RegisterSystem(std::make_unique<TutorialSystem>());
+    _entityManager.RegisterSystem(std::make_unique<ParticleSystem>());
+    _entityManager.RegisterSystem(std::make_unique<AchievementSystem>());
+
+    auto uiSystemPtr = std::make_unique<UISystem>();
+    _uiSystem = uiSystemPtr.get();
+    _entityManager.RegisterSystem(std::move(uiSystemPtr));
+
+    Logger::Instance().Debug(kLogCategory, "All systems registered.");
+}
+
+// ---------------------------------------------------------------------------
+// Rendering
+// ---------------------------------------------------------------------------
+
+void Engine::RenderFrame()
+{
+    _uiRenderer.BeginFrame(
+        _uiSystem ? _uiSystem->GetScreenWidth()  : 1920.0f,
+        _uiSystem ? _uiSystem->GetScreenHeight() : 1080.0f);
+
+    if (_uiSystem) {
+        _uiSystem->Render(_uiRenderer);
+    }
+
+    _uiRenderer.EndFrame();
+}
+
+// ---------------------------------------------------------------------------
+// Version helpers
+// ---------------------------------------------------------------------------
+
+const char* Engine::GetVersionString()
+{
+    return kVersion;
+}
+
+void Engine::PrintVersionInfo()
+{
+    std::cout << kVersion << std::endl;
+}
+
+void engineInfo()
+{
+    Engine::PrintVersionInfo();
+}
+
+} // namespace subspace

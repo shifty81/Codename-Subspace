@@ -1,0 +1,567 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!-- ================================================================== -->
+  <!-- Project configurations                                              -->
+  <!-- ================================================================== -->
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+
+  <!-- ================================================================== -->
+  <!-- Global properties                                                   -->
+  <!-- ================================================================== -->
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{CD7389A1-1C6F-4276-843C-34CCCF05573A}</ProjectGuid>
+    <RootNamespace>SubspaceEngine</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>SubspaceEngine</ProjectName>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <!-- ================================================================== -->
+  <!-- Configuration type: Static Library                                  -->
+  <!-- ================================================================== -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <!-- ================================================================== -->
+  <!-- Output directories                                                  -->
+  <!-- ================================================================== -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <OutDir>$(SolutionDir)out\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)obj\$(ProjectName)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <OutDir>$(SolutionDir)out\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)obj\$(ProjectName)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+
+  <!-- ================================================================== -->
+  <!-- Compiler / linker settings                                          -->
+  <!-- ================================================================== -->
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_LIB;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_LIB;NOMINMAX;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(ProjectDir)include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <!-- ================================================================== -->
+  <!-- Source files                                                        -->
+  <!-- ================================================================== -->
+  <ItemGroup>
+    <ClCompile Include="src\achievement\AchievementSystem.cpp" />
+    <ClCompile Include="src\ai\AIDecisionSystem.cpp" />
+    <ClCompile Include="src\ai\AIShipBuilder.cpp" />
+    <ClCompile Include="src\ai\AISteeringSystem.cpp" />
+    <ClCompile Include="src\audio\AudioSystem.cpp" />
+    <ClCompile Include="src\combat\CombatSystem.cpp" />
+    <ClCompile Include="src\combat\LootSystem.cpp" />
+    <ClCompile Include="src\combat\ShieldSystem.cpp" />
+    <ClCompile Include="src\combat\StatusEffectSystem.cpp" />
+    <ClCompile Include="src\combat\TargetLockSystem.cpp" />
+    <ClCompile Include="src\core\Engine.cpp" />
+    <ClCompile Include="src\core\Math.cpp" />
+    <ClCompile Include="src\core\config\ConfigurationManager.cpp" />
+    <ClCompile Include="src\core\ecs\EntityManager.cpp" />
+    <ClCompile Include="src\core\events\EventSystem.cpp" />
+    <ClCompile Include="src\core\logging\Logger.cpp" />
+    <ClCompile Include="src\core\persistence\SaveGameManager.cpp" />
+    <ClCompile Include="src\core\physics\Octree.cpp" />
+    <ClCompile Include="src\core\physics\PhysicsComponent.cpp" />
+    <ClCompile Include="src\core\physics\PhysicsSystem.cpp" />
+    <ClCompile Include="src\core\physics\SpatialHash.cpp" />
+    <ClCompile Include="src\core\resources\Inventory.cpp" />
+    <ClCompile Include="src\crafting\CraftingSystem.cpp" />
+    <ClCompile Include="src\crafting\RefinerySystem.cpp" />
+    <ClCompile Include="src\crew\CrewSystem.cpp" />
+    <ClCompile Include="src\debug_tools\DebugRenderer.cpp" />
+    <ClCompile Include="src\debug_tools\PerformanceMonitor.cpp" />
+    <ClCompile Include="src\debug_tools\ProductionPerformanceSystem.cpp" />
+    <ClCompile Include="src\audio\ProductionAudioCueSystem.cpp" />
+    <ClCompile Include="src\core\persistence\SaveRecoverySystem.cpp" />
+    <ClCompile Include="src\input\InputBindingProfile.cpp" />
+    <ClCompile Include="src\interior\InteriorInteractionSystem.cpp" />
+    <ClCompile Include="src\station\StationActivityPresentationSystem.cpp" />
+    <ClCompile Include="src\procedural\RegionStreamingScheduler.cpp" />
+    <ClCompile Include="src\content\ThirdPartyAssetIntakeSystem.cpp" />
+    <ClCompile Include="src\content\ShipyardModuleSystem.cpp" />
+    <ClCompile Include="src\content\ShipyardCertificationSystem.cpp" />
+    <ClCompile Include="src\developer\AssetProvenanceManifest.cpp" />
+    <ClCompile Include="src\interior\ModularInteriorKitSystem.cpp" />
+    <ClCompile Include="src\interior\InteriorConstructionSystem.cpp" />
+    <ClCompile Include="src\diplomacy\DiplomacySystem.cpp" />
+    <ClCompile Include="src\factions\FactionProfile.cpp" />
+    <ClCompile Include="src\factions\SilhouetteProfile.cpp" />
+    <ClCompile Include="src\fleet\FleetCommandSystem.cpp" />
+    <ClCompile Include="src\formation\FormationSystem.cpp" />
+    <ClCompile Include="src\hangar\HangarSystem.cpp" />
+    <ClCompile Include="src\input\InputState.cpp" />
+    <ClCompile Include="src\input\PlayerControlSystem.cpp" />
+    <ClCompile Include="src\inventory\InventorySystem.cpp" />
+    <ClCompile Include="src\mining\MiningSystem.cpp" />
+    <ClCompile Include="src\mining\AsteroidFractureSystem.cpp" />
+    <ClCompile Include="src\mining\MiningSalvageLoop.cpp" />
+    <ClCompile Include="src\navigation\NavigationSystem.cpp" />
+    <ClCompile Include="src\navigation\Pathfinding.cpp" />
+    <ClCompile Include="src\navigation\PathfindingComponent.cpp" />
+    <ClCompile Include="src\navigation\PathfindingSystem.cpp" />
+    <ClCompile Include="src\navigation\WormholeSystem.cpp" />
+    <ClCompile Include="src\networking\BuildCommand.cpp" />
+    <ClCompile Include="src\networking\NetworkSystem.cpp" />
+    <ClCompile Include="src\notification\NotificationSystem.cpp" />
+    <ClCompile Include="src\power\PowerSystem.cpp" />
+    <ClCompile Include="src\procedural\GalaxyGenerator.cpp" />
+    <ClCompile Include="src\quest\QuestSystem.cpp" />
+    <ClCompile Include="src\rendering\GhostRenderer.cpp" />
+    <ClCompile Include="src\rendering\ParticleSystem.cpp" />
+    <ClCompile Include="src\rendering\PostProcessingSystem.cpp" />
+    <ClCompile Include="src\rendering\RenderingConfiguration.cpp" />
+    <ClCompile Include="src\rendering\ShadowSystem.cpp" />
+    <ClCompile Include="src\rendering\ShipRenderer.cpp" />
+    <ClCompile Include="src\rendering\SolarPresentationSystem.cpp" />
+    <ClCompile Include="src\rendering\StrategicBattlefieldPresentation.cpp" />
+    <ClCompile Include="src\rendering\StrategicCamera.cpp" />
+    <ClCompile Include="src\rendering\StrategicViewProjection.cpp" />
+    <ClCompile Include="src\rendering\SpaceMaterialSystem.cpp" />
+    <ClCompile Include="src\rendering\PlanetSurfaceSystem.cpp" />
+    <ClCompile Include="src\rendering\ProceduralVisualVariantSystem.cpp" />
+    <ClCompile Include="src\reputation\ReputationSystem.cpp" />
+    <ClCompile Include="src\research\ResearchSystem.cpp" />
+    <ClCompile Include="src\rpg\DeathLossSystem.cpp" />
+    <ClCompile Include="src\rpg\ProgressionSystem.cpp" />
+    <ClCompile Include="src\salvage\SalvageSystem.cpp" />
+    <ClCompile Include="src\scanning\ScanningSystem.cpp" />
+    <ClCompile Include="src\scripting\ScriptingSystem.cpp" />
+    <ClCompile Include="src\ship_editor\BlockPalette.cpp" />
+    <ClCompile Include="src\ship_editor\EditorAction.cpp" />
+    <ClCompile Include="src\ship_editor\EditorClipboard.cpp" />
+    <ClCompile Include="src\ship_editor\EditorGrid.cpp" />
+    <ClCompile Include="src\ship_editor\EditorSelection.cpp" />
+    <ClCompile Include="src\ship_editor\ShipEditorController.cpp" />
+    <ClCompile Include="src\ship_editor\ShipEditorState.cpp" />
+    <ClCompile Include="src\ship_editor\ShipValidator.cpp" />
+    <ClCompile Include="src\ship_editor\ShipyardBuilderSystem.cpp" />
+    <ClCompile Include="src\ship_editor\SymmetrySystem.cpp" />
+    <ClCompile Include="src\ships\Block.cpp" />
+    <ClCompile Include="src\ships\BlockPlacement.cpp" />
+    <ClCompile Include="src\ships\Blueprint.cpp" />
+    <ClCompile Include="src\ships\CapabilitySystem.cpp" />
+    <ClCompile Include="src\ships\DamageComponent.cpp" />
+    <ClCompile Include="src\ships\ModuleDef.cpp" />
+    <ClCompile Include="src\ships\Ship.cpp" />
+    <ClCompile Include="src\ships\ShipArchetype.cpp" />
+    <ClCompile Include="src\ships\ShipClassSystem.cpp" />
+    <ClCompile Include="src\ships\ShipDamage.cpp" />
+    <ClCompile Include="src\ships\ShipStats.cpp" />
+    <ClCompile Include="src\ships\StructuralIntegrity.cpp" />
+    <ClCompile Include="src\ships\ThrusterLayoutSystem.cpp" />
+    <ClCompile Include="src\trade_route\IndustrialLogisticsSystem.cpp" />
+    <ClCompile Include="src\trade_route\TradeRouteSystem.cpp" />
+    <ClCompile Include="src\trading\TradingSystem.cpp" />
+    <ClCompile Include="src\tutorial\TutorialSystem.cpp" />
+    <ClCompile Include="src\ui\UIElement.cpp" />
+    <ClCompile Include="src\ui\UIPanel.cpp" />
+    <ClCompile Include="src\ui\UIRenderer.cpp" />
+    <ClCompile Include="src\ui\UISystem.cpp" />
+    <ClCompile Include="src\weapons\WeaponSystem.cpp" />
+    <ClCompile Include="src\weapons\MissileSystem.cpp" />
+    <ClCompile Include="src\cargo\CargoSystem.cpp" />
+    <ClCompile Include="src\core\persistence\CampaignPersistenceSystem.cpp" />
+    <ClCompile Include="src\core\resources\ObjAssetLoader.cpp" />
+    <ClCompile Include="src\debug_tools\DeveloperConsole.cpp" />
+    <ClCompile Include="src\economy\EconomySimulationSystem.cpp" />
+    <ClCompile Include="src\factions\FactionSecuritySystem.cpp" />
+    <ClCompile Include="src\fleet\FleetMissionSystem.cpp" />
+    <ClCompile Include="src\interior\ShipInteriorSystem.cpp" />
+    <ClCompile Include="src\procedural\SystemTopologySystem.cpp" />
+    <ClCompile Include="src\runtime\NativeRuntimeServices.cpp" />
+    <ClCompile Include="src\station\StationServiceSystem.cpp" />
+    <ClCompile Include="src\ui\GameUIState.cpp" />
+    <ClCompile Include="src\navigation\AstronomicalScaleSystem.cpp" />
+    <ClCompile Include="src\procedural\RegionStreamingSystem.cpp" />
+    <ClCompile Include="src\rendering\EnvironmentPresentationSystem.cpp" />
+    <ClCompile Include="src\navigation\SystemNavigationSystem.cpp" />
+    <ClCompile Include="src\ships\ShipConstructionSystem.cpp" />
+    <ClCompile Include="src\ui\FrontendFlowSystem.cpp" />
+    <ClCompile Include="src\ships\FittingSystem.cpp" />
+    <ClCompile Include="src\station\StationConstructionSystem.cpp" />
+    <ClCompile Include="src\economy\MarketContractSystem.cpp" />
+    <ClCompile Include="src\scanning\ExplorationDiscoverySystem.cpp" />
+    <ClCompile Include="src\fleet\CorporationSystem.cpp" />
+    <ClCompile Include="src\scanning\PlanetSurveySystem.cpp" />
+    <ClCompile Include="src\economy\PlanetaryManufacturingSystem.cpp" />
+    <ClCompile Include="src\runtime\SimulationLodSystem.cpp" />
+    <ClCompile Include="src\runtime\CarbonIntakeSystem.cpp" />
+    <ClCompile Include="src\runtime\SandboxVerticalSliceSystem.cpp" />
+    <ClCompile Include="src\research\BlueprintResearchSystem.cpp" />
+    <ClCompile Include="src\ships\HazardCertificationSystem.cpp" />
+    <ClCompile Include="src\combat\SectorCrisisSystem.cpp" />
+    <ClCompile Include="src\quest\StorySpineSystem.cpp" />
+    <ClCompile Include="src\rpg\SandboxProgressionSystem.cpp" />
+    <ClCompile Include="src\rendering\CelestialEnvironmentSystem.cpp" />
+    <ClCompile Include="src\rendering\CinematicFlightPresentationSystem.cpp" />
+    <ClCompile Include="src\navigation\SystemMapSystem.cpp" />
+    <ClCompile Include="src\navigation\VectorTravelSystem.cpp" />
+    <ClCompile Include="src\economy\PlanetaryIndustrializationSystem.cpp" />
+    <ClCompile Include="src\station\StationBuilderSystem.cpp" />
+    <ClCompile Include="src\ships\ShipProductionWorkflowSystem.cpp" />
+    <ClCompile Include="src\hangar\HangarFittingWorkflowSystem.cpp" />
+    <ClCompile Include="src\economy\LocalEconomySystem.cpp" />
+    <ClCompile Include="src\scanning\ExpeditionSystem.cpp" />
+    <ClCompile Include="src\fleet\CorporationOperationsSystem.cpp" />
+    <ClCompile Include="src\runtime\LivingSandboxSystem.cpp" />
+    <ClCompile Include="src\ui\SandboxWorkspaceSystem.cpp" />
+    <ClCompile Include="src\combat\AdvancedCombatSystem.cpp" />
+    <ClCompile Include="src\combat\ShipFailureSystem.cpp" />
+    <ClCompile Include="src\ships\EngineeringRepairSystem.cpp" />
+    <ClCompile Include="src\combat\ElectronicWarfareSystem.cpp" />
+    <ClCompile Include="src\fleet\DroneOperationsSystem.cpp" />
+    <ClCompile Include="src\fleet\FleetDoctrineSystem.cpp" />
+    <ClCompile Include="src\factions\DynamicFactionSystem.cpp" />
+    <ClCompile Include="src\runtime\SectorSimulationSystem.cpp" />
+    <ClCompile Include="src\scanning\DeepExplorationSystem.cpp" />
+    <ClCompile Include="src\navigation\AnomalousSpaceSystem.cpp" />
+    <ClCompile Include="src\ships\EnvironmentalHazardSystem.cpp" />
+    <ClCompile Include="src\economy\ResourceMaterialSystem.cpp" />
+    <ClCompile Include="src\trade_route\LogisticsAutomationSystem.cpp" />
+    <ClCompile Include="src\station\StationPopulationSystem.cpp" />
+    <ClCompile Include="src\station\OrbitalInfrastructureSystem.cpp" />
+    <ClCompile Include="src\ships\CapitalConstructionSystem.cpp" />
+    <ClCompile Include="src\fleet\CarrierOperationsSystem.cpp" />
+    <ClCompile Include="src\fleet\CorporationProgressionSystem.cpp" />
+    <ClCompile Include="src\runtime\PersistentUniverseSystem.cpp" />
+    <ClCompile Include="src\runtime\SandboxAcceptanceIISystem.cpp" />
+    <ClCompile Include="src\integration\CombatShipIntegration.cpp" />
+    <ClCompile Include="src\integration\NavigationMiningIntegration.cpp" />
+    <ClCompile Include="src\integration\InfrastructureIndustryIntegration.cpp" />
+    <ClCompile Include="src\integration\LivingUniverseIntegration.cpp" />
+    <ClCompile Include="src\integration\PlayerFacingIntegrationSystem.cpp" />
+    <ClCompile Include="src\ui\ProductionInterfaceSystem.cpp" />
+    <ClCompile Include="src\hangar\DockingExperienceSystem.cpp" />
+    <ClCompile Include="src\interior\ShipEmbodimentSystem.cpp" />
+    <ClCompile Include="src\navigation\TravelArrivalSystem.cpp" />
+    <ClCompile Include="src\rendering\ForwardSpacePresentationSystem.cpp" />
+  </ItemGroup>
+
+  <!-- ================================================================== -->
+  <!-- Header files                                                        -->
+  <!-- ================================================================== -->
+  <ItemGroup>
+    <ClInclude Include="include\achievement\AchievementSystem.h" />
+    <ClInclude Include="include\ai\AIDecisionSystem.h" />
+    <ClInclude Include="include\ai\AIShipBuilder.h" />
+    <ClInclude Include="include\ai\AISteeringSystem.h" />
+    <ClInclude Include="include\audio\AudioSystem.h" />
+    <ClInclude Include="include\combat\CombatSystem.h" />
+    <ClInclude Include="include\combat\LootSystem.h" />
+    <ClInclude Include="include\combat\ShieldSystem.h" />
+    <ClInclude Include="include\combat\StatusEffectSystem.h" />
+    <ClInclude Include="include\combat\TargetLockSystem.h" />
+    <ClInclude Include="include\core\Engine.h" />
+    <ClInclude Include="include\core\Math.h" />
+    <ClInclude Include="include\core\config\ConfigurationManager.h" />
+    <ClInclude Include="include\core\ecs\Entity.h" />
+    <ClInclude Include="include\core\ecs\EntityManager.h" />
+    <ClInclude Include="include\core\ecs\IComponent.h" />
+    <ClInclude Include="include\core\ecs\SystemBase.h" />
+    <ClInclude Include="include\core\events\EventSystem.h" />
+    <ClInclude Include="include\core\events\GameEvents.h" />
+    <ClInclude Include="include\core\logging\Logger.h" />
+    <ClInclude Include="include\core\persistence\SaveGameManager.h" />
+    <ClInclude Include="include\core\physics\CollisionLayers.h" />
+    <ClInclude Include="include\core\physics\Octree.h" />
+    <ClInclude Include="include\core\physics\PhysicsComponent.h" />
+    <ClInclude Include="include\core\physics\PhysicsSystem.h" />
+    <ClInclude Include="include\core\physics\SpatialHash.h" />
+    <ClInclude Include="include\core\resources\Inventory.h" />
+    <ClInclude Include="include\crafting\CraftingSystem.h" />
+    <ClInclude Include="include\crafting\RefinerySystem.h" />
+    <ClInclude Include="include\crew\CrewSystem.h" />
+    <ClInclude Include="include\debug_tools\DebugRenderer.h" />
+    <ClInclude Include="include\debug_tools\PerformanceMonitor.h" />
+    <ClInclude Include="include\debug_tools\ProductionPerformanceSystem.h" />
+    <ClInclude Include="include\audio\ProductionAudioCueSystem.h" />
+    <ClInclude Include="include\core\persistence\SaveRecoverySystem.h" />
+    <ClInclude Include="include\input\InputBindingProfile.h" />
+    <ClInclude Include="include\interior\InteriorInteractionSystem.h" />
+    <ClInclude Include="include\station\StationActivityPresentationSystem.h" />
+    <ClInclude Include="include\procedural\RegionStreamingScheduler.h" />
+    <ClInclude Include="include\content\ThirdPartyAssetIntakeSystem.h" />
+    <ClInclude Include="include\content\ShipyardModuleSystem.h" />
+    <ClInclude Include="include\content\ShipyardNameClassification.h" />
+    <ClInclude Include="include\content\ShipyardCertificationSystem.h" />
+    <ClInclude Include="include\developer\provenance\AssetProvenanceManifest.h" />
+    <ClInclude Include="include\interior\ModularInteriorKitSystem.h" />
+    <ClInclude Include="include\interior\InteriorConstructionSystem.h" />
+    <ClInclude Include="include\diplomacy\DiplomacySystem.h" />
+    <ClInclude Include="include\factions\FactionProfile.h" />
+    <ClInclude Include="include\factions\SilhouetteProfile.h" />
+    <ClInclude Include="include\fleet\FleetCommandSystem.h" />
+    <ClInclude Include="include\formation\FormationSystem.h" />
+    <ClInclude Include="include\hangar\HangarSystem.h" />
+    <ClInclude Include="include\input\InputState.h" />
+    <ClInclude Include="include\input\PlayerControlSystem.h" />
+    <ClInclude Include="include\inventory\InventorySystem.h" />
+    <ClInclude Include="include\mining\MiningSystem.h" />
+    <ClInclude Include="include\mining\AsteroidFractureSystem.h" />
+    <ClInclude Include="include\mining\MiningSalvageLoop.h" />
+    <ClInclude Include="include\navigation\NavigationSystem.h" />
+    <ClInclude Include="include\navigation\Pathfinding.h" />
+    <ClInclude Include="include\navigation\PathfindingComponent.h" />
+    <ClInclude Include="include\navigation\PathfindingSystem.h" />
+    <ClInclude Include="include\navigation\WormholeSystem.h" />
+    <ClInclude Include="include\networking\BuildCommand.h" />
+    <ClInclude Include="include\networking\NetworkSystem.h" />
+    <ClInclude Include="include\notification\NotificationSystem.h" />
+    <ClInclude Include="include\power\PowerSystem.h" />
+    <ClInclude Include="include\procedural\GalaxyGenerator.h" />
+    <ClInclude Include="include\quest\QuestSystem.h" />
+    <ClInclude Include="include\rendering\GhostRenderer.h" />
+    <ClInclude Include="include\rendering\ParticleSystem.h" />
+    <ClInclude Include="include\rendering\PostProcessingSystem.h" />
+    <ClInclude Include="include\rendering\RenderingConfiguration.h" />
+    <ClInclude Include="include\rendering\ShadowSystem.h" />
+    <ClInclude Include="include\rendering\ShipRenderer.h" />
+    <ClInclude Include="include\rendering\SolarPresentationSystem.h" />
+    <ClInclude Include="include\rendering\StrategicBattlefieldPresentation.h" />
+    <ClInclude Include="include\rendering\StrategicCamera.h" />
+    <ClInclude Include="include\rendering\StrategicViewProjection.h" />
+    <ClInclude Include="include\rendering\SpaceMaterialSystem.h" />
+    <ClInclude Include="include\rendering\PlanetSurfaceSystem.h" />
+    <ClInclude Include="include\rendering\ProceduralVisualVariantSystem.h" />
+    <ClInclude Include="include\reputation\ReputationSystem.h" />
+    <ClInclude Include="include\research\ResearchSystem.h" />
+    <ClInclude Include="include\rpg\DeathLossSystem.h" />
+    <ClInclude Include="include\rpg\ProgressionSystem.h" />
+    <ClInclude Include="include\salvage\SalvageSystem.h" />
+    <ClInclude Include="include\scanning\ScanningSystem.h" />
+    <ClInclude Include="include\scripting\ScriptingSystem.h" />
+    <ClInclude Include="include\ship_editor\BlockPalette.h" />
+    <ClInclude Include="include\ship_editor\EditorAction.h" />
+    <ClInclude Include="include\ship_editor\EditorClipboard.h" />
+    <ClInclude Include="include\ship_editor\EditorGrid.h" />
+    <ClInclude Include="include\ship_editor\EditorSelection.h" />
+    <ClInclude Include="include\ship_editor\ShipEditorController.h" />
+    <ClInclude Include="include\ship_editor\ShipEditorState.h" />
+    <ClInclude Include="include\ship_editor\ShipValidator.h" />
+    <ClInclude Include="include\ship_editor\ShipyardBuilderSystem.h" />
+    <ClInclude Include="include\ship_editor\SymmetrySystem.h" />
+    <ClInclude Include="include\ships\Block.h" />
+    <ClInclude Include="include\ships\BlockPlacement.h" />
+    <ClInclude Include="include\ships\Blueprint.h" />
+    <ClInclude Include="include\ships\CapabilitySystem.h" />
+    <ClInclude Include="include\ships\DamageComponent.h" />
+    <ClInclude Include="include\ships\ModuleDef.h" />
+    <ClInclude Include="include\ships\Ship.h" />
+    <ClInclude Include="include\ships\ShipArchetype.h" />
+    <ClInclude Include="include\ships\ShipClassSystem.h" />
+    <ClInclude Include="include\ships\ShipDamage.h" />
+    <ClInclude Include="include\ships\ShipStats.h" />
+    <ClInclude Include="include\ships\StructuralIntegrity.h" />
+    <ClInclude Include="include\ships\ThrusterLayoutSystem.h" />
+    <ClInclude Include="include\trade_route\IndustrialLogisticsSystem.h" />
+    <ClInclude Include="include\trade_route\TradeRouteSystem.h" />
+    <ClInclude Include="include\trading\TradingSystem.h" />
+    <ClInclude Include="include\tutorial\TutorialSystem.h" />
+    <ClInclude Include="include\ui\UIElement.h" />
+    <ClInclude Include="include\ui\UIPanel.h" />
+    <ClInclude Include="include\ui\UIRenderer.h" />
+    <ClInclude Include="include\ui\UISystem.h" />
+    <ClInclude Include="include\ui\UITypes.h" />
+    <ClInclude Include="include\weapons\WeaponSystem.h" />
+    <ClInclude Include="include\weapons\MissileSystem.h" />
+    <ClInclude Include="include\cargo\CargoSystem.h" />
+    <ClInclude Include="include\core\persistence\CampaignPersistenceSystem.h" />
+    <ClInclude Include="include\core\resources\ObjAssetLoader.h" />
+    <ClInclude Include="include\debug_tools\DeveloperConsole.h" />
+    <ClInclude Include="include\economy\EconomySimulationSystem.h" />
+    <ClInclude Include="include\factions\FactionSecuritySystem.h" />
+    <ClInclude Include="include\fleet\FleetMissionSystem.h" />
+    <ClInclude Include="include\interior\ShipInteriorSystem.h" />
+    <ClInclude Include="include\procedural\SystemTopologySystem.h" />
+    <ClInclude Include="include\runtime\NativeRuntimeServices.h" />
+    <ClInclude Include="include\station\StationServiceSystem.h" />
+    <ClInclude Include="include\ui\GameUIState.h" />
+    <ClInclude Include="include\navigation\AstronomicalScaleSystem.h" />
+    <ClInclude Include="include\procedural\RegionStreamingSystem.h" />
+    <ClInclude Include="include\rendering\EnvironmentPresentationSystem.h" />
+    <ClInclude Include="include\navigation\SystemNavigationSystem.h" />
+    <ClInclude Include="include\ships\ShipConstructionSystem.h" />
+    <ClInclude Include="include\ui\FrontendFlowSystem.h" />
+    <ClInclude Include="include\ships\FittingSystem.h" />
+    <ClInclude Include="include\station\StationConstructionSystem.h" />
+    <ClInclude Include="include\economy\MarketContractSystem.h" />
+    <ClInclude Include="include\scanning\ExplorationDiscoverySystem.h" />
+    <ClInclude Include="include\fleet\CorporationSystem.h" />
+    <ClInclude Include="include\scanning\PlanetSurveySystem.h" />
+    <ClInclude Include="include\economy\PlanetaryManufacturingSystem.h" />
+    <ClInclude Include="include\runtime\SimulationLodSystem.h" />
+    <ClInclude Include="include\runtime\CarbonIntakeSystem.h" />
+    <ClInclude Include="include\runtime\SandboxVerticalSliceSystem.h" />
+    <ClInclude Include="include\research\BlueprintResearchSystem.h" />
+    <ClInclude Include="include\ships\HazardCertificationSystem.h" />
+    <ClInclude Include="include\combat\SectorCrisisSystem.h" />
+    <ClInclude Include="include\quest\StorySpineSystem.h" />
+    <ClInclude Include="include\rpg\SandboxProgressionSystem.h" />
+    <ClInclude Include="include\rendering\CelestialEnvironmentSystem.h" />
+    <ClInclude Include="include\rendering\CinematicFlightPresentationSystem.h" />
+    <ClInclude Include="include\navigation\SystemMapSystem.h" />
+    <ClInclude Include="include\navigation\VectorTravelSystem.h" />
+    <ClInclude Include="include\economy\PlanetaryIndustrializationSystem.h" />
+    <ClInclude Include="include\station\StationBuilderSystem.h" />
+    <ClInclude Include="include\ships\ShipProductionWorkflowSystem.h" />
+    <ClInclude Include="include\hangar\HangarFittingWorkflowSystem.h" />
+    <ClInclude Include="include\economy\LocalEconomySystem.h" />
+    <ClInclude Include="include\scanning\ExpeditionSystem.h" />
+    <ClInclude Include="include\fleet\CorporationOperationsSystem.h" />
+    <ClInclude Include="include\runtime\LivingSandboxSystem.h" />
+    <ClInclude Include="include\ui\SandboxWorkspaceSystem.h" />
+    <ClInclude Include="include\combat\AdvancedCombatSystem.h" />
+    <ClInclude Include="include\combat\ShipFailureSystem.h" />
+    <ClInclude Include="include\ships\EngineeringRepairSystem.h" />
+    <ClInclude Include="include\combat\ElectronicWarfareSystem.h" />
+    <ClInclude Include="include\fleet\DroneOperationsSystem.h" />
+    <ClInclude Include="include\fleet\FleetDoctrineSystem.h" />
+    <ClInclude Include="include\factions\DynamicFactionSystem.h" />
+    <ClInclude Include="include\runtime\SectorSimulationSystem.h" />
+    <ClInclude Include="include\scanning\DeepExplorationSystem.h" />
+    <ClInclude Include="include\navigation\AnomalousSpaceSystem.h" />
+    <ClInclude Include="include\ships\EnvironmentalHazardSystem.h" />
+    <ClInclude Include="include\economy\ResourceMaterialSystem.h" />
+    <ClInclude Include="include\trade_route\LogisticsAutomationSystem.h" />
+    <ClInclude Include="include\station\StationPopulationSystem.h" />
+    <ClInclude Include="include\station\OrbitalInfrastructureSystem.h" />
+    <ClInclude Include="include\ships\CapitalConstructionSystem.h" />
+    <ClInclude Include="include\fleet\CarrierOperationsSystem.h" />
+    <ClInclude Include="include\fleet\CorporationProgressionSystem.h" />
+    <ClInclude Include="include\runtime\PersistentUniverseSystem.h" />
+    <ClInclude Include="include\runtime\SandboxAcceptanceIISystem.h" />
+    <ClInclude Include="include\integration\CombatShipIntegration.h" />
+    <ClInclude Include="include\integration\NavigationMiningIntegration.h" />
+    <ClInclude Include="include\integration\InfrastructureIndustryIntegration.h" />
+    <ClInclude Include="include\integration\LivingUniverseIntegration.h" />
+    <ClInclude Include="include\integration\PlayerFacingIntegrationSystem.h" />
+    <ClInclude Include="include\ui\ProductionInterfaceSystem.h" />
+    <ClInclude Include="include\hangar\DockingExperienceSystem.h" />
+    <ClInclude Include="include\interior\ShipEmbodimentSystem.h" />
+    <ClInclude Include="include\navigation\TravelArrivalSystem.h" />
+    <ClInclude Include="include\rendering\ForwardSpacePresentationSystem.h" />
+  </ItemGroup>
+
+
+  <!-- Pass361-400 command/galaxy production authorities -->
+  <ItemGroup>
+    <ClCompile Include="src\celestial\OrbitalDynamicsSystem.cpp" />
+    <ClCompile Include="src\economy\InfrastructureModuleSystem.cpp" />
+    <ClCompile Include="src\economy\PlanetaryIndustrySystem.cpp" />
+    <ClCompile Include="src\fleet\FleetIntentSystem.cpp" />
+    <ClCompile Include="src\flight\StrategicFlightSystem.cpp" />
+    <ClCompile Include="src\hangar\UniversalDockedStationSystem.cpp" />
+    <ClCompile Include="src\navigation\GalaxyCatalogSystem.cpp" />
+    <ClCompile Include="src\navigation\GalaxyMapSystem.cpp" />
+    <ClCompile Include="src\navigation\GalaxyRoutePlannerSystem.cpp" />
+    <ClCompile Include="src\navigation\UniverseSystemMapSystem.cpp" />
+    <ClCompile Include="src\rendering\ShipInspectionReviewSystem.cpp" />
+    <ClCompile Include="src\runtime\ShipOnlyVerticalAcceptanceSystem.cpp" />
+    <ClCompile Include="src\ships\ShipAttachmentIntegritySystem.cpp" />
+    <ClCompile Include="src\ships\ShipProfileDirector.cpp" />
+    <ClCompile Include="src\station\ModularStationAssemblySystem.cpp" />
+    <ClCompile Include="src\station\StationEcologySystem.cpp" />
+    <ClCompile Include="src\ui\ChatCommunicationSystem.cpp" />
+    <ClCompile Include="src\ui\ContextActionSystem.cpp" />
+    <ClCompile Include="src\ui\GameUiFramework.cpp" />
+    <ClCompile Include="src\ui\ShipActionHotbarSystem.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\celestial\OrbitalDynamicsSystem.h" />
+    <ClInclude Include="include\economy\InfrastructureModuleSystem.h" />
+    <ClInclude Include="include\economy\PlanetaryIndustrySystem.h" />
+    <ClInclude Include="include\fleet\FleetIntentSystem.h" />
+    <ClInclude Include="include\flight\StrategicFlightSystem.h" />
+    <ClInclude Include="include\hangar\UniversalDockedStationSystem.h" />
+    <ClInclude Include="include\navigation\GalaxyCatalogSystem.h" />
+    <ClInclude Include="include\navigation\GalaxyMapSystem.h" />
+    <ClInclude Include="include\navigation\GalaxyRoutePlannerSystem.h" />
+    <ClInclude Include="include\navigation\UniverseSystemMapSystem.h" />
+    <ClInclude Include="include\rendering\ShipInspectionReviewSystem.h" />
+    <ClInclude Include="include\runtime\ShipOnlyVerticalAcceptanceSystem.h" />
+    <ClInclude Include="include\ships\ShipAttachmentIntegritySystem.h" />
+    <ClInclude Include="include\ships\ShipProfileDirector.h" />
+    <ClInclude Include="include\station\ModularStationAssemblySystem.h" />
+    <ClInclude Include="include\station\StationEcologySystem.h" />
+    <ClInclude Include="include\ui\ChatCommunicationSystem.h" />
+    <ClInclude Include="include\ui\ContextActionSystem.h" />
+    <ClInclude Include="include\ui\GameUiFramework.h" />
+    <ClInclude Include="include\ui\ShipActionHotbarSystem.h" />
+  </ItemGroup>
+
+
+  <!-- Pass411-420 player-facing closure authorities -->
+  <ItemGroup>
+    <ClCompile Include="src\fleet\FleetCaptainAiSystem.cpp" />
+    <ClCompile Include="src\runtime\CarbonOpenSourceBridgeSystem.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\fleet\FleetCaptainAiSystem.h" />
+    <ClInclude Include="include\runtime\CarbonOpenSourceBridgeSystem.h" />
+  </ItemGroup>
+
+  <!-- ================================================================== -->
+  <!-- JSON data files (included for easy access in VS, not compiled)      -->
+  <!-- ================================================================== -->
+  <ItemGroup>
+    <None Include="data\factions\iron_dominion.json" />
+    <None Include="data\factions\nomad_continuum.json" />
+    <None Include="data\factions\helix_covenant.json" />
+    <None Include="data\factions\ashen_clades.json" />
+    <None Include="data\factions\ascended_archive.json" />
+    <None Include="CMakeLists.txt" />
+    <None Include="README.md" />
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+
+</Project>

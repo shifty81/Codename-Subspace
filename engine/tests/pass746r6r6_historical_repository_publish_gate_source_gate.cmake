@@ -1,0 +1,43 @@
+if(NOT DEFINED ROOT)
+  message(FATAL_ERROR "Pass746R6R6 source gate requires -DROOT=<engine-root>")
+endif()
+
+get_filename_component(REPO "${ROOT}/.." ABSOLUTE)
+set(HISTORICAL "${ROOT}/tests/pass746r2_repository_authority_source_gate.cmake")
+set(ROOT_TOOLS "${REPO}/SubspaceTools.ps1")
+set(CONTROL_CENTER "${REPO}/tools/control/SubspaceControlCenter.ps1")
+set(REPO_TOOL "${REPO}/tools/control/NormalizeGitHubAuthority.ps1")
+
+foreach(PATH IN ITEMS "${HISTORICAL}" "${ROOT_TOOLS}" "${CONTROL_CENTER}" "${REPO_TOOL}")
+  if(NOT EXISTS "${PATH}")
+    message(FATAL_ERROR "Pass746R6R6 missing file: ${PATH}")
+  endif()
+endforeach()
+
+file(READ "${HISTORICAL}" HISTORICAL_TEXT)
+file(READ "${ROOT_TOOLS}" ROOT_TOOLS_TEXT)
+file(READ "${CONTROL_CENTER}" CONTROL_CENTER_TEXT)
+file(READ "${REPO_TOOL}" REPO_TOOL_TEXT)
+
+function(require_text TEXT_VALUE NEEDLE)
+  string(FIND "${TEXT_VALUE}" "${NEEDLE}" FOUND_AT)
+  if(FOUND_AT EQUAL -1)
+    message(FATAL_ERROR "Pass746R6R6 source gate missing: ${NEEDLE}")
+  endif()
+endfunction()
+
+require_text("${ROOT_TOOLS_TEXT}" "Type PUBLISH to archive the current remote main and replace it with the certified normalized GREEN source")
+require_text("${ROOT_TOOLS_TEXT}" "-Arguments @(\"-PublishConfirmation\",\"PUBLISH\")")
+require_text("${CONTROL_CENTER_TEXT}" "[string]$PublishConfirmation")
+require_text("${CONTROL_CENTER_TEXT}" "'-PublishConfirmation',$Confirmation")
+require_text("${REPO_TOOL_TEXT}" "Publish authorization missing. Use the interactive root Control Center")
+require_text("${HISTORICAL_TEXT}" "publication confirmation moved to the interactive root host")
+require_text("${HISTORICAL_TEXT}" "forbid_text(")
+require_text("${HISTORICAL_TEXT}" "Read-Host")
+
+string(FIND "${REPO_TOOL_TEXT}" "Read-Host" NESTED_PROMPT)
+if(NOT NESTED_PROMPT EQUAL -1)
+  message(FATAL_ERROR "Pass746R6R6 rejected nested repository-authority prompt")
+endif()
+
+message(STATUS "Pass746R6R6 historical repository publish gate closure PASS")

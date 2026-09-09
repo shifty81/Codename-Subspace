@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "id": "projectops.artifact-layout.v1",
+  "name": "Universal ProjectOps Artifact Layout",
+  "root": "artifacts",
+  "principle": "All user-facing generated outputs are descendants of the project artifact root. Runtime state and update inboxes are not artifacts.",
+  "paths": {
+    "debug": "artifacts/debug",
+    "source": "artifacts/source",
+    "assets": "artifacts/assets",
+    "patches": "artifacts/patches",
+    "sourceSnapshots": "artifacts/snapshots/source",
+    "qualityGates": "artifacts/gates/quality",
+    "certifications": "artifacts/gates/certifications",
+    "logs": "artifacts/logs",
+    "baselines": "artifacts/baselines",
+    "audits": "artifacts/audits",
+    "repository": "artifacts/repository",
+    "rootUtility": "artifacts/root-utility",
+    "temporaryStaging": "artifacts/temp",
+    "indexJson": "artifacts/ARTIFACT_INDEX.json",
+    "indexText": "artifacts/ARTIFACT_INDEX.txt"
+  },
+  "nonArtifactState": {
+    ".subspace": "live internal project/control state and last-green pointer",
+    "updates": "transactional update inbox/applied/failed state",
+    "engine/build": "active build tree"
+  },
+  "failureHandoff": {
+    "createDebugBundle": true,
+    "bundleDirectory": "artifacts/debug",
+    "windowsBehavior": "open Explorer with current debug ZIP selected",
+    "purpose": "drag current failure evidence directly into ChatGPT/Cortex support workflow"
+  },
+  "legacyMigration": [
+    "dist/debug -> artifacts/debug",
+    "dist/source -> artifacts/source",
+    "dist/assets -> artifacts/assets",
+    "dist/root-utility -> artifacts/root-utility",
+    "logs -> artifacts/logs",
+    "artifacts/source-snapshots -> artifacts/snapshots/source",
+    "artifacts/gate -> artifacts/gates/certifications",
+    ".subspace/quality-gates -> artifacts/gates/quality",
+    ".subspace/packaging -> artifacts/baselines"
+  ],
+  "cortexTarget": "Cortex ProjectOps should treat artifactRoot as a capability supplied by project.control.json and surface debug/source/gate/package outputs from this hierarchy."
+}

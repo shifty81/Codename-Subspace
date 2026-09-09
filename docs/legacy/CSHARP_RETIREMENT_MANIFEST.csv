@@ -1,0 +1,240 @@
+legacy_file,disposition,native_authority_or_reason
+AvorionLike/Core/AI/AIComponent.cs,NATIVE_REPLACED,engine/ai + scanning + factions/FactionSecuritySystem
+AvorionLike/Core/AI/AIDecisionSystem.cs,NATIVE_REPLACED,engine/ai + scanning + factions/FactionSecuritySystem
+AvorionLike/Core/AI/AIEnums.cs,NATIVE_REPLACED,engine/ai + scanning + factions/FactionSecuritySystem
+AvorionLike/Core/AI/AIMovementSystem.cs,NATIVE_REPLACED,engine/ai + scanning + factions/FactionSecuritySystem
+AvorionLike/Core/AI/AIPerceptionSystem.cs,NATIVE_REPLACED,engine/ai + scanning + factions/FactionSecuritySystem
+AvorionLike/Core/AI/AIScanningBehavior.cs,NATIVE_REPLACED,engine/ai + scanning + factions/FactionSecuritySystem
+AvorionLike/Core/AI/AISystem.cs,NATIVE_REPLACED,engine/ai + scanning + factions/FactionSecuritySystem
+AvorionLike/Core/Building/EnhancedBuildSystem.cs,NATIVE_REPLACED,engine/ship_editor + ships + interior/ShipInteriorSystem
+AvorionLike/Core/Building/ShipInteriorSystem.cs,NATIVE_REPLACED,engine/ship_editor + ships + interior/ShipInteriorSystem
+AvorionLike/Core/Combat/CombatSystem.cs,NATIVE_REPLACED,engine/combat + weapons + ships/DamageComponent
+AvorionLike/Core/Combat/DamageSystem.cs,NATIVE_REPLACED,engine/combat + weapons + ships/DamageComponent
+AvorionLike/Core/Combat/DestructionSystem.cs,NATIVE_REPLACED,engine/combat + weapons + ships/DamageComponent
+AvorionLike/Core/Combat/EnhancedCombatSystem.cs,NATIVE_REPLACED,engine/combat + weapons + ships/DamageComponent
+AvorionLike/Core/Combat/FittingComponent.cs,NATIVE_REPLACED,engine/combat + weapons + ships/DamageComponent
+AvorionLike/Core/Combat/FittingSystem.cs,NATIVE_REPLACED,engine/combat + weapons + ships/DamageComponent
+AvorionLike/Core/Combat/WeaponFactory.cs,NATIVE_REPLACED,engine/combat + weapons + ships/DamageComponent
+AvorionLike/Core/Common/ErrorHandler.cs,NATIVE_REPLACED,engine/core/logging + core/config + native validation/tests
+AvorionLike/Core/Common/ValidationHelper.cs,NATIVE_REPLACED,engine/core/logging + core/config + native validation/tests
+AvorionLike/Core/Config/DebugConfig.cs,NATIVE_REPLACED,engine/core/config/ConfigurationManager
+AvorionLike/Core/Configuration/ConfigurationManager.cs,NATIVE_REPLACED,engine/core/config/ConfigurationManager + rendering/RenderingConfiguration
+AvorionLike/Core/Configuration/GameConfiguration.cs,NATIVE_REPLACED,engine/core/config/ConfigurationManager + rendering/RenderingConfiguration
+AvorionLike/Core/Configuration/NewGameSettings.cs,NATIVE_REPLACED,engine/core/config/ConfigurationManager + rendering/RenderingConfiguration
+AvorionLike/Core/DevTools/DebugConsole.cs,NATIVE_REPLACED,engine/debug_tools/DeveloperConsole + DebugRenderer + PerformanceMonitor
+AvorionLike/Core/DevTools/DebugRenderer.cs,NATIVE_REPLACED,engine/debug_tools/DeveloperConsole + DebugRenderer + PerformanceMonitor
+AvorionLike/Core/DevTools/DevToolsManager.cs,NATIVE_REPLACED,engine/debug_tools/DeveloperConsole + DebugRenderer + PerformanceMonitor
+AvorionLike/Core/DevTools/InGameTestingConsole.cs,NATIVE_REPLACED,engine/debug_tools/DeveloperConsole + DebugRenderer + PerformanceMonitor
+AvorionLike/Core/DevTools/MemoryTracker.cs,NATIVE_REPLACED,engine/debug_tools/DeveloperConsole + DebugRenderer + PerformanceMonitor
+AvorionLike/Core/DevTools/OpenGLDebugger.cs,NATIVE_REPLACED,engine/debug_tools/DeveloperConsole + DebugRenderer + PerformanceMonitor
+AvorionLike/Core/DevTools/PerformanceProfiler.cs,NATIVE_REPLACED,engine/debug_tools/DeveloperConsole + DebugRenderer + PerformanceMonitor
+AvorionLike/Core/DevTools/ScriptCompiler.cs,NATIVE_REPLACED,engine/debug_tools/DeveloperConsole + DebugRenderer + PerformanceMonitor
+AvorionLike/Core/ECS/Entity.cs,NATIVE_REPLACED,engine/core/ecs
+AvorionLike/Core/ECS/EntityManager.cs,NATIVE_REPLACED,engine/core/ecs
+AvorionLike/Core/ECS/IComponent.cs,NATIVE_REPLACED,engine/core/ecs
+AvorionLike/Core/ECS/SystemBase.cs,NATIVE_REPLACED,engine/core/ecs
+AvorionLike/Core/Economy/BlueprintComponent.cs,NATIVE_REPLACED,engine/economy/EconomySimulationSystem + trading + crafting
+AvorionLike/Core/Economy/EconomySystem.cs,NATIVE_REPLACED,engine/economy/EconomySimulationSystem + trading + crafting
+AvorionLike/Core/Economy/ManufacturingSystem.cs,NATIVE_REPLACED,engine/economy/EconomySimulationSystem + trading + crafting
+AvorionLike/Core/Economy/NPCEconomicAgentSystem.cs,NATIVE_REPLACED,engine/economy/EconomySimulationSystem + trading + crafting
+AvorionLike/Core/Events/EventSystem.cs,NATIVE_REPLACED,engine/core/events
+AvorionLike/Core/Events/GameEvents.cs,NATIVE_REPLACED,engine/core/events
+AvorionLike/Core/Faction/CharacterCreation.cs,NATIVE_REPLACED,engine/factions + diplomacy + reputation + FactionSecuritySystem
+AvorionLike/Core/Faction/EVEFactionDefinitions.cs,SUPERSEDED_CURRENT_DESIGN,engine/factions + diplomacy + reputation + FactionSecuritySystem
+AvorionLike/Core/Faction/Faction.cs,NATIVE_REPLACED,engine/factions + diplomacy + reputation + FactionSecuritySystem
+AvorionLike/Core/Faction/FactionEnums.cs,NATIVE_REPLACED,engine/factions + diplomacy + reputation + FactionSecuritySystem
+AvorionLike/Core/Faction/FactionSystem.cs,NATIVE_REPLACED,engine/factions + diplomacy + reputation + FactionSecuritySystem
+AvorionLike/Core/Faction/Policy.cs,NATIVE_REPLACED,engine/factions + diplomacy + reputation + FactionSecuritySystem
+AvorionLike/Core/Faction/Pop.cs,NATIVE_REPLACED,engine/factions + diplomacy + reputation + FactionSecuritySystem
+AvorionLike/Core/Fleet/CrewSystem.cs,NATIVE_REPLACED,engine/fleet/FleetCommandSystem + FleetMissionSystem + crew + formation
+AvorionLike/Core/Fleet/FleetAutomationSystem.cs,NATIVE_REPLACED,engine/fleet/FleetCommandSystem + FleetMissionSystem + crew + formation
+AvorionLike/Core/Fleet/FleetMission.cs,NATIVE_REPLACED,engine/fleet/FleetCommandSystem + FleetMissionSystem + crew + formation
+AvorionLike/Core/Fleet/FleetMissionSystem.cs,NATIVE_REPLACED,engine/fleet/FleetCommandSystem + FleetMissionSystem + crew + formation
+AvorionLike/Core/Fleet/ShipClass.cs,NATIVE_REPLACED,engine/fleet/FleetCommandSystem + FleetMissionSystem + crew + formation
+AvorionLike/Core/GameEngine.cs,NATIVE_REPLACED,engine/core/Engine + application/NativeGameApplication
+AvorionLike/Core/GameShowcase.cs,REFERENCE_ONLY,Historical showcase; not part of current shipping game loop
+AvorionLike/Core/GameWorldPopulator.cs,NATIVE_REPLACED,engine/procedural/GalaxyGenerator + procedural/SystemTopologySystem
+AvorionLike/Core/Graphics/AssetManager.cs,NATIVE_REPLACED,engine/application/NativeBattlefieldRenderer + rendering + platform/NativeWindow + core/resources/ObjAssetLoader
+AvorionLike/Core/Graphics/Camera.cs,NATIVE_REPLACED,engine/application/NativeBattlefieldRenderer + rendering + platform/NativeWindow + core/resources/ObjAssetLoader
+AvorionLike/Core/Graphics/CelestialTextureGenerator.cs,REFERENCE_ONLY_ALGORITHM,engine/application/NativeBattlefieldRenderer + rendering + platform/NativeWindow + core/resources/ObjAssetLoader
+AvorionLike/Core/Graphics/EnhancedTextureGenerator.cs,REFERENCE_ONLY_ALGORITHM,engine/application/NativeBattlefieldRenderer + rendering + platform/NativeWindow + core/resources/ObjAssetLoader
+AvorionLike/Core/Graphics/EnhancedVoxelRenderer.cs,REFERENCE_ONLY_ALGORITHM,engine/application/NativeBattlefieldRenderer + rendering + platform/NativeWindow + core/resources/ObjAssetLoader
+AvorionLike/Core/Graphics/GraphicsWindow.cs,NATIVE_REPLACED,engine/application/NativeBattlefieldRenderer + rendering + platform/NativeWindow + core/resources/ObjAssetLoader
+AvorionLike/Core/Graphics/GreedyMeshBuilder.cs,REFERENCE_ONLY_ALGORITHM,engine/application/NativeBattlefieldRenderer + rendering + platform/NativeWindow + core/resources/ObjAssetLoader
+AvorionLike/Core/Graphics/LightingSystem.cs,REFERENCE_ONLY_ALGORITHM,engine/application/NativeBattlefieldRenderer + rendering + platform/NativeWindow + core/resources/ObjAssetLoader
+AvorionLike/Core/Graphics/Material.cs,REFERENCE_ONLY_ALGORITHM,engine/application/NativeBattlefieldRenderer + rendering + platform/NativeWindow + core/resources/ObjAssetLoader
+AvorionLike/Core/Graphics/MeshData.cs,REFERENCE_ONLY_ALGORITHM,engine/application/NativeBattlefieldRenderer + rendering + platform/NativeWindow + core/resources/ObjAssetLoader
+AvorionLike/Core/Graphics/MeshRenderer.cs,REFERENCE_ONLY_ALGORITHM,engine/application/NativeBattlefieldRenderer + rendering + platform/NativeWindow + core/resources/ObjAssetLoader
+AvorionLike/Core/Graphics/ModelLoader.cs,NATIVE_REPLACED,engine/application/NativeBattlefieldRenderer + rendering + platform/NativeWindow + core/resources/ObjAssetLoader
+AvorionLike/Core/Graphics/ProceduralTextureGenerator.cs,REFERENCE_ONLY_ALGORITHM,engine/application/NativeBattlefieldRenderer + rendering + platform/NativeWindow + core/resources/ObjAssetLoader
+AvorionLike/Core/Graphics/RenderingConfiguration.cs,NATIVE_REPLACED,engine/application/NativeBattlefieldRenderer + rendering + platform/NativeWindow + core/resources/ObjAssetLoader
+AvorionLike/Core/Graphics/RenderingManager.cs,NATIVE_REPLACED,engine/application/NativeBattlefieldRenderer + rendering + platform/NativeWindow + core/resources/ObjAssetLoader
+AvorionLike/Core/Graphics/Shader.cs,REFERENCE_ONLY_ALGORITHM,engine/application/NativeBattlefieldRenderer + rendering + platform/NativeWindow + core/resources/ObjAssetLoader
+AvorionLike/Core/Graphics/StarfieldRenderer.cs,NATIVE_REPLACED,engine/application/NativeBattlefieldRenderer + rendering + platform/NativeWindow + core/resources/ObjAssetLoader
+AvorionLike/Core/Graphics/TextureMaterial.cs,REFERENCE_ONLY_ALGORITHM,engine/application/NativeBattlefieldRenderer + rendering + platform/NativeWindow + core/resources/ObjAssetLoader
+AvorionLike/Core/Graphics/ThreadedMeshBuilder.cs,REFERENCE_ONLY_ALGORITHM,engine/application/NativeBattlefieldRenderer + rendering + platform/NativeWindow + core/resources/ObjAssetLoader
+AvorionLike/Core/Graphics/VoxelRenderer.cs,REFERENCE_ONLY_ALGORITHM,engine/application/NativeBattlefieldRenderer + rendering + platform/NativeWindow + core/resources/ObjAssetLoader
+AvorionLike/Core/Graphics/X4AsteroidRenderer.cs,SUPERSEDED_CURRENT_DESIGN,engine/application/NativeBattlefieldRenderer + rendering + platform/NativeWindow + core/resources/ObjAssetLoader
+AvorionLike/Core/Graphics/X4PlanetRenderer.cs,SUPERSEDED_CURRENT_DESIGN,engine/application/NativeBattlefieldRenderer + rendering + platform/NativeWindow + core/resources/ObjAssetLoader
+AvorionLike/Core/Graphics/X4ShipVisualGenerator.cs,SUPERSEDED_CURRENT_DESIGN,engine/application/NativeBattlefieldRenderer + rendering + platform/NativeWindow + core/resources/ObjAssetLoader
+AvorionLike/Core/Graphics/X4StationRenderer.cs,SUPERSEDED_CURRENT_DESIGN,engine/application/NativeBattlefieldRenderer + rendering + platform/NativeWindow + core/resources/ObjAssetLoader
+AvorionLike/Core/Input/PlayerControlSystem.cs,NATIVE_REPLACED,engine/input/InputState + PlayerControlSystem
+AvorionLike/Core/Logging/LogLevel.cs,NATIVE_REPLACED,engine/core/logging/Logger
+AvorionLike/Core/Logging/Logger.cs,NATIVE_REPLACED,engine/core/logging/Logger
+AvorionLike/Core/Mining/MiningSystem.cs,NATIVE_REPLACED,engine/mining + salvage + cargo/CargoSystem
+AvorionLike/Core/Modular/ModularProceduralShipGenerator.cs,NATIVE_REPLACED,engine/ships + ship_editor + rendering/ShipRenderer + ObjAssetLoader
+AvorionLike/Core/Modular/ModularProceduralStationGenerator.cs,NATIVE_REPLACED,engine/ships + ship_editor + rendering/ShipRenderer + ObjAssetLoader
+AvorionLike/Core/Modular/ModularShipComponent.cs,NATIVE_REPLACED,engine/ships + ship_editor + rendering/ShipRenderer + ObjAssetLoader
+AvorionLike/Core/Modular/ModularShipFactory.cs,NATIVE_REPLACED,engine/ships + ship_editor + rendering/ShipRenderer + ObjAssetLoader
+AvorionLike/Core/Modular/ModularShipSyncSystem.cs,NATIVE_REPLACED,engine/ships + ship_editor + rendering/ShipRenderer + ObjAssetLoader
+AvorionLike/Core/Modular/ModularStationComponent.cs,NATIVE_REPLACED,engine/ships + ship_editor + rendering/ShipRenderer + ObjAssetLoader
+AvorionLike/Core/Modular/ModuleClassification.cs,NATIVE_REPLACED,engine/ships + ship_editor + rendering/ShipRenderer + ObjAssetLoader
+AvorionLike/Core/Modular/ModuleLibrary.cs,NATIVE_REPLACED,engine/ships + ship_editor + rendering/ShipRenderer + ObjAssetLoader
+AvorionLike/Core/Modular/ShipEquipmentSystem.cs,NATIVE_REPLACED,engine/ships + ship_editor + rendering/ShipRenderer + ObjAssetLoader
+AvorionLike/Core/Modular/ShipModuleDefinition.cs,NATIVE_REPLACED,engine/ships + ship_editor + rendering/ShipRenderer + ObjAssetLoader
+AvorionLike/Core/Modular/ShipModulePart.cs,NATIVE_REPLACED,engine/ships + ship_editor + rendering/ShipRenderer + ObjAssetLoader
+AvorionLike/Core/Modular/ShipPaintSystem.cs,NATIVE_REPLACED,engine/ships + ship_editor + rendering/ShipRenderer + ObjAssetLoader
+AvorionLike/Core/Modular/ShipTemplateManager.cs,NATIVE_REPLACED,engine/ships + ship_editor + rendering/ShipRenderer + ObjAssetLoader
+AvorionLike/Core/Modular/StationModuleDefinition.cs,NATIVE_REPLACED,engine/ships + ship_editor + rendering/ShipRenderer + ObjAssetLoader
+AvorionLike/Core/Modular/StationModulePart.cs,NATIVE_REPLACED,engine/ships + ship_editor + rendering/ShipRenderer + ObjAssetLoader
+AvorionLike/Core/Modular/UlyssesModelLoader.cs,SUPERSEDED_CURRENT_DESIGN,engine/ships + ship_editor + rendering/ShipRenderer + ObjAssetLoader
+AvorionLike/Core/Modular/VoxelDamageSystem.cs,NATIVE_REPLACED,engine/ships + ship_editor + rendering/ShipRenderer + ObjAssetLoader
+AvorionLike/Core/Modular/X4ShipClasses.cs,SUPERSEDED_CURRENT_DESIGN,engine/ships + ship_editor + rendering/ShipRenderer + ObjAssetLoader
+AvorionLike/Core/Modular/X4ShipGenerator.cs,SUPERSEDED_CURRENT_DESIGN,engine/ships + ship_editor + rendering/ShipRenderer + ObjAssetLoader
+AvorionLike/Core/Navigation/CONCORDSystem.cs,SUPERSEDED_CURRENT_DESIGN,engine/navigation + scanning + FactionSecuritySystem
+AvorionLike/Core/Navigation/NavigationSystem.cs,NATIVE_REPLACED,engine/navigation + scanning + FactionSecuritySystem
+AvorionLike/Core/Navigation/ScanningComponent.cs,NATIVE_REPLACED,engine/navigation + scanning + FactionSecuritySystem
+AvorionLike/Core/Navigation/ScanningSystem.cs,NATIVE_REPLACED,engine/navigation + scanning + FactionSecuritySystem
+AvorionLike/Core/Navigation/SecurityStatusComponent.cs,NATIVE_REPLACED,engine/navigation + scanning + FactionSecuritySystem
+AvorionLike/Core/Navigation/WormholeComponent.cs,NATIVE_REPLACED,engine/navigation + scanning + FactionSecuritySystem
+AvorionLike/Core/Navigation/WormholeEnums.cs,NATIVE_REPLACED,engine/navigation + scanning + FactionSecuritySystem
+AvorionLike/Core/Navigation/WormholeSystem.cs,NATIVE_REPLACED,engine/navigation + scanning + FactionSecuritySystem
+AvorionLike/Core/Networking/GameServer.cs,NATIVE_REPLACED,engine/networking/NetworkSystem + BuildCommand
+AvorionLike/Core/Persistence/ISerializable.cs,NATIVE_REPLACED,engine/core/persistence/SaveGameManager + CampaignPersistenceSystem
+AvorionLike/Core/Persistence/SaveGameManager.cs,NATIVE_REPLACED,engine/core/persistence/SaveGameManager + CampaignPersistenceSystem
+AvorionLike/Core/Persistence/SerializationHelper.cs,NATIVE_REPLACED,engine/core/persistence/SaveGameManager + CampaignPersistenceSystem
+AvorionLike/Core/Physics/CollisionSystem.cs,NATIVE_REPLACED,engine/core/physics
+AvorionLike/Core/Physics/PhysicsComponent.cs,NATIVE_REPLACED,engine/core/physics
+AvorionLike/Core/Physics/PhysicsSystem.cs,NATIVE_REPLACED,engine/core/physics
+AvorionLike/Core/Power/PowerComponent.cs,NATIVE_REPLACED,engine/power/PowerSystem
+AvorionLike/Core/Power/PowerSystem.cs,NATIVE_REPLACED,engine/power/PowerSystem
+AvorionLike/Core/Procedural/AsteroidField.cs,NATIVE_REPLACED,engine/procedural/GalaxyGenerator + SystemTopologySystem + AIShipBuilder
+AvorionLike/Core/Procedural/AsteroidVoxelGenerator.cs,NATIVE_REPLACED,engine/procedural/GalaxyGenerator + SystemTopologySystem + AIShipBuilder
+AvorionLike/Core/Procedural/ChunkManager.cs,REFERENCE_ONLY_ALGORITHM,engine/procedural/GalaxyGenerator + SystemTopologySystem + AIShipBuilder
+AvorionLike/Core/Procedural/EnhancedSolarSystemGenerator.cs,NATIVE_REPLACED,engine/procedural/GalaxyGenerator + SystemTopologySystem + AIShipBuilder
+AvorionLike/Core/Procedural/FactionShipGenerator.cs,NATIVE_REPLACED,engine/procedural/GalaxyGenerator + SystemTopologySystem + AIShipBuilder
+AvorionLike/Core/Procedural/FactionShipStyle.cs,NATIVE_REPLACED,engine/procedural/GalaxyGenerator + SystemTopologySystem + AIShipBuilder
+AvorionLike/Core/Procedural/FloatingOriginCoordinates.cs,REFERENCE_ONLY_ALGORITHM,engine/procedural/GalaxyGenerator + SystemTopologySystem + AIShipBuilder
+AvorionLike/Core/Procedural/GalaxyGenerator.cs,NATIVE_REPLACED,engine/procedural/GalaxyGenerator + SystemTopologySystem + AIShipBuilder
+AvorionLike/Core/Procedural/GalaxyNetwork.cs,NATIVE_REPLACED,engine/procedural/GalaxyGenerator + SystemTopologySystem + AIShipBuilder
+AvorionLike/Core/Procedural/IndustrialMiningShipGenerator.cs,NATIVE_REPLACED,engine/procedural/GalaxyGenerator + SystemTopologySystem + AIShipBuilder
+AvorionLike/Core/Procedural/MassiveAsteroidGenerator.cs,NATIVE_REPLACED,engine/procedural/GalaxyGenerator + SystemTopologySystem + AIShipBuilder
+AvorionLike/Core/Procedural/ModularShipGenerator.cs,NATIVE_REPLACED,engine/procedural/GalaxyGenerator + SystemTopologySystem + AIShipBuilder
+AvorionLike/Core/Procedural/NoiseGenerator.cs,REFERENCE_ONLY_ALGORITHM,engine/procedural/GalaxyGenerator + SystemTopologySystem + AIShipBuilder
+AvorionLike/Core/Procedural/ProceduralShipGenerator.cs,NATIVE_REPLACED,engine/procedural/GalaxyGenerator + SystemTopologySystem + AIShipBuilder
+AvorionLike/Core/Procedural/ProceduralStationGenerator.cs,NATIVE_REPLACED,engine/procedural/GalaxyGenerator + SystemTopologySystem + AIShipBuilder
+AvorionLike/Core/Procedural/ShipModule.cs,NATIVE_REPLACED,engine/procedural/GalaxyGenerator + SystemTopologySystem + AIShipBuilder
+AvorionLike/Core/Procedural/SolarSystemData.cs,NATIVE_REPLACED,engine/procedural/GalaxyGenerator + SystemTopologySystem + AIShipBuilder
+AvorionLike/Core/Procedural/StarSystemGenerator.cs,NATIVE_REPLACED,engine/procedural/GalaxyGenerator + SystemTopologySystem + AIShipBuilder
+AvorionLike/Core/Procedural/StargateGenerator.cs,NATIVE_REPLACED,engine/procedural/GalaxyGenerator + SystemTopologySystem + AIShipBuilder
+AvorionLike/Core/Procedural/ThreadedWorldGenerator.cs,REFERENCE_ONLY_ALGORITHM,engine/procedural/GalaxyGenerator + SystemTopologySystem + AIShipBuilder
+AvorionLike/Core/Procedural/WorldManager.cs,NATIVE_REPLACED,engine/procedural/GalaxyGenerator + SystemTopologySystem + AIShipBuilder
+AvorionLike/Core/Progression/GalaxyProgressionSystem.cs,NATIVE_REPLACED,engine/rpg/ProgressionSystem + research + achievement
+AvorionLike/Core/Progression/MaterialTier.cs,NATIVE_REPLACED,engine/rpg/ProgressionSystem + research + achievement
+AvorionLike/Core/Quest/PVEMissionGenerator.cs,NATIVE_REPLACED,engine/quest/QuestSystem
+AvorionLike/Core/Quest/Quest.cs,NATIVE_REPLACED,engine/quest/QuestSystem
+AvorionLike/Core/Quest/QuestComponent.cs,NATIVE_REPLACED,engine/quest/QuestSystem
+AvorionLike/Core/Quest/QuestLoader.cs,NATIVE_REPLACED,engine/quest/QuestSystem
+AvorionLike/Core/Quest/QuestObjective.cs,NATIVE_REPLACED,engine/quest/QuestSystem
+AvorionLike/Core/Quest/QuestSystem.cs,NATIVE_REPLACED,engine/quest/QuestSystem
+AvorionLike/Core/RPG/PlayerCharacterSystem.cs,NATIVE_REPLACED,engine/rpg + crew + interior + DeathLossSystem
+AvorionLike/Core/RPG/PlayerPodSystem.cs,NATIVE_REPLACED,engine/rpg + crew + interior + DeathLossSystem
+AvorionLike/Core/RPG/PodAbilities.cs,NATIVE_REPLACED,engine/rpg + crew + interior + DeathLossSystem
+AvorionLike/Core/RPG/PodSkillTree.cs,NATIVE_REPLACED,engine/rpg + crew + interior + DeathLossSystem
+AvorionLike/Core/RPG/RPGSystems.cs,NATIVE_REPLACED,engine/rpg + crew + interior + DeathLossSystem
+AvorionLike/Core/RPG/SubsystemUpgrades.cs,NATIVE_REPLACED,engine/rpg + crew + interior + DeathLossSystem
+AvorionLike/Core/Resources/CraftingSystem.cs,NATIVE_REPLACED,engine/inventory + crafting + cargo
+AvorionLike/Core/Resources/Inventory.cs,NATIVE_REPLACED,engine/inventory + crafting + cargo
+AvorionLike/Core/Scripting/LuaAPI.cs,NATIVE_REPLACED,engine/scripting/ScriptingSystem + debug_tools/DeveloperConsole (no CLR/Lua VM dependency)
+AvorionLike/Core/Scripting/ModManager.cs,NATIVE_REPLACED,engine/scripting/ScriptingSystem + debug_tools/DeveloperConsole (no CLR/Lua VM dependency)
+AvorionLike/Core/Scripting/ScriptingEngine.cs,NATIVE_REPLACED,engine/scripting/ScriptingSystem + debug_tools/DeveloperConsole (no CLR/Lua VM dependency)
+AvorionLike/Core/SolarSystem/HyperspaceAnimation.cs,NATIVE_REPLACED,engine/procedural + navigation/WormholeSystem + rendering
+AvorionLike/Core/SolarSystem/HyperspaceJump.cs,NATIVE_REPLACED,engine/procedural + navigation/WormholeSystem + rendering
+AvorionLike/Core/SolarSystem/LoadingTipManager.cs,NATIVE_REPLACED,engine/procedural + navigation/WormholeSystem + rendering
+AvorionLike/Core/Spatial/Octree.cs,NATIVE_REPLACED,engine/core/physics/SpatialHash + Octree
+AvorionLike/Core/Spatial/StrategyGridSystem.cs,NATIVE_REPLACED,engine/core/physics/SpatialHash + Octree
+AvorionLike/Core/Station/CaptainSystem.cs,NATIVE_REPLACED,engine/station/StationServiceSystem + hangar + crafting/RefinerySystem
+AvorionLike/Core/Station/RefinerySystem.cs,NATIVE_REPLACED,engine/station/StationServiceSystem + hangar + crafting/RefinerySystem
+AvorionLike/Core/SystemVerification.cs,NATIVE_REPLACED,engine/tests/test_main.cpp + Full Gate
+AvorionLike/Core/Tutorial/Tutorial.cs,NATIVE_REPLACED,engine/tutorial/TutorialSystem
+AvorionLike/Core/Tutorial/TutorialComponent.cs,NATIVE_REPLACED,engine/tutorial/TutorialSystem
+AvorionLike/Core/Tutorial/TutorialLoader.cs,NATIVE_REPLACED,engine/tutorial/TutorialSystem
+AvorionLike/Core/Tutorial/TutorialStep.cs,NATIVE_REPLACED,engine/tutorial/TutorialSystem
+AvorionLike/Core/Tutorial/TutorialSystem.cs,NATIVE_REPLACED,engine/tutorial/TutorialSystem
+AvorionLike/Core/UI/BuilderModeUI.cs,NATIVE_REPLACED,engine/ui/UISystem + UIRenderer + GameUIState + native renderer HUD
+AvorionLike/Core/UI/CrewManagementUI.cs,NATIVE_REPLACED,engine/ui/UISystem + UIRenderer + GameUIState + native renderer HUD
+AvorionLike/Core/UI/CustomUIRenderer.cs,NATIVE_REPLACED,engine/ui/UISystem + UIRenderer + GameUIState + native renderer HUD
+AvorionLike/Core/UI/FleetMissionUI.cs,NATIVE_REPLACED,engine/ui/UISystem + UIRenderer + GameUIState + native renderer HUD
+AvorionLike/Core/UI/FuturisticHUD.cs,NATIVE_REPLACED,engine/ui/UISystem + UIRenderer + GameUIState + native renderer HUD
+AvorionLike/Core/UI/GalaxyMapUI.cs,NATIVE_REPLACED,engine/ui/UISystem + UIRenderer + GameUIState + native renderer HUD
+AvorionLike/Core/UI/GameHUD.cs,NATIVE_REPLACED,engine/ui/UISystem + UIRenderer + GameUIState + native renderer HUD
+AvorionLike/Core/UI/GameMenuSystem.cs,NATIVE_REPLACED,engine/ui/UISystem + UIRenderer + GameUIState + native renderer HUD
+AvorionLike/Core/UI/GameNotificationSystem.cs,NATIVE_REPLACED,engine/ui/UISystem + UIRenderer + GameUIState + native renderer HUD
+AvorionLike/Core/UI/HUDSystem.cs,NATIVE_REPLACED,engine/ui/UISystem + UIRenderer + GameUIState + native renderer HUD
+AvorionLike/Core/UI/InventoryUI.cs,NATIVE_REPLACED,engine/ui/UISystem + UIRenderer + GameUIState + native renderer HUD
+AvorionLike/Core/UI/MainMenuSystem.cs,NATIVE_REPLACED,engine/ui/UISystem + UIRenderer + GameUIState + native renderer HUD
+AvorionLike/Core/UI/MenuSystem.cs,NATIVE_REPLACED,engine/ui/UISystem + UIRenderer + GameUIState + native renderer HUD
+AvorionLike/Core/UI/PlayerUIManager.cs,NATIVE_REPLACED,engine/ui/UISystem + UIRenderer + GameUIState + native renderer HUD
+AvorionLike/Core/UI/QuestLogUI.cs,NATIVE_REPLACED,engine/ui/UISystem + UIRenderer + GameUIState + native renderer HUD
+AvorionLike/Core/UI/ResponsiveUILayout.cs,NATIVE_REPLACED,engine/ui/UISystem + UIRenderer + GameUIState + native renderer HUD
+AvorionLike/Core/UI/ShipBuilderUI.cs,NATIVE_REPLACED,engine/ui/UISystem + UIRenderer + GameUIState + native renderer HUD
+AvorionLike/Core/UI/SubsystemManagementUI.cs,NATIVE_REPLACED,engine/ui/UISystem + UIRenderer + GameUIState + native renderer HUD
+AvorionLike/Core/UI/TitleScreen.cs,NATIVE_REPLACED,engine/ui/UISystem + UIRenderer + GameUIState + native renderer HUD
+AvorionLike/Core/UI/TutorialUI.cs,NATIVE_REPLACED,engine/ui/UISystem + UIRenderer + GameUIState + native renderer HUD
+AvorionLike/Core/VersionInfo.cs,NATIVE_REPLACED,engine/core/Engine::GetVersionString
+AvorionLike/Core/Voxel/AIShipGenerator.cs,NATIVE_REPLACED,engine/ships + ship_editor + StructuralIntegrity + ShipStats
+AvorionLike/Core/Voxel/AestheticGuidelinesSystem.cs,NATIVE_REPLACED,engine/ships + ship_editor + StructuralIntegrity + ShipStats
+AvorionLike/Core/Voxel/BlockDecal.cs,NATIVE_REPLACED,engine/ships + ship_editor + StructuralIntegrity + ShipStats
+AvorionLike/Core/Voxel/BlockDefinition.cs,NATIVE_REPLACED,engine/ships + ship_editor + StructuralIntegrity + ShipStats
+AvorionLike/Core/Voxel/BlockType.cs,NATIVE_REPLACED,engine/ships + ship_editor + StructuralIntegrity + ShipStats
+AvorionLike/Core/Voxel/BuildSystem.cs,NATIVE_REPLACED,engine/ships + ship_editor + StructuralIntegrity + ShipStats
+AvorionLike/Core/Voxel/CompiledShipStats.cs,NATIVE_REPLACED,engine/ships + ship_editor + StructuralIntegrity + ShipStats
+AvorionLike/Core/Voxel/FunctionalRequirementsSystem.cs,NATIVE_REPLACED,engine/ships + ship_editor + StructuralIntegrity + ShipStats
+AvorionLike/Core/Voxel/ShipAggregate.cs,NATIVE_REPLACED,engine/ships + ship_editor + StructuralIntegrity + ShipStats
+AvorionLike/Core/Voxel/ShipBlueprint.cs,NATIVE_REPLACED,engine/ships + ship_editor + StructuralIntegrity + ShipStats
+AvorionLike/Core/Voxel/ShipStatsCompiler.cs,NATIVE_REPLACED,engine/ships + ship_editor + StructuralIntegrity + ShipStats
+AvorionLike/Core/Voxel/ShipStatsSyncSystem.cs,NATIVE_REPLACED,engine/ships + ship_editor + StructuralIntegrity + ShipStats
+AvorionLike/Core/Voxel/StructuralIntegritySystem.cs,NATIVE_REPLACED,engine/ships + ship_editor + StructuralIntegrity + ShipStats
+AvorionLike/Core/Voxel/VoxelBlock.cs,NATIVE_REPLACED,engine/ships + ship_editor + StructuralIntegrity + ShipStats
+AvorionLike/Core/Voxel/VoxelStructureComponent.cs,NATIVE_REPLACED,engine/ships + ship_editor + StructuralIntegrity + ShipStats
+AvorionLike/Examples/AIShipGenerationExample.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/AISystemExample.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/CohesiveShipGenerationExample.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/CohesiveShipGenerationTests.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/EVEFactionShipPVEExample.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/EVEInspiredMechanicsExample.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/EnhancedGenerationExample.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/IndustrialMiningShipShowcase.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/IndustrialMiningShipTests.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/IntegrationTest.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/MeshRenderingExample.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/ModularShipExample.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/ModularShipSystemIntegrationTest.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/ModularShipWorldIntegrationTest.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/MovementAndShapeTests.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/NewModularShipExample.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/ProceduralGenerationExample.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/RenderingModeDemo.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/ShipGenerationExample.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/ShipRefinementTest.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/ShipShowcaseExample.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/SmallShipModulesTest.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/SpaceExplorationExample.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/TestBlockShapeVariety.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/TestShipConnectivity.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/TestShipShapes.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/UlyssesShipExample.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/VisualEnhancementsTest.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Examples/WorldGenerationShowcase.cs,REFERENCE_ONLY,Historical examples; not shipping runtime
+AvorionLike/Program.cs,NATIVE_REPLACED,engine/native C++ runtime
+AvorionLike/UlyssesStarterFactory.cs,SUPERSEDED_CURRENT_DESIGN,native Subspace-owned systems

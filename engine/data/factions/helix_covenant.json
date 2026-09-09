@@ -1,0 +1,59 @@
+{
+  "id": "helix_covenant",
+  "displayName": "Helix Covenant",
+  "palette": {
+    "hull": "Xanion",
+    "armor": "Ogonite",
+    "accent": "Gold"
+  },
+  "silhouette": {
+    "length": "Balanced",
+    "thickness": "Medium",
+    "symmetry": "QuadRadial",
+    "mass": "Winged",
+    "void": "Ringed"
+  },
+  "shapeLanguage": {
+    "allowed": ["Corner", "Wedge"],
+    "wedgeChance": 0.4,
+    "cornerChance": 0.4
+  },
+  "bias": {
+    "armor": 1.0,
+    "engine": 1.0,
+    "weapons": 1.0
+  },
+  "combatAI": {
+    "preferredRange": "Medium",
+    "maneuver": "Orbit",
+    "priority": "HighestThreat",
+    "retreat": "AtQuarterHP"
+  },
+  "fleets": {
+    "early": {
+      "name": "Circle Guard",
+      "composition": [
+        {"class": "Frigate", "count": 2},
+        {"class": "Scout", "count": 2}
+      ],
+      "formation": "Circle"
+    },
+    "mid": {
+      "name": "Sanctum Wing",
+      "composition": [
+        {"class": "Cruiser", "count": 2},
+        {"class": "Frigate", "count": 2}
+      ],
+      "formation": "Diamond"
+    },
+    "late": {
+      "name": "Halo Armada",
+      "composition": [
+        {"class": "Carrier", "count": 1},
+        {"class": "Cruiser", "count": 3},
+        {"class": "Frigate", "count": 4}
+      ],
+      "formation": "Ring"
+    }
+  }
+}

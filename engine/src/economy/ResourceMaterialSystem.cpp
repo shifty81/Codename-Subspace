@@ -1,0 +1,10 @@
+#include "economy/ResourceMaterialSystem.h"
+namespace subspace {
+ResourceMaterialSystem::ResourceMaterialSystem(){RegisterMaterial({"ore_iron","Iron Ore",ResourceTier::Raw,1,0.2,0,0,0.1});RegisterMaterial({"alloy_structural","Structural Alloy",ResourceTier::Refined,0.8,1.2,0.2,0.1,0.2});RegisterMaterial({"electronics_industrial","Industrial Electronics",ResourceTier::Industrial,0.2,0.1,0.3,0.2,0.4});RegisterMaterial({"drive_component","Vector Drive Component",ResourceTier::Advanced,2,1,0.7,0.6,0.7});RegisterMaterial({"command_matrix","Strategic Command Matrix",ResourceTier::Strategic,0.5,0.4,0.8,0.9,0.95});RegisterRecipe({"smelt_structural",{{"ore_iron",3}},"alloy_structural",1});}
+bool ResourceMaterialSystem::RegisterMaterial(const MaterialDefinition& m){if(m.id.empty()||m.massPerUnit<0)return false;materials_[m.id]=m;return true;}
+bool ResourceMaterialSystem::RegisterRecipe(const MaterialRecipe& r){if(r.id.empty()||r.output.empty()||r.outputAmount<=0)return false;recipes_[r.id]=r;return true;}
+const MaterialDefinition* ResourceMaterialSystem::Get(const std::string& id) const {auto it=materials_.find(id);return it==materials_.end()?nullptr:&it->second;}
+bool ResourceMaterialSystem::CanProduce(const std::string& id,const std::unordered_map<std::string,double>& inv) const {auto it=recipes_.find(id);if(it==recipes_.end())return false;for(auto& req:it->second.inputs){auto q=inv.find(req.first);if(q==inv.end()||q->second+1e-9<req.second)return false;}return true;}
+bool ResourceMaterialSystem::Produce(const std::string& id,std::unordered_map<std::string,double>& inv) const {auto it=recipes_.find(id);if(it==recipes_.end()||!CanProduce(id,inv))return false;for(auto& req:it->second.inputs)inv[req.first]-=req.second;inv[it->second.output]+=it->second.outputAmount;return true;}
+std::vector<std::string> ResourceMaterialSystem::MaterialsAtLeast(ResourceTier t) const {std::vector<std::string> out;for(auto& kv:materials_)if(static_cast<int>(kv.second.tier)>=static_cast<int>(t))out.push_back(kv.first);return out;}
+}

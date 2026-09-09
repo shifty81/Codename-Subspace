@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 2,
+  "project": "Codename Subspace",
+  "rootLauncher": "SubspaceTools.cmd",
+  "rootAuthority": "SubspaceTools.ps1",
+  "controlScriptsRoot": "tools/control",
+  "fullGate": [
+    "pre-patch-source-snapshot",
+    "transactional-root-patch-intake",
+    "supply-chain-gate",
+    "root-cleanliness-audit",
+    "native-runtime-guard",
+    "clean-native-build-and-tests",
+    "runtime-smoke",
+    "certified-source-snapshot",
+    "debug-bundle",
+    "quality-gate-record",
+    "artifact-index"
+  ],
+  "fastDevelopmentGate": {
+    "promotesGreenBaseline": false,
+    "supplyChainMode": "VERIFY_ONLY",
+    "steps": ["patch-intake", "native-runtime-guard", "incremental-build-and-tests", "debug-bundle", "fast-gate-record", "artifact-index"]
+  },
+  "patchContract": {
+    "unextractedRootDropZip": true,
+    "transactional": true,
+    "postOverlayHashVerification": true,
+    "rollbackOverwrites": true,
+    "deleteIntroducedFilesOnRollback": true,
+    "explicitUndoWithDriftGuard": true
+  },
+  "sourceCustody": {
+    "externalIntakeOnlyThroughGate": true,
+    "httpsOnly": true,
+    "explicitLicense": true,
+    "immutableRevision": true,
+    "sha256": true,
+    "quarantineBeforePromotion": true,
+    "offlineCacheSupported": true
+  }
+}

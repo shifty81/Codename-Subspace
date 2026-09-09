@@ -1,0 +1,4 @@
+#include "runtime/ShipOnlyVerticalAcceptanceSystem.h"
+namespace subspace {
+ShipOnlyAcceptanceReport ShipOnlyVerticalAcceptanceSystem::Evaluate(const ShipOnlyAcceptanceState&s) const {ShipOnlyAcceptanceReport r;auto req=[&](bool ok,const char*name){if(ok)r.score+=10;else r.blockers.push_back(name);};req(s.stationDocked,"dockable station experience");req(s.fittedShipVisible,"actual fitted ship hangar presentation");req(s.strategicFlight,"strategic flight authority");req(s.contextOrders,"universal context orders");req(s.hotbarReady,"ship action hotbar");req(s.galaxyMapReady,"3D galaxy catalog/map");req(s.orbitalSystemReady,"living orbital system");req(s.planetaryIndustryReady,"planetary industry");req(s.fleetWingReady,"five-ship fleet intent");req(s.persistenceReady,"persistent state");if(s.onFootPathExposed){r.blockers.push_back("on-foot path exposed in ship-only vertical");r.score-=20;}r.pass=r.blockers.empty()&&r.score>=100;return r;}
+} // namespace subspace

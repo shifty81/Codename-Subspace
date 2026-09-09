@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "id": "projectops.certification-acceleration.v1",
+  "project": "Codename Subspace",
+  "fullGreen": {
+    "default": "incremental-authoritative",
+    "cleanRoom": "explicit",
+    "meaning": "All required gates execute against the current source/build authority, but the build tree is preserved unless clean-room is requested.",
+    "parallelBuild": true,
+    "parallelCTest": true,
+    "debugBundleOnGreen": false,
+    "debugBundleOnFailure": true,
+    "certificationRecordMandatory": true
+  },
+  "nativeInvalidation": {
+    "cmakeBuildTreePreserved": true,
+    "cmakeDependencyGraphAuthoritative": true,
+    "futureToolingStaticGates": "tools/control/static-gates",
+    "permanentRunner": "tools/control/ProjectOpsStaticCertification.cmake",
+    "rule": "Adding ProjectOps/tooling validation must not modify engine/CMakeLists.txt after this bootstrap pass."
+  },
+  "cleanRoomUse": [
+    "release",
+    "compiler or toolchain change",
+    "dependency ABI/configuration change",
+    "cache corruption investigation",
+    "explicit operator request"
+  ]
+}

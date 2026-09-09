@@ -1,0 +1,1548 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <ItemGroup>
+    <Filter Include="include">
+      <UniqueIdentifier>{8ED02BE6-4539-5461-B790-7BC6B90E28B1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src">
+      <UniqueIdentifier>{D29F7F5B-76E0-53D7-9390-A5074ACAE06B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\achievement">
+      <UniqueIdentifier>{C202E1A4-5461-5DE0-9FE9-62B92E04F716}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\ai">
+      <UniqueIdentifier>{028004A7-1080-5C99-AB82-3C557EBCBEE8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\audio">
+      <UniqueIdentifier>{13558600-89E4-5BFC-B50F-DC939FEE07C5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\combat">
+      <UniqueIdentifier>{4BCB3AEC-301C-5F74-B610-5800B4EB0FE3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\core">
+      <UniqueIdentifier>{A6392F76-C87D-5B0A-8ED3-02435010A874}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\crafting">
+      <UniqueIdentifier>{F4BFB2AC-3B8A-5593-B8A4-116C1A7D3DFF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\crew">
+      <UniqueIdentifier>{48858E92-D62E-5B2F-9111-57F3BC85BDE1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\debug_tools">
+      <UniqueIdentifier>{5C8CE155-5369-5F9F-BB94-6B8C44C9C5A7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\diplomacy">
+      <UniqueIdentifier>{6976BEFF-A56A-5505-B1C1-61901930E5A9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\factions">
+      <UniqueIdentifier>{E8EB8B95-81A4-5C90-928B-BB2D9CEC2101}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\fleet">
+      <UniqueIdentifier>{AA47207B-A2EF-5B5F-8603-10F64758A699}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\formation">
+      <UniqueIdentifier>{370B0EB5-970F-54A7-94A5-8184FA6E5EDD}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\hangar">
+      <UniqueIdentifier>{6B2C8116-2D5F-55D0-8C45-082AE072401B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\input">
+      <UniqueIdentifier>{3FC9DC4E-3F79-57E7-9F0D-4E6A2B3B914E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\integration">
+      <UniqueIdentifier>{AA026629-5D30-4A95-9D30-266295266295}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\inventory">
+      <UniqueIdentifier>{E9F9D4FF-B9A2-588B-91C0-F9F822D5DF63}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\mining">
+      <UniqueIdentifier>{EBA32785-408D-58E4-9F43-C766B785A991}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\navigation">
+      <UniqueIdentifier>{B63A80EF-0C38-5589-9FB0-78613E3110D2}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\networking">
+      <UniqueIdentifier>{429AA7F4-8FCC-5357-B59F-4FFB4C04CA04}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\notification">
+      <UniqueIdentifier>{2EA1364F-7AB4-5B5C-AE8B-AED577CBFF08}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\power">
+      <UniqueIdentifier>{3EA66041-0333-5724-9114-39173248558A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\procedural">
+      <UniqueIdentifier>{ACFE7536-94EA-524F-A4B5-7C8467A44A54}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\quest">
+      <UniqueIdentifier>{636CB617-27CA-5A0D-B6F4-B490469F4CA9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\rendering">
+      <UniqueIdentifier>{4C8D9723-9543-5B4E-8AC6-79DE487FD950}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\reputation">
+      <UniqueIdentifier>{AC9F7ED7-2EBC-56DD-BE8E-27D14C1CF499}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\research">
+      <UniqueIdentifier>{12364FB2-7B4C-5200-83E5-CF59333FA906}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\rpg">
+      <UniqueIdentifier>{8DC862A8-518E-5536-B97D-BCE0F9B1D0DB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\salvage">
+      <UniqueIdentifier>{916FF8B1-5EE0-5647-9B30-C15A49134AC6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\scanning">
+      <UniqueIdentifier>{A074BD89-1BE6-5A99-9916-639F39C3BA64}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\scripting">
+      <UniqueIdentifier>{61B94EFC-B585-5788-8663-DDFB1E37677B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\ship_editor">
+      <UniqueIdentifier>{B826E416-EFEF-5862-B865-7C1258294663}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\ships">
+      <UniqueIdentifier>{E0981A69-E3C3-581B-8CF1-D0A71C213D53}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\trade_route">
+      <UniqueIdentifier>{43B3F405-2258-5C6B-8C14-9200BDA25F3D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\trading">
+      <UniqueIdentifier>{252BAF3A-5316-5BD5-A9E3-2C251DE7F768}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\tutorial">
+      <UniqueIdentifier>{4DD1139B-6AC8-5CFA-85B4-D91116A01E77}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\ui">
+      <UniqueIdentifier>{5433A8A9-D620-5D54-BD6A-849E61613E54}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\weapons">
+      <UniqueIdentifier>{E140B1AA-09FB-5E13-BF12-0DAE4092ED77}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\achievement">
+      <UniqueIdentifier>{0A23980A-471C-5854-979F-8F51283894EA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ai">
+      <UniqueIdentifier>{CFC3CD3C-B2DE-5E79-8241-2A4858B15DC6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\audio">
+      <UniqueIdentifier>{607482D5-2269-5EA1-A319-D5A7A239DCCF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\combat">
+      <UniqueIdentifier>{F7EBA434-4069-5B4D-A6D0-4EE19EB0FC44}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\core">
+      <UniqueIdentifier>{8140E3C5-14EC-5D0C-BF72-2C169EDDCF0D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\crafting">
+      <UniqueIdentifier>{DDE2298F-02BB-5F26-A8B1-DEBB2A9F2B5D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\crew">
+      <UniqueIdentifier>{80D77450-6667-5C6C-9975-C1267619CDAF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\debug_tools">
+      <UniqueIdentifier>{2FE134FF-7F23-5170-91E3-184154DCCF1A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\diplomacy">
+      <UniqueIdentifier>{26044D57-184E-5E79-979C-8A3E7BB3AE27}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\factions">
+      <UniqueIdentifier>{363722A1-3EC5-552B-9373-A3D44F411E83}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\fleet">
+      <UniqueIdentifier>{0558C7F9-6331-55E3-B881-410A3EB4DA85}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\formation">
+      <UniqueIdentifier>{69AC3510-41F3-5D3E-81EF-CF79A0E6AAED}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\hangar">
+      <UniqueIdentifier>{5FBE1F24-BD33-559F-B3F8-1B07D8FB768D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\input">
+      <UniqueIdentifier>{D8F48A39-5D43-5A51-B471-327D63F70989}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\integration">
+      <UniqueIdentifier>{BB026629-5D30-4A95-9D30-266295266295}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\inventory">
+      <UniqueIdentifier>{B5E178F9-EE67-513A-B3C5-136C86FB1D63}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\mining">
+      <UniqueIdentifier>{EBB19BC6-5E79-569B-8237-C44037380B9F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\navigation">
+      <UniqueIdentifier>{B6EDB03A-EB64-5791-A8CF-2D5E955714D7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\networking">
+      <UniqueIdentifier>{0B0D4562-7252-556C-B6CB-18A2C0C8F668}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\notification">
+      <UniqueIdentifier>{604AFE21-158D-54AC-85C1-B2A4C43C31E4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\power">
+      <UniqueIdentifier>{EE742446-6D14-5AA2-93B8-F61E8E3C387E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\procedural">
+      <UniqueIdentifier>{5AAA52E5-A4EF-5B0E-8B58-715DB787EA86}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\quest">
+      <UniqueIdentifier>{BCECFBB7-1A89-5DED-A0D6-A900C0CA8E2B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\rendering">
+      <UniqueIdentifier>{A2395AA6-43C8-5672-9E6E-BD800452E054}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\reputation">
+      <UniqueIdentifier>{DE3AF979-701C-5C7A-A95E-349B9C43C85F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\research">
+      <UniqueIdentifier>{F06EDAFC-D051-5CFD-A04B-649DE50FC812}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\rpg">
+      <UniqueIdentifier>{EC54E918-3411-5425-90C6-50300515A039}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\salvage">
+      <UniqueIdentifier>{20300665-B987-5945-BC97-D1CF661EC861}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\scanning">
+      <UniqueIdentifier>{8991812D-2A35-5649-98B2-9C2A316417AF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\scripting">
+      <UniqueIdentifier>{8790B57E-37A7-5C50-9D4A-B87C8B4484B4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ship_editor">
+      <UniqueIdentifier>{FE7B3CDF-5994-54C1-BA44-36981CA2D94B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ships">
+      <UniqueIdentifier>{B43F1C66-A53E-50C0-9CFD-12B67958AE8F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\trade_route">
+      <UniqueIdentifier>{DFC07D19-B6BC-5FC5-ABD6-7E31C5C84C80}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\trading">
+      <UniqueIdentifier>{AEBA442D-C7C6-5AAE-90F0-3F5C77A8A236}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\tutorial">
+      <UniqueIdentifier>{20DB80A9-ED25-5E60-8DEF-45F12862EBB8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\ui">
+      <UniqueIdentifier>{B6B24B44-61CB-5971-BEF8-C331EF533EA8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\weapons">
+      <UniqueIdentifier>{111FC96D-4E13-56D9-8463-2B2033978618}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\core\config">
+      <UniqueIdentifier>{CC78CBA5-2206-5166-86C1-52CE98B87CDC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\core\ecs">
+      <UniqueIdentifier>{227DCDAD-6643-54A8-946E-5B79F7210D0D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\core\events">
+      <UniqueIdentifier>{60C99EF5-7776-5D4C-B457-16CE532E1731}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\core\logging">
+      <UniqueIdentifier>{DAB67040-5E6B-55F2-A5DC-A75F77598625}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\core\persistence">
+      <UniqueIdentifier>{FA813C63-FCF1-573A-B96D-E075A0D2B924}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\core\physics">
+      <UniqueIdentifier>{C6BAE76B-F6A4-5C65-97C3-89BB97FA706B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\core\resources">
+      <UniqueIdentifier>{BAE71F76-1E99-5A47-8FFE-9FA83F4F5A4F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\core\config">
+      <UniqueIdentifier>{24EF38AE-9560-5528-BA37-CEAAB4DE7461}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\core\ecs">
+      <UniqueIdentifier>{BFFAE2CD-C8A5-570B-AE26-DCC694D77AA4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\core\events">
+      <UniqueIdentifier>{2FB7DB6B-AC45-5E9F-A76F-59806630A5C6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\core\logging">
+      <UniqueIdentifier>{0B6256F8-47F7-5C77-A459-1AD98C5135F7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\core\persistence">
+      <UniqueIdentifier>{DFB0D51C-A0EB-5B1A-ABD3-F68FDF2EBABD}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\core\physics">
+      <UniqueIdentifier>{E837589E-5DD3-5E57-AE86-4AED61A554BC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\core\resources">
+      <UniqueIdentifier>{F9F1AB03-D0CB-5812-AA38-CDA55C3FD29A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\cargo">
+      <UniqueIdentifier>{B95ED833-03B3-51DC-A3FE-304941198270}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\economy">
+      <UniqueIdentifier>{43516157-39A4-5105-869F-55499B988DC7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\interior">
+      <UniqueIdentifier>{9AE3B3C2-DC6F-5430-AE19-1FEA95BC84BB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\runtime">
+      <UniqueIdentifier>{3C43D8C6-B79A-5286-8A28-F4E2772ECB9A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\station">
+      <UniqueIdentifier>{180364BE-A7FA-59B7-B28A-215DC22CD164}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\cargo">
+      <UniqueIdentifier>{FD79C00D-7592-5FAE-9931-B08F85EBC763}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\economy">
+      <UniqueIdentifier>{EFFBCB05-E1C9-5FBB-A9F1-DAC077F554F7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\interior">
+      <UniqueIdentifier>{4D406A60-16D7-5DAF-907A-B72F76BB2E08}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\runtime">
+      <UniqueIdentifier>{0EB83979-B87A-5BE1-917E-5DDD5B52CF4E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="include\station">
+      <UniqueIdentifier>{4D5BC0C8-AF41-520F-A936-94D17515DA18}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="src\achievement\AchievementSystem.cpp">
+      <Filter>src\achievement</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ai\AIDecisionSystem.cpp">
+      <Filter>src\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ai\AIShipBuilder.cpp">
+      <Filter>src\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ai\AISteeringSystem.cpp">
+      <Filter>src\ai</Filter>
+    </ClCompile>
+    <ClCompile Include="src\audio\AudioSystem.cpp">
+      <Filter>src\audio</Filter>
+    </ClCompile>
+    <ClCompile Include="src\combat\CombatSystem.cpp">
+      <Filter>src\combat</Filter>
+    </ClCompile>
+    <ClCompile Include="src\combat\LootSystem.cpp">
+      <Filter>src\combat</Filter>
+    </ClCompile>
+    <ClCompile Include="src\combat\ShieldSystem.cpp">
+      <Filter>src\combat</Filter>
+    </ClCompile>
+    <ClCompile Include="src\combat\StatusEffectSystem.cpp">
+      <Filter>src\combat</Filter>
+    </ClCompile>
+    <ClCompile Include="src\combat\TargetLockSystem.cpp">
+      <Filter>src\combat</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\Engine.cpp">
+      <Filter>src\core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\Math.cpp">
+      <Filter>src\core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\config\ConfigurationManager.cpp">
+      <Filter>src\core\config</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\ecs\EntityManager.cpp">
+      <Filter>src\core\ecs</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\events\EventSystem.cpp">
+      <Filter>src\core\events</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\logging\Logger.cpp">
+      <Filter>src\core\logging</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\persistence\SaveGameManager.cpp">
+      <Filter>src\core\persistence</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\physics\Octree.cpp">
+      <Filter>src\core\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\physics\PhysicsComponent.cpp">
+      <Filter>src\core\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\physics\PhysicsSystem.cpp">
+      <Filter>src\core\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\physics\SpatialHash.cpp">
+      <Filter>src\core\physics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\resources\Inventory.cpp">
+      <Filter>src\core\resources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\crafting\CraftingSystem.cpp">
+      <Filter>src\crafting</Filter>
+    </ClCompile>
+    <ClCompile Include="src\crafting\RefinerySystem.cpp">
+      <Filter>src\crafting</Filter>
+    </ClCompile>
+    <ClCompile Include="src\crew\CrewSystem.cpp">
+      <Filter>src\crew</Filter>
+    </ClCompile>
+    <ClCompile Include="src\debug_tools\DebugRenderer.cpp">
+      <Filter>src\debug_tools</Filter>
+    </ClCompile>
+    <ClCompile Include="src\debug_tools\PerformanceMonitor.cpp">
+      <Filter>src\debug_tools</Filter>
+    </ClCompile>
+    <ClCompile Include="src\debug_tools\ProductionPerformanceSystem.cpp">
+      <Filter>src\debug_tools</Filter>
+    </ClCompile>
+    <ClCompile Include="src\audio\ProductionAudioCueSystem.cpp">
+      <Filter>src\audio</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\persistence\SaveRecoverySystem.cpp">
+      <Filter>src\core</Filter>
+    </ClCompile>
+    <ClCompile Include="src\input\InputBindingProfile.cpp">
+      <Filter>src\input</Filter>
+    </ClCompile>
+    <ClCompile Include="src\interior\InteriorInteractionSystem.cpp">
+      <Filter>src\interior</Filter>
+    </ClCompile>
+    <ClCompile Include="src\station\StationActivityPresentationSystem.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\procedural\RegionStreamingScheduler.cpp">
+      <Filter>src\procedural</Filter>
+    </ClCompile>
+    <ClCompile Include="src\content\ThirdPartyAssetIntakeSystem.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\content\ShipyardModuleSystem.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\content\ShipyardCertificationSystem.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\developer\AssetProvenanceManifest.cpp">
+      <Filter>src</Filter>
+    </ClCompile>
+    <ClCompile Include="src\interior\ModularInteriorKitSystem.cpp">
+      <Filter>src\interior</Filter>
+    </ClCompile>
+    <ClCompile Include="src\interior\InteriorConstructionSystem.cpp">
+      <Filter>src\interior</Filter>
+    </ClCompile>
+    <ClCompile Include="src\diplomacy\DiplomacySystem.cpp">
+      <Filter>src\diplomacy</Filter>
+    </ClCompile>
+    <ClCompile Include="src\factions\FactionProfile.cpp">
+      <Filter>src\factions</Filter>
+    </ClCompile>
+    <ClCompile Include="src\factions\SilhouetteProfile.cpp">
+      <Filter>src\factions</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fleet\FleetCommandSystem.cpp">
+      <Filter>src\fleet</Filter>
+    </ClCompile>
+    <ClCompile Include="src\formation\FormationSystem.cpp">
+      <Filter>src\formation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\hangar\HangarSystem.cpp">
+      <Filter>src\hangar</Filter>
+    </ClCompile>
+    <ClCompile Include="src\input\InputState.cpp">
+      <Filter>src\input</Filter>
+    </ClCompile>
+    <ClCompile Include="src\input\PlayerControlSystem.cpp">
+      <Filter>src\input</Filter>
+    </ClCompile>
+    <ClCompile Include="src\inventory\InventorySystem.cpp">
+      <Filter>src\inventory</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mining\MiningSystem.cpp">
+      <Filter>src\mining</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mining\AsteroidFractureSystem.cpp">
+      <Filter>src\mining</Filter>
+    </ClCompile>
+    <ClCompile Include="src\mining\MiningSalvageLoop.cpp">
+      <Filter>src\mining</Filter>
+    </ClCompile>
+    <ClCompile Include="src\navigation\NavigationSystem.cpp">
+      <Filter>src\navigation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\navigation\Pathfinding.cpp">
+      <Filter>src\navigation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\navigation\PathfindingComponent.cpp">
+      <Filter>src\navigation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\navigation\PathfindingSystem.cpp">
+      <Filter>src\navigation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\navigation\WormholeSystem.cpp">
+      <Filter>src\navigation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\networking\BuildCommand.cpp">
+      <Filter>src\networking</Filter>
+    </ClCompile>
+    <ClCompile Include="src\networking\NetworkSystem.cpp">
+      <Filter>src\networking</Filter>
+    </ClCompile>
+    <ClCompile Include="src\notification\NotificationSystem.cpp">
+      <Filter>src\notification</Filter>
+    </ClCompile>
+    <ClCompile Include="src\power\PowerSystem.cpp">
+      <Filter>src\power</Filter>
+    </ClCompile>
+    <ClCompile Include="src\procedural\GalaxyGenerator.cpp">
+      <Filter>src\procedural</Filter>
+    </ClCompile>
+    <ClCompile Include="src\quest\QuestSystem.cpp">
+      <Filter>src\quest</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\GhostRenderer.cpp">
+      <Filter>src\rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\ParticleSystem.cpp">
+      <Filter>src\rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\PostProcessingSystem.cpp">
+      <Filter>src\rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\RenderingConfiguration.cpp">
+      <Filter>src\rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\ShadowSystem.cpp">
+      <Filter>src\rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\ShipRenderer.cpp">
+      <Filter>src\rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\StrategicBattlefieldPresentation.cpp">
+      <Filter>src\rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\StrategicCamera.cpp">
+      <Filter>src\rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\StrategicViewProjection.cpp">
+      <Filter>src\rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\SpaceMaterialSystem.cpp">
+      <Filter>src\rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\PlanetSurfaceSystem.cpp">
+      <Filter>src\rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\ProceduralVisualVariantSystem.cpp">
+      <Filter>src\rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="src\reputation\ReputationSystem.cpp">
+      <Filter>src\reputation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\research\ResearchSystem.cpp">
+      <Filter>src\research</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rpg\DeathLossSystem.cpp">
+      <Filter>src\rpg</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rpg\ProgressionSystem.cpp">
+      <Filter>src\rpg</Filter>
+    </ClCompile>
+    <ClCompile Include="src\salvage\SalvageSystem.cpp">
+      <Filter>src\salvage</Filter>
+    </ClCompile>
+    <ClCompile Include="src\scanning\ScanningSystem.cpp">
+      <Filter>src\scanning</Filter>
+    </ClCompile>
+    <ClCompile Include="src\scripting\ScriptingSystem.cpp">
+      <Filter>src\scripting</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ship_editor\BlockPalette.cpp">
+      <Filter>src\ship_editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ship_editor\EditorAction.cpp">
+      <Filter>src\ship_editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ship_editor\EditorClipboard.cpp">
+      <Filter>src\ship_editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ship_editor\EditorGrid.cpp">
+      <Filter>src\ship_editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ship_editor\EditorSelection.cpp">
+      <Filter>src\ship_editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ship_editor\ShipEditorController.cpp">
+      <Filter>src\ship_editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ship_editor\ShipEditorState.cpp">
+      <Filter>src\ship_editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ship_editor\ShipValidator.cpp">
+      <Filter>src\ship_editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ship_editor\ShipyardBuilderSystem.cpp">
+      <Filter>src\ship_editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ship_editor\SymmetrySystem.cpp">
+      <Filter>src\ship_editor</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ships\Block.cpp">
+      <Filter>src\ships</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ships\BlockPlacement.cpp">
+      <Filter>src\ships</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ships\Blueprint.cpp">
+      <Filter>src\ships</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ships\CapabilitySystem.cpp">
+      <Filter>src\ships</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ships\DamageComponent.cpp">
+      <Filter>src\ships</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ships\ModuleDef.cpp">
+      <Filter>src\ships</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ships\Ship.cpp">
+      <Filter>src\ships</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ships\ShipArchetype.cpp">
+      <Filter>src\ships</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ships\ShipClassSystem.cpp">
+      <Filter>src\ships</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ships\ShipDamage.cpp">
+      <Filter>src\ships</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ships\ShipStats.cpp">
+      <Filter>src\ships</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ships\StructuralIntegrity.cpp">
+      <Filter>src\ships</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ships\ThrusterLayoutSystem.cpp">
+      <Filter>src\ships</Filter>
+    </ClCompile>
+    <ClCompile Include="src\trade_route\IndustrialLogisticsSystem.cpp">
+      <Filter>src\trade_route</Filter>
+    </ClCompile>
+    <ClCompile Include="src\trade_route\TradeRouteSystem.cpp">
+      <Filter>src\trade_route</Filter>
+    </ClCompile>
+    <ClCompile Include="src\trading\TradingSystem.cpp">
+      <Filter>src\trading</Filter>
+    </ClCompile>
+    <ClCompile Include="src\tutorial\TutorialSystem.cpp">
+      <Filter>src\tutorial</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\UIElement.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\UIPanel.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\UIRenderer.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\UISystem.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\weapons\WeaponSystem.cpp">
+      <Filter>src\weapons</Filter>
+    </ClCompile>
+    <ClCompile Include="src\weapons\MissileSystem.cpp">
+      <Filter>src\weapons</Filter>
+    </ClCompile>
+    <ClCompile Include="src\cargo\CargoSystem.cpp">
+      <Filter>src\cargo</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\persistence\CampaignPersistenceSystem.cpp">
+      <Filter>src\core\persistence</Filter>
+    </ClCompile>
+    <ClCompile Include="src\core\resources\ObjAssetLoader.cpp">
+      <Filter>src\core\resources</Filter>
+    </ClCompile>
+    <ClCompile Include="src\debug_tools\DeveloperConsole.cpp">
+      <Filter>src\debug_tools</Filter>
+    </ClCompile>
+    <ClCompile Include="src\economy\EconomySimulationSystem.cpp">
+      <Filter>src\economy</Filter>
+    </ClCompile>
+    <ClCompile Include="src\factions\FactionSecuritySystem.cpp">
+      <Filter>src\factions</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fleet\FleetMissionSystem.cpp">
+      <Filter>src\fleet</Filter>
+    </ClCompile>
+    <ClCompile Include="src\interior\ShipInteriorSystem.cpp">
+      <Filter>src\interior</Filter>
+    </ClCompile>
+    <ClCompile Include="src\procedural\SystemTopologySystem.cpp">
+      <Filter>src\procedural</Filter>
+    </ClCompile>
+    <ClCompile Include="src\runtime\NativeRuntimeServices.cpp">
+      <Filter>src\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="src\station\StationServiceSystem.cpp">
+      <Filter>src\station</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\GameUIState.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\navigation\AstronomicalScaleSystem.cpp">
+      <Filter>src\navigation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\procedural\RegionStreamingSystem.cpp">
+      <Filter>src\procedural</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\EnvironmentPresentationSystem.cpp">
+      <Filter>src\rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="src\navigation\SystemNavigationSystem.cpp">
+      <Filter>src\navigation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ships\ShipConstructionSystem.cpp">
+      <Filter>src\ships</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\FrontendFlowSystem.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ships\FittingSystem.cpp">
+      <Filter>src\ships</Filter>
+    </ClCompile>
+    <ClCompile Include="src\station\StationConstructionSystem.cpp">
+      <Filter>src\station</Filter>
+    </ClCompile>
+    <ClCompile Include="src\economy\MarketContractSystem.cpp">
+      <Filter>src\economy</Filter>
+    </ClCompile>
+    <ClCompile Include="src\scanning\ExplorationDiscoverySystem.cpp">
+      <Filter>src\scanning</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fleet\CorporationSystem.cpp">
+      <Filter>src\fleet</Filter>
+    </ClCompile>
+    <ClCompile Include="src\scanning\PlanetSurveySystem.cpp">
+      <Filter>src\scanning</Filter>
+    </ClCompile>
+    <ClCompile Include="src\economy\PlanetaryManufacturingSystem.cpp">
+      <Filter>src\economy</Filter>
+    </ClCompile>
+    <ClCompile Include="src\runtime\SimulationLodSystem.cpp">
+      <Filter>src\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="src\runtime\CarbonIntakeSystem.cpp">
+      <Filter>src\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="src\runtime\SandboxVerticalSliceSystem.cpp">
+      <Filter>src\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="src\research\BlueprintResearchSystem.cpp">
+      <Filter>src\research</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ships\HazardCertificationSystem.cpp">
+      <Filter>src\ships</Filter>
+    </ClCompile>
+    <ClCompile Include="src\combat\SectorCrisisSystem.cpp">
+      <Filter>src\combat</Filter>
+    </ClCompile>
+    <ClCompile Include="src\quest\StorySpineSystem.cpp">
+      <Filter>src\quest</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rpg\SandboxProgressionSystem.cpp">
+      <Filter>src\rpg</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\CelestialEnvironmentSystem.cpp">
+      <Filter>src\rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="src\navigation\SystemMapSystem.cpp">
+      <Filter>src\navigation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\navigation\VectorTravelSystem.cpp">
+      <Filter>src\navigation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\economy\PlanetaryIndustrializationSystem.cpp">
+      <Filter>src\economy</Filter>
+    </ClCompile>
+    <ClCompile Include="src\station\StationBuilderSystem.cpp">
+      <Filter>src\station</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ships\ShipProductionWorkflowSystem.cpp">
+      <Filter>src\ships</Filter>
+    </ClCompile>
+    <ClCompile Include="src\hangar\HangarFittingWorkflowSystem.cpp">
+      <Filter>src\hangar</Filter>
+    </ClCompile>
+    <ClCompile Include="src\economy\LocalEconomySystem.cpp">
+      <Filter>src\economy</Filter>
+    </ClCompile>
+    <ClCompile Include="src\scanning\ExpeditionSystem.cpp">
+      <Filter>src\scanning</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fleet\CorporationOperationsSystem.cpp">
+      <Filter>src\fleet</Filter>
+    </ClCompile>
+    <ClCompile Include="src\runtime\LivingSandboxSystem.cpp">
+      <Filter>src\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\SandboxWorkspaceSystem.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\combat\AdvancedCombatSystem.cpp">
+      <Filter>src\combat</Filter>
+    </ClCompile>
+    <ClCompile Include="src\combat\ShipFailureSystem.cpp">
+      <Filter>src\combat</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ships\EngineeringRepairSystem.cpp">
+      <Filter>src\ships</Filter>
+    </ClCompile>
+    <ClCompile Include="src\combat\ElectronicWarfareSystem.cpp">
+      <Filter>src\combat</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fleet\DroneOperationsSystem.cpp">
+      <Filter>src\fleet</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fleet\FleetDoctrineSystem.cpp">
+      <Filter>src\fleet</Filter>
+    </ClCompile>
+    <ClCompile Include="src\factions\DynamicFactionSystem.cpp">
+      <Filter>src\factions</Filter>
+    </ClCompile>
+    <ClCompile Include="src\runtime\SectorSimulationSystem.cpp">
+      <Filter>src\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="src\scanning\DeepExplorationSystem.cpp">
+      <Filter>src\scanning</Filter>
+    </ClCompile>
+    <ClCompile Include="src\navigation\AnomalousSpaceSystem.cpp">
+      <Filter>src\navigation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ships\EnvironmentalHazardSystem.cpp">
+      <Filter>src\ships</Filter>
+    </ClCompile>
+    <ClCompile Include="src\economy\ResourceMaterialSystem.cpp">
+      <Filter>src\economy</Filter>
+    </ClCompile>
+    <ClCompile Include="src\trade_route\LogisticsAutomationSystem.cpp">
+      <Filter>src\trade_route</Filter>
+    </ClCompile>
+    <ClCompile Include="src\station\StationPopulationSystem.cpp">
+      <Filter>src\station</Filter>
+    </ClCompile>
+    <ClCompile Include="src\station\OrbitalInfrastructureSystem.cpp">
+      <Filter>src\station</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ships\CapitalConstructionSystem.cpp">
+      <Filter>src\ships</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fleet\CarrierOperationsSystem.cpp">
+      <Filter>src\fleet</Filter>
+    </ClCompile>
+    <ClCompile Include="src\fleet\CorporationProgressionSystem.cpp">
+      <Filter>src\fleet</Filter>
+    </ClCompile>
+    <ClCompile Include="src\runtime\PersistentUniverseSystem.cpp">
+      <Filter>src\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="src\runtime\SandboxAcceptanceIISystem.cpp">
+      <Filter>src\runtime</Filter>
+    </ClCompile>
+    <ClCompile Include="src\integration\CombatShipIntegration.cpp">
+      <Filter>src\integration</Filter>
+    </ClCompile>
+    <ClCompile Include="src\integration\NavigationMiningIntegration.cpp">
+      <Filter>src\integration</Filter>
+    </ClCompile>
+    <ClCompile Include="src\integration\InfrastructureIndustryIntegration.cpp">
+      <Filter>src\integration</Filter>
+    </ClCompile>
+    <ClCompile Include="src\integration\LivingUniverseIntegration.cpp">
+      <Filter>src\integration</Filter>
+    </ClCompile>
+    <ClCompile Include="src\ui\ProductionInterfaceSystem.cpp">
+      <Filter>src\ui</Filter>
+    </ClCompile>
+    <ClCompile Include="src\hangar\DockingExperienceSystem.cpp">
+      <Filter>src\hangar</Filter>
+    </ClCompile>
+    <ClCompile Include="src\interior\ShipEmbodimentSystem.cpp">
+      <Filter>src\interior</Filter>
+    </ClCompile>
+    <ClCompile Include="src\navigation\TravelArrivalSystem.cpp">
+      <Filter>src\navigation</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\ForwardSpacePresentationSystem.cpp">
+      <Filter>src\rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\CinematicFlightPresentationSystem.cpp">
+      <Filter>src\rendering</Filter>
+    </ClCompile>
+    <ClCompile Include="src\rendering\SolarPresentationSystem.cpp">
+      <Filter>src\rendering</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\achievement\AchievementSystem.h">
+      <Filter>include\achievement</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ai\AIDecisionSystem.h">
+      <Filter>include\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ai\AIShipBuilder.h">
+      <Filter>include\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ai\AISteeringSystem.h">
+      <Filter>include\ai</Filter>
+    </ClInclude>
+    <ClInclude Include="include\audio\AudioSystem.h">
+      <Filter>include\audio</Filter>
+    </ClInclude>
+    <ClInclude Include="include\combat\CombatSystem.h">
+      <Filter>include\combat</Filter>
+    </ClInclude>
+    <ClInclude Include="include\combat\LootSystem.h">
+      <Filter>include\combat</Filter>
+    </ClInclude>
+    <ClInclude Include="include\combat\ShieldSystem.h">
+      <Filter>include\combat</Filter>
+    </ClInclude>
+    <ClInclude Include="include\combat\StatusEffectSystem.h">
+      <Filter>include\combat</Filter>
+    </ClInclude>
+    <ClInclude Include="include\combat\TargetLockSystem.h">
+      <Filter>include\combat</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\Engine.h">
+      <Filter>include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\Math.h">
+      <Filter>include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\config\ConfigurationManager.h">
+      <Filter>include\core\config</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\ecs\Entity.h">
+      <Filter>include\core\ecs</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\ecs\EntityManager.h">
+      <Filter>include\core\ecs</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\ecs\IComponent.h">
+      <Filter>include\core\ecs</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\ecs\SystemBase.h">
+      <Filter>include\core\ecs</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\events\EventSystem.h">
+      <Filter>include\core\events</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\events\GameEvents.h">
+      <Filter>include\core\events</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\logging\Logger.h">
+      <Filter>include\core\logging</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\persistence\SaveGameManager.h">
+      <Filter>include\core\persistence</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\physics\CollisionLayers.h">
+      <Filter>include\core\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\physics\Octree.h">
+      <Filter>include\core\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\physics\PhysicsComponent.h">
+      <Filter>include\core\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\physics\PhysicsSystem.h">
+      <Filter>include\core\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\physics\SpatialHash.h">
+      <Filter>include\core\physics</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\resources\Inventory.h">
+      <Filter>include\core\resources</Filter>
+    </ClInclude>
+    <ClInclude Include="include\crafting\CraftingSystem.h">
+      <Filter>include\crafting</Filter>
+    </ClInclude>
+    <ClInclude Include="include\crafting\RefinerySystem.h">
+      <Filter>include\crafting</Filter>
+    </ClInclude>
+    <ClInclude Include="include\crew\CrewSystem.h">
+      <Filter>include\crew</Filter>
+    </ClInclude>
+    <ClInclude Include="include\debug_tools\DebugRenderer.h">
+      <Filter>include\debug_tools</Filter>
+    </ClInclude>
+    <ClInclude Include="include\debug_tools\PerformanceMonitor.h">
+      <Filter>include\debug_tools</Filter>
+    </ClInclude>
+    <ClInclude Include="include\debug_tools\ProductionPerformanceSystem.h">
+      <Filter>include\debug_tools</Filter>
+    </ClInclude>
+    <ClInclude Include="include\audio\ProductionAudioCueSystem.h">
+      <Filter>include\audio</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\persistence\SaveRecoverySystem.h">
+      <Filter>include\core</Filter>
+    </ClInclude>
+    <ClInclude Include="include\input\InputBindingProfile.h">
+      <Filter>include\input</Filter>
+    </ClInclude>
+    <ClInclude Include="include\interior\InteriorInteractionSystem.h">
+      <Filter>include\interior</Filter>
+    </ClInclude>
+    <ClInclude Include="include\station\StationActivityPresentationSystem.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\procedural\RegionStreamingScheduler.h">
+      <Filter>include\procedural</Filter>
+    </ClInclude>
+    <ClInclude Include="include\content\ThirdPartyAssetIntakeSystem.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\content\ShipyardModuleSystem.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\content\ShipyardNameClassification.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\content\ShipyardCertificationSystem.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\developer\provenance\AssetProvenanceManifest.h">
+      <Filter>include</Filter>
+    </ClInclude>
+    <ClInclude Include="include\interior\ModularInteriorKitSystem.h">
+      <Filter>include\interior</Filter>
+    </ClInclude>
+    <ClInclude Include="include\interior\InteriorConstructionSystem.h">
+      <Filter>include\interior</Filter>
+    </ClInclude>
+    <ClInclude Include="include\diplomacy\DiplomacySystem.h">
+      <Filter>include\diplomacy</Filter>
+    </ClInclude>
+    <ClInclude Include="include\factions\FactionProfile.h">
+      <Filter>include\factions</Filter>
+    </ClInclude>
+    <ClInclude Include="include\factions\SilhouetteProfile.h">
+      <Filter>include\factions</Filter>
+    </ClInclude>
+    <ClInclude Include="include\fleet\FleetCommandSystem.h">
+      <Filter>include\fleet</Filter>
+    </ClInclude>
+    <ClInclude Include="include\formation\FormationSystem.h">
+      <Filter>include\formation</Filter>
+    </ClInclude>
+    <ClInclude Include="include\hangar\HangarSystem.h">
+      <Filter>include\hangar</Filter>
+    </ClInclude>
+    <ClInclude Include="include\input\InputState.h">
+      <Filter>include\input</Filter>
+    </ClInclude>
+    <ClInclude Include="include\input\PlayerControlSystem.h">
+      <Filter>include\input</Filter>
+    </ClInclude>
+    <ClInclude Include="include\inventory\InventorySystem.h">
+      <Filter>include\inventory</Filter>
+    </ClInclude>
+    <ClInclude Include="include\mining\MiningSystem.h">
+      <Filter>include\mining</Filter>
+    </ClInclude>
+    <ClInclude Include="include\mining\AsteroidFractureSystem.h">
+      <Filter>include\mining</Filter>
+    </ClInclude>
+    <ClInclude Include="include\mining\MiningSalvageLoop.h">
+      <Filter>include\mining</Filter>
+    </ClInclude>
+    <ClInclude Include="include\navigation\NavigationSystem.h">
+      <Filter>include\navigation</Filter>
+    </ClInclude>
+    <ClInclude Include="include\navigation\Pathfinding.h">
+      <Filter>include\navigation</Filter>
+    </ClInclude>
+    <ClInclude Include="include\navigation\PathfindingComponent.h">
+      <Filter>include\navigation</Filter>
+    </ClInclude>
+    <ClInclude Include="include\navigation\PathfindingSystem.h">
+      <Filter>include\navigation</Filter>
+    </ClInclude>
+    <ClInclude Include="include\navigation\WormholeSystem.h">
+      <Filter>include\navigation</Filter>
+    </ClInclude>
+    <ClInclude Include="include\networking\BuildCommand.h">
+      <Filter>include\networking</Filter>
+    </ClInclude>
+    <ClInclude Include="include\networking\NetworkSystem.h">
+      <Filter>include\networking</Filter>
+    </ClInclude>
+    <ClInclude Include="include\notification\NotificationSystem.h">
+      <Filter>include\notification</Filter>
+    </ClInclude>
+    <ClInclude Include="include\power\PowerSystem.h">
+      <Filter>include\power</Filter>
+    </ClInclude>
+    <ClInclude Include="include\procedural\GalaxyGenerator.h">
+      <Filter>include\procedural</Filter>
+    </ClInclude>
+    <ClInclude Include="include\quest\QuestSystem.h">
+      <Filter>include\quest</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\GhostRenderer.h">
+      <Filter>include\rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\ParticleSystem.h">
+      <Filter>include\rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\PostProcessingSystem.h">
+      <Filter>include\rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\RenderingConfiguration.h">
+      <Filter>include\rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\ShadowSystem.h">
+      <Filter>include\rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\ShipRenderer.h">
+      <Filter>include\rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\StrategicBattlefieldPresentation.h">
+      <Filter>include\rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\StrategicCamera.h">
+      <Filter>include\rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\StrategicViewProjection.h">
+      <Filter>include\rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\SpaceMaterialSystem.h">
+      <Filter>include\rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\PlanetSurfaceSystem.h">
+      <Filter>include\rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\ProceduralVisualVariantSystem.h">
+      <Filter>include\rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\reputation\ReputationSystem.h">
+      <Filter>include\reputation</Filter>
+    </ClInclude>
+    <ClInclude Include="include\research\ResearchSystem.h">
+      <Filter>include\research</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rpg\DeathLossSystem.h">
+      <Filter>include\rpg</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rpg\ProgressionSystem.h">
+      <Filter>include\rpg</Filter>
+    </ClInclude>
+    <ClInclude Include="include\salvage\SalvageSystem.h">
+      <Filter>include\salvage</Filter>
+    </ClInclude>
+    <ClInclude Include="include\scanning\ScanningSystem.h">
+      <Filter>include\scanning</Filter>
+    </ClInclude>
+    <ClInclude Include="include\scripting\ScriptingSystem.h">
+      <Filter>include\scripting</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ship_editor\BlockPalette.h">
+      <Filter>include\ship_editor</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ship_editor\EditorAction.h">
+      <Filter>include\ship_editor</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ship_editor\EditorClipboard.h">
+      <Filter>include\ship_editor</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ship_editor\EditorGrid.h">
+      <Filter>include\ship_editor</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ship_editor\EditorSelection.h">
+      <Filter>include\ship_editor</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ship_editor\ShipEditorController.h">
+      <Filter>include\ship_editor</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ship_editor\ShipEditorState.h">
+      <Filter>include\ship_editor</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ship_editor\ShipValidator.h">
+      <Filter>include\ship_editor</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ship_editor\ShipyardBuilderSystem.h">
+      <Filter>include\ship_editor</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ship_editor\SymmetrySystem.h">
+      <Filter>include\ship_editor</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ships\Block.h">
+      <Filter>include\ships</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ships\BlockPlacement.h">
+      <Filter>include\ships</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ships\Blueprint.h">
+      <Filter>include\ships</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ships\CapabilitySystem.h">
+      <Filter>include\ships</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ships\DamageComponent.h">
+      <Filter>include\ships</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ships\ModuleDef.h">
+      <Filter>include\ships</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ships\Ship.h">
+      <Filter>include\ships</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ships\ShipArchetype.h">
+      <Filter>include\ships</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ships\ShipClassSystem.h">
+      <Filter>include\ships</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ships\ShipDamage.h">
+      <Filter>include\ships</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ships\ShipStats.h">
+      <Filter>include\ships</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ships\StructuralIntegrity.h">
+      <Filter>include\ships</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ships\ThrusterLayoutSystem.h">
+      <Filter>include\ships</Filter>
+    </ClInclude>
+    <ClInclude Include="include\trade_route\IndustrialLogisticsSystem.h">
+      <Filter>include\trade_route</Filter>
+    </ClInclude>
+    <ClInclude Include="include\trade_route\TradeRouteSystem.h">
+      <Filter>include\trade_route</Filter>
+    </ClInclude>
+    <ClInclude Include="include\trading\TradingSystem.h">
+      <Filter>include\trading</Filter>
+    </ClInclude>
+    <ClInclude Include="include\tutorial\TutorialSystem.h">
+      <Filter>include\tutorial</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ui\UIElement.h">
+      <Filter>include\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ui\UIPanel.h">
+      <Filter>include\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ui\UIRenderer.h">
+      <Filter>include\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ui\UISystem.h">
+      <Filter>include\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ui\UITypes.h">
+      <Filter>include\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weapons\WeaponSystem.h">
+      <Filter>include\weapons</Filter>
+    </ClInclude>
+    <ClInclude Include="include\weapons\MissileSystem.h">
+      <Filter>include\weapons</Filter>
+    </ClInclude>
+    <ClInclude Include="include\cargo\CargoSystem.h">
+      <Filter>include\cargo</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\persistence\CampaignPersistenceSystem.h">
+      <Filter>include\core\persistence</Filter>
+    </ClInclude>
+    <ClInclude Include="include\core\resources\ObjAssetLoader.h">
+      <Filter>include\core\resources</Filter>
+    </ClInclude>
+    <ClInclude Include="include\debug_tools\DeveloperConsole.h">
+      <Filter>include\debug_tools</Filter>
+    </ClInclude>
+    <ClInclude Include="include\economy\EconomySimulationSystem.h">
+      <Filter>include\economy</Filter>
+    </ClInclude>
+    <ClInclude Include="include\factions\FactionSecuritySystem.h">
+      <Filter>include\factions</Filter>
+    </ClInclude>
+    <ClInclude Include="include\fleet\FleetMissionSystem.h">
+      <Filter>include\fleet</Filter>
+    </ClInclude>
+    <ClInclude Include="include\interior\ShipInteriorSystem.h">
+      <Filter>include\interior</Filter>
+    </ClInclude>
+    <ClInclude Include="include\procedural\SystemTopologySystem.h">
+      <Filter>include\procedural</Filter>
+    </ClInclude>
+    <ClInclude Include="include\runtime\NativeRuntimeServices.h">
+      <Filter>include\runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="include\station\StationServiceSystem.h">
+      <Filter>include\station</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ui\GameUIState.h">
+      <Filter>include\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="include\navigation\AstronomicalScaleSystem.h">
+      <Filter>include\navigation</Filter>
+    </ClInclude>
+    <ClInclude Include="include\procedural\RegionStreamingSystem.h">
+      <Filter>include\procedural</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\EnvironmentPresentationSystem.h">
+      <Filter>include\rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\navigation\SystemNavigationSystem.h">
+      <Filter>include\navigation</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ships\ShipConstructionSystem.h">
+      <Filter>include\ships</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ui\FrontendFlowSystem.h">
+      <Filter>include\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ships\FittingSystem.h">
+      <Filter>include\ships</Filter>
+    </ClInclude>
+    <ClInclude Include="include\station\StationConstructionSystem.h">
+      <Filter>include\station</Filter>
+    </ClInclude>
+    <ClInclude Include="include\economy\MarketContractSystem.h">
+      <Filter>include\economy</Filter>
+    </ClInclude>
+    <ClInclude Include="include\scanning\ExplorationDiscoverySystem.h">
+      <Filter>include\scanning</Filter>
+    </ClInclude>
+    <ClInclude Include="include\fleet\CorporationSystem.h">
+      <Filter>include\fleet</Filter>
+    </ClInclude>
+    <ClInclude Include="include\scanning\PlanetSurveySystem.h">
+      <Filter>include\scanning</Filter>
+    </ClInclude>
+    <ClInclude Include="include\economy\PlanetaryManufacturingSystem.h">
+      <Filter>include\economy</Filter>
+    </ClInclude>
+    <ClInclude Include="include\runtime\SimulationLodSystem.h">
+      <Filter>include\runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="include\runtime\CarbonIntakeSystem.h">
+      <Filter>include\runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="include\runtime\SandboxVerticalSliceSystem.h">
+      <Filter>include\runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="include\research\BlueprintResearchSystem.h">
+      <Filter>include\research</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ships\HazardCertificationSystem.h">
+      <Filter>include\ships</Filter>
+    </ClInclude>
+    <ClInclude Include="include\combat\SectorCrisisSystem.h">
+      <Filter>include\combat</Filter>
+    </ClInclude>
+    <ClInclude Include="include\quest\StorySpineSystem.h">
+      <Filter>include\quest</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rpg\SandboxProgressionSystem.h">
+      <Filter>include\rpg</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\CelestialEnvironmentSystem.h">
+      <Filter>include\rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\navigation\SystemMapSystem.h">
+      <Filter>include\navigation</Filter>
+    </ClInclude>
+    <ClInclude Include="include\navigation\VectorTravelSystem.h">
+      <Filter>include\navigation</Filter>
+    </ClInclude>
+    <ClInclude Include="include\economy\PlanetaryIndustrializationSystem.h">
+      <Filter>include\economy</Filter>
+    </ClInclude>
+    <ClInclude Include="include\station\StationBuilderSystem.h">
+      <Filter>include\station</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ships\ShipProductionWorkflowSystem.h">
+      <Filter>include\ships</Filter>
+    </ClInclude>
+    <ClInclude Include="include\hangar\HangarFittingWorkflowSystem.h">
+      <Filter>include\hangar</Filter>
+    </ClInclude>
+    <ClInclude Include="include\economy\LocalEconomySystem.h">
+      <Filter>include\economy</Filter>
+    </ClInclude>
+    <ClInclude Include="include\scanning\ExpeditionSystem.h">
+      <Filter>include\scanning</Filter>
+    </ClInclude>
+    <ClInclude Include="include\fleet\CorporationOperationsSystem.h">
+      <Filter>include\fleet</Filter>
+    </ClInclude>
+    <ClInclude Include="include\runtime\LivingSandboxSystem.h">
+      <Filter>include\runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ui\SandboxWorkspaceSystem.h">
+      <Filter>include\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="include\combat\AdvancedCombatSystem.h">
+      <Filter>include\combat</Filter>
+    </ClInclude>
+    <ClInclude Include="include\combat\ShipFailureSystem.h">
+      <Filter>include\combat</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ships\EngineeringRepairSystem.h">
+      <Filter>include\ships</Filter>
+    </ClInclude>
+    <ClInclude Include="include\combat\ElectronicWarfareSystem.h">
+      <Filter>include\combat</Filter>
+    </ClInclude>
+    <ClInclude Include="include\fleet\DroneOperationsSystem.h">
+      <Filter>include\fleet</Filter>
+    </ClInclude>
+    <ClInclude Include="include\fleet\FleetDoctrineSystem.h">
+      <Filter>include\fleet</Filter>
+    </ClInclude>
+    <ClInclude Include="include\factions\DynamicFactionSystem.h">
+      <Filter>include\factions</Filter>
+    </ClInclude>
+    <ClInclude Include="include\runtime\SectorSimulationSystem.h">
+      <Filter>include\runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="include\scanning\DeepExplorationSystem.h">
+      <Filter>include\scanning</Filter>
+    </ClInclude>
+    <ClInclude Include="include\navigation\AnomalousSpaceSystem.h">
+      <Filter>include\navigation</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ships\EnvironmentalHazardSystem.h">
+      <Filter>include\ships</Filter>
+    </ClInclude>
+    <ClInclude Include="include\economy\ResourceMaterialSystem.h">
+      <Filter>include\economy</Filter>
+    </ClInclude>
+    <ClInclude Include="include\trade_route\LogisticsAutomationSystem.h">
+      <Filter>include\trade_route</Filter>
+    </ClInclude>
+    <ClInclude Include="include\station\StationPopulationSystem.h">
+      <Filter>include\station</Filter>
+    </ClInclude>
+    <ClInclude Include="include\station\OrbitalInfrastructureSystem.h">
+      <Filter>include\station</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ships\CapitalConstructionSystem.h">
+      <Filter>include\ships</Filter>
+    </ClInclude>
+    <ClInclude Include="include\fleet\CarrierOperationsSystem.h">
+      <Filter>include\fleet</Filter>
+    </ClInclude>
+    <ClInclude Include="include\fleet\CorporationProgressionSystem.h">
+      <Filter>include\fleet</Filter>
+    </ClInclude>
+    <ClInclude Include="include\runtime\PersistentUniverseSystem.h">
+      <Filter>include\runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="include\runtime\SandboxAcceptanceIISystem.h">
+      <Filter>include\runtime</Filter>
+    </ClInclude>
+    <ClInclude Include="include\integration\CombatShipIntegration.h">
+      <Filter>include\integration</Filter>
+    </ClInclude>
+    <ClInclude Include="include\integration\NavigationMiningIntegration.h">
+      <Filter>include\integration</Filter>
+    </ClInclude>
+    <ClInclude Include="include\integration\InfrastructureIndustryIntegration.h">
+      <Filter>include\integration</Filter>
+    </ClInclude>
+    <ClInclude Include="include\integration\LivingUniverseIntegration.h">
+      <Filter>include\integration</Filter>
+    </ClInclude>
+    <ClInclude Include="include\ui\ProductionInterfaceSystem.h">
+      <Filter>include\ui</Filter>
+    </ClInclude>
+    <ClInclude Include="include\hangar\DockingExperienceSystem.h">
+      <Filter>include\hangar</Filter>
+    </ClInclude>
+    <ClInclude Include="include\interior\ShipEmbodimentSystem.h">
+      <Filter>include\interior</Filter>
+    </ClInclude>
+    <ClInclude Include="include\navigation\TravelArrivalSystem.h">
+      <Filter>include\navigation</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\ForwardSpacePresentationSystem.h">
+      <Filter>include\rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\CinematicFlightPresentationSystem.h">
+      <Filter>include\rendering</Filter>
+    </ClInclude>
+    <ClInclude Include="include\rendering\SolarPresentationSystem.h">
+      <Filter>include\rendering</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="data\factions\iron_dominion.json" />
+    <None Include="data\factions\nomad_continuum.json" />
+    <None Include="data\factions\helix_covenant.json" />
+    <None Include="data\factions\ashen_clades.json" />
+    <None Include="data\factions\ascended_archive.json" />
+    <None Include="CMakeLists.txt" />
+    <None Include="README.md" />
+  </ItemGroup>
+
+  <!-- Pass361-400 authorities -->
+  <ItemGroup>
+    <ClCompile Include="src\integration\PlayerFacingIntegrationSystem.cpp">
+      <Filter>src\integration</Filter>
+    </ClCompile>
+    <ClCompile Include="src\celestial\OrbitalDynamicsSystem.cpp" />
+    <ClCompile Include="src\economy\InfrastructureModuleSystem.cpp" />
+    <ClCompile Include="src\economy\PlanetaryIndustrySystem.cpp" />
+    <ClCompile Include="src\fleet\FleetIntentSystem.cpp" />
+    <ClCompile Include="src\flight\StrategicFlightSystem.cpp" />
+    <ClCompile Include="src\hangar\UniversalDockedStationSystem.cpp" />
+    <ClCompile Include="src\navigation\GalaxyCatalogSystem.cpp" />
+    <ClCompile Include="src\navigation\GalaxyMapSystem.cpp" />
+    <ClCompile Include="src\navigation\GalaxyRoutePlannerSystem.cpp" />
+    <ClCompile Include="src\navigation\UniverseSystemMapSystem.cpp" />
+    <ClCompile Include="src\rendering\ShipInspectionReviewSystem.cpp" />
+    <ClCompile Include="src\runtime\ShipOnlyVerticalAcceptanceSystem.cpp" />
+    <ClCompile Include="src\ships\ShipAttachmentIntegritySystem.cpp" />
+    <ClCompile Include="src\ships\ShipProfileDirector.cpp" />
+    <ClCompile Include="src\station\ModularStationAssemblySystem.cpp" />
+    <ClCompile Include="src\station\StationEcologySystem.cpp" />
+    <ClCompile Include="src\ui\ChatCommunicationSystem.cpp" />
+    <ClCompile Include="src\ui\ContextActionSystem.cpp" />
+    <ClCompile Include="src\ui\GameUiFramework.cpp" />
+    <ClCompile Include="src\ui\ShipActionHotbarSystem.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\integration\PlayerFacingIntegrationSystem.h">
+      <Filter>include\integration</Filter>
+    </ClInclude>
+    <ClInclude Include="include\celestial\OrbitalDynamicsSystem.h" />
+    <ClInclude Include="include\economy\InfrastructureModuleSystem.h" />
+    <ClInclude Include="include\economy\PlanetaryIndustrySystem.h" />
+    <ClInclude Include="include\fleet\FleetIntentSystem.h" />
+    <ClInclude Include="include\flight\StrategicFlightSystem.h" />
+    <ClInclude Include="include\hangar\UniversalDockedStationSystem.h" />
+    <ClInclude Include="include\navigation\GalaxyCatalogSystem.h" />
+    <ClInclude Include="include\navigation\GalaxyMapSystem.h" />
+    <ClInclude Include="include\navigation\GalaxyRoutePlannerSystem.h" />
+    <ClInclude Include="include\navigation\UniverseSystemMapSystem.h" />
+    <ClInclude Include="include\rendering\ShipInspectionReviewSystem.h" />
+    <ClInclude Include="include\runtime\ShipOnlyVerticalAcceptanceSystem.h" />
+    <ClInclude Include="include\ships\ShipAttachmentIntegritySystem.h" />
+    <ClInclude Include="include\ships\ShipProfileDirector.h" />
+    <ClInclude Include="include\station\ModularStationAssemblySystem.h" />
+    <ClInclude Include="include\station\StationEcologySystem.h" />
+    <ClInclude Include="include\ui\ChatCommunicationSystem.h" />
+    <ClInclude Include="include\ui\ContextActionSystem.h" />
+    <ClInclude Include="include\ui\GameUiFramework.h" />
+    <ClInclude Include="include\ui\ShipActionHotbarSystem.h" />
+  </ItemGroup>
+
+  <!-- Pass411-420 player-facing closure authorities -->
+  <ItemGroup>
+    <ClCompile Include="src\fleet\FleetCaptainAiSystem.cpp" />
+    <ClCompile Include="src\runtime\CarbonOpenSourceBridgeSystem.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\fleet\FleetCaptainAiSystem.h" />
+    <ClInclude Include="include\runtime\CarbonOpenSourceBridgeSystem.h" />
+  </ItemGroup>
+
+</Project>

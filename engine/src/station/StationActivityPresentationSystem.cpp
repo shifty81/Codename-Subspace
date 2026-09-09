@@ -1,0 +1,6 @@
+#include "station/StationActivityPresentationSystem.h"
+#include <algorithm>
+namespace subspace {
+StationActivityProfile StationActivityPresentationSystem::Build(int population,bool shipyard,DockingExperienceStage stage) const{return Build(population,shipyard?StationArchetype::Shipyard:StationArchetype::TradeHub,stage);}
+StationActivityProfile StationActivityPresentationSystem::Build(int population,StationArchetype archetype,DockingExperienceStage stage) const {StationActivityProfile p;const int scale=std::max(1,population/250);p.cargoCraft=std::clamp(scale,1,18);p.serviceDrones=std::clamp(scale*2,2,28);p.activeDockLights=stage==DockingExperienceStage::Undocked?6:12;p.industrialMotion=std::clamp(.18f+scale*.06f,.18f,1.0f);p.trafficDensity=std::clamp(.12f+scale*.045f,.12f,.88f);p.constructionActivity=archetype==StationArchetype::Shipyard;p.approachLanes=std::clamp(1+scale/2,1,6);p.inboundTraffic=std::clamp(scale/2+1,1,10);p.outboundTraffic=std::clamp((scale+1)/2,1,10);p.securityCraft=(archetype==StationArchetype::Military?std::clamp(scale+2,3,14):(archetype==StationArchetype::TradeHub||archetype==StationArchetype::CorporateHQ?std::clamp(scale/2,1,6):0));p.queueing=(p.inboundTraffic+p.outboundTraffic)>p.approachLanes*2;return p;}
+}

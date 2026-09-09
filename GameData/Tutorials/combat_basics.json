@@ -1,0 +1,52 @@
+{
+  "Id": "tutorial_combat_basics",
+  "Title": "Combat Basics",
+  "Description": "Learn how to fight enemies and defend yourself in space combat.",
+  "AutoStart": false,
+  "Prerequisites": ["tutorial_basic_controls"],
+  "Steps": [
+    {
+      "Type": "Message",
+      "Title": "Introduction to Combat",
+      "Message": "Space is dangerous! You'll encounter hostile ships and need to defend yourself. This tutorial will teach you the basics of combat.",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Weapons and Turrets",
+      "Message": "Your ship can be equipped with various weapon types:\n• Chainguns - Fast, low damage\n• Lasers - Energy weapons, good accuracy\n• Cannons - Slow, high damage\n• Missiles - Homing projectiles\n\nWeapons are mounted on turret hardpoints on your ship.",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Targeting Enemies",
+      "Message": "To engage in combat:\n1. Target an enemy ship using your radar\n2. Get within weapon range\n3. Fire your weapons (typically mouse or number keys)\n4. Keep your target in sight\n\nYour weapons will automatically track targets if equipped with turrets.",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Shields and Defense",
+      "Message": "Shields protect your ship from damage:\n• Shields absorb damage before your hull takes hits\n• Shields regenerate over time when not taking damage\n• Shield capacity depends on shield generators on your ship\n• Monitor your shield status in the HUD",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Combat Strategy",
+      "Message": "Combat tips:\n• Keep moving to avoid enemy fire\n• Use your shields strategically\n• Target weapon systems to disable enemies\n• Retreat if shields are low to regenerate\n• Manage your power distribution between weapons, shields, and engines",
+      "CanSkip": true
+    },
+    {
+      "Type": "WaitForAction",
+      "Title": "Destroy an Enemy",
+      "Message": "Now try destroying an enemy ship! Use your weapons and the tactics you've learned. Good luck, Commander!",
+      "RequiredAction": "destroy_entity",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Combat Complete!",
+      "Message": "Excellent work! You've learned the basics of space combat. Continue practicing to become a formidable pilot!",
+      "CanSkip": false
+    }
+  ]
+}

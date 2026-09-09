@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "policy": "PINNED_APPROVED_SOURCES_ONLY",
+  "sources": [
+    {
+      "id": "greyoxide_shipyard_v07",
+      "displayName": "Greyoxide Shipyard v0.7 Extracted",
+      "author": "Greyoxide",
+      "license": "CC0-1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceUrl": "https://opengameart.org/content/shipyard-v07-extracted",
+      "revision": "v0.7-certified-r5",
+      "handler": "shipyard_v07",
+      "required": true,
+      "domains": ["Ship", "Station", "Weapon"],
+      "notes": "Preserve authored objects. Runtime and PCG consume only normalized/certified derivatives and manual overrides."
+    }
+  ]
+}

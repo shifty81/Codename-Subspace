@@ -1,0 +1,39 @@
+{
+  "Id": "tutorial_basic_controls",
+  "Title": "Basic Controls",
+  "Description": "Learn the basic controls to navigate your ship in space.",
+  "AutoStart": true,
+  "Prerequisites": [],
+  "Steps": [
+    {
+      "Type": "Message",
+      "Title": "Welcome to Codename: Subspace!",
+      "Message": "Welcome, Commander! This tutorial will teach you the basic controls. Click 'Continue' when ready.",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Movement Controls",
+      "Message": "Use WASD keys to move your ship:\n• W - Forward\n• S - Backward\n• A - Strafe Left\n• D - Strafe Right\n• Space - Up\n• Shift - Down",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Camera Controls",
+      "Message": "Use the mouse to look around and the Arrow keys + Q/E to rotate your ship:\n• Mouse - Look Around\n• Arrow Keys - Rotate Ship\n• Q/E - Roll\n• C - Toggle Camera/Ship Control",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "User Interface",
+      "Message": "Important UI keys:\n• J - Quest Log\n• I - Inventory\n• B - Ship Builder\n• TAB - Player Status\n• H - Toggle Tutorial\n• ESC - Pause Menu\n• ~ - Testing Console",
+      "CanSkip": true
+    },
+    {
+      "Type": "Message",
+      "Title": "Tutorial Complete!",
+      "Message": "You've learned the basic controls! Now you're ready to explore the galaxy. Good luck, Commander!",
+      "CanSkip": false
+    }
+  ]
+}

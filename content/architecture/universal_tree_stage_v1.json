@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "id": "projectops.tree-stage.v1",
+  "name": "Universal ProjectOps Tree Stage",
+  "purpose": "Project-neutral filesystem staging contract for source rollups, snapshots, debug staging, baselines, packaging, repository normalization, and future Cortex agent workspaces.",
+  "inputs": {
+    "source": "directory",
+    "destination": "directory",
+    "excludeDirectories": "project policy",
+    "excludeFiles": "project policy",
+    "retryCount": 1,
+    "retryWaitSeconds": 1,
+    "followJunctions": false
+  },
+  "backends": {
+    "windowsPreferred": {
+      "name": "robocopy",
+      "flags": [
+        "/E",
+        "/R:n",
+        "/W:n",
+        "/XJ",
+        "/COPY:DAT",
+        "/DCOPY:DAT"
+      ],
+      "successExitCodes": "0-7",
+      "failureExitCodes": "8+"
+    },
+    "portableFallback": {
+      "name": "filesystem-copy",
+      "behavior": "recursive copy plus equivalent exclusion pruning"
+    }
+  },
+  "ownership": {
+    "universalLayer": [
+      "backend selection",
+      "copy execution",
+      "retry policy",
+      "junction protection",
+      "metadata preservation",
+      "robocopy exit normalization",
+      "portable fallback"
+    ],
+    "projectAdapter": [
+      "source/destination",
+      "include/exclude policy",
+      "purpose",
+      "post-stage verification"
+    ]
+  },
+  "cortexTarget": "Cortex ProjectOps consumes this capability contract instead of project-specific Robocopy command lines."
+}

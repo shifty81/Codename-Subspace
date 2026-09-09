@@ -1,0 +1,59 @@
+{
+  "id": "iron_dominion",
+  "displayName": "Iron Dominion",
+  "palette": {
+    "hull": "Iron",
+    "armor": "Titanium",
+    "accent": "DarkRed"
+  },
+  "silhouette": {
+    "length": "Short",
+    "thickness": "Chunky",
+    "symmetry": "Axial",
+    "mass": "Central",
+    "void": "Solid"
+  },
+  "shapeLanguage": {
+    "allowed": ["Cube", "Rect"],
+    "wedgeChance": 0.0,
+    "cornerChance": 0.0
+  },
+  "bias": {
+    "armor": 1.4,
+    "engine": 0.6,
+    "weapons": 1.2
+  },
+  "combatAI": {
+    "preferredRange": "Close",
+    "maneuver": "Minimal",
+    "priority": "NearestEnemy",
+    "retreat": "Never"
+  },
+  "fleets": {
+    "early": {
+      "name": "Patrol Wall",
+      "composition": [
+        {"class": "Frigate", "count": 1},
+        {"class": "Scout", "count": 2}
+      ],
+      "formation": "Wall"
+    },
+    "mid": {
+      "name": "Hammer Group",
+      "composition": [
+        {"class": "Cruiser", "count": 1},
+        {"class": "Frigate", "count": 3}
+      ],
+      "formation": "Wedge"
+    },
+    "late": {
+      "name": "Siege Column",
+      "composition": [
+        {"class": "Battleship", "count": 1},
+        {"class": "Cruiser", "count": 2},
+        {"class": "Frigate", "count": 4}
+      ],
+      "formation": "Column"
+    }
+  }
+}

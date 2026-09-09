@@ -1,0 +1,10 @@
+#pragma once
+#include <string>
+#include <unordered_set>
+#include <vector>
+namespace subspace {
+struct EditorAssetCard{std::string assetId,displayName,category;std::vector<std::string>tags;std::string previewKey,subtitle,badge;bool enabled=true;std::string disabledReason;};struct EditorAssetBrowserFilter{std::string query,category;std::vector<std::string>requiredTags;bool favoritesOnly=false,recentOnly=false,reviewOnly=false;};
+class EditorAssetBrowserModel{public:void SetAssets(std::vector<EditorAssetCard>a){assets_=std::move(a);}std::vector<EditorAssetCard>Filtered(const EditorAssetBrowserFilter&)const;void SetFavorite(const std::string&,bool);bool IsFavorite(const std::string&id)const{return favorites_.count(id)>0;}void MarkRecent(const std::string&);const std::vector<std::string>&Recent()const{return recent_;}private:std::vector<EditorAssetCard>assets_;std::unordered_set<std::string>favorites_;std::vector<std::string>recent_;};
+enum class EditorDragPayloadKind{None,ShipModule,StationModule,TurretPart,CargoItem,Blueprint,Material,Decal};struct EditorDragPayload{EditorDragPayloadKind kind=EditorDragPayloadKind::None;std::string assetId,source,displayName;};class EditorDragSession{public:bool Begin(EditorDragPayload);void Cancel();bool Active()const{return active_;}const EditorDragPayload&Payload()const{return payload_;}private:bool active_=false;EditorDragPayload payload_{};};
+enum class EditorPlacementState{None,Valid,Warning,Invalid};struct EditorPlacementCandidate{std::string targetId,targetSocket,childSocket;float distanceScore=0,compatibilityScore=0,orientationScore=0,designScore=0;bool collision=false,clearanceBlocked=false;std::string warning,invalidReason;float TotalScore()const;};struct EditorPlacementResolution{EditorPlacementState state=EditorPlacementState::None;int selectedIndex=-1;std::string message;std::vector<EditorPlacementCandidate>ranked;};class EditorPlacementResolver{public:static EditorPlacementResolution Resolve(std::vector<EditorPlacementCandidate>);};
+}

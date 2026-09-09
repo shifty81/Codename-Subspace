@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "policy": "GATE_ONLY_PINNED_APPROVED_SOURCES",
+  "registries": [
+    {
+      "id": "kitbash",
+      "manifest": "content/kitbash/sources.subspace_sources.json",
+      "required": true,
+      "purpose": "External kitbash/model content intake"
+    },
+    {
+      "id": "asset_toolchain",
+      "manifest": "tools/dependencies/subspace_asset_toolchain.json",
+      "required": true,
+      "purpose": "Pinned source-asset cooking and validation dependencies"
+    }
+  ],
+  "rules": [
+    "No runtime, authoring, asset, or tool dependency may bypass the Root Project Control Center source gate.",
+    "Every network source must use HTTPS, carry an explicit license, and identify an immutable version/revision.",
+    "Normal build/test never downloads arbitrary dependencies directly.",
+    "Fetched bytes enter a project-local quarantine/cache first and are promoted only after hash/provenance/certification checks.",
+    "Full Gate records source/dependency evidence and fails closed for required sources that cannot be certified.",
+    "Third-party source archives are never treated as authoritative project source; normalized/cooked derivatives are generated from governed inputs."
+  ]
+}

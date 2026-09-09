@@ -1,0 +1,9 @@
+{
+  "tool": "7zr.exe",
+  "version": "26.02",
+  "sourceUrl": "https://github.com/ip7z/7zip/releases/download/26.02/7zr.exe",
+  "sourceAuthority": "7-Zip official release repository (ip7z/7zip)",
+  "sha256": "56b8cc9f4971cef253644fafe54063ed7fdca551d4dee0f8c6baa81b855acd72",
+  "purpose": "Project-local extraction of governed third-party content archives",
+  "installed": "2026-09-09T16:46:34.7596905-04:00"
+}

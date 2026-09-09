@@ -1,0 +1,38 @@
+get_filename_component(PROJECT_ROOT "${ROOT}/.." ABSOLUTE)
+set(TOOLS "${PROJECT_ROOT}/SubspaceTools.ps1")
+set(COMMON "${PROJECT_ROOT}/tools/control/ProjectOpsCommon.psm1")
+set(QG "${PROJECT_ROOT}/tools/control/WriteQualityGateRecord.ps1")
+
+foreach(PATH IN ITEMS "${TOOLS}" "${COMMON}" "${QG}")
+  if(NOT EXISTS "${PATH}")
+    message(FATAL_ERROR "R6R7 static gate missing file: ${PATH}")
+  endif()
+endforeach()
+
+file(READ "${TOOLS}" TOOLS_TEXT)
+file(READ "${COMMON}" COMMON_TEXT)
+file(READ "${QG}" QG_TEXT)
+
+function(r6r7_require TEXT_VALUE NEEDLE)
+  string(FIND "${TEXT_VALUE}" "${NEEDLE}" FOUND_AT)
+  if(FOUND_AT EQUAL -1)
+    message(FATAL_ERROR "R6R7 static gate missing: ${NEEDLE}")
+  endif()
+endfunction()
+
+r6r7_require("${COMMON_TEXT}" "function Invoke-ProjectOpsGitProbe")
+r6r7_require("${COMMON_TEXT}" "System.Diagnostics.ProcessStartInfo")
+r6r7_require("${COMMON_TEXT}" "$psi.PSObject.Properties['ArgumentList']")
+r6r7_require("${COMMON_TEXT}" "$psi.Arguments = ($encodedArguments -join ' ')")
+r6r7_require("${COMMON_TEXT}" "RedirectStandardError = $true")
+r6r7_require("${TOOLS_TEXT}" "Quality-gate certification record")
+r6r7_require("${TOOLS_TEXT}" "Add-StepResult -Name \"Quality-gate certification record\" -Status \"FAIL\"")
+r6r7_require("${QG_TEXT}" "schemaVersion=4")
+r6r7_require("${QG_TEXT}" "gitProbeAuthority='ProjectOps System.Diagnostics.Process'")
+
+string(FIND "${TOOLS_TEXT}" "catch { Write-Log (\"Quality-gate record failed:" OLD_SWALLOW)
+if(NOT OLD_SWALLOW EQUAL -1)
+  message(FATAL_ERROR "R6R7 rejected swallowed quality-gate record failure")
+endif()
+
+message(STATUS "Pass746R6R7 Git probe / certification authority static gate PASS")

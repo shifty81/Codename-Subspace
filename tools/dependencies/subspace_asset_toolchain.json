@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "policy": "PINNED_OFFLINE_AFTER_BOOTSTRAP",
+  "canonical_runtime_asset": "glTF 2.0 GLB",
+  "subspace_coordinate_space": {
+    "handedness": "right",
+    "units": "meters",
+    "x": "right",
+    "y": "forward",
+    "z": "up"
+  },
+  "dependencies": [
+    {
+      "name": "ufbx",
+      "purpose": "FBX and OBJ/MTL source ingestion, scene hierarchy and PBR material normalization",
+      "version": "0.23.0",
+      "revision": "v0.23.0",
+      "source": "https://github.com/ufbx/ufbx",
+      "license_choice": "MIT",
+      "runtime": false,
+      "security_boundary": "source asset cooker only; source files are never parsed by the game executable"
+    },
+    {
+      "name": "cgltf",
+      "purpose": "glTF 2.0/GLB read-write bridge for Subspace-certified cooked assets",
+      "version": "1.15",
+      "revision": "v1.15",
+      "source": "https://github.com/jkuhlmann/cgltf",
+      "license": "MIT",
+      "runtime": true,
+      "security_boundary": "runtime may parse only internally cooked GLBs whose hashes and certification records match the content catalog"
+    },
+    {
+      "name": "MikkTSpace",
+      "purpose": "canonical tangent generation for normal-mapped meshes",
+      "version": "reference-1.0",
+      "revision": "3e895b49d05ea07e4c2133156cfa94369e19e409",
+      "source": "https://github.com/mmikk/MikkTSpace",
+      "license": "zlib-like",
+      "runtime": false,
+      "security_boundary": "asset cooker only"
+    },
+    {
+      "name": "glTF-Validator",
+      "purpose": "Khronos glTF 2.0 structural validation of every cooked GLB",
+      "version": "2.0.0-dev.3.10",
+      "revision": "v2.0.0-dev.3.10",
+      "source": "https://github.com/KhronosGroup/glTF-Validator",
+      "license": "Apache-2.0",
+      "runtime": false,
+      "security_boundary": "build/certification tool only"
+    }
+  ],
+  "bootstrap_rules": [
+    "Never fetch dependencies during normal CMake configure/build.",
+    "Bootstrap downloads exact locked revisions into the project-local tool cache.",
+    "A bootstrap run records SHA-256 hashes for every acquired payload before installation.",
+    "Subsequent Full Gate runs are offline-capable and fail closed if cached bytes do not match the recorded lock hashes.",
+    "Runtime never opens FBX or OBJ source files.",
+    "Runtime GLB loading is restricted to generated assets with a matching catalog hash and successful Subspace certification record."
+  ]
+}

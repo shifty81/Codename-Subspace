@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "subspace://schemas/root_patch_manifest.schema.v1.json",
+  "title": "Codename Subspace Root Patch Manifest v1",
+  "type": "object",
+  "required": ["schemaVersion", "patchId", "files"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "patchId": { "type": "string", "minLength": 1 },
+    "basePass": { "type": ["integer", "null"], "minimum": 0 },
+    "targetPass": { "type": ["integer", "null"], "minimum": 0 },
+    "createdUtc": { "type": ["string", "null"] },
+    "files": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "sha256", "bytes"],
+        "additionalProperties": false,
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "sha256": { "type": "string", "pattern": "^[0-9a-fA-F]{64}$" },
+          "bytes": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "remove": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

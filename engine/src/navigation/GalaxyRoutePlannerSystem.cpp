@@ -1,0 +1,10 @@
+#include "navigation/GalaxyRoutePlannerSystem.h"
+#include <algorithm>
+#include <cmath>
+#include <limits>
+#include <queue>
+#include <unordered_map>
+namespace subspace {
+namespace {float D(const GalaxySystemRecord&a,const GalaxySystemRecord&b){const float x=a.x-b.x,y=a.y-b.y,z=a.z-b.z;return std::sqrt(x*x+y*y+z*z);} }
+GalaxyRouteResult GalaxyRoutePlannerSystem::Plan(const std::vector<GalaxySystemRecord>&c,const GalaxyRouteRequest&r) const {GalaxyRouteResult out;if(r.start==0||r.end==0||r.jumpRange<=0)return out;std::unordered_map<std::uint32_t,std::size_t> idx;for(std::size_t i=0;i<c.size();++i)idx[c[i].id]=i;if(!idx.count(r.start)||!idx.count(r.end))return out;const std::size_t n=c.size();std::vector<float> dist(n,std::numeric_limits<float>::infinity());std::vector<int> prev(n,-1);using Q=std::pair<float,std::size_t>;std::priority_queue<Q,std::vector<Q>,std::greater<Q>> q;const std::size_t s=idx[r.start],e=idx[r.end];dist[s]=0;q.push({0,s});while(!q.empty()){auto[cd,u]=q.top();q.pop();if(cd!=dist[u])continue;if(u==e)break;for(std::size_t v=0;v<n;++v){if(v==u||c[v].security<r.minimumSecurity)continue;const float leg=D(c[u],c[v]);if(leg>r.jumpRange)continue;float cost=leg;switch(r.mode){case GalaxyRouteMode::Safest:cost*=1.0f+(1.0f-c[v].security)*3.0f;break;case GalaxyRouteMode::LowestFuel:cost*=1.0f+c[v].resourceRichness*.05f;break;case GalaxyRouteMode::Logistics:cost*=1.35f-.55f*c[v].economy;break;case GalaxyRouteMode::Exploration:cost*=c[v].discovered?1.25f:.82f;break;default:break;}if(cd+cost<dist[v]){dist[v]=cd+cost;prev[v]=int(u);q.push({dist[v],v});}}}if(!std::isfinite(dist[e]))return out;std::vector<std::size_t> rev;for(int cur=int(e);cur>=0;cur=prev[cur]){rev.push_back(std::size_t(cur));if(std::size_t(cur)==s)break;}if(rev.back()!=s)return out;std::reverse(rev.begin(),rev.end());out.valid=true;for(std::size_t i=0;i<rev.size();++i){out.systems.push_back(c[rev[i]].id);out.risk+=1.0f-c[rev[i]].security;if(i)out.distance+=D(c[rev[i-1]],c[rev[i]]);}out.fuel=out.distance*r.fuelPerDistance;return out;}
+} // namespace subspace

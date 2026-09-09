@@ -1,0 +1,12 @@
+schema_version = "1.0.0"
+id = "subspace_shipyard"
+version = "0.1.5"
+name = "Codename Subspace Shipyard"
+tagline = "Author, assemble, validate and generate modular Subspace ships"
+maintainer = "Codename Subspace Project"
+type = "add-on"
+blender_version_min = "4.5.0"
+license = ["SPDX:GPL-3.0-or-later"]
+
+[permissions]
+files = "Read Subspace module assets and write ship design files"

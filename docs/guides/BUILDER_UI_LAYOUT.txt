@@ -1,0 +1,134 @@
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│ BUILDER UI LAYOUT (Based on Reference Image 4456.PNG)                                    │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────┐                                  ┌────────────────────┐
+│ RESOURCE PANEL (Top-Left)       │                                  │ STATS PANEL        │
+│ Position: (10, 10)               │                                  │ (Right Side)       │
+│ Size: 400x120                    │                                  │ Position: (W-310,  │
+├─────────────────────────────────┤                                  │           10)      │
+│ Credits        £1,234,567        │                                  │ Size: 300x600      │
+│ Sector         -134:429          │                                  ├────────────────────┤
+│─────────────────────────────────│                                  │ Ship Statistics    │
+│ Iron      10,000  │ Xanion    0  │                                  │────────────────────│
+│ Titanium   2,294  │ Ogonite   0  │                                  │ Total Blocks: 156  │
+│ Naonite       0   │ Avorion   0  │                                  │ Total Mass: 1,248t │
+│ Trinium       0   │              │                                  │ Next Cost: 80 Iron │
+└─────────────────────────────────┘                                  │                    │
+                                                                       │ Hull: 12,480       │
+                                                                       │ Volume: 12.5 m³    │
+  ┌────────────────────────────────────────────────────────────┐     │                    │
+  │ MAIN BUILDER WINDOW (Centered)                             │     │ Power: 712 MW      │
+  │ Position: (Center X, Center Y)                             │     │ Shields: 9,150     │
+  │ Size: 630x550                                              │     │ Thrust: 3,167 kN   │
+  ├────────────────────────────────────────────────────────────┤     │ Torque: 131.5 kNm  │
+  │ ┌──[Iron]─[Titanium]─[Naonite]─[Trinium]─[Xanion]─...─┐  │     │                    │
+  │ │                                                         │  │     └────────────────────┘
+  │ │ Block Selection Grid (8 columns)                       │  │
+  │ │                                                         │  │
+  │ │ ┌────┬────┬────┬────┬────┬────┬────┬────┐            │  │
+  │ │ │Hull│Armr│Engn│Thrs│Gyro│Powr│Shld│Trrt│            │  │
+  │ │ ├────┼────┼────┼────┼────┼────┼────┼────┤            │  │
+  │ │ │Hypr│Crgo│Crew│Dock│CPU │Btry│Fld │    │            │  │
+  │ │ └────┴────┴────┴────┴────┴────┴────┴────┘            │  │
+  │ │                                                         │  │
+  │ │ Each button: 65x65 pixels                              │  │
+  │ │ Tooltips on hover                                      │  │
+  │ │ Selected block highlighted in material color           │  │
+  │ └─────────────────────────────────────────────────────── │  │
+  │                                                            │
+  │ Mode: ○ Place  ○ Remove                                   │
+  │                                                            │
+  │ ☑ Grid Snap  ☑ Show Grid  Grid Size: [2  ] blocks       │
+  │                                                            │
+  │ Block Size: X:[2.0] Y:[2.0] Z:[2.0]                      │
+  │                                                            │
+  │ Placement Position: X:[0.0] Y:[0.0] Z:[0.0]              │
+  │                                                            │
+  │ ┌──────────────────────────────────────────────────────┐ │
+  │ │           Place Block / Remove Block                  │ │
+  │ └──────────────────────────────────────────────────────┘ │
+  │                                                            │
+  │ [Save Blueprint]  [Load Blueprint]                        │
+  │                                                            │
+  │ Controls:                                                  │
+  │   B - Toggle Builder                                       │
+  │   Mouse - Move placement cursor                           │
+  │   Click - Place/Remove block                              │
+  └────────────────────────────────────────────────────────────┘
+
+KEY FEATURES:
+════════════
+
+1. MATERIAL TABS
+   - Iron (Grey), Titanium (Silver-Blue), Naonite (Green)
+   - Trinium (Blue), Xanion (Gold), Ogonite (Orange-Red)
+   - Avorion (Purple)
+   - Color-coded text matching in-game materials
+
+2. BLOCK SELECTION
+   - Visual grid layout (8 columns)
+   - 15 block types total
+   - Click to select
+   - Hover for tooltip
+   - Selected block highlighted
+
+3. RESOURCE TRACKING
+   - Real-time inventory display
+   - Color-coded amounts
+   - Red for zero quantities
+   - Credits prominently displayed
+
+4. SHIP STATISTICS
+   - Live updates as blocks added/removed
+   - Mass, volume, power calculations
+   - Propulsion metrics
+   - Defense capabilities
+
+5. BUILD CONTROLS
+   - Grid snap toggle
+   - Variable block sizes
+   - Precise positioning
+   - Mode switching (Place/Remove)
+
+WINDOW POSITIONING:
+═══════════════════
+
+Resource Panel:  Top-left corner    (10, 10)
+Main Window:     Screen center      (CenterX, CenterY)
+Stats Panel:     Right side         (ScreenWidth - 310, 10)
+
+All windows use semi-transparent backgrounds (alpha: 0.9-0.95)
+No title bars for immersive feel
+No resize handles for consistent layout
+
+INTERACTION FLOW:
+════════════════
+
+1. Open builder (B key)
+2. Select material (click tab)
+3. Select block type (click in grid)
+4. Adjust size if needed
+5. Position cursor
+6. Place block
+7. Check stats panel for ship updates
+8. Save blueprint when done
+
+KEYBOARD SHORTCUTS:
+══════════════════
+
+B         - Toggle builder UI
+1-5       - Quick tool selection (future)
+ESC       - Close builder
+Mouse     - Navigate and select
+
+TECHNICAL NOTES:
+═══════════════
+
+- Built with ImGui
+- Multiple coordinated windows
+- Material colors from MaterialProperties.cs
+- Block types from BlockType enum
+- Integrates with BuildSystem.cs
+- Compatible with VoxelStructureComponent
+- Blueprint save/load system included

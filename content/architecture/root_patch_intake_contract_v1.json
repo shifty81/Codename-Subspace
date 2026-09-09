@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "authority": "Subspace Root Project Control Center",
+  "contract": "transactional-root-patch-intake",
+  "manifest": "PATCH_MANIFEST.json",
+  "manifestSchema": "content/schemas/root_patch_manifest.schema.v1.json",
+  "backwardCompatibility": {
+    "legacyUnmanifestedZipAccepted": true,
+    "newGeneratedHandoffsRequireManifest": true
+  },
+  "preflight": [
+    "expand only into isolated staging",
+    "reject rooted or parent-traversal paths",
+    "reject writes to .git and updates/inbox",
+    "reject duplicate destinations case-insensitively",
+    "verify every manifest byte count and SHA-256",
+    "reject unmanifested payload files",
+    "reject overlay/remove destination conflicts"
+  ],
+  "transaction": [
+    "backup every existing file before mutation",
+    "overlay files and verify installed SHA-256",
+    "apply explicit file removals only after backup",
+    "write committed transaction record",
+    "archive consumed patch"
+  ],
+  "failure": [
+    "restore overwritten files",
+    "restore explicitly removed files",
+    "delete files introduced by failed transaction",
+    "archive failed patch separately"
+  ],
+  "undo": [
+    "drift guard patched files against committed payload SHA-256",
+    "drift guard removed paths against recreation",
+    "restore pre-patch state from transaction backups",
+    "record undo operation"
+  ]
+}
