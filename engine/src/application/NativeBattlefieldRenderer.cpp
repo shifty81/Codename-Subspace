@@ -174,14 +174,17 @@ void LoadVisualAssets(NativeBattlefieldRenderer::VisualAssets& assets) {
         if (count > bestCount) { bestCount = count; moduleRoot = candidate; }
     }
     if (moduleRoot.empty()) {
-        Logger::Instance().Warning("Renderer", "Pass336 found project root but no modular OBJ directory; fallback ship geometry remains available.");
-        return;
+        // Pass790R2: governed certified Shipyard content is the primary authority.
+        // Historical first-party OBJ roots are optional vocabulary and must never
+        // prevent content/derived/greyoxide_shipyard_v07 from loading.
+        Logger::Instance().Info("ShipyardContent", "SHIPYARD_CERTIFIED_CONTENT_PRIMARY: legacy modular OBJ library absent; continuing with governed certified content.");
     }
 
     ObjAssetLoader loader;
     std::vector<std::string> loadedNames;
     std::vector<VisualModuleSource> loadedSources;
-    for (const auto& entry : fs::directory_iterator(moduleRoot, ec)) {
+    if (!moduleRoot.empty()) {
+        for (const auto& entry : fs::directory_iterator(moduleRoot, ec)) {
         if (ec || !entry.is_regular_file() || entry.path().extension() != ".obj") continue;
         const std::string name = entry.path().stem().string();
         ObjMeshData mesh;
@@ -196,6 +199,7 @@ void LoadVisualAssets(NativeBattlefieldRenderer::VisualAssets& assets) {
         } else {
             Logger::Instance().Warning("Renderer", "Could not load native ship module " + entry.path().string() + ": " + error);
         }
+    }
     }
     // Pass421-425: Greyoxide Shipyard v0.7 lives in a governed derived
     // directory after the explicit Project Control intake action.  External
@@ -230,6 +234,8 @@ void LoadVisualAssets(NativeBattlefieldRenderer::VisualAssets& assets) {
                 Logger::Instance().Warning("Renderer", "Could not load certified Shipyard module " + entry.path().string() + ": " + error);
             }
         }
+    } else {
+        Logger::Instance().Error("ShipyardContent", "Certified Shipyard module directory is missing: " + shipyardRoot.string());
     }
 
     // R5 authored universe ships from the same Shipyard Strikes Back source.
@@ -270,7 +276,12 @@ void LoadVisualAssets(NativeBattlefieldRenderer::VisualAssets& assets) {
     }
     assets.canonicalAssetRegistry.Clear();
     const auto canonicalCount=ShipyardCanonicalAssetBridge::PopulateRegistry(assets.canonicalAssetRegistry,assets.shipyardCatalog);
-    assets.shipyardReady = !shipyardShowcases.empty();
+    assets.shipyardReady = assets.shipyardModuleCount > 0 && !shipyardShowcases.empty();
+    if (assets.shipyardReady) {
+        Logger::Instance().Info("ShipyardContent", "SHIPYARD_RUNTIME_READY: certified modules=" + std::to_string(assets.shipyardModuleCount) + ", recipes=" + std::to_string(shipyardShowcases.size()) + ".");
+    } else {
+        Logger::Instance().Error("ShipyardContent", "SHIPYARD_RUNTIME_NOT_READY: no governed certified Shipyard recipe can be materialized.");
+    }
     Logger::Instance().Info("Renderer", "Pass421-425 modular visual library loaded " +
         std::to_string(loadedNames.size()) + " OBJ modules (" + std::to_string(assets.shipyardModuleCount) +
         " Shipyard R6 modules) and generated " +
@@ -3822,6 +3833,13 @@ void NativeBattlefieldRenderer::Render(const NativeBattlefieldFrame& frame) {
             socketEdit=frame.shipBuilder->inspectorTab==ShipyardInspectorTab::Sockets;
         }
         DrawModularShip(*_assets,0.0f,0.0f,0.30f,0.0f,0.24f,true,previewRole,{0.34f,0.39f,0.43f,1.0f},1.0f,0.22f,frame.shipBuilderRecipe->seed,false,frame.shipBuilderRecipe,selected,frame.shipBuilderAppearance,selectedRecord,selectedSocket,socketEdit,frame.shipBuilder&&frame.shipBuilder->dragPreview.active?&frame.shipBuilder->dragPreview.ghost:nullptr,frame.shipBuilder&&frame.shipBuilder->dragPreview.mirroredPreviewActive?&frame.shipBuilder->dragPreview.mirroredGhost:nullptr);
+        // Pass790R2 SHIPYARD_STANDALONE_SHIELD_PREVIEW: standalone authoring must preview the
+        // same one-foot hull-profile shield surface as the live runtime.
+        const auto previewAxis=ResolveShipAxisScale(0.24f,previewRole,true,0.22f,frame.shipBuilderRecipe);
+        PhysicsComponent previewPhysics{};
+        previewPhysics.position={0.0f,0.0f,0.0f};
+        previewPhysics.rotation.z=0.0f;
+        DrawShipProfileShield(*_assets,previewPhysics,frame.shipBuilderRecipe,previewAxis,1.0f,frame.elapsedSeconds,frame);
     }
 
     if(frame.playerPhysics){

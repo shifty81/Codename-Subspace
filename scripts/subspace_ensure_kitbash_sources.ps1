@@ -9,6 +9,35 @@ $Root = [System.IO.Path]::GetFullPath($Root)
 $ManifestPath = Join-Path $Root 'content\kitbash\sources.subspace_sources.json'
 $CertificationPath = Join-Path $Root 'content\derived\KITBASH_SOURCE_CERTIFICATION.txt'
 
+
+function Test-ShipyardPayloadReady {
+    param(
+        [string]$ReadyMarker,
+        [string]$CertifiedMarker,
+        [string]$CatalogPath,
+        [string]$ModulesRoot,
+        [string]$MetadataRoot
+    )
+    if (-not (Test-Path -LiteralPath $ReadyMarker) -or
+        -not (Test-Path -LiteralPath $CertifiedMarker) -or
+        -not (Test-Path -LiteralPath $CatalogPath) -or
+        -not (Test-Path -LiteralPath $ModulesRoot) -or
+        -not (Test-Path -LiteralPath $MetadataRoot)) { return $false }
+    try { $rows = @(Import-Csv -LiteralPath $CatalogPath) } catch { return $false }
+    if ($rows.Count -le 0) { return $false }
+    foreach ($row in $rows) {
+        $id = [string]$row.module_id
+        if ([string]::IsNullOrWhiteSpace($id)) { return $false }
+        $obj = Join-Path $ModulesRoot ($id + '.obj')
+        $meta = Join-Path $MetadataRoot ($id + '.json')
+        if (-not (Test-Path -LiteralPath $obj) -or -not (Test-Path -LiteralPath $meta)) { return $false }
+        $objInfo = Get-Item -LiteralPath $obj -ErrorAction SilentlyContinue
+        $metaInfo = Get-Item -LiteralPath $meta -ErrorAction SilentlyContinue
+        if ($null -eq $objInfo -or $objInfo.Length -lt 32 -or $null -eq $metaInfo -or $metaInfo.Length -lt 16) { return $false }
+    }
+    return $true
+}
+
 if (-not (Test-Path -LiteralPath $ManifestPath)) { throw "Kitbash source manifest missing: $ManifestPath" }
 $manifest = Get-Content -LiteralPath $ManifestPath -Raw | ConvertFrom-Json
 if ($manifest.schemaVersion -ne 1) { throw "Unsupported kitbash source manifest schemaVersion: $($manifest.schemaVersion)" }
@@ -32,7 +61,9 @@ foreach ($source in @($manifest.sources)) {
             $ready = Join-Path $Root 'content\derived\greyoxide_shipyard_v07\SHIPYARD_READY.txt'
             $certified = Join-Path $Root 'content\derived\greyoxide_shipyard_v07\certified\SHIPYARD_CERTIFIED_R5.txt'
             $catalog = Join-Path $Root 'content\derived\greyoxide_shipyard_v07\certified\certified_module_catalog.csv'
-            $isReady = (Test-Path -LiteralPath $ready) -and (Test-Path -LiteralPath $certified) -and (Test-Path -LiteralPath $catalog)
+            $modules = Join-Path $Root 'content\derived\greyoxide_shipyard_v07\certified\modules'
+            $metadata = Join-Path $Root 'content\derived\greyoxide_shipyard_v07\certified\metadata'
+            $isReady = Test-ShipyardPayloadReady -ReadyMarker $ready -CertifiedMarker $certified -CatalogPath $catalog -ModulesRoot $modules -MetadataRoot $metadata
 
             if (-not $isReady) {
                 if ($Mode -in @('VERIFY_ONLY','CACHE_ONLY','OFFLINE')) {
@@ -44,7 +75,7 @@ foreach ($source in @($manifest.sources)) {
                 if (-not (Test-Path -LiteralPath $fetch)) { throw "Kitbash handler script missing: $fetch" }
                 & $fetch -Root $Root
                 if ($LASTEXITCODE -ne 0) { throw "Kitbash source handler returned exit code $LASTEXITCODE for '$($source.id)'." }
-                $isReady = (Test-Path -LiteralPath $ready) -and (Test-Path -LiteralPath $certified) -and (Test-Path -LiteralPath $catalog)
+                $isReady = Test-ShipyardPayloadReady -ReadyMarker $ready -CertifiedMarker $certified -CatalogPath $catalog -ModulesRoot $modules -MetadataRoot $metadata
             }
 
             if (-not $isReady) { throw "Kitbash source '$($source.id)' did not produce its governed certification markers." }

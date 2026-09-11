@@ -177,6 +177,33 @@ function Reset-SubspaceConsolePalette {
     try { [Console]::ForegroundColor = [System.ConsoleColor]::$Global:UiDefaultForeground } catch {}
 }
 
+# PASS_FORGE_EMBEDDED_HOST_CONSOLE_COMPAT
+# Direct actions are also invoked by Forge/Vault through a redirected/hidden
+# process host. Clear-Host requires a real console screen buffer and can throw
+# "Exception setting CursorPosition: The handle is invalid" when output is
+# captured. Only the interactive menu owns terminal screen clearing.
+function Clear-SubspaceConsoleIfInteractive {
+    if ($Action -ne "menu") { return }
+
+    try {
+        if ([Console]::IsOutputRedirected -or [Console]::IsErrorRedirected) {
+            return
+        }
+    }
+    catch {
+        # Some non-console hosts do not expose System.Console state reliably.
+        return
+    }
+
+    try {
+        Clear-Host
+    }
+    catch {
+        # Header rendering is presentation-only and must never make an
+        # otherwise valid project-control action fail.
+    }
+}
+
 function Remove-SubspaceAnsiSequences {
     param([AllowEmptyString()][string]$Text)
     if ($null -eq $Text) { return "" }
@@ -701,7 +728,7 @@ function Open-LatestFailedUpdate {
 
 function Write-Header {
     Reset-SubspaceConsolePalette
-    Clear-Host
+    Clear-SubspaceConsoleIfInteractive
     Reset-SubspaceConsolePalette
 
     $nativeReady = Test-Path -LiteralPath (Join-Path $Global:EngineRoot "CMakeLists.txt")

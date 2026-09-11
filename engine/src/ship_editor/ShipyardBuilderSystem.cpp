@@ -809,7 +809,28 @@ bool ShipyardBuilderSystem::RemoveSelectedModule(){
 
 bool ShipyardBuilderSystem::GenerateVariant(){
     ++model_.seed;
-    const auto generated=ShipyardModuleSystem::BuildShowcaseRecipes(model_.catalog,model_.seed);
+    // Pass790R2 SHIPYARD_SIZE_AWARE_GENERATION: XS/S/M/L/XL is now a generation input,
+    // not merely a manual-placement morph hint. Map the requested structural
+    // size to the canonical normal hull class and filter generation vocabulary
+    // through the existing runtime class-eligibility authority.
+    ShipClass generationClass=ShipClass::Frigate;
+    switch(model_.targetModuleSize){
+    case UniversalSizeClass::XS:generationClass=ShipClass::Frigate;break;
+    case UniversalSizeClass::S:generationClass=ShipClass::Destroyer;break;
+    case UniversalSizeClass::M:generationClass=ShipClass::Cruiser;break;
+    case UniversalSizeClass::L:generationClass=ShipClass::Battlecruiser;break;
+    case UniversalSizeClass::XL:generationClass=ShipClass::Battleship;break;
+    }
+    model_.shipClass=generationClass;
+    const auto eligibleIndices=ShipPcgRuntimeClosureSystem::FilterForClass(model_.catalog,generationClass,true);
+    std::vector<ShipyardModuleRecord> generationCatalog;
+    generationCatalog.reserve(eligibleIndices.size());
+    for(const auto index:eligibleIndices)if(index<model_.catalog.size())generationCatalog.push_back(model_.catalog[index]);
+    if(generationCatalog.empty()){
+        model_.status=std::string("Generator has no certified ")+UniversalKitbashAuthority::SizeName(model_.targetModuleSize)+" kitbash vocabulary";
+        return false;
+    }
+    const auto generated=ShipyardModuleSystem::BuildShowcaseRecipes(generationCatalog,model_.seed);
     std::vector<ProceduralShipVisualRecipe> candidates;
     for(const auto&r:generated)if(r.role==model_.role)candidates.push_back(r);
     if(candidates.empty()){model_.status="Generator could not resolve this role from the certified catalog";return false;}

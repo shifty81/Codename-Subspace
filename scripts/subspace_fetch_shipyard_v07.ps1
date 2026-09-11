@@ -324,6 +324,29 @@ function Test-CertifiedPayload {
     return $true
 }
 
+# PASS_CLEANCLONE_SHIPYARD_READY_MARKER_IDEMPOTENCE
+function Publish-ShipyardReadyMarker([int]$CertifiedCount = -1) {
+    $contract = Get-ShipyardGateMarkerContract
+    $catalog = Join-Path $CertifiedRoot 'certified_module_catalog.csv'
+
+    if ($CertifiedCount -lt 0) {
+        $rows = @(Get-Content -LiteralPath $catalog -ErrorAction SilentlyContinue |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        $CertifiedCount = [math]::Max(0, $rows.Count - 1)
+    }
+
+    $normalizedCount = @(Get-ChildItem -LiteralPath $ModuleRoot -File -Filter *.obj -ErrorAction SilentlyContinue).Count
+    if ($normalizedCount -le 0) { $normalizedCount = $CertifiedCount }
+
+    if ($CertifiedCount -le 0) {
+        throw "Cannot publish Shipyard ready marker without certified modules."
+    }
+
+    $readyText = "Shipyard v0.7 Classification + Assembly R$($contract.Version) ready`nraw_normalized=$normalizedCount`ngrade_a=$CertifiedCount`nmarker=$($contract.FileName)`n"
+    [System.IO.File]::WriteAllText((Join-Path $DerivedRoot 'SHIPYARD_READY.txt'), $readyText, $Utf8)
+    Write-Pass "Published governed Shipyard ready marker '$($contract.FileName)' for $CertifiedCount certified modules."
+}
+
 function Invoke-ShipyardCertification([string]$RawModuleRoot) {
     $contract = Get-ShipyardGateMarkerContract
 
@@ -366,7 +389,9 @@ if ($Force) {
 if (-not $Force -and -not $Recertify -and (Test-CertifiedPayload)) {
     $catalog = Join-Path $CertifiedRoot "certified_module_catalog.csv"
     $rows = @(Get-Content -LiteralPath $catalog | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-    Write-Pass "Using existing certified Shipyard payload ($($rows.Count - 1) catalog modules)."
+    $existingCertifiedCount = [math]::Max(0, $rows.Count - 1)
+    Publish-ShipyardReadyMarker -CertifiedCount $existingCertifiedCount
+    Write-Pass "Using existing certified Shipyard payload ($existingCertifiedCount catalog modules)."
     Write-Pass "Dependency gate is local/offline-safe; use -Force to refresh upstream content or -Recertify to rebuild certification."
     exit 0
 }
@@ -383,6 +408,7 @@ if (-not $Force -and -not $Recertify -and -not (Test-CertifiedPayload)) {
         if (-not (Test-CertifiedPayload)) {
             throw "Shipyard recertification completed but the payload still does not satisfy the current Full Gate contract."
         }
+        Publish-ShipyardReadyMarker -CertifiedCount $count
         Write-Pass "Recertified $count Shipyard modules from the local cache without downloading content."
         exit 0
     }
@@ -394,6 +420,10 @@ if ($Recertify -and -not $Force) {
     $raw = @(Get-ChildItem -LiteralPath $ModuleRoot -File -Filter *.obj -ErrorAction SilentlyContinue)
     if ($raw.Count -gt 0) {
         $count = Invoke-ShipyardCertification $ModuleRoot
+        if (-not (Test-CertifiedPayload)) {
+            throw "Shipyard recertification completed but the payload still does not satisfy the current Full Gate contract."
+        }
+        Publish-ShipyardReadyMarker -CertifiedCount $count
         Write-Pass "Recertified $count Shipyard modules from cached normalized source."
         exit 0
     }
@@ -487,9 +517,7 @@ $provenance = [ordered]@{
 $provenance | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $ThirdPartyRoot 'PROVENANCE.generated.json') -Encoding UTF8
 
 if ($normalized -gt 0 -and $certifiedCount -gt 0) {
-    $contract = Get-ShipyardGateMarkerContract
-    $readyText = "Shipyard v0.7 Classification + Assembly R$($contract.Version) ready`nraw_normalized=$normalized`ngrade_a=$certifiedCount`nmarker=$($contract.FileName)`n"
-    [System.IO.File]::WriteAllText((Join-Path $DerivedRoot 'SHIPYARD_READY.txt'), $readyText, $Utf8)
+    Publish-ShipyardReadyMarker -CertifiedCount $certifiedCount
     Write-Pass "Shipyard v0.7 ready: $normalized raw normalized modules -> $certifiedCount Grade-A preserved authored runtime modules."
     Write-Host "Raw staging : $ModuleRoot"
     Write-Host "Runtime path: $CertifiedModuleRoot"

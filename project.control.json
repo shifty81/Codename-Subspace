@@ -1,4 +1,24 @@
 {
+  "schema": "forge.project.v1",
+  "project": {
+    "id": "codename-subspace",
+    "name": "Codename Subspace",
+    "kind": "native-cpp-game",
+    "version": "790R3R1",
+    "build": "SUBSPACE-PASS790R3R1"
+  },
+  "root_control_center": {
+    "launcher": "SubspaceTools.cmd"
+  },
+  "sourceControl": {
+    "github": {
+      "remote": "origin",
+      "cloneUrl": "https://github.com/shifty81/Codename-Subspace.git",
+      "webUrl": "https://github.com/shifty81/Codename-Subspace"
+    },
+    "defaultGitHubRemote": "origin",
+    "defaultForgejoRemote": "forgejo"
+  },
   "schemaVersion": 1,
   "id": "codename-subspace",
   "name": "Codename Subspace",

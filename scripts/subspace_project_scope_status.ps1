@@ -1,4 +1,4 @@
-﻿param([string]$Root = (Get-Location).Path)
+param([string]$Root = (Get-Location).Path)
 $ErrorActionPreference = "Stop"
 $failures = 0
 $warnings = 0
@@ -11,7 +11,11 @@ function Write-Status {
     if ($Status -eq "FAIL") { $script:failures++ }
     if ($Status -eq "WARN") { $script:warnings++ }
 }
-function Count-Files { param([string]$Path,[string]$Filter="*"); if (-not (Test-Path -LiteralPath $Path)) { return 0 }; return @(Get-ChildItem -LiteralPath $Path -Recurse -File -Filter $Filter -ErrorAction SilentlyContinue).Count }
+function Count-Files {
+    param([string]$Path,[string]$Filter="*")
+    if (-not (Test-Path -LiteralPath $Path)) { return 0 }
+    return @(Get-ChildItem -LiteralPath $Path -Recurse -File -Filter $Filter -ErrorAction SilentlyContinue).Count
+}
 
 $rootPath = (Resolve-Path -LiteralPath $Root).Path
 $engineRoot = Join-Path $rootPath "engine"
@@ -32,7 +36,7 @@ Write-Host "Production workspace           : engine/"
 Write-Host "Production executable          : subspace_game.exe"
 Write-Host "Runtime authority              : native C++ only"
 Write-Host "Build authority                : engine/CMakeLists.txt + C++ Visual Studio solution"
-Write-Host "Legacy AvorionLike/*.cs        : inert reference archive; not a conversion backlog"
+Write-Host "Legacy AvorionLike/*.cs        : retired provenance only; physical archive is optional"
 Write-Host ""
 
 if (Test-Path -LiteralPath $engineRoot) { Write-Status PASS "engine/ exists" $engineRoot } else { Write-Status FAIL "engine/ missing" $engineRoot }
@@ -57,14 +61,66 @@ Write-Host ""
 Write-Host "Retired managed reference archive"
 Write-Host "--------------------------------"
 $legacyRoot = Join-Path $rootPath "AvorionLike"
-$legacyCount = Count-Files -Path $legacyRoot -Filter "*.cs"
-if (Test-Path -LiteralPath $legacyRoot) { Write-Status PASS "Legacy C# archive retained for provenance/reference" ("{0} .cs files; not compiled or shipped." -f $legacyCount) }
-else { Write-Status PASS "Legacy C# archive absent" "Valid after an intentional future archive-removal checkpoint." }
+$legacyFiles = @()
+if (Test-Path -LiteralPath $legacyRoot) {
+    $legacyFiles = @(Get-ChildItem -LiteralPath $legacyRoot -Recurse -File -Filter *.cs -ErrorAction SilentlyContinue)
+}
+$legacyCount = $legacyFiles.Count
+
+if ($legacyCount -gt 0) {
+    Write-Status PASS "Legacy C# archive retained for provenance/reference" ("{0} .cs files; not compiled or shipped." -f $legacyCount)
+} else {
+    Write-Status PASS "Legacy C# archive physically retired" "No legacy .cs files remain in the checkout; the retirement manifest remains as provenance."
+}
+
+# PASS_CLEANCLONE_RETIREMENT_LEDGER_POLICY
+# The retirement manifest is a durable historical/provenance ledger. Once the
+# legacy archive is intentionally deleted, its historical rows must NOT be
+# treated as missing-source failures. If any physical legacy file exists, it
+# must still be represented exactly once with a terminal disposition.
 if (Test-Path -LiteralPath $retirementManifest) {
     $rows = @(Import-Csv -LiteralPath $retirementManifest)
-    if ($rows.Count -eq $legacyCount) { Write-Status PASS "Retirement manifest matches physical archive" ("{0} classified file(s), zero backlog." -f $rows.Count) }
-    else { Write-Status FAIL "Retirement manifest count mismatch" ("{0} manifest row(s), {1} physical .cs file(s)." -f $rows.Count,$legacyCount) }
-} else { Write-Status FAIL "Retirement manifest missing" "docs/legacy/CSHARP_RETIREMENT_MANIFEST.csv" }
+    $allowedDispositions = @('NATIVE_REPLACED','SUPERSEDED_CURRENT_DESIGN','REFERENCE_ONLY_ALGORITHM','REFERENCE_ONLY')
+    $manifestPaths = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    $manifestInvalid = $false
+
+    foreach ($row in $rows) {
+        $path = [string]$row.legacy_file
+        $disposition = [string]$row.disposition
+        if ([string]::IsNullOrWhiteSpace($path)) {
+            Write-Status FAIL "Retirement manifest contains empty legacy path"
+            $manifestInvalid = $true
+            continue
+        }
+        $normalized = $path.Replace('\','/')
+        if (-not $manifestPaths.Add($normalized)) {
+            Write-Status FAIL "Retirement manifest contains duplicate legacy path" $path
+            $manifestInvalid = $true
+        }
+        if ($allowedDispositions -notcontains $disposition) {
+            Write-Status FAIL "Retirement manifest contains non-terminal disposition" ("{0}: {1}" -f $path,$disposition)
+            $manifestInvalid = $true
+        }
+    }
+
+    foreach ($file in $legacyFiles) {
+        $relative = $file.FullName.Substring($rootPath.Length + 1).Replace('\','/')
+        if (-not $manifestPaths.Contains($relative)) {
+            Write-Status FAIL "Physical legacy C# file is not classified in retirement manifest" $relative
+            $manifestInvalid = $true
+        }
+    }
+
+    if (-not $manifestInvalid) {
+        if ($legacyCount -eq 0) {
+            Write-Status PASS "Retirement provenance ledger retained after physical archive removal" ("{0} historical terminal classification row(s), 0 physical .cs file(s)." -f $rows.Count)
+        } else {
+            Write-Status PASS "Retirement manifest classifies every physical legacy source" ("{0} historical row(s); {1} physical .cs file(s)." -f $rows.Count,$legacyCount)
+        }
+    }
+} else {
+    Write-Status FAIL "Retirement manifest missing" "docs/legacy/CSHARP_RETIREMENT_MANIFEST.csv"
+}
 
 Write-Host ""
 Write-Host "Project support/content scope"
@@ -74,8 +130,11 @@ foreach ($dir in @('Assets','GameData','docs','scripts','tools')) {
     if (Test-Path -LiteralPath $path) { Write-Status PASS "root area present: $dir/" }
     else { Write-Status WARN "root area missing: $dir/" }
 }
-if (Test-Path -LiteralPath (Join-Path $rootPath 'reference')) { Write-Status PASS "optional reference/ area present" }
-else { Write-Status PASS "optional reference/ area not required" "Legacy C# provenance is currently retained under AvorionLike/." }
+if (Test-Path -LiteralPath (Join-Path $rootPath 'reference')) {
+    Write-Status PASS "optional reference/ area present"
+} else {
+    Write-Status PASS "optional reference/ area not required" "Retired C# provenance is preserved by docs/legacy/CSHARP_RETIREMENT_MANIFEST.csv."
+}
 
 Write-Host ""
 Write-Host "Summary"

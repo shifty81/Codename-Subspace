@@ -32,7 +32,13 @@ endfunction()
 
 require_text("${NATIVE_TEXT}" "engine\\CMakeLists.txt")
 require_text("${NATIVE_TEXT}" "engine\\src\\main.cpp")
-require_text("${NATIVE_TEXT}" "Retired C# source/project files may remain under AvorionLike/")
+# PASS_CLEANCLONE_RETIREMENT_LEDGER_GATE_NORMALIZATION_R2
+# Historical Pass746 wording required the physical C# archive to remain.
+# Current authority permits physical retirement while preserving the durable
+# provenance ledger and still classifies any physical C# file that reappears.
+require_text("${NATIVE_TEXT}" "PASS_CLEANCLONE_RETIREMENT_LEDGER_POLICY")
+require_text("${NATIVE_TEXT}" "rows may legitimately outlive the deleted physical archive")
+require_text("${NATIVE_TEXT}" "Legacy C# file is not classified in retirement manifest")
 require_text("${SUPPLY_TEXT}" "artifacts\\gates\\certifications\\supply-chain")
 require_text("${CONTINUITY_TEXT}" "artifacts\\gates\\certifications\\continuity")
 require_text("${COMPARE_TEXT}" "artifacts\\gates\\quality")
@@ -44,7 +50,11 @@ require_text("${PROJECT_TEXT}" "\"buildAuthority\"")
 require_text("${PROJECT_TEXT}" "\"cmake-native-cpp\"")
 require_text("${PROJECT_TEXT}" "\"requiredForBuild\": false")
 
-foreach(FORBIDDEN IN ITEMS "Missing active solution: AvorionLike.sln" "$sln = Join-Path $rootPath \"AvorionLike.sln\"")
+foreach(FORBIDDEN IN ITEMS
+    "Missing active solution: AvorionLike.sln"
+    "$sln = Join-Path $rootPath \"AvorionLike.sln\""
+    "Retirement manifest/source count mismatch"
+    "Retirement manifest references missing legacy C# file")
   string(FIND "${NATIVE_TEXT}" "${FORBIDDEN}" BAD_AT)
   if(NOT BAD_AT EQUAL -1)
     message(FATAL_ERROR "Pass746R6R2 rejected stale legacy-solution authority: ${FORBIDDEN}")

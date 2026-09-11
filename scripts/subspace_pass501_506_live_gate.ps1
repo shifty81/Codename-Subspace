@@ -10,13 +10,17 @@ function Info([string]$Message) { Write-Host "[INFO] $Message" }
 Write-Host "=== SUBSPACE PASS501-506 LIVE SHIPYARD AUTHORING GATE ==="
 Write-Host "Root: $Root"
 
+# PASS746_SHIPYARD_AUTHORING_REPRO_CLOSURE
+# Clean-clone authority is canonical source plus governed R5 certification
+# output. Historical pass497/pass498 JSON files were local derivatives and
+# cannot be prerequisites for a reproducible Git checkout.
 $required = @(
     'engine\include\ship_editor\ShipyardAuthoringAuthority.h',
     'engine\src\ship_editor\ShipyardAuthoringAuthority.cpp',
     'engine\include\ship_editor\ShipyardAuthoringBridge.h',
     'engine\src\ship_editor\ShipyardAuthoringBridge.cpp',
-    'content\derived\greyoxide_shipyard_v07\authoring_overrides\pass497_506_certified_overrides.json',
-    'content\derived\greyoxide_shipyard_v07\authoring_overrides\pass498_module_authoring_catalog.json',
+    'content\derived\greyoxide_shipyard_v07\certified\SHIPYARD_CERTIFIED_R5.txt',
+    'content\derived\greyoxide_shipyard_v07\certified\certified_module_catalog.csv',
     'tools\smoke\pass497_506_shipyard_authoring_smoke.cpp'
 )
 
@@ -28,26 +32,27 @@ foreach ($rel in $required) {
     Pass $rel
 }
 
-$catalogPath = Join-Path $Root 'content\derived\greyoxide_shipyard_v07\authoring_overrides\pass498_module_authoring_catalog.json'
-$catalog = Get-Content -LiteralPath $catalogPath -Raw | ConvertFrom-Json
-if ([int]$catalog.module_count -ne 156) {
-    throw "Pass498 authoring catalog reports $($catalog.module_count) modules; expected preserved 156-module corpus."
+$catalogPath = Join-Path $Root 'content\derived\greyoxide_shipyard_v07\certified\certified_module_catalog.csv'
+$catalogRows = @(Import-Csv -LiteralPath $catalogPath)
+if ($catalogRows.Count -ne 156) {
+    throw "R5 certified Shipyard catalog contains $($catalogRows.Count) module rows; expected preserved 156-module corpus."
 }
-if (@($catalog.modules).Count -ne 156) {
-    throw "Pass498 authoring catalog physically contains $(@($catalog.modules).Count) module entries; expected 156."
-}
-Pass "Pass498 catalog preserves all 156 Greyoxide modules"
+Pass "R5 certified catalog preserves all 156 Greyoxide modules"
 
-$overridePath = Join-Path $Root 'content\derived\greyoxide_shipyard_v07\authoring_overrides\pass497_506_certified_overrides.json'
-$overrides = Get-Content -LiteralPath $overridePath -Raw | ConvertFrom-Json
-$wing149 = @($overrides.modules | Where-Object {
-    $_.definition_id -eq 'shipyard_a_wing_149_shipyard_wing_003_miscfinhanger'
-}) | Select-Object -First 1
-if (-not $wing149) { throw "Certified wing_149 override is missing." }
-if ([string]$wing149.subtype -ne 'LateralWing') { throw "wing_149 is not certified as LateralWing." }
-if ([string]$wing149.certification -ne 'Certified') { throw "wing_149 certification regressed." }
-if (-not [bool]$wing149.attachment_frame.lateral_surface) { throw "wing_149 lateral-surface flag regressed." }
-Pass "Pass497 wing_149 certified attachment/orientation override is present"
+$authoritySource = Get-Content -LiteralPath (Join-Path $Root 'engine\src\ship_editor\ShipyardAuthoringAuthority.cpp') -Raw
+$wingAuthorityTokens = @(
+    'shipyard_a_wing_149_shipyard_wing_003_miscfinhanger',
+    'ShipyardAuthoringSubtype::LateralWing',
+    'ShipyardCertificationState::Certified',
+    'wing.frame.lateralSurface = true',
+    'wing.frame.source = ShipyardOrientationSource::Certified'
+)
+foreach ($token in $wingAuthorityTokens) {
+    if ($authoritySource -notmatch [regex]::Escape($token)) {
+        throw "Canonical Shipyard authoring source is missing wing_149 authority token '$token'."
+    }
+}
+Pass "Canonical C++ authority contains wing_149 certified attachment/orientation metadata"
 
 $authorityHeader = Get-Content -LiteralPath (Join-Path $Root 'engine\include\ship_editor\ShipyardAuthoringAuthority.h') -Raw
 $bridgeHeader = Get-Content -LiteralPath (Join-Path $Root 'engine\include\ship_editor\ShipyardAuthoringBridge.h') -Raw

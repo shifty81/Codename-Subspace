@@ -673,3 +673,12 @@ if(SUBSPACE_BUILD_TESTS)
         -P ${CMAKE_CURRENT_SOURCE_DIR}/../tools/control/ProjectOpsStaticCertification.cmake)
 endif()
 
+# Pass790R2: governed Shipyard content must load without the retired Pass336
+# module-root prerequisite; standalone Shipyard shield preview and XS-XL
+# generation authority are source-gated here.
+if(SUBSPACE_BUILD_TESTS)
+    add_test(NAME SubspacePass790ShipyardAuthorityRecoverySourceGate COMMAND ${CMAKE_COMMAND}
+        -DROOT=${CMAKE_CURRENT_SOURCE_DIR}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/pass790_shipyard_authority_recovery_source_gate.cmake)
+endif()
+
