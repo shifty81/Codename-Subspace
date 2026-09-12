@@ -16,8 +16,6 @@ Vector3 Norm(const Vector3&v){const float l=Len(v);return l>.0001f?Vector3{v.x/l
 float DistPointRaySegment(const Vector3&p,const Vector3&o,const Vector3&dir,float length){
     const Vector3 d=Norm(dir);const Vector3 op=p-o;const float t=std::clamp(Dot(op,d),0.0f,length);const Vector3 q=o+d*t;return Len(p-q);
 }
-UniversalSizeClass AdjacentLower(UniversalSizeClass s){int v=static_cast<int>(s);return static_cast<UniversalSizeClass>(std::max(0,v-1));}
-UniversalSizeClass AdjacentHigher(UniversalSizeClass s){int v=static_cast<int>(s);return static_cast<UniversalSizeClass>(std::min(4,v+1));}
 bool ParticipatesInAttachment(const ProceduralShipVisualRecipe& recipe,std::size_t moduleIndex){
     for(const auto& edge:recipe.attachments) if(edge.parentModuleIndex==moduleIndex||edge.childModuleIndex==moduleIndex) return true;
     return false;
@@ -41,6 +39,17 @@ bool RebuildChildFromCertifiedAttachment(const std::vector<ShipyardModuleRecord>
         PlacementFn placementFn=&ShipyardModuleSystem::BuildAttachmentPlacement;
         recipe.modules[childIndex]=placementFn(recipe.modules[edge.parentModuleIndex],*parentSocket,*child,*childSocket,scale);
         return true;
+    }
+    return false;
+}
+
+bool MorphRangeIntersectsClass(const UniversalKitbashProfile& module,
+                               const ShipClassComponentProfile& cls,
+                               bool auxiliary){
+    for(int i=0;i<5;++i){
+        const auto tier=static_cast<UniversalSizeClass>(i);
+        if(!UniversalKitbashAuthority::SizeWithin(tier,module.morph.minimumSize,module.morph.maximumSize)) continue;
+        if(ShipClassRoleSystem::SupportsModuleSize(cls,tier,auxiliary)) return true;
     }
     return false;
 }
@@ -106,10 +115,6 @@ bool ShipPcgRuntimeClosureSystem::RepairSpatialCandidate(const std::vector<Shipy
         bool changed=false;
         for(const auto pair:report.overlapPairs){
             if(pair.second>=recipe.modules.size())continue;
-            // Never "repair" a socket-authored assembly by translating one
-            // attached child away from its certified mating point.  Runtime
-            // generation can reject/retry a candidate; authoring can correct
-            // the socket.  Free/draft placements may still be nudged.
             if(ParticipatesInAttachment(recipe,pair.second)) continue;
             auto& p=recipe.modules[pair.second];const auto* r=Find(catalog,p.moduleId);if(!r)continue;
             if(r->moduleClass==ShipyardModuleClass::Command){p.y+=std::max(.5f,r->source.halfLength*.75f);p.z+=std::max(.18f,r->source.halfHeight*.25f);}
@@ -135,10 +140,6 @@ bool ShipPcgRuntimeClosureSystem::RepairCandidate(const std::vector<ShipyardModu
         if(report.accepted)return true;
         bool changed=false;
         if(report.reason==ShipPcgRejectReason::SpatialConflict||report.reason==ShipPcgRejectReason::CommandBuried||report.reason==ShipPcgRejectReason::DetailDensity){
-            // Give the spatial repair lane the caller's full retry budget. A
-            // two-step nudge can leave a draft partially separated while the
-            // outer repair loop then mistakes the still-invalid return as
-            // "unchanged" and exits early.
             changed=RepairSpatialCandidate(catalog,recipe,maxIterations);
         }else if(report.reason==ShipPcgRejectReason::PropulsionOrientation){
             for(std::size_t i=0;i<recipe.modules.size();++i){
@@ -147,10 +148,6 @@ bool ShipPcgRuntimeClosureSystem::RepairCandidate(const std::vector<ShipyardModu
                 const auto before=PropulsionRoleSystem::Validate(*rec,recipe.modules[i],role);
                 if(before.valid)continue;
                 if(ParticipatesInAttachment(recipe,i)){
-                    // First restore the child's exact certified mating transform.
-                    // If that transform still fails role orientation the recipe
-                    // itself needs another socket/candidate; rotating the child
-                    // in-place would corrupt the assembly graph.
                     const auto original=recipe.modules[i];
                     if(RebuildChildFromCertifiedAttachment(catalog,recipe,i) && PropulsionRoleSystem::Validate(*rec,recipe.modules[i],role).valid){changed=true;break;}
                     recipe.modules[i]=original;
@@ -162,9 +159,6 @@ bool ShipPcgRuntimeClosureSystem::RepairCandidate(const std::vector<ShipyardModu
         }else if(report.reason==ShipPcgRejectReason::ExhaustBlocked){
             for(const auto& v:report.exhaust){
                 if(!v.blocked||v.moduleIndex>=recipe.modules.size())continue;
-                // Moving an attached engine to clear exhaust breaks its socket
-                // graph.  Leave that candidate intact and let the generator
-                // retry another certified mating location.
                 if(ParticipatesInAttachment(recipe,v.moduleIndex)) continue;
                 auto& p=recipe.modules[v.moduleIndex];const auto* rec=Find(catalog,p.moduleId);if(!rec)continue;
                 const auto role=UniversalKitbashAuthority::InferPropulsionRole(*rec);
@@ -177,9 +171,6 @@ bool ShipPcgRuntimeClosureSystem::RepairCandidate(const std::vector<ShipyardModu
                 changed=true;break;
             }
         }else if(report.reason==ShipPcgRejectReason::MissingFunctionalCore){
-            // Planning is deterministic, but attaching missing modules requires
-            // available compatible sockets. Do not invent disconnected modules
-            // in the repair layer; return review/failure to the generator.
             const auto plan=ShipFunctionalCoreSystem::BuildAutofitPlan(catalog,recipe,biologicalCrew);
             if(!plan.complete)return false;
             return false;
@@ -204,31 +195,53 @@ std::vector<PropulsionCatalogAuditEntry> ShipPcgRuntimeClosureSystem::AuditPropu
 bool ShipPcgRuntimeClosureSystem::MaterialPcgEligible(KitbashMaterialCertification s){return s==KitbashMaterialCertification::Complete||s==KitbashMaterialCertification::NormalizedFallback;}
 
 bool ShipPcgRuntimeClosureSystem::ModuleFitsClass(const ShipyardModuleRecord&module,ShipClass c,bool auxiliary){
-    const auto target=ShipClassRoleSystem::Envelope(c).structuralSize;const auto profile=UniversalKitbashAuthority::BuildProfile(module,KitbashMaterialCertification::NormalizedFallback);
-    if(!UniversalKitbashAuthority::SizeWithin(target,profile.morph.minimumSize,profile.morph.maximumSize)){
-        if(!auxiliary)return false;
-        const auto lower=AdjacentLower(target),higher=AdjacentHigher(target);
-        return UniversalKitbashAuthority::SizeWithin(lower,profile.morph.minimumSize,profile.morph.maximumSize)||UniversalKitbashAuthority::SizeWithin(higher,profile.morph.minimumSize,profile.morph.maximumSize);
-    }
-    return true;
+    const auto cls=ShipClassRoleSystem::ComponentProfile(c);
+    const auto profile=UniversalKitbashAuthority::BuildProfile(module,KitbashMaterialCertification::NormalizedFallback);
+    return MorphRangeIntersectsClass(profile,cls,auxiliary);
 }
 
-std::vector<std::size_t> ShipPcgRuntimeClosureSystem::FilterForClass(const std::vector<ShipyardModuleRecord>&catalog,ShipClass c,bool auxiliary){std::vector<std::size_t> out;for(std::size_t i=0;i<catalog.size();++i)if(ModuleFitsClass(catalog[i],c,auxiliary))out.push_back(i);return out;}
+std::vector<std::size_t> ShipPcgRuntimeClosureSystem::FilterForClass(const std::vector<ShipyardModuleRecord>&catalog,ShipClass c,bool auxiliary){
+    std::vector<std::size_t> out;
+    for(std::size_t i=0;i<catalog.size();++i)if(ModuleFitsClass(catalog[i],c,auxiliary))out.push_back(i);
+    return out;
+}
 
 HullFamilyRuntimeProfile ShipPcgRuntimeClosureSystem::BuildHullFamilyProfile(const FactionHullFamilyDefinition&family){
-    HullFamilyRuntimeProfile p;p.factionId=family.factionId;p.familyId=family.familyId;p.shipClass=family.shipClass;p.structuralSize=ShipClassRoleSystem::Envelope(family.shipClass).structuralSize;p.chassisStyle=family.chassisStyle;p.allowedRoles=family.allowedRoles;p.preferredRoles=family.preferredRoles;
+    HullFamilyRuntimeProfile p;
+    p.factionId=family.factionId;p.familyId=family.familyId;p.shipClass=family.shipClass;
+    p.componentProfile=ShipClassRoleSystem::ComponentProfile(family.shipClass);
+    p.structuralSize=p.componentProfile.preferredStructuralSize;
+    p.chassisStyle=family.chassisStyle;p.allowedRoles=family.allowedRoles;p.preferredRoles=family.preferredRoles;
     const auto e=ShipClassRoleSystem::Envelope(family.shipClass);p.targetLengthMeters=e.nominalLengthMeters;
-    const float classWidth=(family.chassisStyle=="FAST_NARROW"?.22f:family.chassisStyle=="HEAVY_ARMORED"?.42f:family.chassisStyle=="MODULAR_UTILITY"?.38f:.32f);p.targetWidthMeters=e.nominalLengthMeters*classWidth;p.targetHeightMeters=e.nominalLengthMeters*(family.chassisStyle=="HEAVY_ARMORED"?.20f:.15f);
-    p.commandExposure=family.chassisStyle=="HEAVY_ARMORED"?.18f:.27f;p.propulsionReserve=family.speedBias>1.1f?.28f:.20f;p.detailDensityBudget=family.chassisStyle=="MODULAR_UTILITY"?.28f:.20f;return p;
+    const float classWidth=(family.chassisStyle=="FAST_NARROW"?.22f:family.chassisStyle=="HEAVY_ARMORED"?.42f:family.chassisStyle=="MODULAR_UTILITY"?.38f:.32f);
+    p.targetWidthMeters=e.nominalLengthMeters*classWidth;
+    p.targetHeightMeters=e.nominalLengthMeters*(family.chassisStyle=="HEAVY_ARMORED"?.20f:.15f);
+    p.commandExposure=family.chassisStyle=="HEAVY_ARMORED"?.18f:.27f;
+    p.propulsionReserve=family.speedBias>1.1f?.28f:.20f;
+    p.detailDensityBudget=family.chassisStyle=="MODULAR_UTILITY"?.28f:.20f;
+    return p;
 }
 
 ShipRoleFitPlan ShipPcgRuntimeClosureSystem::BuildRoleFitPlan(const FactionHullFamilyDefinition&family,ShipRole role){
-    ShipRoleFitPlan p;p.shipClass=family.shipClass;p.role=role;p.structuralSize=ShipClassRoleSystem::Envelope(family.shipClass).structuralSize;p.hullFamilyId=family.familyId;p.budget=ShipClassRoleSystem::RoleBudget(role);p.compatible=ShipClassRoleSystem::SupportsRole(family,role);p.mandatoryCapabilities=ShipFunctionalCoreSystem::Required(true);
-    switch(role){case ShipRole::Scout:p.preferredModuleRoles={"SENSOR","PROPULSION","COMMUNICATIONS"};break;case ShipRole::ElectronicWarfare:p.preferredModuleRoles={"SENSOR","EW","POWER","UTILITY"};break;case ShipRole::Logistics:p.preferredModuleRoles={"REPAIR","SUPPLY","CARGO","UTILITY"};break;case ShipRole::Mining:p.preferredModuleRoles={"MINING","CARGO","REFINERY","UTILITY"};break;case ShipRole::Salvage:p.preferredModuleRoles={"SALVAGE","CARGO","UTILITY"};break;case ShipRole::Carrier:p.preferredModuleRoles={"HANGAR","DRONE","CARGO","DEFENSE"};break;case ShipRole::Boarding:p.preferredModuleRoles={"BOARDING","MARINE","BREACH","UTILITY"};break;case ShipRole::Siege:p.preferredModuleRoles={"HEAVY_WEAPON","POWER","THERMAL","ARMOR"};break;default:p.preferredModuleRoles={"WEAPON","ARMOR","SENSOR","PROPULSION"};break;}return p;
+    ShipRoleFitPlan p;
+    p.shipClass=family.shipClass;p.role=role;
+    p.structuralSize=ShipClassRoleSystem::ComponentProfile(family.shipClass).preferredStructuralSize;
+    p.hullFamilyId=family.familyId;p.budget=ShipClassRoleSystem::RoleBudget(role);
+    p.spatial=ShipClassRoleSystem::RoleSpatialProfile(role);
+    p.compatible=ShipClassRoleSystem::SupportsRole(family,role);
+    p.mandatoryCapabilities=ShipFunctionalCoreSystem::Required(true);
+    p.preferredModuleRoles=p.spatial.preferredExteriorRoles;
+    return p;
 }
 
 void ShipPcgRuntimeClosureSystem::ApplyLineage(ProceduralShipVisualRecipe&recipe,const HullFamilyRuntimeProfile&family,ShipRole role,const std::string&exemplarId){
-    recipe.factionId=family.factionId;recipe.shipClassId=ShipClassRoleSystem::ClassName(family.shipClass);recipe.hullFamilyId=family.familyId;recipe.roleVariantId=ShipClassRoleSystem::RoleName(role);recipe.exemplarId=exemplarId;recipe.lineageAuthority="FACTION_CLASS_HULL_ROLE_V1";recipe.manufacturerFamily=family.factionId.empty()?recipe.manufacturerFamily:family.factionId;
+    recipe.factionId=family.factionId;
+    recipe.shipClassId=ShipClassRoleSystem::ClassName(family.shipClass);
+    recipe.hullFamilyId=family.familyId;
+    recipe.roleVariantId=ShipClassRoleSystem::RoleName(role);
+    recipe.exemplarId=exemplarId;
+    recipe.lineageAuthority="FACTION_CLASS_HULL_ROLE_V1";
+    recipe.manufacturerFamily=family.factionId.empty()?recipe.manufacturerFamily:family.factionId;
 }
 
 } // namespace subspace

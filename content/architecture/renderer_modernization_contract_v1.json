@@ -1,0 +1,27 @@
+{
+  "schema": "subspace.renderer-modernization.v1",
+  "status": "PLANNED_FOUNDATION",
+  "legacyCompatibility": "WGL/OpenGL remains active until certified replacement",
+  "targetArchitecture": [
+    "SubspaceRenderDevice",
+    "SubspaceRenderScene",
+    "SubspaceRenderGraph",
+    "IndexedGpuMeshes",
+    "SharedResources",
+    "HardwareInstancing",
+    "AssemblyHLOD",
+    "PBR",
+    "HDR",
+    "ForwardPlus",
+    "Shadows",
+    "TransparentVfx",
+    "PortalCulling",
+    "HZBOcclusion",
+    "KTX2",
+    "MeshoptimizerBake",
+    "ProjectedDecals",
+    "WholeAssemblyShield"
+  ],
+  "backendCandidate": "Diligent + selected DiligentFX behind Subspace-owned interfaces",
+  "rule": "Renderer modernization may not be reported complete until runtime/performance fixtures pass."
+}

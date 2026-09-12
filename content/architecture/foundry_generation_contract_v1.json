@@ -1,0 +1,28 @@
+{
+  "schema": "subspace.foundry-generation-contract.v1",
+  "order": [
+    "DOMAIN",
+    "CLASS_ARCHETYPE",
+    "ROLE_FUNCTION",
+    "FACTION",
+    "HULL_STYLE_FAMILY",
+    "GENERATION_DOCTRINE",
+    "FIT_FUNCTIONAL_REQUIREMENTS",
+    "COMPONENT_SIZE_PROFILE",
+    "SEED",
+    "FUNCTIONAL_GRAPH",
+    "SPATIAL_SOLVER",
+    "KITBASH_ASSEMBLY",
+    "INTERIOR_SYSTEMS",
+    "VALIDATE",
+    "EDIT",
+    "PROMOTE_EXEMPLAR"
+  ],
+  "invariants": [
+    "Class/archetype is primary identity.",
+    "XS/S/M/L/XL are component vocabulary and compatibility, never ship class identity.",
+    "Role changes topology, spatial requirements, module selection, interior functions, operational stations and visual language.",
+    "Faction doctrine changes how a role is solved without changing the role itself.",
+    "Generated assemblies remain deterministic for generator version + request + seed."
+  ]
+}

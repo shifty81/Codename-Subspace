@@ -1,0 +1,57 @@
+{
+  "schema": "subspace.completion-truth.v1",
+  "authority": "Pass791-890 cumulative normalization",
+  "rule": "Only CERTIFIED_RUNTIME may be described as done/complete.",
+  "states": [
+    "CERTIFIED_RUNTIME",
+    "IMPLEMENTED_UNCERTIFIED",
+    "PARTIAL",
+    "SCAFFOLD",
+    "PLACEHOLDER",
+    "LEGACY",
+    "SUPERSEDED",
+    "PLANNED"
+  ],
+  "knownFindings": [
+    {
+      "id": "shipyard.class-role-size",
+      "state": "PARTIAL",
+      "reason": "Class/role component profiles normalized in this tranche; current large ShipyardBuilder file still requires exact-byte class-first UI/generator bridge replacement."
+    },
+    {
+      "id": "formation.runtime-following",
+      "state": "PLACEHOLDER",
+      "reason": "Existing FormationSystem Update is a placeholder in audited baseline."
+    },
+    {
+      "id": "home-system.persistence",
+      "state": "PARTIAL",
+      "reason": "Current save parser is explicitly temporary and does not round-trip complete world state."
+    },
+    {
+      "id": "renderer.modernization",
+      "state": "PARTIAL",
+      "reason": "Native renderer works but remains legacy WGL/OpenGL path; modern indexed/PBR/instancing path is not certified."
+    },
+    {
+      "id": "spatial-frame",
+      "state": "IMPLEMENTED_UNCERTIFIED",
+      "reason": "Foundation API added; runtime embodiment integration and nested rotation-aware reparent certification remain."
+    },
+    {
+      "id": "assembly-residency",
+      "state": "IMPLEMENTED_UNCERTIFIED",
+      "reason": "Independent simulation/render/residency/network policy added; runtime integration remains."
+    },
+    {
+      "id": "interior.portal-graph",
+      "state": "IMPLEMENTED_UNCERTIFIED",
+      "reason": "Compartment/portal connectivity authority added; pressure simulation integration remains."
+    },
+    {
+      "id": "operational-core",
+      "state": "IMPLEMENTED_UNCERTIFIED",
+      "reason": "Cross-domain operational station requirements added; physical console/seat binding remains."
+    }
+  ]
+}

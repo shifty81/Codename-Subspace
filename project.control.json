@@ -4,8 +4,8 @@
     "id": "codename-subspace",
     "name": "Codename Subspace",
     "kind": "native-cpp-game",
-    "version": "790R3R1",
-    "build": "SUBSPACE-PASS790R3R1"
+    "version": "890C2",
+    "build": "SUBSPACE-PASS791-890-C2"
   },
   "root_control_center": {
     "launcher": "SubspaceTools.cmd"

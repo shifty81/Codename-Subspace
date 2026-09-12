@@ -1,0 +1,141 @@
+{
+  "schema": "subspace.foundry-source-registry.v1",
+  "policy": {
+    "immutableSource": true,
+    "captureLicensePerAcquisition": true,
+    "providerWideLicenseAssumptionsForbidden": true,
+    "runtimeRequiresCertification": true
+  },
+  "sources": [
+    {
+      "provider": "Greyoxide",
+      "packId": "shipyard-v07",
+      "priority": "P0",
+      "domains": [
+        "Ship"
+      ],
+      "state": "EXISTING_CERTIFIED_CORPUS"
+    },
+    {
+      "provider": "Quaternius",
+      "packId": "modular-scifi-megakit",
+      "priority": "P0",
+      "domains": [
+        "Interior",
+        "Station"
+      ],
+      "state": "INTAKE_CANDIDATE",
+      "licenseRule": "capture exact pack/version/acquisition evidence; do not globally assume CC0"
+    },
+    {
+      "provider": "Quaternius",
+      "packId": "scifi-essentials-kit",
+      "priority": "P0",
+      "domains": [
+        "Interior",
+        "Weapon",
+        "Vehicle"
+      ],
+      "state": "INTAKE_CANDIDATE",
+      "licenseRule": "capture exact pack/version/acquisition evidence; do not globally assume CC0"
+    },
+    {
+      "provider": "Quaternius",
+      "packId": "universal-base-characters",
+      "priority": "P0",
+      "domains": [
+        "Character"
+      ],
+      "state": "INTAKE_CANDIDATE",
+      "licenseRule": "capture exact pack/version/acquisition evidence"
+    },
+    {
+      "provider": "Quaternius",
+      "packId": "universal-animation-library",
+      "priority": "P0",
+      "domains": [
+        "Character"
+      ],
+      "state": "INTAKE_CANDIDATE",
+      "licenseRule": "capture exact pack/version/acquisition evidence"
+    },
+    {
+      "provider": "Quaternius",
+      "packId": "scifi-modular-guns",
+      "priority": "P0",
+      "domains": [
+        "Weapon"
+      ],
+      "state": "INTAKE_CANDIDATE",
+      "licenseRule": "capture exact pack/version/acquisition evidence"
+    },
+    {
+      "provider": "Kenney",
+      "packId": "modular-space-kit",
+      "priority": "P0",
+      "domains": [
+        "Station",
+        "Interior"
+      ],
+      "state": "INTAKE_CANDIDATE"
+    },
+    {
+      "provider": "Kenney",
+      "packId": "space-station-kit",
+      "priority": "P0",
+      "domains": [
+        "Station",
+        "Interior"
+      ],
+      "state": "INTAKE_CANDIDATE"
+    },
+    {
+      "provider": "Kenney",
+      "packId": "factory-kit",
+      "priority": "P0",
+      "domains": [
+        "Planetary",
+        "Interior"
+      ],
+      "state": "INTAKE_CANDIDATE"
+    },
+    {
+      "provider": "KayKit",
+      "packId": "space-base-bits",
+      "priority": "P0",
+      "domains": [
+        "Planetary",
+        "Vehicle"
+      ],
+      "state": "INTAKE_CANDIDATE"
+    },
+    {
+      "provider": "MoltenMaps",
+      "packId": "scifi-pack",
+      "priority": "P0",
+      "domains": [
+        "Interior",
+        "Station"
+      ],
+      "state": "INTAKE_CANDIDATE"
+    },
+    {
+      "provider": "PolyHaven",
+      "packId": "materials-hdri",
+      "priority": "P0",
+      "domains": [
+        "Material"
+      ],
+      "state": "SOURCE_LIBRARY"
+    },
+    {
+      "provider": "ambientCG",
+      "packId": "pbr-materials",
+      "priority": "P0",
+      "domains": [
+        "Material"
+      ],
+      "state": "SOURCE_LIBRARY"
+    }
+  ]
+}

@@ -28,6 +28,13 @@ HullFamilyExemplarRecord FactionShipDesignSystem::CaptureExemplar(const std::str
 
 HullFamilyCompiledGrammar FactionShipDesignSystem::Compile(const FactionHullFamilyDefinition&family,const FactionDesignDna&dna,const std::vector<HullFamilyExemplarRecord>&exemplars){HullFamilyCompiledGrammar out;out.runtime=ShipPcgRuntimeClosureSystem::BuildHullFamilyProfile(family);out.factionDna=dna;std::vector<ShipyardDesignExemplar> valid;for(const auto&e:exemplars)if(e.approved&&e.familyId==family.familyId){valid.push_back(e.exemplar);out.exemplarIds.push_back(e.exemplarId);}out.grammar=ShipyardDesignDnaSystem::BuildGrammar(family.familyId+"_GRAMMAR",valid);if(valid.empty()){out.grammar.id=family.familyId+"_GRAMMAR";out.grammar.role="MULTIROLE";out.grammar.symmetryWeight=dna.symmetryPreference;out.grammar.propulsionAftWeight=dna.enginePairPreference;out.grammar.commandForwardWeight=.85f;}return out;}
 
-bool FactionShipDesignSystem::VariantPreservesLineage(const ProceduralShipVisualRecipe&recipe,const HullFamilyCompiledGrammar&family,ShipRole role){if(recipe.factionId!=family.runtime.factionId||recipe.hullFamilyId!=family.runtime.familyId)return false;if(recipe.shipClassId!=ShipClassRoleSystem::ClassName(family.runtime.shipClass))return false;if(recipe.roleVariantId!=ShipClassRoleSystem::RoleName(role))return false;if(!family.runtime.allowedRoles.empty()&&std::find(family.runtime.allowedRoles.begin(),family.runtime.allowedRoles.end(),role)==family.runtime.allowedRoles.end())return false;return recipe.lineageAuthority=="FACTION_CLASS_HULL_ROLE_V1";}
+bool FactionShipDesignSystem::VariantPreservesLineage(const ProceduralShipVisualRecipe&recipe,const HullFamilyCompiledGrammar&family,ShipRole role){
+    if(recipe.factionId!=family.runtime.factionId)return false;
+    if(recipe.hullFamilyId!=family.runtime.familyId)return false;
+    if(recipe.shipClassId!=ShipClassRoleSystem::ClassName(family.runtime.shipClass))return false;
+    if(recipe.roleVariantId!=ShipClassRoleSystem::RoleName(role))return false;
+    if(!family.runtime.allowedRoles.empty()&&std::find(family.runtime.allowedRoles.begin(),family.runtime.allowedRoles.end(),role)==family.runtime.allowedRoles.end())return false;
+    return recipe.lineageAuthority=="FACTION_CLASS_HULL_ROLE_V1";
+}
 
 } // namespace subspace

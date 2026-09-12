@@ -1,0 +1,36 @@
+{
+  "schema": "subspace.spatial-assembly.v1",
+  "status": "FOUNDATION_CONTRACT",
+  "pipeline": [
+    "TransformCanonicalModuleSpatialProxies",
+    "UnionAssemblySolids",
+    "ApplyCertifiedSeamSeals",
+    "TemporarilyCapIntentionalPortals",
+    "OutsideFloodFill",
+    "DeriveOuterHull",
+    "OffsetInnerHull",
+    "IntersectHollowableRegions",
+    "SubtractStructuralAndFunctionalKeepouts",
+    "BuildSafeInteriorVolume",
+    "BuildClearanceFields",
+    "SolveInteriorTopology",
+    "DressInterior",
+    "Certify"
+  ],
+  "derivedAuthorities": [
+    "ExteriorShell",
+    "SafeInterior",
+    "Collision",
+    "PressureBoundaries",
+    "ShieldEnvelope",
+    "DamageRebake"
+  ],
+  "clearanceProfiles": [
+    "Human",
+    "PoweredArmor",
+    "Cargo",
+    "SmallVehicle",
+    "LargeVehicle",
+    "Maintenance"
+  ]
+}

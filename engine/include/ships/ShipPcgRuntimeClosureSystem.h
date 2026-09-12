@@ -58,9 +58,11 @@ struct ShipGenerationCandidateReport {
 struct ShipRoleFitPlan {
     ShipClass shipClass = ShipClass::Frigate;
     ShipRole role = ShipRole::GeneralCombat;
-    UniversalSizeClass structuralSize = UniversalSizeClass::XS;
+    // Compatibility/preference only. A role fit may use several component tiers.
+    UniversalSizeClass structuralSize = UniversalSizeClass::S;
     std::string hullFamilyId;
     ShipRoleBudget budget{};
+    ShipRoleSpatialProfile spatial{};
     std::vector<ShipFunctionalCapability> mandatoryCapabilities;
     std::vector<std::string> preferredModuleRoles;
     bool compatible = false;
@@ -70,7 +72,9 @@ struct HullFamilyRuntimeProfile {
     std::string factionId;
     std::string familyId;
     ShipClass shipClass = ShipClass::Frigate;
-    UniversalSizeClass structuralSize = UniversalSizeClass::XS;
+    // Preferred structural tier, never class identity.
+    UniversalSizeClass structuralSize = UniversalSizeClass::S;
+    ShipClassComponentProfile componentProfile{};
     std::string chassisStyle;
     float targetLengthMeters = 0.0f;
     float targetWidthMeters = 0.0f;
@@ -84,8 +88,6 @@ struct HullFamilyRuntimeProfile {
 
 class ShipPcgRuntimeClosureSystem {
 public:
-    // Pass615-620: whole-ship candidate authority used before generated recipes
-    // are accepted into the runtime catalog.
     static ShipGenerationCandidateReport EvaluateCandidate(const std::vector<ShipyardModuleRecord>& catalog,
                                                             const ProceduralShipVisualRecipe& recipe,
                                                             bool requireFunctionalCore = false,
@@ -99,22 +101,20 @@ public:
                                 bool requireFunctionalCore = false,
                                 bool biologicalCrew = true);
 
-    // Pass621-624: propulsion is audited by semantic role + local axes. Unknown
-    // orientation fails closed out of ordinary PCG while remaining manually usable.
     static std::vector<ExhaustClearanceVolume> BuildExhaustClearance(const std::vector<ShipyardModuleRecord>& catalog,
                                                                      const ProceduralShipVisualRecipe& recipe,
                                                                      float lengthMultiplier = 3.5f);
     static std::vector<PropulsionCatalogAuditEntry> AuditPropulsionCatalog(const std::vector<ShipyardModuleRecord>& catalog);
 
-    // Pass625-631: material and size/class eligibility are explicit runtime gates.
     static bool MaterialPcgEligible(KitbashMaterialCertification state);
+
+    // Class-first compatibility: the class owns a weighted component profile.
+    // auxiliary=true permits the broader sensors/RCS/adapters/weapons vocabulary.
     static bool ModuleFitsClass(const ShipyardModuleRecord& module, ShipClass shipClass, bool auxiliary = true);
     static std::vector<std::size_t> FilterForClass(const std::vector<ShipyardModuleRecord>& catalog,
                                                    ShipClass shipClass,
                                                    bool auxiliary = true);
 
-    // Pass632-638: faction hull family + role lineage is an actual generation
-    // contract, not merely a display label.
     static HullFamilyRuntimeProfile BuildHullFamilyProfile(const FactionHullFamilyDefinition& family);
     static ShipRoleFitPlan BuildRoleFitPlan(const FactionHullFamilyDefinition& family, ShipRole role);
     static void ApplyLineage(ProceduralShipVisualRecipe& recipe,

@@ -1,0 +1,13 @@
+{
+  "schema": "subspace.blender-foundry-parity.v1",
+  "status": "PLANNED_FOUNDATION",
+  "authority": "Native Subspace Foundry generator",
+  "client": "Blender SubspaceFoundry extension",
+  "invariants": [
+    "Blender does not independently reimplement authoritative PCG.",
+    "Same generator version + request + seed yields the same blueprint in game and Blender.",
+    "GLB carries geometry/animation; blueprint V2 carries gameplay semantics.",
+    "Sockets, portals, seals, cuttable regions, keepouts, clearances, seats, cameras and operational stations are visible/editable in Blender.",
+    "Legacy NovaForge/PCG exporter tools are donors only after proven behavior is migrated."
+  ]
+}
