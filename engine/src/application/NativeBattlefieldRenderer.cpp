@@ -2322,17 +2322,77 @@ void DrawPlayableInterior(const NativeBattlefieldFrame& frame) {
     if(!frame.playerPhysics)return;
     const auto& p=frame.playerPhysics->position;
     DisableSceneLighting();glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
-    // One compact starter deck; later ship construction metadata can replace
-    // these room bounds without changing the embodiment/camera authority.
-    DrawBox(p.x,p.y,0.02f,4.2f,5.8f,0.10f,{0.045f,0.065f,0.074f,1.0f});
-    DrawBox(p.x,p.y+2.82f,0.34f,4.2f,0.12f,0.62f,{0.18f,0.23f,0.25f,1.0f});
-    DrawBox(p.x,p.y-2.82f,0.34f,4.2f,0.12f,0.62f,{0.18f,0.23f,0.25f,1.0f});
-    DrawBox(p.x-2.04f,p.y,0.34f,0.12f,5.7f,0.62f,{0.18f,0.23f,0.25f,1.0f});
-    DrawBox(p.x+2.04f,p.y,0.34f,0.12f,5.7f,0.62f,{0.18f,0.23f,0.25f,1.0f});
-    DrawBox(p.x,p.y+1.55f,0.16f,2.8f,1.12f,0.20f,{0.10f,0.34f,0.43f,1.0f}); // cockpit
-    DrawBox(p.x-1.05f,p.y-0.20f,0.17f,1.35f,1.55f,0.22f,{0.42f,0.27f,0.10f,1.0f}); // furnace/engineering
-    DrawBox(p.x+1.05f,p.y-0.20f,0.17f,1.35f,1.55f,0.22f,{0.15f,0.37f,0.29f,1.0f}); // cargo/fabrication
-    DrawBox(p.x,p.y-1.85f,0.17f,2.9f,0.82f,0.22f,{0.28f,0.31f,0.34f,1.0f});
+
+    const auto* carve=frame.playerInteriorCarve;
+    if(carve && !carve->volumes.empty()){
+        constexpr float kInteriorDisplayScale=0.72f;
+        Vector3 minP{1.0e9f,1.0e9f,1.0e9f},maxP{-1.0e9f,-1.0e9f,-1.0e9f};
+        for(const auto& v:carve->volumes){
+            minP.x=std::min(minP.x,v.center.x-v.halfExtents.x);minP.y=std::min(minP.y,v.center.y-v.halfExtents.y);minP.z=std::min(minP.z,v.center.z-v.halfExtents.z);
+            maxP.x=std::max(maxP.x,v.center.x+v.halfExtents.x);maxP.y=std::max(maxP.y,v.center.y+v.halfExtents.y);maxP.z=std::max(maxP.z,v.center.z+v.halfExtents.z);
+        }
+        const Vector3 carveCenter=(minP+maxP)*0.5f;
+        const int activeDeck=std::max(0,frame.interiorAvatar.deck);
+        const auto roomColor=[](InteriorRoomType t)->Rgba{
+            switch(t){
+                case InteriorRoomType::Cockpit:return {0.10f,0.34f,0.43f,1.0f};
+                case InteriorRoomType::Engineering:case InteriorRoomType::Reactor:return {0.42f,0.27f,0.10f,1.0f};
+                case InteriorRoomType::Cargo:return {0.15f,0.37f,0.29f,1.0f};
+                case InteriorRoomType::CrewQuarters:case InteriorRoomType::Medbay:return {0.24f,0.30f,0.42f,1.0f};
+                case InteriorRoomType::Airlock:return {0.40f,0.32f,0.13f,1.0f};
+                case InteriorRoomType::Workshop:return {0.34f,0.24f,0.18f,1.0f};
+                default:return {0.18f,0.23f,0.25f,1.0f};
+            }
+        };
+        const auto worldOf=[&](const Vector3& q){return Vector3{p.x+(q.x-carveCenter.x)*kInteriorDisplayScale,p.y+(q.y-carveCenter.y)*kInteriorDisplayScale,0.0f};};
+
+        // Portal/corridor floors are drawn first so room shells read as one
+        // continuous interior instead of disconnected boxes.
+        for(const auto& portal:carve->portals){
+            if(!portal.walkable)continue;
+            const InteriorCarvedVolume* a=nullptr;const InteriorCarvedVolume* b=nullptr;
+            for(const auto& v:carve->volumes){if(v.moduleIndex==portal.moduleA)a=&v;if(v.moduleIndex==portal.moduleB)b=&v;}
+            if(!a||!b||a->deck!=activeDeck||b->deck!=activeDeck)continue;
+            const auto aw=worldOf(a->center),bw=worldOf(b->center);const float dx=bw.x-aw.x,dy=bw.y-aw.y;const float len=std::sqrt(dx*dx+dy*dy);if(len<.05f)continue;
+            glPushMatrix();glTranslatef((aw.x+bw.x)*.5f,(aw.y+bw.y)*.5f,0.035f);glRotatef(std::atan2(dy,dx)*180.0f/kPi,0,0,1);
+            DrawBox(0,0,0,len*.5f+.20f,0.48f,0.08f,{0.10f,0.16f,0.18f,1.0f});
+            glPopMatrix();
+        }
+
+        for(const auto& v:carve->volumes){
+            if(v.deck!=activeDeck)continue;
+            const auto c=worldOf(v.center);const float hx=std::max(.25f,v.halfExtents.x*kInteriorDisplayScale),hy=std::max(.25f,v.halfExtents.y*kInteriorDisplayScale);
+            const auto tint=roomColor(v.roomType);
+            glPushMatrix();glTranslatef(c.x,c.y,0.0f);glRotatef(v.yawDegrees,0,0,1);
+            DrawBox(0,0,0.02f,hx,hy,0.09f,{tint.r*.38f,tint.g*.38f,tint.b*.38f,1.0f});
+            // Thin pressure-hull boundary. Connected corridor floors visually
+            // bridge these shells; final mesh extraction will boolean portal
+            // openings into the wall skin rather than drawing independent boxes.
+            const float wh=.08f,wallZ=.34f;
+            DrawBox(0, hy, wallZ,hx,wh,.62f,{0.18f,0.23f,0.25f,.92f});
+            DrawBox(0,-hy, wallZ,hx,wh,.62f,{0.18f,0.23f,0.25f,.92f});
+            DrawBox(-hx,0, wallZ,wh,hy,.62f,{0.18f,0.23f,0.25f,.92f});
+            DrawBox( hx,0, wallZ,wh,hy,.62f,{0.18f,0.23f,0.25f,.92f});
+            DrawBox(0,0,0.16f,std::max(.18f,hx*.42f),std::max(.18f,hy*.28f),.16f,tint);
+            glPopMatrix();
+        }
+
+        // Visible carve status marker: green when every carved cavity is
+        // reachable from command/root, amber when a draft still needs repair.
+        const Rgba topo=carve->valid?Rgba{0.18f,0.78f,0.52f,.60f}:Rgba{0.92f,0.56f,0.16f,.72f};
+        Ring(p.x,p.y,0.46f,std::max(1.5f,std::min(5.0f,(maxP.x-minP.x+maxP.y-minP.y)*.09f)),topo,1.0f,44);
+    }else{
+        // Compatibility fallback only when the assembly has no carve authority.
+        DrawBox(p.x,p.y,0.02f,4.2f,5.8f,0.10f,{0.045f,0.065f,0.074f,1.0f});
+        DrawBox(p.x,p.y+2.82f,0.34f,4.2f,0.12f,0.62f,{0.18f,0.23f,0.25f,1.0f});
+        DrawBox(p.x,p.y-2.82f,0.34f,4.2f,0.12f,0.62f,{0.18f,0.23f,0.25f,1.0f});
+        DrawBox(p.x-2.04f,p.y,0.34f,0.12f,5.7f,0.62f,{0.18f,0.23f,0.25f,1.0f});
+        DrawBox(p.x+2.04f,p.y,0.34f,0.12f,5.7f,0.62f,{0.18f,0.23f,0.25f,1.0f});
+        DrawBox(p.x,p.y+1.55f,0.16f,2.8f,1.12f,0.20f,{0.10f,0.34f,0.43f,1.0f});
+        DrawBox(p.x-1.05f,p.y-0.20f,0.17f,1.35f,1.55f,0.22f,{0.42f,0.27f,0.10f,1.0f});
+        DrawBox(p.x+1.05f,p.y-0.20f,0.17f,1.35f,1.55f,0.22f,{0.15f,0.37f,0.29f,1.0f});
+        DrawBox(p.x,p.y-1.85f,0.17f,2.9f,0.82f,0.22f,{0.28f,0.31f,0.34f,1.0f});
+    }
     const Vector3 av{p.x+frame.interiorAvatar.localPosition.x*0.72f,p.y+frame.interiorAvatar.localPosition.y*0.72f,0.50f};
     DrawSphere(av.x,av.y,av.z,0.18f,{0.88f,0.66f,0.22f,1.0f},16,8,SpaceMaterialKind::ShipHull);
     glDisable(GL_BLEND);SetupSceneLighting();
@@ -3603,8 +3663,15 @@ float NativeBattlefieldRenderer::PlanetRadiusToWorld(float radius) {
 Vector3 NativeBattlefieldRenderer::ScreenToWorld(float screenX,float screenY,
                                                   int viewportWidth,int viewportHeight,
                                                   const StrategicCamera& camera) {
+    return ScreenToWorldPlane(screenX,screenY,viewportWidth,viewportHeight,camera,0.0f);
+}
+
+Vector3 NativeBattlefieldRenderer::ScreenToWorldPlane(float screenX,float screenY,
+                                                       int viewportWidth,int viewportHeight,
+                                                       const StrategicCamera& camera,
+                                                       float worldPlaneZ) {
     return StrategicViewProjection::ScreenToGameplayPlane(
-        screenX,screenY,static_cast<float>(viewportWidth),static_cast<float>(viewportHeight),camera,0.0f);
+        screenX,screenY,static_cast<float>(viewportWidth),static_cast<float>(viewportHeight),camera,worldPlaneZ);
 }
 
 StrategicScreenPoint NativeBattlefieldRenderer::WorldToScreen(const Vector3& worldPoint,

@@ -109,9 +109,11 @@ void PlayerControlSystem::Update(float deltaTime)
     }
 
     if (_inputState.IsDown(InputAction::EmergencyBrake)) {
-        Vector3 planarVelocity{physics->velocity.x, physics->velocity.y, 0.0f};
-        if (planarVelocity.length() > 0.01f) {
-            physics->AddForce(planarVelocity.normalized() *
+        const Vector3 brakeVelocity = _flightAuthorityMode == FlightAuthorityMode::TacticalPlanar
+            ? Vector3{physics->velocity.x, physics->velocity.y, 0.0f}
+            : physics->velocity;
+        if (brakeVelocity.length() > 0.01f) {
+            physics->AddForce(brakeVelocity.normalized() *
                 (-physics->maxThrust * _tuning.emergencyBrakeMultiplier));
         }
         if (std::fabs(physics->angularVelocity.z) > 0.001f) {
@@ -121,10 +123,11 @@ void PlayerControlSystem::Update(float deltaTime)
         }
     }
 
-    // Enforce the authoritative 2D contract at the controller boundary.
-    physics->appliedForce.z = 0.0f;
-    physics->appliedTorque.x = 0.0f;
-    physics->appliedTorque.y = 0.0f;
+    if (_flightAuthorityMode == FlightAuthorityMode::TacticalPlanar) {
+        physics->appliedForce.z = 0.0f;
+        physics->appliedTorque.x = 0.0f;
+        physics->appliedTorque.y = 0.0f;
+    }
 }
 
 } // namespace subspace

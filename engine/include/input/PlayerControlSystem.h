@@ -9,12 +9,14 @@ namespace subspace {
 
 /// Native replacement for the legacy C# PlayerControlSystem.
 ///
-/// Subspace flight is authoritative on the X/Y gameplay plane. rotation.z is
-/// ship yaw; render-only faux depth never leaks into physics. The controller
-/// preserves the useful C# thruster/inertia ideas while intentionally retiring
-/// its pitch/roll/vertical 6DOF behavior.
+/// Subspace world/physics authority is fully three-dimensional. The current
+/// keyboard flight mapping remains predominantly planar for feel/backward
+/// compatibility, but the controller must not erase valid Z force/velocity or
+/// pitch/roll torque produced by other systems. TacticalPlanar is an explicit
+/// opt-in constraint mode for command/tutorial contexts, never world truth.
 class PlayerControlSystem : public SystemBase {
 public:
+    enum class FlightAuthorityMode { Full3D, TacticalPlanar };
     struct Tuning {
         float thrustMultiplier = 1.0f;
         float rotationMultiplier = 1.0f;
@@ -44,6 +46,8 @@ public:
     bool IsInertialDampeningEnabled() const { return _inertialDampeningEnabled; }
     void SetInertialDampeningEnabled(bool enabled) { _inertialDampeningEnabled = enabled; }
     bool IsBoostActive() const { return _boostActive; }
+    FlightAuthorityMode GetFlightAuthorityMode() const { return _flightAuthorityMode; }
+    void SetFlightAuthorityMode(FlightAuthorityMode mode) { _flightAuthorityMode = mode; }
 
     const Tuning& GetTuning() const { return _tuning; }
     void SetTuning(const Tuning& tuning) { _tuning = tuning; }
@@ -55,6 +59,7 @@ private:
     Tuning _tuning{};
     bool _inertialDampeningEnabled = true;
     bool _boostActive = false;
+    FlightAuthorityMode _flightAuthorityMode = FlightAuthorityMode::Full3D;
     float _forwardResponse = 0.0f;
     float _reverseResponse = 0.0f;
     float _leftResponse = 0.0f;

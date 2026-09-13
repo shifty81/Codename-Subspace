@@ -1,44 +1,47 @@
 {
   "Id": "tutorial_ship_building",
-  "Title": "Ship Building",
-  "Description": "Learn how to build and customize your ship using voxel blocks.",
+  "Title": "Ship Construction & Refit",
+  "Description": "Learn how to refit and expand a modular Subspace vessel using structural elements, authored modules and semantic attachment points.",
   "AutoStart": false,
-  "Prerequisites": ["tutorial_basic_controls", "tutorial_mining_basics"],
+  "Prerequisites": [
+    "tutorial_basic_controls",
+    "tutorial_mining_basics"
+  ],
   "Steps": [
     {
       "Type": "Message",
-      "Title": "Introduction to Ship Building",
-      "Message": "Your ship is built from voxel blocks. You can add, remove, and customize blocks to create your perfect vessel!",
+      "Title": "Persistent Ships",
+      "Message": "Your vessel is a persistent assembly. Hull structure, modules, cargo, damage, paint and installed systems remain with the same ship when you land, dock, travel and save.",
       "CanSkip": true
     },
     {
       "Type": "Message",
-      "Title": "Entering Build Mode",
-      "Message": "Press [B] to open the Ship Builder. This is where you can add new blocks, choose materials, and modify your ship's structure.",
+      "Title": "Hangar Shipyard",
+      "Message": "Dock at a compatible hangar, berth or drydock to enter the in-game Shipyard. The Shipyard modifies the actual vessel being serviced rather than creating a separate editor-only copy.",
       "CanSkip": true
     },
     {
       "Type": "Message",
-      "Title": "Block Types",
-      "Message": "There are several block types:\n• Hull - Basic structure\n• Armor - Protection\n• Engine - Propulsion\n• Thruster - Maneuvering\n• Generator - Power\n• Shield - Defense\n• Cargo - Storage\n• Cockpit - Control center\n• Turret - Weapons mounting",
+      "Title": "Construction Vocabulary",
+      "Message": "Ships combine structural/parametric elements with authored modules. Semantic sockets and attachment faces govern valid connections. Typical systems include command, hull/armor, engines, maneuvering thrusters, power, shields, cargo, sensors, weapons, interiors and support equipment.",
       "CanSkip": true
     },
     {
       "Type": "Message",
-      "Title": "Materials Matter",
-      "Message": "Different materials provide different stats:\n• Iron - Basic, cheap\n• Titanium - Stronger\n• Naonite - Energy efficient\n• Trinium - Lightweight\n• Xanion - Advanced\n• Ogonite - Powerful\n• Avorion - Ultimate\n\nBetter materials unlock as you explore deeper into the galaxy!",
+      "Title": "Engineering Consequences",
+      "Message": "Every addition can affect mass, center of mass, thrust authority, power demand, cooling, fuel, cargo, protection, weapon arcs, interior clearance and atmospheric capability. The validator reports blocking problems before a refit is committed.",
       "CanSkip": true
     },
     {
       "Type": "Message",
-      "Title": "Building Tips",
-      "Message": "Tips for building:\n• Add more engines for speed\n• Balance your ship's mass\n• Add shields for protection\n• Don't forget power generators!\n• Cargo blocks let you carry more resources\n\nExperiment and have fun!",
+      "Title": "Materials and Manufacturing",
+      "Message": "Material and module quality come from Subspace resources, manufacturing capability, provenance and condition. Current progression is not tied to the retired donor material-tier ladder.",
       "CanSkip": true
     },
     {
       "Type": "Message",
-      "Title": "Ship Building Complete!",
-      "Message": "You now know the basics of ship building! Open the Ship Builder [B] anytime to customize your vessel.",
+      "Title": "Construction Complete",
+      "Message": "Use the Shipyard to repair, refit, paint and expand the same vessel you later board and undock. Developer authoring in Ember will eventually use the same canonical assembly schemas and validators.",
       "CanSkip": false
     }
   ]

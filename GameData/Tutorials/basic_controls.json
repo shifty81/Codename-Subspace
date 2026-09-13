@@ -8,7 +8,7 @@
     {
       "Type": "Message",
       "Title": "Welcome to Codename: Subspace!",
-      "Message": "Welcome, Commander! This tutorial will teach you the basic controls. Click 'Continue' when ready.",
+      "Message": "Welcome, pilot! This tutorial will teach you the basic controls. Click 'Continue' when ready.",
       "CanSkip": true
     },
     {
@@ -32,7 +32,7 @@
     {
       "Type": "Message",
       "Title": "Tutorial Complete!",
-      "Message": "You've learned the basic controls! Now you're ready to explore the galaxy. Good luck, Commander!",
+      "Message": "You've learned the basic controls! Now you're ready to explore the galaxy. Good luck, pilot!",
       "CanSkip": false
     }
   ]

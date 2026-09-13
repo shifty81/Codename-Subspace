@@ -1,5 +1,6 @@
 #pragma once
 
+#include "editor/EditorDockSystem.h"
 #include "editor/SubspaceEditorCore.h"
 
 #include <string>
@@ -24,9 +25,15 @@ class EditorWorkspaceStateSystem {
 public:
     void Set(EditorWorkspacePreferences preferences);
     EditorWorkspacePreferences Get(EditorWorkspaceKind workspace) const;
+
+    void SetDockWorkspace(EditorDockWorkspace workspace);
+    EditorDockWorkspace GetDockWorkspace(EditorWorkspaceKind workspace) const;
+    EditorDockWorkspace& MutableDockWorkspace(EditorWorkspaceKind workspace);
+
     void Reset(EditorWorkspaceKind workspace);
 private:
     std::unordered_map<int, EditorWorkspacePreferences> state_;
+    std::unordered_map<int, EditorDockWorkspace> dockState_;
 };
 
 } // namespace subspace

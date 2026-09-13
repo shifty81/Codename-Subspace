@@ -17,12 +17,11 @@ const char* ContentAuthorityName(ContentAuthority authority) {
 
 std::vector<ContentManifestEntry> BuildDefaultContentManifestSeed() {
     return {
-        {"content/assets/", ContentAuthority::ActiveContent, "canonical active assets after normalization"},
-        {"content/data/", ContentAuthority::ActiveContent, "canonical active gameplay data"},
-        {"content/generated/", ContentAuthority::GeneratedContent, "generated celestial/ship/station previews"},
-        {"Assets/", ContentAuthority::LegacyPendingAudit, "legacy uppercase asset tree awaiting references audit"},
-        {"assets/", ContentAuthority::LegacyPendingAudit, "legacy lowercase asset tree awaiting canonical merge"},
-        {"GameData/", ContentAuthority::LegacyPendingAudit, "legacy gameplay data awaiting path normalization"},
+        {"GameData/", ContentAuthority::ActiveContent, "canonical authored gameplay/runtime JSON and packaged runtime data"},
+        {"content/", ContentAuthority::ActiveContent, "canonical governed metadata, schemas, registries, provenance, and derived authority"},
+        {"content/generated/", ContentAuthority::GeneratedContent, "generated/certified derived content where explicitly governed"},
+        {"Assets/", ContentAuthority::LegacyPendingAudit, "legacy uppercase asset root only when physically present"},
+        {"assets/", ContentAuthority::LegacyPendingAudit, "legacy lowercase asset root only when physically present"},
         {"reference/third_party/pixel_planets/", ContentAuthority::ThirdPartyReference, "MIT visual reference to port"},
         {"reference/csharp-to-cpp-source/", ContentAuthority::MigrationSource, "C# behavior source-to-port backlog"}
     };

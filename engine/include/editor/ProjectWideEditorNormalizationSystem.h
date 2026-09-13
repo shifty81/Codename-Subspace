@@ -10,6 +10,7 @@ enum class EditorNormalizationDomain {
     UiHelp,
     InputRouting,
     WorkspaceShell,
+    DockWorkspace,
     Selection,
     CommandHistory,
     AssetBrowser,
@@ -35,7 +36,10 @@ enum class EditorNormalizationDomain {
     KitbashReviewCatalog,
     ConstructionSymmetry,
     ConstructionCamera,
-    ThumbnailAuthority
+    ThumbnailAuthority,
+    CharacterDefinition,
+    AuthoringParity,
+    ExternalTechnologyAdoption
 };
 
 struct EditorNormalizationEntry {

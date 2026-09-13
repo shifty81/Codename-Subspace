@@ -182,16 +182,6 @@ To test these models in-game:
 2. Run the game: select **Run native C++ game**
 3. Ships generated using the modular system will use these enhanced models
 
-## References
+## Historical provenance
 
-- [ModuleLibrary.cs](../../../../../../AvorionLike/Core/Modular/ModuleLibrary.cs)
-- [ShipModuleDefinition.cs](../../../../../../AvorionLike/Core/Modular/ShipModuleDefinition.cs)
-- [AssetManager.cs](../../../../../../AvorionLike/Core/Graphics/AssetManager.cs)
-- [MeshRenderer.cs](../../../../../../AvorionLike/Core/Graphics/MeshRenderer.cs)
-- [MODULAR_SHIP_3D_MODELS_IMPLEMENTATION.md](../../../../../../MODULAR_SHIP_3D_MODELS_IMPLEMENTATION.md)
-
----
-
-**Last Updated:** January 4, 2026  
-**Version:** Enhanced Detail Models v1.0  
-**Status:** Production Ready
+The original C#/AvorionLike module-library references that seeded this folder are retired migration evidence and are not current runtime authority. Current implementation authority lives in the native C++ ship/Shipyard systems and governed source/provenance records.

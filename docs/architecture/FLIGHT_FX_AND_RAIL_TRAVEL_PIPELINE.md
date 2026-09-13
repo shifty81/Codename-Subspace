@@ -1,3 +1,5 @@
+> **SUPERSEDED PIPELINE (2026-09-12):** Rail travel is no longer the interstellar authority. Retain this document only as a source of reusable travel-risk/presentation ideas. Current authority is seamless local/in-system travel plus jump-gate interstellar transit.
+
 # Flight FX and Rail Travel Pipeline
 
 Inside a solar system, the player flies manually. Between solar systems, the player uses a fitted ship on an on-rails route segment.

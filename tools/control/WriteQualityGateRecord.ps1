@@ -18,15 +18,21 @@ $gateId=("QG-{0}-{1}-{2}" -f $stamp,$GateKind.ToLowerInvariant(),([guid]::NewGui
 $gitHead=$null
 $gitBranch=$null
 $gitFingerprint=$null
-$sourceSnapshot=Get-ProjectSourceAuthoritySnapshot -Root $Root
+$gitManifest=$null
+$sourceSnapshot=Get-ProjectSourceAuthoritySnapshot -Root $Root -IncludePaths
 $gitState=Get-ProjectGitRepositoryState -Root $Root
 if ($gitState.initialized) {
     $gitBranch=[string]$gitState.branch
     if ($gitState.hasHead) {
         $gitHead=[string]$gitState.head
-        $gitFingerprint=Get-CertifiableGitFingerprint -Root $Root
+        $gitManifest=Get-ProjectOpsCertifiableGitManifest -Root $Root
+        $gitFingerprint=if ($null -ne $gitManifest) { [string]$gitManifest.fingerprint } else { $null }
     }
 }
+$gitManifestVersion=if ($null -ne $gitManifest) { [int]$gitManifest.schemaVersion } else { 0 }
+$gitManifestPathCount=if ($null -ne $gitManifest) { [int]$gitManifest.pathCount } else { 0 }
+$gitManifestEntries=if ($null -ne $gitManifest) { @($gitManifest.entries) } else { @() }
+
 $record=[pscustomobject]@{
     schemaVersion=4
     gateId=$gateId
@@ -42,9 +48,13 @@ $record=[pscustomobject]@{
     gitHead=$gitHead
     gitBranch=$gitBranch
     gitFingerprint=$gitFingerprint
+    gitManifestVersion=$gitManifestVersion
+    gitManifestPathCount=$gitManifestPathCount
+    gitManifest=$gitManifestEntries
     gitProbeAuthority='ProjectOps System.Diagnostics.Process'
     sourceFingerprint=[string]$sourceSnapshot.fingerprint
     sourcePathCount=[int]$sourceSnapshot.pathCount
+    sourceManifest=@($sourceSnapshot.files)
     sourceAuthorityId=[string]$sourceSnapshot.authorityId
     requiredBootstrapPaths=@($sourceSnapshot.requiredBootstrapPaths)
     cleanCheckoutContract=[string]$sourceSnapshot.cleanCheckoutContract

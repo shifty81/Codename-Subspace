@@ -1,17 +1,21 @@
 {
   "Id": "quest_advanced_mining",
-  "Title": "Resource Collector",
-  "Description": "Mine advanced materials to upgrade your ship. Collect Naonite, a valuable material found in higher-tech sectors.",
+  "Title": "Titanium Survey Contract",
+  "Description": "Recover titanium ore from a surveyed resource site for industrial processing.",
   "Difficulty": "Normal",
   "CanAbandon": true,
   "IsRepeatable": true,
   "TimeLimit": 0,
-  "Tags": ["mining", "repeatable", "resources"],
+  "Tags": [
+    "mining",
+    "repeatable",
+    "resources"
+  ],
   "Objectives": [
     {
       "Type": "Mine",
-      "Description": "Mine 50 Naonite ore",
-      "Target": "Naonite",
+      "Description": "Mine 50 titanium ore",
+      "Target": "titanium_ore",
       "RequiredQuantity": 50,
       "IsOptional": false,
       "IsHidden": false,

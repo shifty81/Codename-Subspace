@@ -212,7 +212,10 @@ void Engine::RegisterSystems()
 
     _entityManager.RegisterSystem(std::make_unique<PhysicsSystem>(_entityManager));
     _entityManager.RegisterSystem(std::make_unique<CombatSystem>(_entityManager));
-    _entityManager.RegisterSystem(std::make_unique<NavigationSystem>());
+    // Foundation Convergence P922+: the legacy NavigationSystem performed
+    // instantaneous charged sector changes and competes with the authoritative
+    // vector-travel + physical jump-gate model. It remains compiled for
+    // migration compatibility only and is intentionally not runtime-registered.
     _entityManager.RegisterSystem(std::make_unique<PowerSystem>());
     _entityManager.RegisterSystem(std::make_unique<AIDecisionSystem>());
     _entityManager.RegisterSystem(std::make_unique<MiningSystem>());

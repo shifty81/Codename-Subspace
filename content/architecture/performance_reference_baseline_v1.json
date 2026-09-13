@@ -1,0 +1,15 @@
+{
+  "schema": "subspace.performance-reference.v1",
+  "baseline_id": "SUBSPACE-P921-PERFORMANCE-REFERENCE-BASELINE",
+  "certified_gate_id": "QG-20260912-193645-full-58693c78",
+  "authority": "project-owned PCC + manual runtime acceptance",
+  "rule": "Foundation Convergence must preserve or improve the responsiveness observed at P921. Hard numeric budgets are promoted only after repeatable telemetry captures exist.",
+  "metrics": [
+    {"id":"client.startup","capture":"required"},
+    {"id":"editor.startup","capture":"required"},
+    {"id":"runtime.frame_pacing","capture":"required"},
+    {"id":"editor.input_latency","capture":"required"},
+    {"id":"transition.hitch","capture":"required"},
+    {"id":"memory.long_session","capture":"required"}
+  ]
+}

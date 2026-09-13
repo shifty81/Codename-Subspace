@@ -199,12 +199,11 @@ GalaxySector GalaxyGenerator::GenerateSector(int x, int y, int z) const {
             planet.hazardLevel = hazardDist(rng);
             planet.surfaceSeed = HashCoordinates(x * 31 + i, y * 17 - i, z * 13 + i * 7);
 
-            // Pass217+ correction: ships never land. Planetary access is
-            // orbital survey -> tether seed -> space elevator -> Planetary
-            // Manufacturing. Gas giants do not accept a conventional surface
-            // elevator anchor; their future industry path is an orbital/
-            // atmospheric collector ring and remains harvestable by contract.
-            planet.landable = false;
+            // Foundation Convergence P922+: solid worlds are valid landing
+            // targets. Gas giants remain non-surface landing targets and use
+            // orbital/atmospheric infrastructure instead. Actual landing still
+            // requires the runtime atmosphere/surface streaming capability.
+            planet.landable = planet.type != PlanetType::GasGiant;
             planet.surveyable = true;
             planet.harvestable = true;
             planet.industryRepresentation = planet.type == PlanetType::GasGiant

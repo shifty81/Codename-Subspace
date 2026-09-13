@@ -1,3 +1,5 @@
+> **REFERENCE / OPTIONAL CAMPAIGN MODE (2026-09-12):** This roguelite-home/expedition direction is not the identity of the main game. Useful expedition/run mechanics may survive as optional scenario/campaign rules inside the persistent Subspace sandbox; they do not replace seamless planets, persistent ships, settlements, economy, or the Reference Solar System.
+
 # Subspace Roguelite Incremental Direction Lock
 
 ## Locked direction

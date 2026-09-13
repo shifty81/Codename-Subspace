@@ -1,7 +1,7 @@
 {
   "Id": "quest_combat_pirates",
   "Title": "Clear the Sector",
-  "Description": "Local traders are being harassed by pirates in this sector. Destroy 5 pirate ships to make the area safe for commerce. The trading guild will reward you generously.",
+  "Description": "Local traders are being harassed by pirates in this region. Destroy 5 pirate ships to make the area safe for commerce. The trading guild will reward you generously.",
   "Difficulty": "Normal",
   "CanAbandon": true,
   "IsRepeatable": true,

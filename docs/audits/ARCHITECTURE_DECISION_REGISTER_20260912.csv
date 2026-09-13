@@ -1,0 +1,27 @@
+﻿ADR,Decision,Status,ProposedLock
+ADR-001,Project identity,PROPOSED LOCK,"Subspace is an embodied space sandbox/strategy/RPG combining exploration, physical ships, economy/factions and command—not a clone of any reference game."
+ADR-002,World dimensionality,PROPOSED LOCK,Full 3D hierarchical simulation is authoritative. Tactical 2D/planar behavior is a command/assist mode only.
+ADR-003,Simulation layering,PROPOSED LOCK,Galactic strategic + system operational + local embodied + streamed surface layers with explicit state handoff.
+ADR-004,Coordinate model,PROPOSED LOCK,"Hierarchical frames, large-world-safe anchors/cell+local coordinates, camera-relative rendering; local physics spaces."
+ADR-005,Construction coordinates,PROPOSED LOCK,Quantized metric construction coordinates (target 1/32m or 1/16m) without dense voxel storage.
+ADR-006,Construction representation,PROPOSED LOCK,Sparse Parametric Assembly + Authored Kitbash + Semantic Sockets + Hierarchical Subassemblies.
+ADR-007,Universal BuildElement,PROPOSED LOCK,One build vocabulary across ships/stations/surface structures with domain-specific validators and compilers.
+ADR-008,Authored vs compiled assembly,PROPOSED LOCK,Editable assembly is canonical authoring data; render/collision/nav/atmosphere are derived compiled products.
+ADR-009,Attachment semantics,PROPOSED LOCK,Connectivity is explicit and typed; geometric contact alone does not imply structural/functional connection.
+ADR-010,Editor command model,PROPOSED LOCK,"All build mutations are serializable commands usable for undo/redo, persistence deltas, networking, AI and PCG."
+ADR-011,Damage model,PROPOSED LOCK,"Cosmetic damage first, stateful component/armor damage second, geometry split only for structural breach/catastrophic separation."
+ADR-012,Ship resource networks,PROPOSED LOCK,Power/data/fuel/coolant/ammo/cargo/life-support become explicit networks feeding engineering and damage gameplay.
+ADR-013,Embodiment state machine,PROPOSED LOCK,Strategic command <-> cockpit/direct flight <-> docked <-> on-foot interior <-> EVA <-> surface are explicit state transitions.
+ADR-014,Planet scope,PROPOSED LOCK,Start with planet-scale strategic/orbital bodies plus high-fidelity streamed local surface zones; preserve extension path to broader seamless traversal.
+ADR-015,Economy/faction model,PROPOSED LOCK,X4/EVE-inspired production/logistics/markets/territory simulated at LOD; not every distant object runs high-fidelity physics.
+ADR-016,Multiplayer scope,PROPOSED LOCK,"Design deterministic/authoritative boundaries now; first shipping target is small-session co-op, not MMO infrastructure."
+ADR-017,Physics integration,CANDIDATE,Evaluate Jolt for local rigid-body/character/vehicle physics; never use one solar-system-scale physics world.
+ADR-018,Renderer migration,PROPOSED LOCK,Optimize current backend/data model first; backend replacement is evidence-driven after vertical-slice profiling.
+ADR-019,PCG quality model,PROPOSED LOCK,"Deterministic authored-quality grammar with lineage, exemplar/reference learning, validation and review—not random module soup."
+ADR-020,Roadmap truth,PROPOSED LOCK,Maturity is evidence-based 0-5; class existence/test pass does not equal player-ready completion.
+ADR-021,Golden Vertical Slice,PROPOSED LOCK,One home solar system must prove the continuous end-to-end loop before galaxy breadth expands.
+ADR-022,Roguelite expeditions,PROPOSED LOCK,"Expedition/extraction progression is a supported mode/loop, not the entire game identity."
+ADR-023,Ember hosted-project contract,PROPOSED LOCK,"Subspace remains independently buildable/runnable/testable/certifiable while exposing versioned project metadata, schemas, capabilities and commands allowing Ember to load it as a first-class hosted project."
+ADR-024,Editor/runtime shared data authority,PROPOSED LOCK,Ember and the Subspace runtime consume the same canonical versioned authoring schemas and validators; Ember may create derived caches/previews but cannot maintain an incompatible shadow representation.
+ADR-025,Nullharbor lineage integration,PROPOSED LOCK,"Nullharbor is a retained design/system lineage folded into Codename Subspace, not a parallel game architecture; approved systems must map to one current Subspace owner and roadmap maturity entry."
+ADR-026,Golden System as authoring certification fixture,PROPOSED LOCK,The Golden Home System certifies both the Subspace vertical slice and Ember interoperability through open/edit/validate/launch/runtime-evidence/round-trip workflows.

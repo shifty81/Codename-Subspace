@@ -38,7 +38,7 @@
     {
       "Type": "WaitForAction",
       "Title": "Destroy an Enemy",
-      "Message": "Now try destroying an enemy ship! Use your weapons and the tactics you've learned. Good luck, Commander!",
+      "Message": "Now try destroying an enemy ship! Use your weapons and the tactics you've learned. Good luck, pilot!",
       "RequiredAction": "destroy_entity",
       "CanSkip": true
     },

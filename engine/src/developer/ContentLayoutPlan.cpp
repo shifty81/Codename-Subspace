@@ -5,10 +5,11 @@ namespace subspace {
 ContentLayoutPlan ContentLayoutPlan::CreateDefault()
 {
     ContentLayoutPlan plan;
-    plan.AddRule({"Assets", "content/assets", "source and runtime art assets"});
-    plan.AddRule({"assets", "content/assets", "lowercase asset mirror"});
-    plan.AddRule({"GameData", "content/data", "gameplay data, definitions, and tuning"});
-    plan.AddRule({"engine/assets", "content/assets/engine", "engine-owned runtime assets"});
+    plan.AddRule({"GameData", "GameData", "canonical authored gameplay/runtime data"});
+    plan.AddRule({"content", "content", "canonical governed metadata/schemas/provenance"});
+    plan.AddRule({"Assets", "content/assets", "legacy uppercase asset root if present"});
+    plan.AddRule({"assets", "content/assets", "legacy lowercase asset root if present"});
+    plan.AddRule({"engine/assets", "content/assets/engine", "engine-owned runtime assets when explicitly migrated"});
     return plan;
 }
 

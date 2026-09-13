@@ -1,3 +1,15 @@
+
+## Pass922–931 — Foundation Convergence A
+
+- Made full-3D the default world/physics authority without rewriting the fast P921 renderer/editor path.
+- Demoted legacy charged sector-jump NavigationSystem from production runtime registration.
+- Enabled solid-world landing capability while retaining gas-giant orbital/atmospheric access.
+- Completed rotation/velocity-safe SpatialFrame reparenting.
+- Added stable persistent identity and Persistence v2 contracts.
+- Quarantined the latent HomeSystemSaveGame unresolved-object trap from the production static library.
+- Locked P921 as the performance-reference baseline.
+- Added actionable Git fingerprint-drift diagnostics to certified commit flow.
+- Portable validation: 84/84 CTest targets PASS.
 # Pass655–674 — Construction Symmetry, Camera, and Thumbnail Authority (2026-09-07)
 
 - Added editable construction symmetry frames with Port↔Starboard, Fore↔Aft, and Dorsal↔Ventral reflection modes, linked symmetry pairs, mirrored drag previews, and reflected socket/propulsion metadata.

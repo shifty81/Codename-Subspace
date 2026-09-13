@@ -26,7 +26,7 @@
     {
       "Type": "Message",
       "Title": "Captain Commands",
-      "Message": "Captains can execute various commands:\n• MINE - Autonomous mining operations\n• TRADE - Automated trading routes\n• PATROL - Defend a sector\n• ESCORT - Protect your flagship\n• ATTACK - Engage hostile targets\n• SALVAGE - Collect wreckage and debris",
+      "Message": "Captains can execute various commands:\n• MINE - Autonomous mining operations\n• TRADE - Automated trading routes\n• PATROL - Defend a region\n• ESCORT - Protect your flagship\n• ATTACK - Engage hostile targets\n• SALVAGE - Collect wreckage and debris",
       "CanSkip": true
     },
     {

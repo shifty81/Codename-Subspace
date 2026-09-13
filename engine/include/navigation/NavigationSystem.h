@@ -40,7 +40,9 @@ struct SectorCoordinate {
     constexpr bool operator!=(const SectorCoordinate& o) const { return !(*this == o); }
 };
 
-/// Component for hyperdrive jump capabilities (port of C# HyperdriveComponent).
+/// Legacy compatibility component retained only for migration/import of older
+/// sector-jump data. It is not the authoritative Subspace interstellar travel
+/// model; new gameplay uses in-system vector travel + physical jump gates.
 struct HyperdriveComponent : IComponent {
     float jumpRange        = 5.0f;
     float jumpCooldown     = 10.0f;
@@ -69,7 +71,9 @@ struct SectorLocationComponent : IComponent {
     SectorCoordinate currentSector;
 };
 
-/// System that manages hyperdrive navigation and sector transitions (port of C# NavigationSystem).
+/// Legacy compatibility sector-jump system. It is intentionally not registered
+/// by Engine::RegisterSystems in current production runtime. Keep only until
+/// versioned migration has converted old saves/blueprints to the jump-gate model.
 class NavigationSystem : public SystemBase {
 public:
     NavigationSystem();

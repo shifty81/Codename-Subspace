@@ -456,30 +456,190 @@ function Invoke-GitHistory {
     try { & $git log --oneline --decorate --graph -20 } finally { Pop-Location }
 }
 
+
+function Get-ManifestDriftRows {
+    param(
+        [object[]]$CertifiedEntries,
+        [object[]]$CurrentEntries,
+        [switch]$SourceManifest
+    )
+
+    $before = @{}
+    foreach ($entry in @($CertifiedEntries)) {
+        if ($null -eq $entry) { continue }
+        $path = [string]$entry.path
+        if ([string]::IsNullOrWhiteSpace($path)) { continue }
+        $before[$path.ToLowerInvariant()] = $entry
+    }
+
+    $after = @{}
+    foreach ($entry in @($CurrentEntries)) {
+        if ($null -eq $entry) { continue }
+        $path = [string]$entry.path
+        if ([string]::IsNullOrWhiteSpace($path)) { continue }
+        $after[$path.ToLowerInvariant()] = $entry
+    }
+
+    $keys = @($before.Keys + $after.Keys | Sort-Object -Unique)
+    $rows = [System.Collections.Generic.List[object]]::new()
+
+    foreach ($key in $keys) {
+        $left = if ($before.ContainsKey($key)) { $before[$key] } else { $null }
+        $right = if ($after.ContainsKey($key)) { $after[$key] } else { $null }
+
+        if ($null -eq $left) {
+            $rows.Add([pscustomobject]@{path=[string]$right.path;state='ADDED';before='';after=[string]$right.sha256}) | Out-Null
+            continue
+        }
+        if ($null -eq $right) {
+            $rows.Add([pscustomobject]@{path=[string]$left.path;state='REMOVED';before=[string]$left.sha256;after=''}) | Out-Null
+            continue
+        }
+
+        $leftState = if ($SourceManifest) { 'FILE' } else { [string]$left.state }
+        $rightState = if ($SourceManifest) { 'FILE' } else { [string]$right.state }
+        $leftHash = [string]$left.sha256
+        $rightHash = [string]$right.sha256
+        $leftBytes = [int64]$left.bytes
+        $rightBytes = [int64]$right.bytes
+
+        if ($leftState -ne $rightState -or $leftHash -ne $rightHash -or $leftBytes -ne $rightBytes) {
+            $rows.Add([pscustomobject]@{
+                path=[string]$right.path
+                state='CHANGED'
+                before=("{0}:{1}:{2}" -f $leftState,$leftBytes,$leftHash)
+                after=("{0}:{1}:{2}" -f $rightState,$rightBytes,$rightHash)
+            }) | Out-Null
+        }
+    }
+
+    return $rows.ToArray()
+}
+
+function Write-ManifestDrift {
+    param(
+        [string]$Title,
+        [object[]]$Rows
+    )
+
+    Write-Host $Title -ForegroundColor Yellow
+    if (@($Rows).Count -eq 0) {
+        Write-Host '   No path-level drift was found. Check manifest schema/canonicalization or Git lineage; source bytes are unchanged.' -ForegroundColor Yellow
+        return
+    }
+
+    foreach ($row in @($Rows | Select-Object -First 100)) {
+        Write-Host ("   [{0}] {1}" -f $row.state,$row.path)
+    }
+    if (@($Rows).Count -gt 100) {
+        Write-Host ("   ... {0} additional path(s) omitted." -f (@($Rows).Count - 100))
+    }
+}
+
 function Invoke-GitCommitGreen {
     $git=Require-Git
     if (-not (Test-Path -LiteralPath (Join-Path $Root '.git'))) { throw 'Git is not initialized.' }
+
     $greenPath = Join-Path $state 'last-green-quality-gate.json'
     if (-not (Test-Path -LiteralPath $greenPath)) { throw 'No GREEN quality-gate marker exists.' }
+
     $green = Get-Content -LiteralPath $greenPath -Raw | ConvertFrom-Json
     if ([string]$green.result -ne 'PASS') { throw 'Latest promotion marker is not PASS.' }
-    if (-not $green.gitFingerprint) { throw 'GREEN marker predates standardized Git fingerprinting. Run Full quality gate once first.' }
     if (-not $green.sourceFingerprint) { throw 'GREEN marker predates ProjectOps source authority. Run Full Quality Gate once first.' }
-    $current = Get-CertifiableGitFingerprint -Root $Root
-    if ($current -ne [string]$green.gitFingerprint) { throw 'Certified Git state has changed since the GREEN gate. Run Full quality gate again before committing.' }
-    $sourceSnapshot = Get-ProjectSourceAuthoritySnapshot -Root $Root
-    if ([string]$sourceSnapshot.fingerprint -ne [string]$green.sourceFingerprint -or [int]$sourceSnapshot.pathCount -ne [int]$green.sourcePathCount) {
-        throw 'Governed source bytes/path set changed since the GREEN gate. Run Full Quality Gate again before committing.'
+    if (-not $green.gitFingerprint) { throw 'GREEN marker predates standardized Git fingerprinting. Run Full Quality Gate once first.' }
+    if ([int]$green.gitManifestVersion -lt 3 -or $null -eq $green.gitManifest) {
+        throw 'GREEN marker predates deterministic certifiable worktree manifest v3. Run Full Quality Gate once first.'
     }
+
+    # The filesystem-owned source authority is the primary certification check.
+    # It detects any changed governed source bytes/path set independent of Git
+    # staging/index state.
+    $currentSource = Get-ProjectSourceAuthoritySnapshot -Root $Root -IncludePaths
+    if ([string]$currentSource.fingerprint -ne [string]$green.sourceFingerprint -or
+        [int]$currentSource.pathCount -ne [int]$green.sourcePathCount) {
+
+        Write-Host '[FAIL] Governed source bytes/path set changed after the GREEN gate.' -ForegroundColor Red
+        Write-Host (" Certified source fingerprint : {0}" -f [string]$green.sourceFingerprint)
+        Write-Host (" Current source fingerprint   : {0}" -f [string]$currentSource.fingerprint)
+
+        $rows = if ($null -ne $green.sourceManifest) {
+            @(Get-ManifestDriftRows -CertifiedEntries @($green.sourceManifest) -CurrentEntries @($currentSource.files) -SourceManifest)
+        } else {
+            @()
+        }
+        Write-ManifestDrift -Title ' Actual governed-source drift:' -Rows $rows
+        throw 'Governed source changed since certification. Re-run Full Quality Gate before committing.'
+    }
+
+    # The Git-side manifest covers HEAD-tracked, index-tracked and untracked
+    # certifiable paths as one worktree-content manifest. It is intentionally
+    # invariant under git add/reset staging transitions.
+    $currentManifest = Get-ProjectOpsCertifiableGitManifest -Root $Root
+    if ($null -eq $currentManifest) { throw 'Unable to build certifiable Git worktree manifest.' }
+
+    if ([int]$currentManifest.schemaVersion -ne [int]$green.gitManifestVersion) {
+        throw ("Certifiable Git manifest schema changed since GREEN (certified v{0}, current v{1}). Re-run Full Quality Gate before committing." -f [int]$green.gitManifestVersion,[int]$currentManifest.schemaVersion)
+    }
+    if (-not [string]::IsNullOrWhiteSpace([string]$green.gitHead) -and [string]$currentManifest.head -ne [string]$green.gitHead) {
+        Write-Host '[FAIL] Git HEAD changed after the GREEN gate even though worktree content may be identical.' -ForegroundColor Red
+        Write-Host (" Certified HEAD : {0}" -f [string]$green.gitHead)
+        Write-Host (" Current HEAD   : {0}" -f [string]$currentManifest.head)
+        throw 'Git lineage changed since certification. Re-run Full Quality Gate before committing.'
+    }
+
+    if ([string]$currentManifest.fingerprint -ne [string]$green.gitFingerprint) {
+        Write-Host '[FAIL] Certifiable Git worktree bytes/path set changed after the GREEN gate.' -ForegroundColor Red
+        Write-Host (" Certified fingerprint : {0}" -f [string]$green.gitFingerprint)
+        Write-Host (" Current fingerprint   : {0}" -f [string]$currentManifest.fingerprint)
+
+        $rows = @(Get-ManifestDriftRows -CertifiedEntries @($green.gitManifest) -CurrentEntries @($currentManifest.entries))
+        Write-ManifestDrift -Title ' Actual post-GREEN Git worktree drift:' -Rows $rows
+        throw 'Certified Git worktree changed since the GREEN gate. Re-run Full Quality Gate before committing.'
+    }
+
     $message = Read-Host 'Commit message (blank uses certified gate id)'
     if ([string]::IsNullOrWhiteSpace($message)) { $message = "Certified $($green.gateId)" }
+
     Push-Location $Root
     try {
-        & $git add -A -- . ':(exclude)logs/**' ':(exclude)dist/**' ':(exclude)updates/**' ':(exclude)artifacts/**' ':(exclude).subspace/**' ':(exclude)engine/build/**' ':(exclude)engine/build-headless/**'
-        if ($LASTEXITCODE -ne 0) { throw 'git add failed.' }
+        $stageResult = Invoke-ProjectOpsStageCertifiableGitChanges -Root $Root
+        if (@($stageResult.ExcludedGeneratedPaths).Count -gt 0) {
+            Write-Host ("[INFO] Excluded {0} generated/runtime staged path(s) from the certified commit." -f @($stageResult.ExcludedGeneratedPaths).Count) -ForegroundColor DarkGray
+        }
+        if (@($stageResult.StagedPaths).Count -eq 0) {
+            Write-Host '[PASS] No certifiable source changes require a new commit; current GREEN source is already committed.' -ForegroundColor Green
+            return
+        }
+        Write-Host ("[PASS] Staged {0} certifiable source path(s); generated/runtime output remains uncommitted." -f @($stageResult.StagedPaths).Count) -ForegroundColor Green
+
+        # Staging must not change either certified manifest. This assertion
+        # catches future regressions in the manifest implementation before a
+        # commit is created.
+        $postStageSource = Get-ProjectSourceAuthoritySnapshot -Root $Root
+        if ([string]$postStageSource.fingerprint -ne [string]$green.sourceFingerprint -or
+            [int]$postStageSource.pathCount -ne [int]$green.sourcePathCount) {
+            throw 'Staging altered the governed source fingerprint unexpectedly. Commit aborted.'
+        }
+
+        $postStageManifest = Get-ProjectOpsCertifiableGitManifest -Root $Root
+        if ($null -eq $postStageManifest -or
+            [int]$postStageManifest.schemaVersion -ne [int]$green.gitManifestVersion -or
+            [string]$postStageManifest.head -ne [string]$green.gitHead -or
+            [string]$postStageManifest.fingerprint -ne [string]$green.gitFingerprint) {
+            if ($null -ne $postStageManifest) {
+                $rows = @(Get-ManifestDriftRows -CertifiedEntries @($green.gitManifest) -CurrentEntries @($postStageManifest.entries))
+                Write-ManifestDrift -Title ' Manifest drift introduced by staging:' -Rows $rows
+            }
+            throw 'Staging changed the certifiable worktree manifest. Commit aborted.'
+        }
+
         & $git commit -m $message
         if ($LASTEXITCODE -ne 0) { throw 'git commit failed.' }
-    } finally { Pop-Location }
+    }
+    finally {
+        Pop-Location
+    }
+
     Write-Host '[PASS] Certified GREEN source committed.' -ForegroundColor Green
 }
 

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "authorityId": "SUBSPACE-CARBON-ADOPTION-CANDIDATES-V1",
+  "policy": "bounded adoption only; never a parallel engine authority",
+  "candidates": [
+    {"id":"carbon.mesh","repository":"https://github.com/carbonengine/mesh","license":"MIT","disposition":"EVALUATE_FOR_INTEGRATION","use":"mesh/skeleton/animation pipeline"},
+    {"id":"carbon.resources","repository":"https://github.com/carbonengine/resources","license":"MIT","disposition":"EVALUATE_FOR_INTEGRATION","use":"resource delivery/tooling patterns"},
+    {"id":"carbon.trinity","repository":"https://github.com/carbonengine/trinity","license":"MIT","disposition":"ARCHITECTURE_REFERENCE","use":"renderer/shader/backend modernization reference"},
+    {"id":"carbon.destiny","repository":"https://github.com/carbonengine/destiny","license":"MIT","disposition":"ARCHITECTURE_REFERENCE","use":"world simulation/benchmark patterns","constraint":"public build still documents private Perforce dependencies"},
+    {"id":"carbon.core","repository":"https://github.com/carbonengine/core","license":"MIT","disposition":"SELECTIVE_ADOPTION","use":"bounded low-level utilities"},
+    {"id":"carbon.io","repository":"https://github.com/carbonengine/io","license":"MIT","disposition":"DEFER","use":"future transport comparison"},
+    {"id":"carbon.audio","repository":"https://github.com/carbonengine/audio","license":"MIT","disposition":"ARCHITECTURE_REFERENCE","use":"audio priority/spatial/Wwise architecture","constraint":"Wwise SDK/toolchain"},
+    {"id":"carbon.spatial_audio_clustering","repository":"https://github.com/carbonengine/spatial-audio-clustering","license":"Apache-2.0","disposition":"EVALUATE_FOR_INTEGRATION","use":"dense-scene spatial-audio clustering"}
+  ]
+}

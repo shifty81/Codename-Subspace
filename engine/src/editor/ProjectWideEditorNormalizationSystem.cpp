@@ -9,6 +9,7 @@ const char* ProjectWideEditorNormalizationSystem::DomainName(EditorNormalization
         case EditorNormalizationDomain::UiHelp:return "UI_HELP";
         case EditorNormalizationDomain::InputRouting:return "INPUT_ROUTING";
         case EditorNormalizationDomain::WorkspaceShell:return "WORKSPACE_SHELL";
+        case EditorNormalizationDomain::DockWorkspace:return "DOCK_WORKSPACE";
         case EditorNormalizationDomain::Selection:return "SELECTION";
         case EditorNormalizationDomain::CommandHistory:return "COMMAND_HISTORY";
         case EditorNormalizationDomain::AssetBrowser:return "ASSET_BROWSER";
@@ -35,6 +36,9 @@ const char* ProjectWideEditorNormalizationSystem::DomainName(EditorNormalization
         case EditorNormalizationDomain::ConstructionSymmetry:return "CONSTRUCTION_SYMMETRY";
         case EditorNormalizationDomain::ConstructionCamera:return "CONSTRUCTION_CAMERA";
         case EditorNormalizationDomain::ThumbnailAuthority:return "THUMBNAIL_AUTHORITY";
+        case EditorNormalizationDomain::CharacterDefinition:return "CHARACTER_DEFINITION";
+        case EditorNormalizationDomain::AuthoringParity:return "AUTHORING_PARITY";
+        case EditorNormalizationDomain::ExternalTechnologyAdoption:return "EXTERNAL_TECH_ADOPTION";
     }
     return "UNKNOWN";
 }
@@ -45,6 +49,7 @@ EditorNormalizationReport ProjectWideEditorNormalizationSystem::Audit(){
     add(EditorNormalizationDomain::UiHelp,"EditorHelpRegistry",true,"Tooltips, shortcuts and disabled reasons share one registry contract.");
     add(EditorNormalizationDomain::InputRouting,"EditorInputRouter",true,"Pointer capture/hover authority is shared across editor workspaces.");
     add(EditorNormalizationDomain::WorkspaceShell,"SubspaceEditorCore",true,"Shipyard, Station Builder and future authoring tools share workspace/document contracts.");
+    add(EditorNormalizationDomain::DockWorkspace,"EditorDockSystem",true,"One split/tab/floating dock tree owns panel visibility, tab activation, movement and layout across editor workspaces; legacy fixed layouts are compatibility projections only.");
     add(EditorNormalizationDomain::Selection,"EditorSelectionService",true,"Viewport/outliner/inspector selection uses one service contract.");
     add(EditorNormalizationDomain::CommandHistory,"EditorCommandStack",true,"Undo/redo mutations route through one command contract.");
     add(EditorNormalizationDomain::AssetBrowser,"EditorAssetBrowserModel",true,"Visual item cards/search/filter/favorites/recent are project-wide.");
@@ -58,7 +63,7 @@ EditorNormalizationReport ProjectWideEditorNormalizationSystem::Audit(){
     add(EditorNormalizationDomain::ItemIdentity,"ShipyardModuleItemDefinition",true,"Module cards/gameplay itemization share stable module identity.");
     add(EditorNormalizationDomain::BlueprintAuthority,"ShipBlueprintLibrarySystem",true,"Reusable designs remain blueprint-backed instead of per-screen copies.");
     add(EditorNormalizationDomain::PcgDesignLanguage,"StationDesignDnaSystem + ShipyardDesignDnaSystem",true,"Ships and stations expose deterministic exemplar/design-DNA lanes.");
-    add(EditorNormalizationDomain::ContentLayout,"content/* canonical layout",true,"Runtime authority is normalized; legacy source-only roots remain migration/reference inputs.",true);
+    add(EditorNormalizationDomain::ContentLayout,"GameData + content split authority",true,"GameData is canonical authored runtime data; content owns governed metadata/schemas/provenance; legacy external roots remain migration/reference inputs.",true);
     add(EditorNormalizationDomain::LegacyReference,"AvorionLike reference lane",true,"Legacy C# remains inert reference/provenance, never runtime fallback.",true);
     add(EditorNormalizationDomain::UniversalKitbashSize,"UniversalSizeClass",true,"XS/S/M/L/XL is the single cross-domain kitbash sizing authority.");
     add(EditorNormalizationDomain::ShipClassAuthority,"ShipClassSystem + ShipClassRoleSystem",true,"Legacy serialized classes and the strategic Frigate-through-Capital progression now share one enum authority rather than duplicate ShipClass definitions.");
@@ -71,12 +76,14 @@ EditorNormalizationReport ProjectWideEditorNormalizationSystem::Audit(){
     add(EditorNormalizationDomain::ConstructionSymmetry,"ConstructionSymmetrySystem",true,"Ship, station, planetary and weapon editors share one exact X/Y/Z reflection frame rather than duplicate+rotation implementations.");
     add(EditorNormalizationDomain::ConstructionCamera,"ConstructionEditorCameraSystem",true,"Centered inspection and Alt free-fly use one 6DOF camera authority across construction workspaces.");
     add(EditorNormalizationDomain::ThumbnailAuthority,"EditorAssetThumbnailSystem",true,"Canonical mesh thumbnails share framing, cache identity, certification badges and functional direction overlays.");
+    add(EditorNormalizationDomain::CharacterDefinition,"CharacterCustomizationSystem",true,"One CharacterDefinition owns morphs, sculpt zones, appearance, apparel/body modifications and portrait state for both editor and game client.");
+    add(EditorNormalizationDomain::AuthoringParity,"ShipyardEditorShellSystem + SubspaceAuthoringParitySystem",true,"One Blender-like Shipyard editor authors canonical contracts; the game client consumes those exact contracts through restricted player-facing surfaces.");
+    add(EditorNormalizationDomain::ExternalTechnologyAdoption,"ExternalTechnologyAdoptionSystem",true,"External engine code is evaluated through an explicit integrate/selective/reference/defer registry rather than becoming a parallel engine authority.");
     r.runtimeNormalized=std::all_of(r.entries.begin(),r.entries.end(),[](const auto&e){return e.normalized;});
     // Physical moves/deletions cannot be represented safely by an overwrite-only
     // incremental ZIP, so they remain explicit repository-maintenance actions.
     r.remainingRepositoryActions={
         "Move/quarantine AvorionLike/ under the documented reference lane when deletion-aware migration is authorized.",
-        "Move GameData/ into content/data after runtime/path compatibility is verified against the asset/content rollup.",
         "Merge any external Assets/assets roots into content/assets with provenance when those binary roots are present."
     };
     r.repositoryLayoutNormalized=r.remainingRepositoryActions.empty();

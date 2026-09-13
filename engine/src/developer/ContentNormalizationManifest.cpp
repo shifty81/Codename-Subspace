@@ -13,9 +13,8 @@ bool ContentNormalizationManifest::HasDestructiveMoves() const {
 
 ContentNormalizationManifest ContentNormalizationManifestBuilder::BuildDefaultPlan() const {
     ContentNormalizationManifest manifest;
-    manifest.plannedMoves.push_back({"Assets/", "content/assets/legacy-root-assets/", "Normalize uppercase asset root into canonical content/assets.", false});
-    manifest.plannedMoves.push_back({"assets/", "content/assets/runtime/", "Normalize lowercase asset root into canonical content/assets.", false});
-    manifest.plannedMoves.push_back({"GameData/", "content/data/", "Move gameplay JSON/data under canonical content/data.", false});
+    manifest.plannedMoves.push_back({"Assets/", "content/assets/legacy-root-assets/", "Normalize an uppercase legacy asset root only when present and provenance-audited.", false});
+    manifest.plannedMoves.push_back({"assets/", "content/assets/runtime/", "Normalize a lowercase legacy asset root only when present and provenance-audited.", false});
     manifest.plannedMoves.push_back({"AvorionLike/", "reference/csharp-prototype/", "Quarantine C# prototype as reference lane.", false});
     manifest.rootFilesToReview = {
         "121212.md.txt",

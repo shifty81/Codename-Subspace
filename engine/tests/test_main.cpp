@@ -14810,14 +14810,15 @@ static void TestLandablePlanetGeneration() {
          a.planets.front().planetId == b.planets.front().planetId &&
          ApproxEq(a.planets.front().position.x, b.planets.front().position.x));
 
-    bool allOnGameplayPlane = true;
-    bool noDirectLanding = true;
+    bool commonReferenceOrbitalPlane = true;
+    bool landingCapabilityMatchesType = true;
     for (const auto& planet : a.planets) {
-        allOnGameplayPlane = allOnGameplayPlane && ApproxEq(planet.position.z, 0.0f);
-        noDirectLanding = noDirectLanding && !planet.landable;
+        commonReferenceOrbitalPlane = commonReferenceOrbitalPlane && ApproxEq(planet.position.z, 0.0f);
+        landingCapabilityMatchesType = landingCapabilityMatchesType &&
+            (planet.type == PlanetType::GasGiant ? !planet.landable : planet.landable);
     }
-    TEST("Planet gameplay positions remain 2D", allOnGameplayPlane);
-    TEST("Pass217 planet access is orbital-only, never direct landing", noDirectLanding);
+    TEST("Reference generator may place initial system on one orbital plane without making world authority 2D", commonReferenceOrbitalPlane);
+    TEST("Foundation convergence exposes solid-world landing capability while gas giants remain non-surface targets", landingCapabilityMatchesType);
 }
 
 static IndustrialNode MakeIndustrialNode(const std::string& id, LogisticsNodeType type,
@@ -14970,8 +14971,8 @@ static void TestPlayerControlSystemNative2D() {
     pc->velocity = {10.0f, 0.0f, 4.0f};
     input.SetAction(InputAction::EmergencyBrake, true);
     control.Update(1.0f / 60.0f);
-    TEST("Emergency brake opposes planar velocity", pc->appliedForce.x < 0.0f);
-    TEST("Emergency brake still does not alter gameplay Z", ApproxEq(pc->appliedForce.z, 0.0f));
+    TEST("Emergency brake opposes current velocity", pc->appliedForce.x < 0.0f);
+    TEST("Full-3D emergency brake preserves vertical authority", pc->appliedForce.z < 0.0f);
 }
 
 static void TestStrategicCameraNative() {

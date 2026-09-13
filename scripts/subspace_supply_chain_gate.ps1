@@ -19,6 +19,28 @@ $LockRoot = Join-Path $Root 'content\cache\locks'
 $QuarantineRoot = Join-Path $Root 'content\quarantine'
 foreach($d in @($OutputRoot,$CacheRoot,$LockRoot,$QuarantineRoot)){New-Item -ItemType Directory -Force -Path $d | Out-Null}
 
+function Get-SubspaceRelativePath {
+    param(
+        [Parameter(Mandatory=$true)][string]$BasePath,
+        [Parameter(Mandatory=$true)][string]$TargetPath
+    )
+    # Windows PowerShell 5.1 runs on .NET Framework, which does not expose
+    # System.IO.Path.GetRelativePath().  All call sites here operate on files
+    # already enumerated beneath BasePath, so a normalized containment +
+    # substring implementation is both deterministic and PS5.1-safe.
+    $baseFull = [System.IO.Path]::GetFullPath($BasePath).TrimEnd([char[]]@(
+        [System.IO.Path]::DirectorySeparatorChar,
+        [System.IO.Path]::AltDirectorySeparatorChar
+    ))
+    $targetFull = [System.IO.Path]::GetFullPath($TargetPath)
+    if ($targetFull.Equals($baseFull, [System.StringComparison]::OrdinalIgnoreCase)) { return '' }
+    $prefix = $baseFull + [System.IO.Path]::DirectorySeparatorChar
+    if (-not $targetFull.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Path is outside the expected base path. Base='$baseFull' Target='$targetFull'"
+    }
+    return $targetFull.Substring($prefix.Length)
+}
+
 function Require-File([string]$Path,[string]$Name){if(-not(Test-Path -LiteralPath $Path)){throw "$Name missing: $Path"}}
 function Require-Text([object]$Value,[string]$Name){if([string]::IsNullOrWhiteSpace([string]$Value)){throw "Required source field is blank: $Name"}}
 function Test-ImmutableRevision([string]$Revision){if([string]::IsNullOrWhiteSpace($Revision)){return $false};return $Revision -notmatch '(?i)^(latest|main|master|head|trunk|stable|current)$'}
@@ -90,7 +112,7 @@ foreach($p in $provenanceFiles){
     Require-Text $j.sourceUrl "provenance.$($p.Name).sourceUrl";Require-Text $j.sha256 "provenance.$($p.Name).sha256"
     if(-not(Test-Https ([string]$j.sourceUrl))){throw "Generated provenance contains non-HTTPS source: $($p.FullName)"}
     if(([string]$j.sha256) -notmatch '^[a-fA-F0-9]{64}$'){throw "Generated provenance contains invalid SHA-256: $($p.FullName)"}
-    Add-Line $lines ("TOOL_PROVENANCE=VERIFIED path=$([System.IO.Path]::GetRelativePath($Root,$p.FullName)) sha256=$($j.sha256)")
+    Add-Line $lines ("TOOL_PROVENANCE=VERIFIED path=$(Get-SubspaceRelativePath -BasePath $Root -TargetPath $p.FullName) sha256=$($j.sha256)")
 }
 
 Add-Line $lines ''

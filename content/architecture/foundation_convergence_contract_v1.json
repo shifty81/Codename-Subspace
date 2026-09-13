@@ -1,0 +1,15 @@
+{
+  "schema": "subspace.foundation-convergence.v1",
+  "authority": "current",
+  "locks": {
+    "world_dimensionality": "full-3d",
+    "tactical_plane": "optional-view-control-mode-only",
+    "in_system_travel": "vector-travel",
+    "interstellar_travel": "physical-jump-gate-transit",
+    "persistent_identity": "representation-independent-stable-id",
+    "spatial_frames": "rotation-and-velocity-safe-nested-frames",
+    "planet_access": "solid-worlds-landable-capability",
+    "legacy_home_save": "migration-reference-not-production-build"
+  },
+  "performance_reference": "SUBSPACE-P921-PERFORMANCE-REFERENCE-BASELINE"
+}

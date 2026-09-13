@@ -1,3 +1,5 @@
+> **LEGACY FEATURE SNAPSHOT:** This file describes the retired Avorion-like prototype vocabulary and must not be used as current feature/completion authority. Current truth is `docs/STATUS.md`, `docs/ROADMAP.md`, the maturity registry, and the Full Gate.
+
 # Avorion-Like Features Implementation
 
 This document details the implementation of all major Avorion-inspired gameplay systems.

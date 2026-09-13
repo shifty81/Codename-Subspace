@@ -1,0 +1,17 @@
+﻿Nullharbor lineage area,Disposition,Subspace owning domain,Roadmap phase,Required normalization
+Cockpit/direct ship operation,KEEP+MERGE,Flight / Embodiment,3,Full-3D direct flight plus cockpit/command transition
+Traversable ship interiors,KEEP+MERGE,Interiors / Embodiment,3,Portal/clearance/nav/room/resource-network authority
+Docked station + hangar walking,KEEP+MERGE,Docking / Stations / Embodiment,3-4,Continuous docked->hangar->on-foot->ship transition
+EVA,KEEP+MERGE,Embodiment,3-4,"Local-frame transition, suit resources, zero-g movement, boarding"
+FPS salvage / intact modules,KEEP+MERGE,Salvage / Damage / Cargo,3-4,Detach/recover/condition/repair/refit/provenance
+Carrier hangars + support craft,KEEP+MERGE,Fleet / Hangar / Logistics,5,"Capacity rules, carried fleet persistence, launch/recovery"
+Mining/salvage/repair/combat drones,KEEP+MERGE,Fleet / AI / Industry,4-5,"Unified drone roles, commands, logistics and automation"
+R.I.G./powered exosuit,KEEP+DEFER DEPTH,Character progression / Tactical command,4+,Retain progression tree; integrate with embodiment before advanced command mode
+Scanning range bands/orbital resolution,KEEP+MERGE,Scanning / Exploration,4,Open-space hints -> orbital resolution -> surface POIs/resources
+Security ratings / pirates / unknown factions,KEEP+MERGE,Factions / Security / PCG,5-6,"Drive spawn tables, patrols, risk, rewards, economy and discovery"
+Corporation/fleet command,KEEP+MERGE,Fleet / Factions / Economy,5,"Orders, budgets, doctrines, territory and strategic UI"
+Debt-contract starter scenario,KEEP AS CAMPAIGN OPTION,Story / Progression,4,"Generated start template, debt balance, skill/licensing constraints"
+Learn-by-doing progression,KEEP+MERGE,Progression,4-5,Piloting/mining/logistics/salvage/industry skill XP from meaningful use
+Planetary installations,KEEP+MERGE,Planet surfaces / Industry,4-6,Streamed zones tied to persistent strategic planet state
+Hex-sector claiming,KEEP+MERGE,Territory / Planet strategy,5-6,Planet hex ownership rolls up to system/corporate sovereignty
+Broad Gameplay Settings,KEEP+MERGE,Configuration,4-6,"Designer/admin tuning for universe, economy, scanning, hazards, world rules"

@@ -1,0 +1,55 @@
+domain,feature,maturity_0_5,evidence,next_acceptance
+Project operations,Standalone internal PCC,3,R6R2 patch engine/wrapper exists; PowerShell 5.1 compatibility repaired; current local tree still needs Windows Full Gate,"Certify root .patch prompt, option 1, play test, option 2 commit/push on Windows"
+Project operations,Source authority / governed rollups,4,"ProjectOps source fingerprints, rollups, root audit and gate records are established",Re-certify current alignment line and keep transport debris out of root
+Project operations,Supply chain / provenance,4,Pinned Greyoxide source manifest and supply-chain gate exist,Bring every required Quaternius/planet/material source under same exact-version provenance before runtime dependence
+Architecture,Runtime composition root,1,"Engine ECS, NativeRuntimeServices and NativeGameApplication each own stateful systems",Create one SubspaceRuntimeComposition/WorldSimulationRuntime authority; shells/adapters reference it
+Architecture,Evidence-backed completion truth,3,Completion truth registry and 0-5 audit matrix exist; new static gate prevents key authority drift,Generate status automatically from machine evidence and Full Gate records
+World,Hierarchical spatial frames,2,Double-precision parent frames and world transforms compile; nested reparent inverse is translation-only,Implement rotation-aware inverse/reparent and certify moving ship/carrier/vehicle frames
+World,Large-world local physics spaces,1,Spatial frame foundation exists,Define local physics bubble/precision rebasing and state handoff policy
+World,Solar-system simulation / maps,2,System map/navigation/orbital foundations are compiled,Converge into shared runtime composition and validate scale/time against Reference Solar System
+Travel,Local 3D flight,3,Playable native flight/physics/presentation foundations exist,"Finish full 3D authority, mass/COM/inertia/resource coupling and production controls"
+Travel,In-system travel drive,2,VectorTravelSystem has align/charge/cruise/decelerate states,"Tune minute-scale travel, gravity restrictions, interdiction, hazards, streaming/prefetch and persistence"
+Travel,Interstellar jump gates,0,No compiled physical JumpGate transit authority found,"Implement gate entity/network, destination selection/access, warp tunnel, DestinationReady and same-ShipId frame handoff"
+Travel,Legacy rail travel,0,Source exists outside build graph and current docs mark it superseded,Mine reusable risk/fitting ideas only; never restore as interstellar authority
+Planet,Planet data / survey foundations,2,PlanetSurveySystem and PlanetWorldEngineSystem foundations compile,Unify survey records with exploration economy and persistent world identity
+Planet,Spherical multi-resolution planet streaming,1,PlanetWorldEngine has terrain/chunk scaffolding but not production orbital-to-surface spherical streaming,"Implement cube-sphere/quadtree-equivalent LOD, regional streaming, async terrain/assets and handoffs"
+Planet,Seamless atmosphere entry / landing / takeoff,0,Current playable shell explicitly reports this architecture is not yet runtime-wired,"Implement atmosphere transition, terrain promotion, landing validation, surface physics and takeoff continuity"
+Planet,Weather / atmosphere presentation,2,Presentation/weather systems exist,"Couple to physical atmosphere, flight, hazards and planet streaming"
+Planet,Strategic planetary hex territory,1,PlanetWorld definition includes strategic-hex foundations,Integrate ownership/security/resources/infrastructure under continuous visible terrain
+Planet,Large surface settlements/cities,0,No dedicated persistent SettlementId simulation authority found,Implement settlement identity/state/economy/infrastructure/streamed exterior/interior-cell coupling
+Planet,Surface vehicles / hover bikes / mechs,1,Vehicle clearance/interior support concepts exist but no full surface vehicle runtime loop,Add canonical vehicle entity/physics/garage/deployment/traversal systems after planet streaming base
+Planet,Loaded building/underground cells,1,Interior/portal systems provide reusable graph foundations,"Add CellId, entrance anchors, persistence deltas, elevator/door transition and exterior-parent linkage"
+Exploration,Survey Records / information economy,1,Survey/exploration foundations and current design authority exist,"Create persistent graded SurveyRecord schema, provenance, buyer/licensing market and first-discovery state"
+Exploration,Biology/geology/anomaly field exploration,1,Deep exploration/anomaly/resource systems exist as foundations,"Integrate samples, ground verification, risk, equipment progression and survey value"
+Economy,Local markets / production,2,EconomySimulationSystem and station/local economy foundations compile,Tie NPC extraction/production/hauling/consumption/loss replacement into one persistent simulation
+Economy,Planetary industry / manufacturing,2,Several industrialization/manufacturing foundations compile,Reframe around seamless surface settlements/infrastructure rather than old no-landing/tether-only assumptions
+Faction,Security / dynamic factions,2,FactionSecurity/DynamicFaction foundations compile,"Couple budgets, territory, settlements, patrols, wars and player/corporation consequences"
+Fleet,Fleet commands / captains / doctrine,2,Multiple fleet systems compile,Unify state ownership; implement real formation movement; certify orders at simulation LOD
+Fleet,Formation following,1,FormationSystem Update is explicitly placeholder,Implement deterministic following/spacing/avoidance and simulation-LOD behavior
+Fleet,Carriers / drones / hangars,2,"CarrierOperations, DroneOperations and hangar foundations compile","Integrate physical bays, carried craft/vehicles, auto-deploy/loot and persistent nested frames"
+Corporation,Corporation progression/operations,2,Corporation systems compile,"Couple to economy, territory, fleet assets, permissions, settlements and multiplayer"
+Ships,Persistent ShipId across world layers,1,Design authority exists; current state ownership is fragmented,Create canonical ship persistence/representation handoff used by surface/space/gate/docking/Shipyard
+Ships,Ship class/role/faction lineage,3,Pass891 repaired class envelopes and lineage authority; current code/tests cover taxonomy,Keep one append-only serialized vocabulary and avoid duplicate class systems
+Ships,Authored kitbash corpus,3,156 Greyoxide modules and taxonomy/certification pipeline established in prior GREEN source,"Improve material zones, interiors, propulsion semantics and provenance coverage"
+Ships,Parametric construction / BuildElement,1,UniversalConstruction foundations exist but no full sparse-parametric canonical assembly,Lock quantization ADR; implement BuildElement + authored module common representation
+Ships,Semantic sockets / attachment validation,3,Shipyard socket/classification/authoring systems exist,Converge every assembly path on canonical semantic socket/face validation
+Ships,Editable -> compiled ship pipeline,1,Multiple validation/render systems exist but no single canonical compiler product owns all outputs,Implement topology/resource/interior/atmo/mass/collision/render compilation stages
+Ships,Engineering networks,1,Power and several damage/repair systems exist separately,Create explicit power/fuel/coolant/data/ammo/cargo/life-support networks on canonical assembly
+Ships,Conformal shield presentation,3,Hull-following shield direction and impact-ripple work exists,"Certify profile accuracy, performance and gameplay damage coupling in real Shipyard/runtime"
+Ships,Interiors / portal graph,2,ShipInterior/PortalGraph/operational systems compile,"Connect canonical modules, rooms, doors, pressure/life support and moving-frame embodiment"
+Ships,EVA / boarding / intact module salvage,1,Embodiment/salvage foundations exist but no certified full EVA boarding loop,"Implement suit transition, derelict boarding, detachment, provenance/condition/refit loop"
+Shipyard,In-game persistent-ship refit,2,Shipyard/refit systems compile but persistent same-ShipId hangar loop is not end-to-end certified,"Dock actual ship, edit canonical assembly, compile/validate, exit/undock same instance"
+Editor,Canonical dock workspace model,2,Pass892-901 EditorDockSystem tests pass; model handles tabs/splits/floating/persistence,Wire NativeBattlefieldRenderer/input hit-testing to visible tabs/splitters/drag targets/floating windows
+Editor,Asset browser / inspector / selection,2,Project-wide editor models exist,Make every visible panel consume shared dock/input/selection/command authority
+Editor,Socket authoring / symmetry / camera,3,Dedicated authoring systems/tests exist,Integrate with canonical BuildElement compiler and visible docked editor UI
+Content,GameData authored runtime data authority,3,Pass902-911 aligns code/docs/ProjectOps to keep GameData current,Windows Full Gate + future schema versioning/loaders; do not auto-move to content/data
+Content,Subspace-native player-facing vocabulary,3,GameData tutorials/quests normalized away from donor material/hyperdrive/voxel wording,Migrate compiled compatibility identifiers under versioned save/schema plan
+Content,Legacy Avorion compatibility internals,1,Compiled ShipModuleDefinition/Salvage/Factory still contain donor material/hyperdrive identifiers,Design migration aliases/versioned serialization and replace player-visible/internal canonical IDs safely
+Assets,Planet visual fixture provenance,1,ImportedPlanetVisualSystem expects content/derived/various_planets_v1; source registry does not currently govern that fixture,Register exact user-supplied source/provenance/license/hash before required runtime use
+Assets,Quaternius/future source packs,1,Foundry source registry lists intake candidates; required kitbash registry currently pins only Greyoxide,Acquire/certify exact pack revisions/licenses/checksums before runtime dependency
+Rendering,Current native renderer,3,Native renderer builds and existing visual tests pass; NativeBattlefieldRenderer is ~3882 lines,Decompose scene/domain passes; profile and optimize data path before backend replacement
+Rendering,Modern compiled clusters / instancing / HLOD,1,Direction/scaffolding exists,"Implement dirty-region compilation, batching/instancing/HLOD/async uploads and budgets"
+Persistence,Save schema / migrations / round trip,1,HomeSystemSaveGame is explicitly temporary and old home/expedition-shaped,Replace with versioned current-world schema preserving stable IDs/unknown fields and migration tests
+Multiplayer,Networking transport/session,1,NetworkSystem provides in-memory message/server abstractions,Implement real authoritative transport/session/serialization/security/interest/reconnect
+Multiplayer,2-8 player co-op gameplay,0,Not player-usable,"Implement only after Reference Solar System core slice, using shared commands/stable IDs from earlier phases"
+Tooling,Ember hosted-project interoperability,1,Contract aligned; no end-to-end Ember discovery/edit/launch round trip,Implement universal descriptor/capabilities after Subspace canonical schemas stabilize

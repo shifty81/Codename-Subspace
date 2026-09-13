@@ -32,7 +32,7 @@
     {
       "Type": "Message",
       "Title": "Trading Strategy",
-      "Message": "Profitable trading tips:\n• Buy resources in mining sectors (cheap)\n• Sell resources in industrial sectors (expensive)\n• Monitor price trends over time\n• Invest in larger cargo holds for more profit\n• Watch for special trade missions with bonuses",
+      "Message": "Profitable trading tips:\n• Buy resources in mining regions (cheap)\n• Sell resources in industrial regions (expensive)\n• Monitor price trends over time\n• Invest in larger cargo holds for more profit\n• Watch for special trade missions with bonuses",
       "CanSkip": true
     },
     {
@@ -45,7 +45,7 @@
     {
       "Type": "Message",
       "Title": "Trading Complete!",
-      "Message": "Great job! You've learned the basics of trading. Keep exploring sectors to find the best trade routes!",
+      "Message": "Great job! You've learned the basics of trading. Keep exploring systems and regions to find the best trade routes!",
       "CanSkip": false
     }
   ]

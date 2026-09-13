@@ -4,11 +4,16 @@
     "id": "codename-subspace",
     "name": "Codename Subspace",
     "kind": "native-cpp-game",
-    "version": "890C2",
-    "build": "SUBSPACE-PASS791-890-C2"
+    "version": "931R1",
+    "build": "SUBSPACE-PASS922-931-FOUNDATION-CONVERGENCE-R1"
   },
   "root_control_center": {
-    "launcher": "SubspaceTools.cmd"
+    "launcher": "SubspaceTools.cmd",
+    "machine_provider": "SubspaceTools.ps1",
+    "mode": "project-owned-canonical-provider",
+    "external_runtime_required": false,
+    "forgepy_compatible": true,
+    "standalone_menu": true
   },
   "sourceControl": {
     "github": {
@@ -690,6 +695,91 @@
         "-Action",
         "projectops-normalization-audit"
       ]
+    },
+    {
+      "key": "updates.status",
+      "label": "Update status / receipts",
+      "category": "updates",
+      "mutates": false,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "patch-status"
+      ]
+    },
+    {
+      "key": "updates.scan",
+      "label": "Scan/preview pending updates",
+      "category": "updates",
+      "mutates": false,
+      "requiresConfirmation": false,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "preview-inbox"
+      ]
+    },
+    {
+      "key": "updates.apply",
+      "label": "Explicitly apply approved update",
+      "category": "updates",
+      "mutates": true,
+      "requiresConfirmation": true,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "apply-inbox"
+      ]
+    },
+    {
+      "key": "source.commit-green",
+      "label": "Commit current certified GREEN source",
+      "category": "source",
+      "mutates": true,
+      "requiresConfirmation": true,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "git-commit-green"
+      ]
+    },
+    {
+      "key": "source.push-green",
+      "label": "Push current committed GREEN source",
+      "category": "source",
+      "mutates": true,
+      "requiresConfirmation": true,
+      "executable": "pwsh",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "git-push"
+      ]
     }
   ],
   "repository": {
@@ -938,5 +1028,60 @@
         "exitCode": "authoritative"
       }
     }
+  },
+  "operationsAuthority": {
+    "current": "internal-pcc",
+    "id": "SUBSPACE-INTERNAL-PCC-20260912",
+    "rootDropPatchExtension": ".patch",
+    "startupPrompt": true,
+    "fullGateMenuOption": 1,
+    "commitPushGreenMenuOption": 2,
+    "forgeCortex": "compatible-external-clients; project-owned PCC remains authority until explicit certified takeover",
+    "ember": "external-authoring-host-future-no-runtime-dependency",
+    "intakePolicy": "discover/queue does not mutate source; explicit apply only; Full Gate never consumes pending updates",
+    "portablePolicyId": "forge.project-update-policy.v1"
+  },
+  "dataAuthority": {
+    "runtimeAuthoredData": "GameData",
+    "governedMetadata": "content",
+    "physicalDataRootMigration": "explicit-versioned-migration-only"
+  },
+  "updates": {
+    "patchSchema": "forge.patch.v1",
+    "rootPattern": "*.patch",
+    "transport": "zip-container-with-PATCH_MANIFEST.json",
+    "startupScan": true,
+    "startupPrompt": true,
+    "explicitApprovalRequired": true,
+    "queueApplySeparation": true,
+    "autoApply": false,
+    "fullGateAutoApply": false,
+    "fullGateBlocksWhenPending": true,
+    "transactional": true,
+    "rollbackOnFailure": true,
+    "targetResolution": "manifest-identity-before-applicability",
+    "targetAndApplicabilitySeparated": true,
+    "downloadsAutoQueue": false,
+    "receipts": "updates/transactions",
+    "appliedArchive": "updates/applied",
+    "failedArchive": "updates/failed",
+    "portablePolicyId": "forge.project-update-policy.v1",
+    "discoveryMode": "extension-first-manifest-authoritative",
+    "filenameCarriesAuthority": false,
+    "manifestAuthority": "PATCH_MANIFEST.json",
+    "projectIdentitySource": "manifest target.projectId (legacy projectId fallback)",
+    "legacyZipDiscovery": "recognized Subspace/Codename_Subspace update names only",
+    "certifiableGitManifest": {
+      "schemaVersion": 3,
+      "ordering": "ordinal",
+      "fingerprintScope": "worktree-path-state-bytes-sha256",
+      "gitHeadCertifiedSeparately": true
+    },
+    "forgeInheritance": "ForgePY and Rust Forge consume the same forge.project-update-policy.v1 semantics without project-specific filename parsing"
+  },
+  "updatePolicy": {
+    "manifestOptionalBaseline": true,
+    "legacyBootstrapBaselineFieldAccepted": true,
+    "patchFailureRequiresAcknowledgement": true
   }
 }

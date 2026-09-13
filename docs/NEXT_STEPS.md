@@ -1,3 +1,5 @@
+> **HISTORICAL NEXT-STEPS SNAPSHOT:** The AvorionLike-era plan below is retired. Current implementation order is `docs/ROADMAP.md`.
+
 <!-- PASS245_AUTHORITY -->
 > **Current authority (2026-08-31):** The active shipping runtime is native C++ and the current development baseline is Pass245 on top of Windows-certified Pass225R. Some older sections below document retired C#/Silk.NET or earlier roadmap states and are historical only. Use `docs/passes/PASS226_245_PRODUCTION_SANDBOX_VERTICALS.md`, `docs/SUBSPACE_SANDBOX_AUTHORITY_2026-08-31.md`, and `docs/NATIVE_ACCEPTANCE_PASS245.md` for current implementation authority.
 

@@ -1,3 +1,5 @@
+> **SUPERSEDED DESIGN AUTHORITY (2026-09-12):** This August sandbox document is retained for history/reference only. Its 2D X/Y flight authority, no-planet-landing rule, and orbital-tether-first planetary model conflict with current `docs/PROJECT_VISION.md` and `docs/ARCHITECTURE_AUTHORITY.md`. Do not use this file to drive new implementation.
+
 # Subspace Sandbox Authority — 2026-08-31
 
 ## Top-level identity

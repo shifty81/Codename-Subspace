@@ -15,6 +15,7 @@
 #include "navigation/VectorTravelSystem.h"
 #include "rendering/ForwardSpacePresentationSystem.h"
 #include "interior/ShipEmbodimentSystem.h"
+#include "interior/ShipInteriorCarvingSystem.h"
 #include "hangar/DockingExperienceSystem.h"
 #include "ui/ProductionInterfaceSystem.h"
 #include "integration/PlayerFacingIntegrationSystem.h"
@@ -124,6 +125,7 @@ struct NativeBattlefieldFrame {
     const ProceduralShipVisualRecipe* shipBuilderRecipe = nullptr;
     const ShipAppearanceState* shipBuilderAppearance = nullptr;
     const ProceduralShipVisualRecipe* playerShipRecipe = nullptr;
+    const ShipInteriorCarvePlan* playerInteriorCarve = nullptr;
     const ShipAppearanceState* playerShipAppearance = nullptr;
     Vector3 systemMapPan{};
     int viewportWidth = 1600;
@@ -154,6 +156,10 @@ public:
     static Vector3 ScreenToWorld(float screenX, float screenY,
                                  int viewportWidth, int viewportHeight,
                                  const StrategicCamera& camera);
+    static Vector3 ScreenToWorldPlane(float screenX, float screenY,
+                                      int viewportWidth, int viewportHeight,
+                                      const StrategicCamera& camera,
+                                      float worldPlaneZ);
 
     /// Project a visual-space point into client pixels for labels/target HUD.
     static StrategicScreenPoint WorldToScreen(const Vector3& worldPoint,

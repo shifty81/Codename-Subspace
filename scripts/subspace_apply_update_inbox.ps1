@@ -55,9 +55,61 @@ function WriteLatest([string]$Result) {
 }
 
 
+function Get-SubspaceRelativePath {
+    param(
+        [Parameter(Mandatory=$true)][string]$BasePath,
+        [Parameter(Mandatory=$true)][string]$TargetPath
+    )
+    # Windows PowerShell 5.1 runs on .NET Framework, which does not expose
+    # System.IO.Path.GetRelativePath().  All call sites here operate on files
+    # already enumerated beneath BasePath, so a normalized containment +
+    # substring implementation is both deterministic and PS5.1-safe.
+    $baseFull = [System.IO.Path]::GetFullPath($BasePath).TrimEnd([char[]]@(
+        [System.IO.Path]::DirectorySeparatorChar,
+        [System.IO.Path]::AltDirectorySeparatorChar
+    ))
+    $targetFull = [System.IO.Path]::GetFullPath($TargetPath)
+    if ($targetFull.Equals($baseFull, [System.StringComparison]::OrdinalIgnoreCase)) { return '' }
+    $prefix = $baseFull + [System.IO.Path]::DirectorySeparatorChar
+    if (-not $targetFull.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Path is outside the expected base path. Base='$baseFull' Target='$targetFull'"
+    }
+    return $targetFull.Substring($prefix.Length)
+}
+
 function Get-FileSha256([string]$Path) {
     if (-not (Test-Path -LiteralPath $Path)) { return $null }
     return (Get-FileHash -Algorithm SHA256 -LiteralPath $Path).Hash.ToLowerInvariant()
+}
+
+function Expand-SubspacePatchArchive {
+    param(
+        [Parameter(Mandatory=$true)][string]$ArchivePath,
+        [Parameter(Mandatory=$true)][string]$DestinationPath
+    )
+
+    $extension = [System.IO.Path]::GetExtension($ArchivePath)
+    if ($extension -ine '.patch' -and $extension -ine '.zip') {
+        throw "Unsupported patch archive extension '$extension'. Expected .patch (canonical) or .zip (legacy compatibility)."
+    }
+
+    # Expand-Archive in Windows PowerShell 5.1 requires a .zip filename even
+    # when the payload bytes are a valid ZIP container. Canonical Subspace
+    # .patch handoffs therefore use a ZIP container with a .patch extension;
+    # copy to a temporary .zip only for extraction.
+    if ($extension -ieq '.zip') {
+        Expand-Archive -LiteralPath $ArchivePath -DestinationPath $DestinationPath -Force
+        return
+    }
+
+    $compatZip = Join-Path $Staging ("__subspace_patch_extract_{0}.zip" -f ([guid]::NewGuid().ToString('N')))
+    try {
+        Copy-Item -LiteralPath $ArchivePath -Destination $compatZip -Force
+        Expand-Archive -LiteralPath $compatZip -DestinationPath $DestinationPath -Force
+    }
+    finally {
+        Remove-Item -LiteralPath $compatZip -Force -ErrorAction SilentlyContinue
+    }
 }
 
 function Restore-OverlayTransaction([System.Collections.Generic.List[object]]$Entries, [string]$BackupRoot) {
@@ -163,6 +215,16 @@ function Get-PatchManifestInfo([string]$Payload) {
     catch { throw "PATCH_MANIFEST.json is not valid JSON: $($_.Exception.Message)" }
 
     if ([int]$manifest.schemaVersion -ne 1) { throw "Unsupported PATCH_MANIFEST.json schemaVersion: $($manifest.schemaVersion)" }
+    $patchSchema = [string]$manifest.schema
+    if (-not [string]::IsNullOrWhiteSpace($patchSchema) -and $patchSchema -ne 'forge.patch.v1') {
+        throw "Unsupported PATCH_MANIFEST.json schema: $patchSchema"
+    }
+    $targetProjectId = ''
+    if ($null -ne $manifest.target -and $null -ne $manifest.target.projectId) { $targetProjectId = [string]$manifest.target.projectId }
+    if ([string]::IsNullOrWhiteSpace($targetProjectId) -and $null -ne $manifest.projectId) { $targetProjectId = [string]$manifest.projectId }
+    if (-not [string]::IsNullOrWhiteSpace($targetProjectId) -and $targetProjectId -ne 'codename-subspace') {
+        throw "TARGET_MISMATCH: patch targets '$targetProjectId', current project is 'codename-subspace'."
+    }
     if ($null -eq $manifest.files) { throw "PATCH_MANIFEST.json must contain a files array." }
 
     $manifestFiles = @($manifest.files)
@@ -200,7 +262,7 @@ function Get-PatchManifestInfo([string]$Payload) {
     })
     $actual = @{}
     foreach ($file in $actualFiles) {
-        $relative = [System.IO.Path]::GetRelativePath($Payload, $file.FullName)
+        $relative = (Get-SubspaceRelativePath -BasePath $Payload -TargetPath $file.FullName)
         Assert-SafeRelativePath $relative
         $key = $relative.Replace('/', '\').ToLowerInvariant()
         if ($actual.ContainsKey($key)) { throw "Patch contains duplicate destination path: $relative" }
@@ -231,33 +293,21 @@ LogLine "Subspace root-drop update inbox processor" "STEP"
 LogLine "Root: $Root"
 LogLine "Inbox: $Inbox"
 LogLine "Mode: $(if ($DryRun) { 'DRY-RUN' } else { 'APPLY' })"
-LogLine "Patch format: ZIP containing repo-root-relative files, or one top-level folder containing repo-root-relative files."
+LogLine "Patch format: canonical .patch ZIP-container handoff; legacy .zip handoffs remain accepted during migration."
 
-# Project-standard convenience: patch handoff ZIPs are often dropped directly in
-# the repository root. Promote matching root-level patch ZIPs into updates\inbox
-# before processing so build/full-gate consumes them automatically.
+# Project-standard convenience: patch handoffs are dropped directly in the
+# repository root. Canonical handoffs use .patch; legacy .zip remains accepted
+# so an older PCC can bootstrap the transition exactly once.
 # Source rollups/debug bundles are intentionally ignored.
-$rootPatchPatterns = @(
-    "Subspace_Pass*.zip",
-    "Subspace_Patch*.zip",
-    "Subspace_Hotfix*.zip",
-    "Subspace_RootDrop*.zip",
-    "Subspace_ROOT_DROP*.zip",
-    "Subspace_Update*.zip",
-    "Codename_Subspace_Pass*.zip",
-    "Codename_Subspace_Patch*.zip",
-    "Codename_Subspace_Hotfix*.zip",
-    "Codename_Subspace_RootDrop*.zip",
-    "Codename_Subspace_ROOT_DROP*.zip",
-    "Codename_Subspace_Update*.zip"
-)
-$rootPatchCandidates = @()
-foreach ($pattern in $rootPatchPatterns) {
-    $rootPatchCandidates += @(Get-ChildItem -LiteralPath $Root -Filter $pattern -File -ErrorAction SilentlyContinue | Where-Object {
-        $_.Name -notmatch "FullSource|BuildRollup|DebugBundle|SourceRollup|sha256"
-    })
-}
-$rootPatchCandidates = @($rootPatchCandidates | Sort-Object FullName -Unique)
+# forge.patch.v1 root discovery is extension-first. Project identity and
+# applicability come from PATCH_MANIFEST.json, not from transport filenames.
+# Legacy .zip bootstrap remains name-restricted during migration.
+$rootPatchCandidates = @(Get-ChildItem -LiteralPath $Root -File -ErrorAction SilentlyContinue | Where-Object {
+    if ($_.Name -match '(?i)FullSource|BuildRollup|DebugBundle|SourceRollup|CompleteSource|Full_Source|sha256') { return $false }
+    if ($_.Extension -ieq '.patch') { return $true }
+    if ($_.Extension -ine '.zip') { return $false }
+    return ($_.Name -match '(?i)^(Subspace|Codename_Subspace)_(Pass|Patch|Hotfix|Root[_-]?Drop(?:[_-]?Patch)?|Update|Rollup).*\.zip$')
+} | Sort-Object FullName -Unique)
 foreach ($rootPatch in $rootPatchCandidates) {
     $dest = Join-Path $Inbox $rootPatch.Name
     if ($DryRun) {
@@ -274,10 +324,12 @@ foreach ($rootPatch in $rootPatchCandidates) {
     }
 }
 
-$patches = @(Get-ChildItem -LiteralPath $Inbox -Filter *.zip -File -ErrorAction SilentlyContinue | Sort-Object Name)
+$patches = @(Get-ChildItem -LiteralPath $Inbox -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.Extension -ieq '.patch' -or $_.Extension -ieq '.zip' } |
+    Sort-Object Name)
 if ($patches.Count -eq 0) {
-    LogLine "No patch ZIPs found in updates\inbox or repo root." "PASS"
-    AddResult "Update inbox/root-drop" "PASS" "No queued patch ZIPs."
+    LogLine "No patch handoffs found in updates\inbox or repo root." "PASS"
+    AddResult "Update inbox/root-drop" "PASS" "No queued patch handoffs."
     WriteLatest "PASS"
     exit 0
 }
@@ -300,7 +352,7 @@ foreach ($patch in $patches) {
         LogLine "Processing $($patch.Name)" "STEP"
         if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
         New-Item -ItemType Directory -Force -Path $stage | Out-Null
-        Expand-Archive -LiteralPath $patch.FullName -DestinationPath $stage -Force
+        Expand-SubspacePatchArchive -ArchivePath $patch.FullName -DestinationPath $stage
         $payload = Get-PayloadRoot $stage
         LogLine "Payload root: $payload"
 
@@ -317,7 +369,7 @@ foreach ($patch in $patches) {
 
         $seen = @{}
         foreach ($file in $files) {
-            $relative = [System.IO.Path]::GetRelativePath($payload, $file.FullName)
+            $relative = (Get-SubspaceRelativePath -BasePath $payload -TargetPath $file.FullName)
             Assert-SafeRelativePath $relative
             $key = $relative.Replace('/', '\').ToLowerInvariant()
             if ($seen.ContainsKey($key)) { throw "Patch contains duplicate destination path: $relative" }

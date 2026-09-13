@@ -1,17 +1,20 @@
 {
   "Id": "quest_explore_sector",
-  "Title": "First Explorer",
-  "Description": "Explore new space sectors and broaden your horizons. Visit 3 different sectors to earn rewards and prove your piloting skills.",
+  "Title": "Frontier Survey",
+  "Description": "Broaden the known map by visiting and scanning 3 distinct frontier regions or system destinations.",
   "Difficulty": "Easy",
   "CanAbandon": true,
   "IsRepeatable": false,
   "TimeLimit": 0,
-  "Tags": ["exploration", "tutorial"],
+  "Tags": [
+    "exploration",
+    "tutorial"
+  ],
   "Objectives": [
     {
-      "Type": "Visit",
-      "Description": "Visit 3 different sectors",
-      "Target": "sector",
+      "Type": "Scan",
+      "Description": "Survey 3 distinct frontier destinations",
+      "Target": "survey_destination",
       "RequiredQuantity": 3,
       "IsOptional": false,
       "IsHidden": false,

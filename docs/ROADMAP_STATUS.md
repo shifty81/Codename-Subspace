@@ -1,3 +1,5 @@
+> **HISTORICAL ROADMAP SNAPSHOT:** Percentages/checkmarks below predate the current native C++ architecture and evidence-backed completion model. They are not current completion claims. Use `docs/ROADMAP.md` and `docs/STATUS.md`.
+
 # Codename:Subspace - Roadmap Status Report
 
 **Date:** November 9, 2025  

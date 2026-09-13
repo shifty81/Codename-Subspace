@@ -1,0 +1,19 @@
+{
+  "schema": "subspace.assembly-derived-interior.v1",
+  "authority": "ShipInteriorCarvingSystem",
+  "sourceOfTruth": "final ProceduralShipVisualRecipe / future Assembly v2 transformed module graph",
+  "pipeline": [
+    "walkable-envelope extraction",
+    "pressure-hull inset",
+    "non-habitable exclusion",
+    "attachment portal stitching",
+    "deck inference",
+    "connectivity certification",
+    "runtime materialization"
+  ],
+  "certification": {
+    "requiresCommandReachability": true,
+    "disconnectedWalkableCavity": "FAIL",
+    "genericRoomCountFabrication": "FORBIDDEN"
+  }
+}

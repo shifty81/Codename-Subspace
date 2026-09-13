@@ -1,3 +1,5 @@
+> **LEGACY C# ARCHITECTURE DIAGRAM:** This .NET/AvorionLike diagram is historical donor documentation only and is not the current native C++ architecture. See `docs/ARCHITECTURE_AUTHORITY.md` and the deep alignment audit.
+
 # AvorionLike System Architecture Diagram
 
 ```

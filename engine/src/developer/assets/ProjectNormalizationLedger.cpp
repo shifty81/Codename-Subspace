@@ -9,9 +9,10 @@ ProjectNormalizationLedger CreateDefaultSubspaceNormalizationLedger() {
     ProjectNormalizationLedger ledger;
     ledger.entries.push_back({"engine/", "active-source", NormalizationStatus::ActiveCpp, "engine/", "Current C++ engine/client authority."});
     ledger.entries.push_back({"AvorionLike/", "legacy-csharp", NormalizationStatus::SourceToPort, "reference/csharp-to-cpp-source/AvorionLike/", "Do not delete until each behavior is ported or rejected."});
-    ledger.entries.push_back({"Assets/", "legacy-assets", NormalizationStatus::NeedsReview, "content/assets/", "Move only after path audit."});
-    ledger.entries.push_back({"assets/", "legacy-assets", NormalizationStatus::NeedsReview, "content/assets/", "Normalize duplicate lower-case asset root."});
-    ledger.entries.push_back({"GameData/", "legacy-data", NormalizationStatus::NeedsReview, "content/data/", "Port data contracts to C++ runtime."});
+    ledger.entries.push_back({"GameData/", "runtime-data", NormalizationStatus::ActiveCpp, "GameData/", "Canonical authored gameplay/runtime data; retain until an explicit versioned data-root migration is approved."});
+    ledger.entries.push_back({"content/", "governed-metadata", NormalizationStatus::ActiveCpp, "content/", "Canonical schemas, registries, provenance, metadata, and governed derived authority."});
+    ledger.entries.push_back({"Assets/", "legacy-assets", NormalizationStatus::NeedsReview, "content/assets/", "Normalize only if this legacy root is present and provenance-audited."});
+    ledger.entries.push_back({"assets/", "legacy-assets", NormalizationStatus::NeedsReview, "content/assets/", "Normalize only if this legacy root is present and provenance-audited."});
     ledger.entries.push_back({"reference/third_party/pixel_planets/", "third-party-reference", NormalizationStatus::ReferenceOnly, "reference/third_party/pixel_planets/", "MIT reference/provenance material; port concepts, not dependency."});
     return ledger;
 }

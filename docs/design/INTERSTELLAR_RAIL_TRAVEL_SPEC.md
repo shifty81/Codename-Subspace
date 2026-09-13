@@ -1,3 +1,5 @@
+> **SUPERSEDED TRAVEL MODEL (2026-09-12):** The on-rails interstellar route implementation is historical/reference only. Current authority uses `VectorTravelSystem` as in-system-drive groundwork and physical jump gates with a visible warp tunnel for interstellar transit. Reusable risk/route/fitting ideas may be ported only after normalization.
+
 # Interstellar Rail Travel Spec
 
 Subspace uses two travel modes:

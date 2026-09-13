@@ -1,6 +1,6 @@
 {
   "schema": "subspace.completion-truth.v1",
-  "authority": "Pass791-890 cumulative normalization",
+  "authority": "Pass902-911 deep alignment normalization",
   "rule": "Only CERTIFIED_RUNTIME may be described as done/complete.",
   "states": [
     "CERTIFIED_RUNTIME",
@@ -52,6 +52,56 @@
       "id": "operational-core",
       "state": "IMPLEMENTED_UNCERTIFIED",
       "reason": "Cross-domain operational station requirements added; physical console/seat binding remains."
+    },
+    {
+      "id": "runtime.composition-root",
+      "state": "PARTIAL",
+      "reason": "Engine ECS registration, NativeRuntimeServices, and NativeGameApplication each own stateful systems. A single runtime composition/world-simulation authority is not yet established."
+    },
+    {
+      "id": "travel.in-system-drive",
+      "state": "IMPLEMENTED_UNCERTIFIED",
+      "reason": "SystemNavigationSystem + VectorTravelSystem provide compiled align/charge/cruise/decelerate groundwork. Final two-minute-scale tuning, encounters/interdiction and player-facing certification remain."
+    },
+    {
+      "id": "travel.jump-gate",
+      "state": "PLANNED",
+      "reason": "Current interstellar rail implementation is detached/superseded. Physical jump-gate entity/transit/destination-ready warp-tunnel handoff is not implemented in the compiled runtime."
+    },
+    {
+      "id": "planet.seamless-landing",
+      "state": "PLANNED",
+      "reason": "Planet survey/world foundations exist, but the compiled playable shell still lacks the seamless atmosphere/surface landing path required by current architecture."
+    },
+    {
+      "id": "planet.large-world-streaming",
+      "state": "SCAFFOLD",
+      "reason": "PlanetWorldEngineSystem and strategic hex/terrain foundations exist, but production spherical multi-resolution orbital-to-surface streaming is not yet integrated."
+    },
+    {
+      "id": "content.gamedata-authority",
+      "state": "IMPLEMENTED_UNCERTIFIED",
+      "reason": "Pass902-911 aligns code/docs so GameData is authored runtime data and content is governed metadata/provenance. Windows Full Gate is still required."
+    },
+    {
+      "id": "content.legacy-identity-migration",
+      "state": "PARTIAL",
+      "reason": "Player-facing GameData vocabulary is normalized, but compiled compatibility internals still contain Avorion-era material/hyperdrive identifiers that require a versioned save/schema migration."
+    },
+    {
+      "id": "editor.dock-workspace",
+      "state": "IMPLEMENTED_UNCERTIFIED",
+      "reason": "EditorDockSystem model/tests exist and portable tests pass; visible native Shipyard/editor chrome and hit-testing are not yet fully driven by the dock tree, and Windows Full Gate is pending."
+    },
+    {
+      "id": "multiplayer.coop",
+      "state": "SCAFFOLD",
+      "reason": "Networking/BuildCommand foundations exist; authoritative 2-8 player sessions, interest management, reconnect and shared persistence are not player-usable."
+    },
+    {
+      "id": "historical.home-expedition-rail-lanes",
+      "state": "SUPERSEDED",
+      "reason": "Detached home/expedition/roguelite/travel implementations are historical/reference or optional-campaign inputs, not current production runtime authority."
     }
   ]
 }

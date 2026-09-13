@@ -15,14 +15,13 @@ const char* ContentAuthorityRoleName(ContentAuthorityRole role) {
 
 std::vector<ContentAuthorityEntry> CreateDefaultContentAuthorityRegistry() {
     return {
-        {"content/assets/", ContentAuthorityRole::ActiveRuntime, "runtime"},
-        {"content/data/", ContentAuthorityRole::ActiveRuntime, "runtime"},
+        {"GameData/", ContentAuthorityRole::ActiveRuntime, "runtime-authored-data"},
+        {"content/", ContentAuthorityRole::ActiveRuntime, "governed-metadata"},
         {"content/generated/", ContentAuthorityRole::Generated, "pipeline"},
         {"reference/", ContentAuthorityRole::ReferenceOnly, "migration"},
         {"AvorionLike/", ContentAuthorityRole::MigrationSource, "cpp-conversion"},
-        {"Assets/", ContentAuthorityRole::MigrationSource, "content-normalization"},
-        {"assets/", ContentAuthorityRole::MigrationSource, "content-normalization"},
-        {"GameData/", ContentAuthorityRole::MigrationSource, "content-normalization"},
+        {"Assets/", ContentAuthorityRole::MigrationSource, "legacy-asset-root"},
+        {"assets/", ContentAuthorityRole::MigrationSource, "legacy-asset-root"},
     };
 }
 

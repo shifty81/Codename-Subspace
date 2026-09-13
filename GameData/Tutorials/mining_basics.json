@@ -14,7 +14,7 @@
     {
       "Type": "Message",
       "Title": "Finding Asteroids",
-      "Message": "Look for asteroids in your sector. They appear as floating rocks and contain valuable resources like Iron, Titanium, and more.",
+      "Message": "Look for asteroids in your local region. They appear as floating rocks and contain valuable resources like Iron, Titanium, and more.",
       "CanSkip": true
     },
     {

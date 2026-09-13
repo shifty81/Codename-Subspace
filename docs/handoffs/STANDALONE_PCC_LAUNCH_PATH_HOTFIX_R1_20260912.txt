@@ -1,0 +1,12 @@
+Codename Subspace Standalone PCC Launch-Path Hotfix R1
+
+Purpose:
+Fixes: StandaloneProjectControlCenter.ps1 GetFullPath Illegal characters in path.
+
+Apply:
+1. Close the failed PCC window.
+2. Extract this ZIP directly into the CodenameSubspaceNullharbor repository root.
+3. Allow overwrite of the listed files.
+4. Launch SubspaceTools.cmd normally.
+
+This hotfix changes only the standalone PCC bootstrap/wrapper files. It does not alter gameplay/runtime source or the existing SubspaceTools.ps1 Full Gate authority.

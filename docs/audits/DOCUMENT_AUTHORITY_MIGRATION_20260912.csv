@@ -1,0 +1,42 @@
+﻿Document_or_Family,Disposition,FutureRole,Rationale
+README.md,REWRITE,Authoritative entry point only,Current README mixes broad vision/status; keep concise run/build/vision links and generated status badge/commit.
+docs/CURRENT_STATUS.md,REPLACE,Generated status authority,Replace manually maintained status with generated evidence from quality gate + feature matrix.
+docs/DEVELOPMENT_STATUS.md,ARCHIVE+MERGE,Historical status,Contains stale pass-era assumptions; merge valid facts into generated status/matrix and archive snapshot.
+docs/ROADMAP_STATUS.md,REPLACE,Single roadmap,Replace with docs/ROADMAP.md; no competing pass-centric roadmap authority.
+docs/NEXT_STEPS.md,MERGE+ARCHIVE,Roadmap backlog,Merge actionable items into milestone backlog; archive old narrative.
+docs/WHATS_LEFT_TO_IMPLEMENT.md,MERGE+ARCHIVE,Gap inventory,Convert gaps into feature matrix + roadmap acceptance criteria.
+docs/FEATURES.md,REWRITE,Feature catalogue,Make feature list derive from maturity matrix and link system specs; remove implied completion from existence.
+docs/SUBSPACE_SANDBOX_AUTHORITY_2026-08-31.md,RETIRE AUTHORITY,Historical direction,Conflicts with newer full embodied 3D vision: 2D X/Y flight and no conventional landing must not remain authoritative.
+docs/EVE_PVE_COOP_FEATURE_MATRIX_2026-08-31.md,MERGE+ARCHIVE,Reference matrix,Retain useful EVE/PvE/co-op research but fold accepted items into feature matrix.
+docs/architecture/ARCHITECTURE.md,REWRITE,Technical authority,Become concise index to locked ADRs and subsystem contracts; remove historical contradictions.
+docs/architecture/ARCHITECTURE_DIAGRAM.md,REWRITE,Current diagrams,"Update for simulation layers, hierarchical frames, BuildElement assembly compiler, persistence/network boundaries."
+docs/architecture/SUBSPACE_NMS_EVE_UNIFIED_FOUNDRY_RUNTIME_MASTER_SPEC.md,PROMOTE+REFACTOR,Primary seed for new vision,Strongest current north-star seed; split stable vision from technical decisions and roadmap.
+docs/architecture/PLAYABLE_CLIENT_FRONTEND_PIPELINE.md,KEEP+ALIGN,Subsystem spec,Align with embodied state machine: strategic/cockpit/docked/on-foot/EVA/surface.
+docs/architecture/HOME_SURFACE_PRIMARY_VIEW_PIPELINE.md,KEEP+ALIGN,Subsystem spec,Retain home/surface mode; remove any implication it replaces general planetary/space sandbox.
+docs/architecture/HOME_SURFACE_BUILDER_PIPELINE.md,KEEP+ALIGN,Subsystem spec,Map to universal BuildElement architecture with surface-domain rules.
+docs/architecture/HOME_AUTOMATION_EXPANSION_PIPELINE.md,KEEP+ALIGN,Subsystem spec,Keep persistent Factorio-like home industry as one progression pillar.
+docs/architecture/HOME_SYSTEM_CLIENT_VIEW_PIPELINE.md,KEEP+ALIGN,Subsystem spec,Align home-system presentation with universal spatial/simulation LOD contracts.
+docs/architecture/SECTOR_SOLAR_SYSTEM_CELESTIAL_PIPELINE.md,KEEP+REWRITE,Subsystem spec,"Update around hierarchical coordinates, orbital/system simulation layers and streamed surfaces."
+docs/architecture/FLIGHT_FX_AND_RAIL_TRAVEL_PIPELINE.md,KEEP+REWRITE,Subsystem spec,Separate physical local flight from strategic travel/rail/warp and visual transition contracts.
+docs/architecture/RUNTIME_VISUAL_PROFILE_PIPELINE.md,KEEP+ALIGN,Rendering spec,"Connect to compiled assembly render clusters, material profiles and performance budgets."
+docs/design/SUBSPACE_ROGUELITE_INCREMENTAL_DIRECTION.md,DEMOTE TO MODE SPEC,Campaign mode,"Keep expedition/extraction loop as configurable campaign/world mode, not project identity."
+docs/design/HOME_SOLAR_SYSTEM_SPEC.md,KEEP+ALIGN,Vertical-slice system spec,Excellent candidate for Golden System; align with general world model.
+docs/design/SHIPYARD_INCREMENTAL_PROGRESSION_SPEC.md,KEEP+ALIGN,Progression spec,"Integrate construction unlocks, manufacturing skill, reverse engineering and blueprint lineage."
+docs/design/design ideas i want implemented.txt,ARCHIVE RAW IDEATION,Idea ledger,Preserve verbatim as design history; accepted items must be promoted into authoritative specs or roadmap.
+docs/guides/AI_VOXEL_CONSTRUCTION_GUIDE.md,REVIEW/REWRITE,Legacy construction guide,Voxel-first assumptions must be reconciled with hybrid sparse-parametric + authored-kitbash direction.
+docs/guides/AI_VOXEL_SYSTEM_ARCHITECTURE.md,REVIEW/ARCHIVE PARTS,Legacy architecture,Keep useful algorithms/reference only; do not let it compete with new construction authority.
+docs/guides/BUILDING_GUIDE.md,REWRITE,Player/dev building guide,"Update after BuildElement, local-face grids, semantic sockets and compiled assembly model are locked."
+docs/guides/BUILDER_UI_IMPLEMENTATION.md,REWRITE,Shipyard UX guide,Align to mouse-first CAD workflow and one command/undo model.
+docs/guides/CLASS_SPECIFIC_MODULE_SYSTEM.md,KEEP+ALIGN,Ship class content guide,Retain class envelopes; reconcile with parametric structure and authored functional modules.
+docs/guides/COHESIVE_SHIP_GENERATION_GUIDE.md,REWRITE,PCG ship guide,Adopt topology->skeleton->module->connector->shell->detail->validation pipeline.
+docs/guides/CUSTOM_SHIP_DESIGNER_FPS_INTERIOR.md,KEEP+MAJOR ALIGN,Construction/interior guide,"Likely highly relevant; merge with BuildElement, interior graph, embodiment and ship compiler contracts."
+docs/guides/MODULAR_SHIP_* family,CONSOLIDATE,Legacy ship generation family,Merge overlapping guides into one current ship construction/generation handbook; archive superseded variants.
+docs/guides/SHIP_GENERATION_* family,CONSOLIDATE,Legacy PCG family,Too many overlapping versions; extract still-valid rules and archive the rest.
+docs/guides/X4_* family,REFERENCE ONLY,External inspiration,"Keep as comparative reference, never architectural authority."
+docs/guides/EVE_* family,REFERENCE ONLY,External inspiration,"Keep as comparative reference, never architectural authority."
+docs/guides/CONSOLIDATED_TEST_GUIDE.md,KEEP+UPDATE,Testing guide,"Add maturity evidence, Golden Vertical Slice acceptance, performance/load gates."
+docs/archive/**,KEEP ARCHIVAL,Non-authoritative,Historical only; excluded from authority searches/status generation.
+docs/passes/**,ARCHIVE/GENERATED HISTORY,Pass history,Never use as current roadmap authority.
+docs/NULLHARBOR_INTEGRATION_AUTHORITY.md,CREATE,Design-lineage authority,Maps approved Nullharbor-origin systems into Subspace ownership and prevents parallel/duplicate game authority.
+docs/EMBER_PROJECT_CONTRACT.md,CREATE,Hosted-project interoperability authority,"Defines how Ember discovers, edits, validates and launches Subspace without becoming a runtime dependency."
+project descriptor / hosted-project manifest,CREATE AFTER UNIVERSAL CONTRACT LOCK,Machine-readable interoperability,Must follow the shared Ember/Forge project contract rather than a one-off Subspace-only schema.

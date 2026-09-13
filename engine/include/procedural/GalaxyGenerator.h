@@ -141,7 +141,7 @@ struct PlanetData {
     SectorPosition position;
     float radius = 250.0f;
     PlanetType type = PlanetType::Rocky;
-    bool landable = false; // legacy compatibility: Subspace ships do not land on planets.
+    bool landable = true; // capability flag; solid worlds are landable unless generation explicitly disables landing.
     bool surveyable = true;
     bool elevatorCandidate = false;
     bool hasRings = false;
@@ -155,8 +155,8 @@ struct PlanetData {
 };
 
 /// Every normal sector has one solar-light authority. Star position is part of
-/// generated sector data; presentation may render a corona at visual depth but
-/// gameplay remains on X/Y.
+/// generated sector data. System-space simulation is fully three-dimensional;
+/// tactical planar views are presentation/control modes, never world truth.
 enum class StarClass { RedDwarf, Orange, Yellow, White, BlueWhite };
 
 struct StarData {

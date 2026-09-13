@@ -128,6 +128,12 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/world/*.cpp"
 )
 
+# Foundation Convergence P922+: the legacy HomeSystemSaveGame translation unit
+# calls detached home/expedition implementation symbols. Keep the source as
+# migration reference, but do not place a latent unresolved-object trap in the
+# production static library.
+list(FILTER ENGINE_SOURCES EXCLUDE REGEX ".*/core/persistence/HomeSystemSaveGame\\.cpp$")
+
 file(GLOB_RECURSE ENGINE_HEADERS CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp"
@@ -682,3 +688,43 @@ if(SUBSPACE_BUILD_TESTS)
         -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/pass790_shipyard_authority_recovery_source_gate.cmake)
 endif()
 
+
+# Pass892-901: project-wide editor docking normalization. One canonical dock
+# tree owns panel visibility, tabbing, splitting, floating and redocking while
+# historical fixed-layout systems remain compatibility projections.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_pass892_901_tests tests/pass892_901_editor_dock_normalization_tests.cpp)
+    target_link_libraries(subspace_pass892_901_tests PRIVATE subspace_engine)
+    add_test(NAME SubspacePass892To901EditorDockNormalizationTests COMMAND subspace_pass892_901_tests)
+endif()
+
+# Pass912-921: one native Shipyard editor application with Blender-like
+# workspaces, canonical editor/client parity, EVE-depth-inspired but original
+# character customization contracts, and bounded Carbon open-source adoption.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_pass912_921_tests tests/pass912_921_shipyard_editor_character_parity_tests.cpp)
+    target_link_libraries(subspace_pass912_921_tests PRIVATE subspace_engine)
+    add_test(NAME SubspacePass912To921ShipyardEditorCharacterParityTests COMMAND subspace_pass912_921_tests)
+endif()
+
+# Pass922-931: Foundation Convergence A. Full-3D authority, legacy sector-jump
+# quarantine, stable persistent identity, SpatialFrame v2, persistence schema
+# contract, and P921 performance-reference protection.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_pass922_931_tests tests/pass922_931_foundation_convergence_tests.cpp)
+    target_link_libraries(subspace_pass922_931_tests PRIVATE subspace_engine)
+    add_test(NAME SubspacePass922To931FoundationConvergenceTests COMMAND subspace_pass922_931_tests)
+endif()
+
+# Pass932-941: promotion fingerprint stability and editor-camera continuity.
+# GREEN promotion fingerprints represent actual working-tree bytes independent
+# of staging state; Shipyard wheel dolly preserves the user's panned/orbit pivot.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_pass932_941_tests tests/pass932_941_promotion_camera_stability_tests.cpp)
+    target_link_libraries(subspace_pass932_941_tests PRIVATE subspace_engine)
+    add_test(NAME SubspacePass932To941PromotionCameraStabilityTests COMMAND subspace_pass932_941_tests)
+
+    add_executable(subspace_pass942_951_tests tests/pass942_951_interior_drag_authority_tests.cpp)
+    target_link_libraries(subspace_pass942_951_tests PRIVATE subspace_engine)
+    add_test(NAME SubspacePass942To951InteriorDragAuthorityTests COMMAND subspace_pass942_951_tests)
+endif()

@@ -441,7 +441,146 @@ function Get-ProjectOpsCertifiableGitStatusLines {
     } | Sort-Object)
 }
 
-function Get-ProjectOpsCertifiableGitFingerprint {
+
+function Get-ProjectOpsOrdinalSortedStrings {
+    [CmdletBinding()]
+    param([AllowEmptyCollection()][object[]]$Values = @())
+
+    $items = [System.Collections.Generic.List[string]]::new()
+    foreach ($value in @($Values)) {
+        if ($null -eq $value) { continue }
+        $items.Add([string]$value) | Out-Null
+    }
+    $array = [string[]]$items.ToArray()
+    [System.Array]::Sort($array, [System.StringComparer]::Ordinal)
+    return $array
+}
+
+function Get-ProjectOpsCertifiableGitChangePaths {
+    [CmdletBinding()]
+    param([Parameter(Mandatory=$true)][string]$Root)
+
+    $resolved = Resolve-ProjectOpsRoot -Root $Root
+    $state = Get-ProjectOpsGitRepositoryState -Root $resolved
+    if (-not $state.initialized -or -not $state.hasHead) { return @() }
+
+    $paths = @{}
+    $probeSets = [System.Collections.Generic.List[object]]::new()
+    $probeSets.Add([string[]]@('diff','--name-only','--relative','--')) | Out-Null
+    $probeSets.Add([string[]]@('diff','--cached','--name-only','--relative','--')) | Out-Null
+    $probeSets.Add([string[]]@('ls-files','--others','--exclude-standard')) | Out-Null
+    foreach ($gitArgs in $probeSets) {
+        $probe = Invoke-ProjectOpsGitProbe -Root $resolved -GitArgs $gitArgs
+        if (-not $probe.Success) {
+            throw ("git certifiable-path probe failed ({0}): {1}" -f $probe.ExitCode, ([string]$probe.StdErr).Trim())
+        }
+        foreach ($raw in @($probe.Lines)) {
+            $relative = ([string]$raw).Trim()
+            if ([string]::IsNullOrWhiteSpace($relative)) { continue }
+            $normalized = $relative.Replace('/','\')
+            if (Test-ProjectOpsGeneratedRelativePath -Root $resolved -Relative $normalized) { continue }
+            $paths[$relative.Replace('\','/')] = $true
+        }
+    }
+
+    # Cross-host deterministic ordering: never use culture-sensitive Sort-Object for authority data.
+    return @(Get-ProjectOpsOrdinalSortedStrings -Values @($paths.Keys))
+}
+
+function Invoke-ProjectOpsStageCertifiableGitChanges {
+    [CmdletBinding()]
+    param([Parameter(Mandatory=$true)][string]$Root)
+
+    $resolved = Resolve-ProjectOpsRoot -Root $Root
+    $state = Get-ProjectOpsGitRepositoryState -Root $resolved
+    if (-not $state.initialized -or -not $state.hasHead) {
+        throw 'Certifiable staging requires an initialized Git repository with HEAD.'
+    }
+
+    $gitCommand = Get-Command git -ErrorAction SilentlyContinue
+    if ($null -eq $gitCommand) { throw 'git was not found on PATH.' }
+    $git = $gitCommand.Source
+
+    # A certified commit is source-only. If generated/runtime output was staged
+    # manually before entering this workflow, remove it from the index while
+    # leaving the worktree bytes untouched.
+    $stagedProbe = Invoke-ProjectOpsGitProbe -Root $resolved -GitArgs @('diff','--cached','--name-only','--relative','--')
+    if (-not $stagedProbe.Success) {
+        throw ("git staged-path probe failed ({0}): {1}" -f $stagedProbe.ExitCode, ([string]$stagedProbe.StdErr).Trim())
+    }
+    $generatedStaged = @($stagedProbe.Lines | Where-Object {
+        $relative = ([string]$_).Trim()
+        -not [string]::IsNullOrWhiteSpace($relative) -and
+            (Test-ProjectOpsGeneratedRelativePath -Root $resolved -Relative $relative.Replace('/','\'))
+    })
+    if ($generatedStaged.Count -gt 0) {
+        Push-Location $resolved
+        try {
+            & $git reset -q HEAD -- @generatedStaged
+            if ($LASTEXITCODE -ne 0) { throw 'git reset failed while excluding generated staged paths.' }
+        }
+        finally { Pop-Location }
+    }
+
+    $paths = @(Get-ProjectOpsCertifiableGitChangePaths -Root $resolved)
+    if ($paths.Count -gt 0) {
+        Push-Location $resolved
+        try {
+            $batchSize = 100
+            for ($offset = 0; $offset -lt $paths.Count; $offset += $batchSize) {
+                $end = [Math]::Min($offset + $batchSize - 1, $paths.Count - 1)
+                $batch = @($paths[$offset..$end])
+                & $git add -A -- @batch
+                if ($LASTEXITCODE -ne 0) {
+                    throw ("git add failed while staging certifiable source paths: {0}" -f ($batch -join ', '))
+                }
+            }
+        }
+        finally { Pop-Location }
+    }
+
+    # All certifiable worktree changes must now be staged. Generated output may
+    # remain dirty in the worktree, but it can never enter a certified commit.
+    $remaining = @{}
+    $remainingProbeSets = [System.Collections.Generic.List[object]]::new()
+    $remainingProbeSets.Add([string[]]@('diff','--name-only','--relative','--')) | Out-Null
+    $remainingProbeSets.Add([string[]]@('ls-files','--others','--exclude-standard')) | Out-Null
+    foreach ($gitArgs in $remainingProbeSets) {
+        $probe = Invoke-ProjectOpsGitProbe -Root $resolved -GitArgs $gitArgs
+        if (-not $probe.Success) {
+            throw ("git post-stage probe failed ({0}): {1}" -f $probe.ExitCode, ([string]$probe.StdErr).Trim())
+        }
+        foreach ($raw in @($probe.Lines)) {
+            $relative = ([string]$raw).Trim()
+            if ([string]::IsNullOrWhiteSpace($relative)) { continue }
+            if (Test-ProjectOpsGeneratedRelativePath -Root $resolved -Relative $relative.Replace('/','\')) { continue }
+            $remaining[$relative.Replace('\','/')] = $true
+        }
+    }
+    if ($remaining.Count -gt 0) {
+        throw ("Certifiable source changes remain unstaged after staging: {0}" -f ((@(Get-ProjectOpsOrdinalSortedStrings -Values @($remaining.Keys))) -join ', '))
+    }
+
+    $finalStaged = Invoke-ProjectOpsGitProbe -Root $resolved -GitArgs @('diff','--cached','--name-only','--relative','--')
+    if (-not $finalStaged.Success) {
+        throw ("git final staged-path probe failed ({0}): {1}" -f $finalStaged.ExitCode, ([string]$finalStaged.StdErr).Trim())
+    }
+    $generatedFinal = @($finalStaged.Lines | Where-Object {
+        $relative = ([string]$_).Trim()
+        -not [string]::IsNullOrWhiteSpace($relative) -and
+            (Test-ProjectOpsGeneratedRelativePath -Root $resolved -Relative $relative.Replace('/','\'))
+    })
+    if ($generatedFinal.Count -gt 0) {
+        throw ("Generated/runtime paths are staged for a certified commit: {0}" -f ($generatedFinal -join ', '))
+    }
+
+    return [pscustomobject]@{
+        StagedPaths = @($finalStaged.Lines | Where-Object { -not [string]::IsNullOrWhiteSpace(([string]$_).Trim()) })
+        ExcludedGeneratedPaths = $generatedStaged
+    }
+}
+
+function Get-ProjectOpsCertifiableGitManifest {
     [CmdletBinding()]
     param([Parameter(Mandatory=$true)][string]$Root)
 
@@ -451,35 +590,97 @@ function Get-ProjectOpsCertifiableGitFingerprint {
         return $null
     }
 
-    $status = @(Get-ProjectOpsCertifiableGitStatusLines -Root $resolved)
-
-    $excludeArgs = @(
-        '--', '.',
-        ':(exclude)artifacts/**',
-        ':(exclude)updates/**',
-        ':(exclude).subspace/**',
-        ':(exclude)dist/**',
-        ':(exclude)logs/**'
+    # Build a staging-independent path universe:
+    #  - every path tracked by HEAD (so staged deletes/renames remain represented);
+    #  - every path in the current index;
+    #  - every untracked, non-ignored path.
+    # Moving a file between Git's untracked/index buckets therefore cannot
+    # change this manifest unless the actual worktree path/bytes changed.
+    $headProbe = Invoke-ProjectOpsGitProbe -Root $resolved -GitArgs @(
+        'ls-tree','-r','--name-only','HEAD'
     )
-
-    $unstagedProbe = Invoke-ProjectOpsGitProbe -Root $resolved -GitArgs (@('diff','--no-ext-diff','--no-color','--binary') + $excludeArgs)
-    if (-not $unstagedProbe.Success) {
-        throw ("git unstaged-diff probe failed ({0}): {1}" -f $unstagedProbe.ExitCode, ([string]$unstagedProbe.StdErr).Trim())
+    if (-not $headProbe.Success) {
+        throw ("git HEAD manifest probe failed ({0}): {1}" -f $headProbe.ExitCode, ([string]$headProbe.StdErr).Trim())
     }
 
-    $stagedProbe = Invoke-ProjectOpsGitProbe -Root $resolved -GitArgs (@('diff','--cached','--no-ext-diff','--no-color','--binary') + $excludeArgs)
-    if (-not $stagedProbe.Success) {
-        throw ("git staged-diff probe failed ({0}): {1}" -f $stagedProbe.ExitCode, ([string]$stagedProbe.StdErr).Trim())
+    $worktreeProbe = Invoke-ProjectOpsGitProbe -Root $resolved -GitArgs @(
+        'ls-files','--cached','--others','--exclude-standard'
+    )
+    if (-not $worktreeProbe.Success) {
+        throw ("git worktree manifest probe failed ({0}): {1}" -f $worktreeProbe.ExitCode, ([string]$worktreeProbe.StdErr).Trim())
     }
 
-    # Git may emit advisory line-ending text such as "LF will be replaced by
-    # CRLF" on stderr while still returning exit code 0. Certification is based
-    # on exit status + stdout content. Advisory stderr remains diagnostic only.
-    return Get-ProjectOpsSha256Text -Text (
-        ([string]$state.head).Trim() + "`n" + ($status -join "`n") +
-        "`n---UNSTAGED---`n" + ([string]$unstagedProbe.StdOut) +
-        "`n---STAGED---`n" + ([string]$stagedProbe.StdOut)
+    $paths = @{}
+    foreach ($raw in @($headProbe.Lines) + @($worktreeProbe.Lines)) {
+        $relative = ([string]$raw).Trim()
+        if ([string]::IsNullOrWhiteSpace($relative)) { continue }
+
+        $forward = $relative.Replace('\','/')
+        $normalized = $forward.Replace('/','\')
+        if (Test-ProjectOpsGeneratedRelativePath -Root $resolved -Relative $normalized) { continue }
+
+        $paths[$forward] = $normalized
+    }
+
+    $entries = [System.Collections.Generic.List[object]]::new()
+    $records = [System.Collections.Generic.List[string]]::new()
+
+    $sortedPaths = @(Get-ProjectOpsOrdinalSortedStrings -Values @($paths.Keys))
+    foreach ($relative in $sortedPaths) {
+        $normalized = [string]$paths[$relative]
+        $fullPath = Join-Path $resolved $normalized
+
+        if (Test-Path -LiteralPath $fullPath -PathType Leaf) {
+            $item = Get-Item -LiteralPath $fullPath
+            $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $fullPath).Hash.ToLowerInvariant()
+            $entry = [pscustomobject]@{
+                path = $relative
+                state = 'FILE'
+                bytes = [int64]$item.Length
+                sha256 = $hash
+            }
+            $entries.Add($entry) | Out-Null
+            $records.Add(("FILE`t{0}`t{1}`t{2}" -f $relative,[int64]$item.Length,$hash)) | Out-Null
+        }
+        else {
+            $entry = [pscustomobject]@{
+                path = $relative
+                state = 'DELETE'
+                bytes = [int64]0
+                sha256 = ''
+            }
+            $entries.Add($entry) | Out-Null
+            $records.Add(("DELETE`t{0}" -f $relative)) | Out-Null
+        }
+    }
+
+    # V3 deliberately separates repository lineage (head) from the content
+    # fingerprint. The fingerprint is only canonical path/state/bytes/hash data,
+    # sorted with ordinal comparison so Windows PowerShell 5.1, PowerShell 7,
+    # ForgePY and future Rust Forge all certify the exact same bytes.
+    $sortedRecords = @(Get-ProjectOpsOrdinalSortedStrings -Values $records.ToArray())
+    $fingerprint = Get-ProjectOpsSha256Text -Text (
+        "---CERTIFIABLE-WORKTREE-MANIFEST-V3---`n" + ($sortedRecords -join "`n")
     )
+
+    return [pscustomobject]@{
+        schemaVersion = 3
+        head = ([string]$state.head).Trim()
+        pathCount = $entries.Count
+        fingerprintScope = 'worktree-path-state-bytes-sha256'
+        ordering = 'ordinal'
+        fingerprint = $fingerprint
+        entries = $entries.ToArray()
+    }
+}
+
+function Get-ProjectOpsCertifiableGitFingerprint {
+    [CmdletBinding()]
+    param([Parameter(Mandatory=$true)][string]$Root)
+
+    $manifest = Get-ProjectOpsCertifiableGitManifest -Root $Root
+    if ($null -eq $manifest) { return $null }
+    return [string]$manifest.fingerprint
 }
 
 function Get-ProjectOpsManagedFiles {
@@ -801,7 +1002,7 @@ Export-ModuleMember -Function `
     Resolve-ProjectOpsRoot,Get-ProjectOpsContract,Get-ProjectOpsRelativePath,Get-ProjectOpsSha256Text,ConvertTo-ProjectOpsProcessArgument,Invoke-ProjectOpsGitProbe,`
     Get-ProjectOpsArtifactRoot,Get-ProjectOpsArtifactPath,Resolve-ProjectOpsPython,Invoke-ProjectOpsPython,`
     Get-ProjectOpsSourceAuthoritySnapshot,Get-ProjectOpsCertifiableSourceFingerprint,`
-    Test-ProjectOpsGeneratedRelativePath,Get-ProjectOpsGitRepositoryState,Get-ProjectOpsCertifiableGitStatusLines,Get-ProjectOpsCertifiableGitFingerprint,`
+    Test-ProjectOpsGeneratedRelativePath,Get-ProjectOpsGitRepositoryState,Get-ProjectOpsCertifiableGitStatusLines,Get-ProjectOpsCertifiableGitChangePaths,Invoke-ProjectOpsStageCertifiableGitChanges,Get-ProjectOpsCertifiableGitManifest,Get-ProjectOpsCertifiableGitFingerprint,`
     Get-ProjectOpsManagedFiles,Get-ProjectOpsCommandRegistry,Get-ProjectOpsCommand,Get-ProjectOpsCommandVersionLine,`
     Write-ProjectOpsAtomicJson,Remove-ProjectOpsTransientCaches,Invoke-ProjectOpsRootPolicyMigration,`
     Get-ProjectOpsSourcePolicy,Sync-ProjectOpsStageToSourceAuthority,Invoke-ProjectOpsGovernedTreeStage

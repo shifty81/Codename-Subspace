@@ -249,6 +249,28 @@ function Write-MenuTitle {
     Write-Host "------------------------------------------------------------------------" -ForegroundColor $Global:UiMutedForeground
 }
 
+function Get-SubspaceRelativePath {
+    param(
+        [Parameter(Mandatory=$true)][string]$BasePath,
+        [Parameter(Mandatory=$true)][string]$TargetPath
+    )
+    # Windows PowerShell 5.1 runs on .NET Framework, which does not expose
+    # System.IO.Path.GetRelativePath().  All call sites here operate on files
+    # already enumerated beneath BasePath, so a normalized containment +
+    # substring implementation is both deterministic and PS5.1-safe.
+    $baseFull = [System.IO.Path]::GetFullPath($BasePath).TrimEnd([char[]]@(
+        [System.IO.Path]::DirectorySeparatorChar,
+        [System.IO.Path]::AltDirectorySeparatorChar
+    ))
+    $targetFull = [System.IO.Path]::GetFullPath($TargetPath)
+    if ($targetFull.Equals($baseFull, [System.StringComparison]::OrdinalIgnoreCase)) { return '' }
+    $prefix = $baseFull + [System.IO.Path]::DirectorySeparatorChar
+    if (-not $targetFull.StartsWith($prefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Path is outside the expected base path. Base='$baseFull' Target='$targetFull'"
+    }
+    return $targetFull.Substring($prefix.Length)
+}
+
 function Repair-StaleRootBindingResidue {
     # Pass745R3/R4 briefly created <repo>\-Root\artifacts because "-Root"
     # was bound as a positional value. Delete only the exact known residue.
@@ -261,7 +283,7 @@ function Repair-StaleRootBindingResidue {
     )
     $unexpected = @()
     foreach ($file in @(Get-ChildItem -LiteralPath $staleRoot -Recurse -File -Force -ErrorAction SilentlyContinue)) {
-        $relative = [System.IO.Path]::GetRelativePath($staleRoot, $file.FullName).Replace('/', '\')
+        $relative = (Get-SubspaceRelativePath -BasePath $staleRoot -TargetPath $file.FullName).Replace('/', '\')
         if ($allowedFiles -notcontains $relative) { $unexpected += $relative }
     }
 
@@ -930,12 +952,17 @@ function Invoke-ProjectScript {
 function Test-IsPatchZipName {
     param([string]$Name)
     if ([string]::IsNullOrWhiteSpace($Name)) { return $false }
-    if ($Name -notmatch '(?i)\.zip$') { return $false }
-    # Never auto-apply generated debug/source artifacts as patch payloads.
+    # Generated artifacts are never update transports.
     if ($Name -match '(?i)FullSource|SourceRollup|DebugBundle|BuildRollup|CompleteSource|Full_Source') { return $false }
-    # Project-standard handoff names. These are root-overwrite patch/update ZIPs.
-    # Accept both historical names (RootDrop) and the explicit project-standard
-    # ROOT_DROP / ROOT_DROP_PATCH spellings used by current handoff ZIPs.
+
+    $extension = [System.IO.Path]::GetExtension($Name)
+    # forge.patch.v1 discovery is extension-first and manifest-authoritative.
+    # The filename carries no project identity or applicability authority.
+    if ($extension -ieq '.patch') { return $true }
+
+    # Legacy ZIP bootstrap remains deliberately name-restricted so ordinary
+    # source/debug ZIPs are never mistaken for update handoffs.
+    if ($extension -ine '.zip') { return $false }
     if ($Name -match '(?i)^Subspace_(Pass|Patch|Hotfix|Root[_-]?Drop(?:[_-]?Patch)?|Update|Rollup).*\.zip$') { return $true }
     if ($Name -match '(?i)^Codename_Subspace_(Pass|Patch|Hotfix|Root[_-]?Drop(?:[_-]?Patch)?|Update).*\.zip$') { return $true }
     return $false
@@ -944,13 +971,13 @@ function Test-IsPatchZipName {
 function Get-InboxUpdateZips {
     $inbox = Join-Path $Global:SubspaceRoot "updates\inbox"
     if (-not (Test-Path -LiteralPath $inbox)) { return @() }
-    return @(Get-ChildItem -LiteralPath $inbox -Filter *.zip -File -ErrorAction SilentlyContinue |
+    return @(Get-ChildItem -LiteralPath $inbox -File -ErrorAction SilentlyContinue |
         Where-Object { Test-IsPatchZipName $_.Name } |
         Sort-Object Name)
 }
 
 function Get-RootDropUpdateZips {
-    return @(Get-ChildItem -LiteralPath $Global:SubspaceRoot -Filter *.zip -File -ErrorAction SilentlyContinue |
+    return @(Get-ChildItem -LiteralPath $Global:SubspaceRoot -File -ErrorAction SilentlyContinue |
         Where-Object { Test-IsPatchZipName $_.Name } |
         Sort-Object Name)
 }
@@ -969,58 +996,95 @@ function Write-PatchHandoffStatus {
     Write-Host "  Reason       : $Reason"
     Write-Host "  Root drop    : $Global:SubspaceRoot"
     Write-Host "  Inbox        : $(Join-Path $Global:SubspaceRoot 'updates\inbox')"
-    Write-Host "  Root ZIPs    : $($rootDrops.Count)"
-    Write-Host "  Inbox ZIPs   : $($inbox.Count)"
+    Write-Host "  Root patches : $($rootDrops.Count)"
+    Write-Host "  Inbox patches: $($inbox.Count)"
     if ($rootDrops.Count -gt 0) {
-        Write-Host "  Root-drop patches that will be queued before build:" -ForegroundColor Yellow
+        Write-Host "  Root-drop patches pending explicit approval:" -ForegroundColor Yellow
         foreach ($patch in $rootDrops) { Write-Host ("    - {0}" -f $patch.Name) -ForegroundColor Yellow }
     }
     if ($inbox.Count -gt 0) {
-        Write-Host "  Inbox patches that will be applied before build:" -ForegroundColor Yellow
+        Write-Host "  Inbox patches pending explicit apply:" -ForegroundColor Yellow
         foreach ($patch in $inbox) { Write-Host ("    - {0}" -f $patch.Name) -ForegroundColor Yellow }
     }
     if ($rootDrops.Count -eq 0 -and $inbox.Count -eq 0) {
-        Write-Host "  No patch ZIPs queued." -ForegroundColor Green
+        Write-Host "  No patch handoffs queued." -ForegroundColor Green
     }
 }
+
+function Invoke-StartupPatchPrompt {
+    Initialize-UtilityFolders
+
+    $rootDrops = @(Get-RootDropUpdateZips)
+    $inbox = @(Get-InboxUpdateZips)
+    if ($rootDrops.Count -eq 0 -and $inbox.Count -eq 0) { return }
+
+    Write-Header
+    Write-Host " PATCH HANDOFF FOUND" -ForegroundColor $Global:UiWarnForeground
+    Write-Host "------------------------------------------------------------------------" -ForegroundColor $Global:UiMutedForeground
+    Write-PatchHandoffStatus -Reason "PCC startup"
+    Write-Host ""
+    Write-Host "The internal PCC found a queued project patch. Apply it before entering the menu?" -ForegroundColor $Global:UiWarnForeground
+    $choice = Read-Host "Apply patch now? [Y/N]"
+    $Global:StartupPatchDecisionMade = $true
+    if ($choice -match '^(?i:y|yes)$') {
+        $utilityPath = $PSCommandPath
+        $utilityHashBefore = if (Test-Path -LiteralPath $utilityPath) { (Get-FileHash -Algorithm SHA256 -LiteralPath $utilityPath).Hash } else { '' }
+
+        Invoke-ApplyUpdateInbox
+
+        $remainingRoot = @(Get-RootDropUpdateZips)
+        $remainingInbox = @(Get-InboxUpdateZips)
+        if ($remainingRoot.Count -gt 0 -or $remainingInbox.Count -gt 0) {
+            throw "Startup patch apply completed with queued handoffs still present."
+        }
+        $Global:StartupPatchDeferred = $false
+        Write-Host "[PASS] Startup patch intake completed." -ForegroundColor $Global:UiGoodForeground
+
+        $utilityHashAfter = if (Test-Path -LiteralPath $utilityPath) { (Get-FileHash -Algorithm SHA256 -LiteralPath $utilityPath).Hash } else { '' }
+        if ($utilityHashBefore -and $utilityHashAfter -and $utilityHashBefore -ne $utilityHashAfter) {
+            Write-Host "[INFO] PCC source changed during startup patch apply; re-entering the updated utility now." -ForegroundColor $Global:UiMutedForeground
+            $runner = Get-ToolPath "pwsh"
+            if (-not $runner) { $runner = Get-ToolPath "powershell" }
+            if (-not $runner) { throw "PowerShell runner not found for PCC startup self-update re-entry." }
+
+            & $runner -NoProfile -ExecutionPolicy Bypass -File $utilityPath -Action menu
+            $reentryCode = $LASTEXITCODE
+            exit $reentryCode
+        }
+    }
+    else {
+        $Global:StartupPatchDeferred = $true
+        Write-Host "Patch apply deferred. Full Gate will not silently consume it from the interactive PCC." -ForegroundColor $Global:UiWarnForeground
+    }
+    Pause-ForUser
+}
+
 
 function Invoke-AutoApplyUpdateInbox {
     param([string]$Reason = "build")
 
+    # Portable Forge policy: discovery/queueing never mutates source. The name
+    # is retained for compatibility with existing callers, but this function is
+    # now a pending-update guard only. Explicit patch application is owned by
+    # startup approval / updates.apply / the project maintenance UI.
     Initialize-UtilityFolders
     Write-PatchHandoffStatus -Reason $Reason
-
-    if ($NoAutoApplyUpdates) {
-        Write-Log "Auto patch handoff skipped by -NoAutoApplyUpdates." "WARN"
-        return
-    }
 
     $rootDrops = @(Get-RootDropUpdateZips)
     $inboxQueued = @(Get-InboxUpdateZips)
     if ($rootDrops.Count -eq 0 -and $inboxQueued.Count -eq 0) {
-        Write-Log "No root-drop or inbox patch ZIPs queued." "PASS"
+        Write-Log "No root-drop or inbox patch handoffs queued." "PASS"
         return
     }
 
-    $script = Join-Path $Global:SubspaceRoot "scripts\subspace_apply_update_inbox.ps1"
-    if (-not (Test-Path -LiteralPath $script)) {
-        throw "Patch ZIPs are queued, but the root-drop update processor is missing: $script"
+    $pendingSummary = "{0} root patch(es), {1} inbox patch(es)" -f $rootDrops.Count,$inboxQueued.Count
+    Write-Log ("Pending update handoff detected during {0}: {1}. No source was modified." -f $Reason,$pendingSummary) "WARN"
+
+    if ($Reason -match '(?i)gate|certif') {
+        throw ("Pending project updates require explicit approval/apply before certification. {0}. Full Gate never auto-applies patches." -f $pendingSummary)
     }
 
-    $runner = Get-ToolPath "pwsh"
-    if (-not $runner) { $runner = Get-ToolPath "powershell" }
-    if (-not $runner) { throw "PowerShell runner not found for patch handoff apply." }
-
-    $updateArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", $script, "-Root", $Global:SubspaceRoot)
-    Invoke-LoggedCommand -Label "Auto apply root-drop/inbox patch handoff" -FilePath $runner -Arguments $updateArgs -WorkingDirectory $Global:SubspaceRoot | Out-Null
-
-    $remainingRoot = @(Get-RootDropUpdateZips)
-    $remainingInbox = @(Get-InboxUpdateZips)
-    if ($remainingRoot.Count -gt 0 -or $remainingInbox.Count -gt 0) {
-        throw "Patch handoff still contains $($remainingRoot.Count) root ZIP(s) and $($remainingInbox.Count) inbox ZIP(s) after apply. Build stopped before CMake."
-    }
-
-    Write-Log "Root-drop/inbox patch handoff applied before $Reason." "PASS"
+    Write-Log "Continuing without applying the pending update because build/run discovery is non-mutating by policy." "WARN"
 }
 
 function Get-BuildDirectory {
@@ -1165,7 +1229,7 @@ function Invoke-BuildHeadless {
     Write-Header
     Clear-Logs -PreserveCurrent
     $Global:StepResults.Clear()
-    Invoke-UtilityStep -Name "Auto-apply root/inbox patches before build" -ScriptBlock { Invoke-AutoApplyUpdateInbox -Reason "headless build" }
+    Invoke-UtilityStep -Name "Pending-update non-mutating guard before build" -ScriptBlock { Invoke-AutoApplyUpdateInbox -Reason "headless build" }
     Invoke-UtilityStep -Name "Headless C++ configure/build/test" -ScriptBlock { Invoke-CMakeBuild -Headless -CleanFirst:$Clean }
     [void](Write-StepSummary)
 }
@@ -1174,7 +1238,7 @@ function Invoke-BuildRender {
     Write-Header
     Clear-Logs -PreserveCurrent
     $Global:StepResults.Clear()
-    Invoke-UtilityStep -Name "Auto-apply root/inbox patches before build" -ScriptBlock { Invoke-AutoApplyUpdateInbox -Reason "render build" }
+    Invoke-UtilityStep -Name "Pending-update non-mutating guard before build" -ScriptBlock { Invoke-AutoApplyUpdateInbox -Reason "render build" }
     Invoke-UtilityStep -Name "Pass/source continuity audit" -ScriptBlock { Invoke-PassContinuityAudit }
     Invoke-UtilityStep -Name "Render C++ configure/build/test" -ScriptBlock { Invoke-CMakeBuild -CleanFirst:$Clean }
     if ($IsWindows -or $env:OS -eq "Windows_NT") {
@@ -2216,7 +2280,7 @@ function Invoke-FullGate {
     $utilityPath = $PSCommandPath
     $utilityHashBefore = if (Test-Path -LiteralPath $utilityPath) { (Get-FileHash -Algorithm SHA256 -LiteralPath $utilityPath).Hash } else { '' }
     Invoke-UtilityStep -Name "Pre-patch source safety snapshot" -ScriptBlock { Invoke-SourceSafetySnapshot -Label "PREPATCH" -OnlyIfUpdates }
-    Invoke-UtilityStep -Name "Auto-apply root/inbox patches before full gate" -ScriptBlock { Invoke-AutoApplyUpdateInbox -Reason "full gate" }
+    Invoke-UtilityStep -Name "Pending-update certification guard before full gate" -ScriptBlock { Invoke-AutoApplyUpdateInbox -Reason "full gate" }
     $utilityHashAfter = if (Test-Path -LiteralPath $utilityPath) { (Get-FileHash -Algorithm SHA256 -LiteralPath $utilityPath).Hash } else { '' }
     if (-not $ReenteredAfterUpdate -and $utilityHashBefore -and $utilityHashAfter -and $utilityHashBefore -ne $utilityHashAfter) {
         Write-Log "Root control utility changed during patch apply; re-entering Full Gate from the updated script before dependency/bootstrap work." "INFO"
@@ -2327,7 +2391,7 @@ function Invoke-FastDevelopmentGate {
 
     try {
         Invoke-UtilityStep -Name "Pre-patch source safety snapshot" -ScriptBlock { Invoke-SourceSafetySnapshot -Label "FAST_PREPATCH" -OnlyIfUpdates }
-        Invoke-UtilityStep -Name "Auto-apply root/inbox patches" -ScriptBlock { Invoke-AutoApplyUpdateInbox -Reason "fast development gate" }
+        Invoke-UtilityStep -Name "Pending-update certification guard" -ScriptBlock { Invoke-AutoApplyUpdateInbox -Reason "fast development gate" }
         Invoke-UtilityStep -Name "Supply-chain verification (offline-safe)" -ScriptBlock { Invoke-SupplyChainGate -Mode "VERIFY_ONLY" }
         Invoke-UtilityStep -Name "Native runtime regression guard" -ScriptBlock { Invoke-NativeRuntimeGuard }
         Invoke-UtilityStep -Name "Pass/source continuity audit" -ScriptBlock { Invoke-PassContinuityAudit }
@@ -2816,34 +2880,59 @@ function Show-SourceControlMenu {
     }
 }
 
+function Invoke-CommitAndPushCertifiedGreen {
+    Write-Header
+    Write-Host " CERTIFIED GREEN COMMIT + PUSH" -ForegroundColor $Global:UiTitleForeground
+    Write-Host "------------------------------------------------------------------------" -ForegroundColor $Global:UiMutedForeground
+    Write-Host "This action only commits the exact source certified by the latest GREEN Full Gate, then pushes the current branch." -ForegroundColor $Global:UiMutedForeground
+    Write-Host ""
+
+    $commitCode = Invoke-StandardControlAction -ControlAction "git-commit-green" -ContinueOnError
+    if ($commitCode -ne 0) {
+        throw "Certified GREEN commit failed. Push was not attempted."
+    }
+
+    $pushCode = Invoke-StandardControlAction -ControlAction "git-push" -ContinueOnError
+    if ($pushCode -ne 0) {
+        throw "Commit succeeded but Git push failed. Source remains committed locally."
+    }
+
+    Write-Host "[PASS] Certified GREEN source committed and pushed." -ForegroundColor $Global:UiGoodForeground
+}
+
+
 function Show-MainMenu {
     while ($true) {
         Write-Header
         Write-Host "Full Gate is the promotion authority. External code/assets/dependencies only enter through" -ForegroundColor $Global:UiMutedForeground
         Write-Host "the governed supply chain; snapshots, transactional updates, gate history and rollback protect recovery." -ForegroundColor $Global:UiMutedForeground
         Write-Host ""
-        Write-Host " 1. Build & verify"
-        Write-Host " 2. Run & play"
-        Write-Host " 3. Shipyard Dev Studio"
-        Write-Host " 4. Asset authority & supply chain"
-        Write-Host " 5. Project maintenance & diagnostics"
-        Write-Host " 6. Packaging & baselines"
-        Write-Host " 7. Logs & help"
-        Write-Host " 8. Advanced / all registered commands"
-        Write-Host " 9. Source control (GitHub optional)"
+        Write-Host " 1. Full Quality Gate / certify GREEN" -ForegroundColor $Global:UiGoodForeground
+        Write-Host " 2. Commit + push current certified GREEN" -ForegroundColor $Global:UiGoodForeground
+        Write-Host " 3. Build & verify / advanced gates"
+        Write-Host " 4. Run & play"
+        Write-Host " 5. Shipyard Dev Studio"
+        Write-Host " 6. Asset authority & supply chain"
+        Write-Host " 7. Project maintenance & diagnostics"
+        Write-Host " 8. Packaging & baselines"
+        Write-Host " 9. Logs & help"
+        Write-Host "10. Advanced / all registered commands"
+        Write-Host "11. Source control (GitHub optional)"
         Write-Host " 0. Exit"
         Write-Host ""
         try {
             switch (Read-Host "Select") {
-                "1" { Show-BuildVerifyMenu }
-                "2" { Show-RunPlayMenu }
-                "3" { Invoke-RunSubspaceGame -GameArguments @("--shipyard"); Pause-ForUser }
-                "4" { Show-AssetAuthorityMenu }
-                "5" { Show-MaintenanceDiagnosticsMenu }
-                "6" { Show-PackagingBaselineMenu }
-                "7" { Show-LogsHelpMenu }
-                "8" { Show-AdvancedMenu }
-                "9" { Show-SourceControlMenu }
+                "1" { Invoke-FullGate; Pause-ForUser }
+                "2" { Invoke-CommitAndPushCertifiedGreen; Pause-ForUser }
+                "3" { Show-BuildVerifyMenu }
+                "4" { Show-RunPlayMenu }
+                "5" { Invoke-RunSubspaceGame -GameArguments @("--shipyard"); Pause-ForUser }
+                "6" { Show-AssetAuthorityMenu }
+                "7" { Show-MaintenanceDiagnosticsMenu }
+                "8" { Show-PackagingBaselineMenu }
+                "9" { Show-LogsHelpMenu }
+                "10" { Show-AdvancedMenu }
+                "11" { Show-SourceControlMenu }
                 "0" { return }
             }
         }
@@ -2870,7 +2959,7 @@ function Invoke-Pass9099Status {
 
 try {
     switch ($Action) {
-        "menu" { Show-MainMenu }
+        "menu" { Invoke-StartupPatchPrompt; Show-MainMenu }
         "status" { Invoke-Status }
         "setup" { Invoke-Setup }
         "build-headless" { Invoke-BuildHeadless -Clean:$Clean }

@@ -20,10 +20,21 @@ ShipModuleInteriorBinding ShipModuleInteriorLinkSystem::InferBinding(const Shipy
         case ShipyardModuleSemantic::CommandCockpit:b.capability=ExteriorInteriorCapability::Cockpit;b.walkable=true;break;
         case ShipyardModuleSemantic::CommandBridge:b.capability=ExteriorInteriorCapability::Bridge;b.walkable=true;break;
         case ShipyardModuleSemantic::HullBow:case ShipyardModuleSemantic::HullMid:case ShipyardModuleSemantic::HullAft:b.capability=ExteriorInteriorCapability::WalkableRoom;b.walkable=true;break;
+        case ShipyardModuleSemantic::StructuralFrame:b.capability=ExteriorInteriorCapability::Corridor;b.walkable=true;break;
         case ShipyardModuleSemantic::EngineHousing:b.capability=ExteriorInteriorCapability::Engineering;b.walkable=true;break;
         case ShipyardModuleSemantic::MainEngine:case ShipyardModuleSemantic::EngineNozzle:case ShipyardModuleSemantic::RcsThruster:b.capability=ExteriorInteriorCapability::ServiceAccess;b.interactionOnly=true;break;
         default:break;
     }
+    // The certified catalog has richer part-role authority than some older
+    // semantic rows. Use it to recover human-scale hull/interior intent before
+    // falling back to module-name heuristics.
+    if(!b.interactionOnly&&(m.partRole==ShipyardPartRole::PrimaryHull||m.partRole==ShipyardPartRole::HullAdapter||m.partRole==ShipyardPartRole::StructuralBlock)){b.capability=ExteriorInteriorCapability::WalkableRoom;b.walkable=true;b.interactionOnly=false;}
+    else if(!b.interactionOnly&&(m.partRole==ShipyardPartRole::StructuralFrame||m.partRole==ShipyardPartRole::StructuralAttachment)){b.capability=ExteriorInteriorCapability::Corridor;b.walkable=true;b.interactionOnly=false;}
+    else if(!b.interactionOnly&&m.partRole==ShipyardPartRole::Cockpit){b.capability=ExteriorInteriorCapability::Cockpit;b.walkable=true;b.interactionOnly=false;}
+    else if(!b.interactionOnly&&m.partRole==ShipyardPartRole::Bridge){b.capability=ExteriorInteriorCapability::Bridge;b.walkable=true;b.interactionOnly=false;}
+    else if(!b.interactionOnly&&m.partRole==ShipyardPartRole::EngineHousing){b.capability=ExteriorInteriorCapability::Engineering;b.walkable=true;b.interactionOnly=false;}
+    else if(!b.interactionOnly&&(m.partRole==ShipyardPartRole::Cargo||m.partRole==ShipyardPartRole::Tank)){b.capability=ExteriorInteriorCapability::Cargo;b.walkable=true;b.interactionOnly=false;}
+    else if(!b.interactionOnly&&m.partRole==ShipyardPartRole::Hangar){b.capability=ExteriorInteriorCapability::Hangar;b.walkable=true;b.interactionOnly=false;}
     if(Has(n,"hangar")){b.capability=ExteriorInteriorCapability::Hangar;b.walkable=true;}
     else if(Has(n,"airlock")||Has(n,"dockcollar")){b.capability=ExteriorInteriorCapability::Airlock;b.walkable=true;}
     else if(Has(n,"cargo")||Has(n,"storage")){b.capability=ExteriorInteriorCapability::Cargo;b.walkable=true;}

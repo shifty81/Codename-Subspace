@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "authorityId": "SUBSPACE-SHIPYARD-EDITOR-CLIENT-PARITY-V1",
+  "editorApplication": "Shipyard",
+  "gameApplication": "Codename Subspace Client",
+  "rule": "one editor authoring superset; one game client; shared canonical contracts",
+  "primaryWorkspaces": [
+    "Layout", "Ship", "Character", "World", "Interior", "Modeling",
+    "Materials", "Animation", "PCG", "VFX", "Audio", "Logic", "Diagnostics"
+  ],
+  "contracts": [
+    {"id":"subspace.ship.assembly.v2","canonicalType":"Assembly","playerEditor":"Hangar Shipyard / Refit"},
+    {"id":"subspace.character.v1","canonicalType":"CharacterDefinition","playerEditor":"Character Creation / Customization"},
+    {"id":"subspace.interior.v2","canonicalType":"InteriorDefinition","playerEditor":"Safe Interior Customization"},
+    {"id":"subspace.material.v2","canonicalType":"MaterialDefinition","playerEditor":"Paint / Livery"},
+    {"id":"subspace.world.v2","canonicalType":"WorldDefinition","playerEditor":null},
+    {"id":"subspace.animation.v1","canonicalType":"AnimationDefinition","playerEditor":null},
+    {"id":"subspace.pcg.v2","canonicalType":"PcgDefinition","playerEditor":null},
+    {"id":"subspace.vfx.v1","canonicalType":"VfxDefinition","playerEditor":null},
+    {"id":"subspace.audio.v1","canonicalType":"AudioDefinition","playerEditor":null},
+    {"id":"subspace.logic.v1","canonicalType":"BehaviorDefinition","playerEditor":null}
+  ]
+}

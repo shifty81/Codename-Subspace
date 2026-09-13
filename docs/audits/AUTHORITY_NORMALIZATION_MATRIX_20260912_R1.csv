@@ -1,0 +1,25 @@
+action,target,reason
+KEEP,docs/PROJECT_VISION.md,Current game identity and travel-scale authority.
+KEEP,docs/ARCHITECTURE_AUTHORITY.md,Current full-3D/continuous-world/data authority.
+KEEP,docs/ROADMAP.md,Rewritten as evidence-first implementation order.
+KEEP,docs/STANDALONE_PCC_AUTHORITY.md,Current operations authority until explicit takeover.
+REWRITE,README.md,"Normalized identity, standalone PCC workflow, GameData/content split, Reference Solar System."
+REWRITE,docs/EMBER_PROJECT_CONTRACT.md,Reference Solar System + internal PCC + continuous planet-region language.
+SUPERSEDE,docs/SUBSPACE_SANDBOX_AUTHORITY_2026-08-31.md,2D/no-landing authority conflicts with current project.
+SUPERSEDE,docs/design/INTERSTELLAR_RAIL_TRAVEL_SPEC.md,Rail transit replaced by in-system drive + jump gates.
+REFERENCE_MODE,docs/design/SUBSPACE_ROGUELITE_INCREMENTAL_DIRECTION.md,"Optional scenario/campaign ideas only, not main identity."
+HISTORICAL,docs/FEATURES.md,Avorion-like feature snapshot; not completion truth.
+HISTORICAL,docs/ROADMAP_STATUS.md,Old percentages/checkmarks are not current evidence.
+HISTORICAL,docs/WHATS_LEFT_TO_IMPLEMENT.md,Old gap snapshot; current audit/roadmap replaces it.
+HISTORICAL,docs/DEVELOPMENT_STATUS.md,Old conversion status.
+HISTORICAL,docs/NEXT_STEPS.md,Old AvorionLike plan.
+HISTORICAL,docs/architecture/ARCHITECTURE_DIAGRAM.md,Old .NET architecture.
+KEEP_ACTIVE,engine/src/navigation/VectorTravelSystem.cpp,Normalize as in-system travel-drive foundation.
+BUILD_NEXT,JumpGate runtime authority,No compiled physical jump-gate transit found.
+KEEP_FOUNDATION,engine/src/world/SpatialFrameSystem.cpp,Critical hierarchy foundation; nested rotation-aware reparent incomplete.
+BUILD_NEXT,Runtime composition authority,"Converge Engine, NativeRuntimeServices and NativeGameApplication state ownership."
+KEEP_ACTIVE,GameData/,Canonical authored gameplay/runtime data root.
+KEEP_ACTIVE,content/,Canonical governed metadata/schemas/provenance/derived root.
+DO_NOT_REACTIVATE,engine/src/home + expedition + roguelite + travel,Detached historical implementation lanes; port only selected concepts into current architecture.
+MIGRATE_SAFELY,compiled donor material/hyperdrive IDs,Versioned serialization aliases/migration required; do not blind-rename.
+KEEP_FOUNDATION,EditorDockSystem,Canonical dock model; wire visible GUI next.

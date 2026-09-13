@@ -71,7 +71,7 @@ int main(){
     ProceduralShipVisualRecipe recipe;recipe.modules={Placement("structural_frame"),Placement("structural_frame"),Placement("structural_frame"),Placement("structural_frame"),Placement("structural_frame"),Placement("structural_frame"),Placement("cargo"),Placement("cargo"),Placement("hangar"),Placement("engine"),Placement("engine"),Placement("engine"),Placement("bridge")};
     ShipInteriorSystem interiors;ShipInteriorLayoutSystem interiorLayout;const auto plan=interiorLayout.Materialize(527,catalog,recipe,interiors);const auto* layout=interiors.GetLayout(527);
     Check(layout&&static_cast<int>(layout->rooms.size())==plan.rooms&&plan.rooms>=10,"Pass527 authored recipe materializes multi-room ship interior");
-    Check(plan.airlocks>=2&&plan.corridors>=1,"Pass527 hangar/exterior complexity creates usable airlock/corridor connectivity");
+    Check(plan.airlocks>=1&&plan.corridors>=1&&plan.carve.valid,"Pass527 authored hull carve creates connected airlock/corridor pressure-hull topology");
     Check(plan.decks>=1&&plan.decks<=3,"Pass527 interior deck count remains bounded by authored hull complexity");
 
     // Pass528 - doors/hatches/airlocks/consoles are stateful interactions.

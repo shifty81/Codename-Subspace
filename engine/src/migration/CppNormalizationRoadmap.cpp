@@ -7,12 +7,12 @@ namespace subspace {
 CppNormalizationRoadmap CreatePostPass114CppNormalizationRoadmap() {
     CppNormalizationRoadmap roadmap;
     roadmap.gates = {
-        {"client-split", "Split Win32PlayableClient into client app/input/render/view units", "client", NormalizationGateStatus::InProgress, {"build passes", "client launches", "no lost controls"}},
-        {"home-surface", "Make H primary home-world surface builder", "home", NormalizationGateStatus::Ready, {"large build grid", "structure placement", "production overlay"}},
-        {"csharp-ledger", "Every C# source file has a migration status", "migration", NormalizationGateStatus::InProgress, {"ledger csv", "validator", "zero unknown files"}},
-        {"content-layout", "Normalize Assets/assets/GameData into content authority", "content", NormalizationGateStatus::NotStarted, {"dry run", "path audit", "manifest"}},
-        {"builder-home-only", "Ship part hot-swap is home-only before adventure launch", "shipyard", NormalizationGateStatus::Ready, {"install validation", "launch lockout", "ship stats update"}},
-        {"travel-rail", "Interstellar travel uses on-rails route model", "travel", NormalizationGateStatus::InProgress, {"route fit", "route events", "arrival state"}}
+        {"runtime-composition", "Converge Engine services and NativeGameApplication state behind one runtime composition authority", "runtime", NormalizationGateStatus::InProgress, {"one state owner", "shell adapters", "no duplicate simulation authority"}},
+        {"spatial-persistence", "Finish rotation-aware hierarchical frame reparenting, stable IDs, migrations and representation handoffs", "world", NormalizationGateStatus::InProgress, {"nested frame tests", "save round trip", "ship/cell identity"}},
+        {"content-layout", "Keep GameData as authored runtime data and content as governed metadata/schema/provenance authority", "content", NormalizationGateStatus::Ready, {"no implicit GameData move", "loader authority", "provenance"}},
+        {"construction", "Converge Shipyard onto sparse parametric + authored kitbash + semantic socket assembly authority", "shipyard", NormalizationGateStatus::InProgress, {"BuildElement", "commands", "compiled runtime product"}},
+        {"planet-continuity", "Implement continuous planet streaming from orbital representation through atmosphere to local surface physics", "world", NormalizationGateStatus::NotStarted, {"spherical LOD", "atmosphere", "landing", "surface vehicles"}},
+        {"jump-gates", "Implement physical interstellar jump gates with destination-ready warp-tunnel handoff", "navigation", NormalizationGateStatus::NotStarted, {"gate entity", "transit state", "same ShipId", "destination handoff"}}
     };
     return roadmap;
 }

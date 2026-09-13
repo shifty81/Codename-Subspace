@@ -21,9 +21,10 @@ ProjectNormalizationPlan BuildDefaultSubspaceNormalizationPlan() {
     plan.rootItems.push_back({"SubspaceTools.ps1", "SubspaceTools.ps1", "root project control entry point", NormalizationStatus::Active});
     plan.rootItems.push_back({"AvorionLike/", "reference/csharp-to-cpp-source/AvorionLike/", "source-to-port backlog; not active build target", NormalizationStatus::NeedsLedger});
     plan.rootItems.push_back({"AvorionLike.sln", "reference/csharp-to-cpp-source/AvorionLike.sln", "legacy solution retained for conversion reference", NormalizationStatus::ReferenceOnly});
-    plan.contentItems.push_back({"Assets/", "content/assets/legacy/", "legacy assets require active-path audit", NormalizationStatus::NeedsMove});
-    plan.contentItems.push_back({"assets/", "content/assets/", "lowercase asset tree should become canonical after audit", NormalizationStatus::NeedsMove});
-    plan.contentItems.push_back({"GameData/", "content/data/", "legacy data needs path audit before move", NormalizationStatus::NeedsMove});
+    plan.contentItems.push_back({"GameData/", "GameData/", "canonical authored gameplay/runtime JSON; physical relocation requires an explicit schema/loader migration", NormalizationStatus::Active});
+    plan.contentItems.push_back({"content/", "content/", "canonical governed metadata/schemas/provenance/derived authority", NormalizationStatus::Active});
+    plan.contentItems.push_back({"Assets/", "content/assets/legacy/", "legacy uppercase asset root only when physically present and provenance-audited", NormalizationStatus::NeedsMove});
+    plan.contentItems.push_back({"assets/", "content/assets/", "legacy lowercase asset root only when physically present and provenance-audited", NormalizationStatus::NeedsMove});
     plan.migrationItems.push_back({"docs/migration/", "docs/migration/", "conversion ledger authority", NormalizationStatus::Active});
     plan.migrationItems.push_back({"reference/third_party/pixel_planets/", "reference/third_party/pixel_planets/", "third-party visual reference/provenance", NormalizationStatus::ReferenceOnly});
     return plan;

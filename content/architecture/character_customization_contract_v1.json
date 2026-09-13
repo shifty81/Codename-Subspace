@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "authorityId": "SUBSPACE-CHARACTER-CUSTOMIZATION-V1",
+  "canonicalType": "CharacterDefinition",
+  "editorWorkspace": "Character",
+  "sculpting": {
+    "interaction": "direct-zone-drag plus advanced morph inspector",
+    "fixedMorphCount": false,
+    "safeRangesAuthoredPerChannel": true
+  },
+  "categories": [
+    "Identity", "Body", "Face", "Skin", "Eyes", "Hair", "SkinDetail",
+    "Clothing", "Accessory", "Augmentation", "Portrait", "Rig", "Animation", "SourceAsset"
+  ],
+  "policies": {
+    "editorAuthoring": {
+      "structuralBody": true,
+      "structuralFace": true,
+      "rigAuthoring": true,
+      "animationAuthoring": true,
+      "sourceAssetAuthoring": true,
+      "portrait": true
+    },
+    "gameCreation": {
+      "structuralBody": true,
+      "structuralFace": true,
+      "editable": ["Identity","Body","Face","Skin","Eyes","Hair","SkinDetail","Clothing","Accessory","Augmentation","Portrait"]
+    },
+    "gameRecustomization": {
+      "structuralBody": false,
+      "structuralFace": false,
+      "editable": ["Skin","Eyes","Hair","SkinDetail","Clothing","Accessory","Augmentation","Portrait"],
+      "structuralResculptCanBeGrantedByGameplay": true
+    },
+    "gamePortraitOnly": {
+      "editable": ["Portrait"]
+    }
+  }
+}

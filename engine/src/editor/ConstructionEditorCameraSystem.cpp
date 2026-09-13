@@ -31,8 +31,18 @@ void ConstructionEditorCameraSystem::MoveFree(ConstructionEditorCameraState&s,fl
 void ConstructionEditorCameraSystem::AdjustSpeed(ConstructionEditorCameraState&s,float steps){s.moveSpeed=std::clamp(s.moveSpeed*std::exp(steps*.18f),.25f,500.0f);}
 void ConstructionEditorCameraSystem::Dolly(ConstructionEditorCameraState&s,float steps){
     if(s.mode==ConstructionCameraMode::FreeFly){s.eye=s.eye+s.forward*(steps*std::max(.25f,s.moveSpeed)*.35f);return;}
-    s.orbitDistance=std::clamp(s.orbitDistance*std::exp(-steps*.18f),.35f,5000.0f);
-    RebuildOrbitEye(s);
+    // Preserve the camera's current placement ray. Truck/pedestal changes the
+    // eye without rewriting yaw/pitch; rebuilding from those stale angles made
+    // the next wheel zoom snap back to an earlier orbit placement.
+    const Vector3 fromTarget=s.eye-s.assemblyCenter;
+    const Vector3 direction=Normalize(fromTarget,{0.0f,-1.0f,0.0f});
+    s.orbitDistance=std::clamp(std::max(.25f,fromTarget.length())*std::exp(-steps*.18f),.35f,5000.0f);
+    s.eye=s.assemblyCenter+direction*s.orbitDistance;
+    s.forward=Normalize(s.assemblyCenter-s.eye,s.forward);
+    // Synchronize orbit angles to the preserved ray so later RMB orbit starts
+    // from the exact zoomed view rather than the pre-pan orientation.
+    s.pitchDegrees=std::asin(std::clamp(direction.z,-1.0f,1.0f))*180.0f/kPi;
+    s.yawDegrees=std::atan2(direction.x,-direction.y)*180.0f/kPi;
 }
 Vector3 ConstructionEditorCameraSystem::Target(const ConstructionEditorCameraState&s){return s.mode==ConstructionCameraMode::FreeFly?s.eye+s.forward*std::max(2.0f,s.orbitDistance):s.assemblyCenter;}
 } // namespace subspace

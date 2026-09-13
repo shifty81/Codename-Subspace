@@ -4,7 +4,25 @@
 #include <string>
 #include <vector>
 namespace subspace {
-enum class EditorWorkspaceKind { Shipyard, StationBuilder, TurretLab, PlanetSector, MaterialStudio, PcgStudio, BlueprintLibrary };
+enum class EditorWorkspaceKind {
+    Shipyard,
+    StationBuilder,
+    TurretLab,
+    PlanetSector,
+    MaterialStudio,
+    PcgStudio,
+    BlueprintLibrary,
+    Layout,
+    Character,
+    World,
+    Interior,
+    Modeling,
+    Animation,
+    Vfx,
+    Audio,
+    Logic,
+    Diagnostics
+};
 enum class EditorDocumentState { Clean, Dirty, Draft, Invalid };
 struct EditorDocument { std::string id,displayName; EditorWorkspaceKind workspace=EditorWorkspaceKind::Shipyard; EditorDocumentState state=EditorDocumentState::Clean; std::string sourcePath; bool readOnly=false; };
 struct EditorWorkspaceDescriptor { EditorWorkspaceKind kind=EditorWorkspaceKind::Shipyard; std::string id,displayName,description; bool playerVisible=false,authoringVisible=true; };

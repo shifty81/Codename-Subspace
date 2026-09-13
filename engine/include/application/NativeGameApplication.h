@@ -15,6 +15,7 @@
 #include "economy/PlanetaryIndustrializationSystem.h"
 #include "navigation/TravelArrivalSystem.h"
 #include "interior/ShipEmbodimentSystem.h"
+#include "interior/ShipInteriorCarvingSystem.h"
 #include "hangar/DockingExperienceSystem.h"
 #include "ui/ProductionInterfaceSystem.h"
 #include "rendering/ForwardSpacePresentationSystem.h"
@@ -169,6 +170,7 @@ private:
     ShipyardRefitSession _shipyardRefit{};
     ProceduralShipVisualRecipe _playerShipRecipe{};
     ShipAppearanceState _playerShipAppearance{};
+    ShipInteriorCarvePlan _playerInteriorCarve{};
     bool _hasPlayerShipRecipe = false;
     bool _standaloneShipyard = false;
     bool _shipyardCameraCaptured = false;

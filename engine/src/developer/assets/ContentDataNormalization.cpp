@@ -7,9 +7,10 @@ namespace subspace {
 ContentNormalizationPlan BuildDefaultContentNormalizationPlan()
 {
     ContentNormalizationPlan plan;
-    plan.actions.push_back({ContentNormalizationActionKind::MoveToContentAssets, "Assets/Models", "content/assets/models", "legacy art/source asset folder"});
-    plan.actions.push_back({ContentNormalizationActionKind::MoveToContentData, "GameData", "content/data", "legacy gameplay data folder"});
-    plan.actions.push_back({ContentNormalizationActionKind::MoveToContentAssets, "assets/module_packs", "content/assets/module_packs", "active module pack content"});
+    plan.actions.push_back({ContentNormalizationActionKind::Keep, "GameData", "GameData", "canonical authored gameplay/runtime data root"});
+    plan.actions.push_back({ContentNormalizationActionKind::Keep, "content", "content", "canonical governed metadata/schema/provenance root"});
+    plan.actions.push_back({ContentNormalizationActionKind::MoveToContentAssets, "Assets/Models", "content/assets/models", "legacy art/source asset folder if present"});
+    plan.actions.push_back({ContentNormalizationActionKind::MoveToContentAssets, "assets/module_packs", "content/assets/module_packs", "legacy external module-pack root if present"});
     plan.actions.push_back({ContentNormalizationActionKind::MoveToReference, "reference/third_party", "reference/third_party", "third-party provenance source"});
     plan.actions.push_back({ContentNormalizationActionKind::ReviewManually, "AvorionLike", "reference/csharp-to-cpp-source", "migration source until port ledger says complete"});
     return plan;

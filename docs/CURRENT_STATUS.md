@@ -1,17 +1,7 @@
 # Current Project Status
 
-## Runtime
+`docs/STATUS.md` is the current status authority. This compatibility entry exists so historical links do not point at stale Pass746-era promotion instructions.
 
-Codename Subspace is a native C++17/OpenGL project. Legacy C# is retired from production and is historical donor/reference material only.
+Current line: **Pass902–911 deep project alignment normalization**, based on standalone PCC R6R2 + Pass892–901 editor dock foundation.
 
-## Current milestone
-
-**Pass746R2 — Shipyard Viewport/Shield Optimization + Repository Authority Normalization**
-
-This milestone covers static Shipyard subject framing, camera/flight separation, semantic-first kitbash classification, one-foot hull-profile pond-style shields with impact ripples, render optimization, historical source-gate closure, and normalized GitHub `main` publication.
-
-## Promotion sequence
-
-`Apply patch -> Prepare repository authority -> Full Quality Gate -> Publish GREEN normalized main`
-
-The Project Control Center is the supported interface for this sequence.
+Certification state: portable C++ configure/build and all registered CTest targets pass in the audit environment; Windows internal-PCC Full Gate is still required before the resulting tree may be called GREEN.
