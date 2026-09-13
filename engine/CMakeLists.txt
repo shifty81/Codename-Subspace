@@ -738,3 +738,14 @@ if(SUBSPACE_BUILD_TESTS)
     target_link_libraries(subspace_pass973_997_tests PRIVATE subspace_engine)
     add_test(NAME SubspacePass973To997RuntimeAssemblyAuthorityTests COMMAND subspace_pass973_997_tests)
 endif()
+
+
+# Pass998-1022: canonical Shipyard/runtime product bridge and explicit world
+# streaming handoffs. Existing certified recipes import into AssemblyDefinition;
+# renderer/collision/interior/nav products project from that one source, while
+# destination prefetch becomes an async residency/representation transaction.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_pass998_1022_tests tests/pass998_1022_shipyard_streaming_integration_tests.cpp)
+    target_link_libraries(subspace_pass998_1022_tests PRIVATE subspace_engine)
+    add_test(NAME SubspacePass998To1022ShipyardStreamingIntegrationTests COMMAND subspace_pass998_1022_tests)
+endif()

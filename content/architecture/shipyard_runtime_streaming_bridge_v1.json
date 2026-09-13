@@ -1,0 +1,35 @@
+{
+  "schema": "subspace.shipyard-runtime-streaming-bridge.v1",
+  "passes": "998-1022",
+  "baselineCommit": "49ae7ce84b1bf76d3d168c76a22019a156978f2e",
+  "shipyardImport": {
+    "source": ["ShipyardModuleRecord", "ProceduralShipVisualRecipe"],
+    "target": "AssemblyDefinition",
+    "persistentIdentityRequired": true,
+    "legacyRecipePreserved": true,
+    "canonicalEditAuthority": "ShipyardAssemblySession"
+  },
+  "runtimeProducts": [
+    "render_instances",
+    "collision_proxies",
+    "aggregate_bounds",
+    "center_of_mass",
+    "interior_candidate_volumes",
+    "portal_edges",
+    "navigation_anchors",
+    "propulsion_ports",
+    "deterministic_product_fingerprint"
+  ],
+  "streaming": {
+    "queueAuthority": "WorldSimulationAuthority",
+    "bridge": "WorldStreamingIntegrationSystem",
+    "states": ["requested", "waiting_for_residency", "ready", "activated", "failed"],
+    "rule": "Full representation is published only after destination residency completes"
+  },
+  "forbiddenParallelAuthority": [
+    "editor-only ship identity",
+    "renderer-owned assembly graph",
+    "streamer-owned persistent identity",
+    "implicit Full representation before residency"
+  ]
+}

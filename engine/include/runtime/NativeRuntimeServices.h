@@ -21,6 +21,7 @@
 #include "fleet/CorporationProgressionSystem.h"
 #include "runtime/PersistentUniverseSystem.h"
 #include "runtime/WorldSimulationAuthority.h"
+#include "runtime/WorldStreamingIntegrationSystem.h"
 #include "runtime/SandboxAcceptanceIISystem.h"
 #include "integration/CombatShipIntegration.h"
 #include "integration/NavigationMiningIntegration.h"
@@ -80,6 +81,8 @@ public:
     PersistentUniverseSystem persistentUniverse;
     // Pass973-986: one representation-independent world composition authority.
     WorldSimulationAuthority worldSimulation;
+    // Pass1020-1022: explicit async destination streaming handoff bridge.
+    WorldStreamingIntegrationSystem worldStreaming;
     SandboxAcceptanceIISystem sandboxAcceptanceII;
 
     // Pass266-295 normalized production integration authorities.
