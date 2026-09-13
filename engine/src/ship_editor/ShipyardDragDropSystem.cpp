@@ -65,4 +65,58 @@ bool ShipyardDragDropSystem::SelectBest(ShipyardDragPreview& p){
     p.selectedCandidate=0;p.ghost=p.candidates.front().placement;p.valid=!p.candidates.front().collisionRisk;p.snapped=true;p.freePlacement=false;
     p.status=p.valid?(std::string("SNAP READY / ")+UniversalKitbashAuthority::SizeName(p.resolvedSize)+(p.sizeAdjusted?" (SIZE CLAMPED)":"")):"COLLISION";return p.valid;
 }
+
+bool ShipyardDragDropSystem::Stage(ShipyardDragPreview& p){
+    if(!p.active||!p.valid)return false;
+    p.staged=true;
+    p.status=p.snapped?"STAGED SNAP / TRANSFORM OR CONFIRM":"STAGED FREE / TRANSFORM OR CONFIRM";
+    return true;
+}
+
+bool ShipyardDragDropSystem::CycleCandidate(ShipyardDragPreview& p,int delta){
+    if(!p.active||p.candidates.empty())return false;
+    const int count=static_cast<int>(p.candidates.size());
+    int index=p.selectedCandidate<0?0:p.selectedCandidate;
+    index=(index+delta)%count;if(index<0)index+=count;
+    p.selectedCandidate=index;
+    const auto& c=p.candidates[static_cast<std::size_t>(index)];
+    p.ghost=c.placement;p.valid=!c.collisionRisk;p.snapped=true;p.freePlacement=false;p.staged=true;
+    p.status=std::string("STAGED SNAP ")+std::to_string(index+1)+"/"+std::to_string(count)+" / TRANSFORM OR CONFIRM";
+    return true;
+}
+
+bool ShipyardDragDropSystem::TranslateStaged(ShipyardDragPreview& p,const Vector3& delta,bool snap,float snapStep){
+    if(!p.active||!p.staged)return false;
+    p.ghost.x+=delta.x;p.ghost.y+=delta.y;p.ghost.z+=delta.z;
+    if(snap&&snapStep>0.0f){
+        auto q=[&](float v){return std::round(v/snapStep)*snapStep;};
+        p.ghost.x=q(p.ghost.x);p.ghost.y=q(p.ghost.y);p.ghost.z=q(p.ghost.z);
+    }
+    p.selectedCandidate=-1;p.snapped=false;p.freePlacement=true;p.valid=true;
+    p.status="STAGED FREE / MOVE / ROTATE / CONFIRM";
+    return true;
+}
+
+bool ShipyardDragDropSystem::RotateStaged(ShipyardDragPreview& p,const Vector3& deltaDegrees,bool snap,float rotationStepDegrees){
+    if(!p.active||!p.staged)return false;
+    p.ghost.pitchDegrees+=deltaDegrees.x;p.ghost.yawDegrees+=deltaDegrees.y;p.ghost.rollDegrees+=deltaDegrees.z;
+    if(snap&&rotationStepDegrees>0.0f){
+        auto q=[&](float v){return std::round(v/rotationStepDegrees)*rotationStepDegrees;};
+        p.ghost.pitchDegrees=q(p.ghost.pitchDegrees);p.ghost.yawDegrees=q(p.ghost.yawDegrees);p.ghost.rollDegrees=q(p.ghost.rollDegrees);
+    }
+    p.selectedCandidate=-1;p.snapped=false;p.freePlacement=true;p.valid=true;
+    p.status="STAGED FREE / ROTATED / CONFIRM OR PICK SNAP";
+    return true;
+}
+
+bool ShipyardDragDropSystem::ScaleStaged(ShipyardDragPreview& p,float delta,float minimum,float maximum){
+    if(!p.active||!p.staged)return false;
+    const float current=(p.ghost.scaleX+p.ghost.scaleY+p.ghost.scaleZ)/3.0f;
+    const float next=std::clamp(current+delta,minimum,maximum);
+    p.ghost.scaleX=p.ghost.scaleY=p.ghost.scaleZ=next;
+    p.resolvedUniformScale=next;p.selectedCandidate=-1;p.snapped=false;p.freePlacement=true;p.valid=true;
+    p.status="STAGED FREE / RESIZED / CONFIRM OR PICK SNAP";
+    return true;
+}
+
 } // namespace subspace

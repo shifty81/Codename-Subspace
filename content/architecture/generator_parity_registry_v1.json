@@ -1,0 +1,18 @@
+{
+  "schema": "subspace.generator-parity-registry.v1",
+  "authority": "GeneratorParitySystem",
+  "clients": ["runtime.shipyard", "blender.SubspaceShipyard"],
+  "rule": "Clients share requests and outputs; Blender must not fork procedural generation math.",
+  "requestSchema": "subspace.generator-request.v1",
+  "domains": [
+    {"id":"ship","runtimeAuthority":"ShipyardBuilderSystem / ShipPcgRuntimeClosureSystem","seed":true,"role":true,"class":true,"size":true},
+    {"id":"shuttle","runtimeAuthority":"ShipyardBuilderSystem / Shuttle profile","seed":true,"role":true,"class":true,"size":true},
+    {"id":"rover","runtimeAuthority":"UniversalConstructionSystem vehicle domain","seed":true,"role":true,"class":false,"size":true},
+    {"id":"station","runtimeAuthority":"StationWorkspaceSystem / StationDesignDnaSystem","seed":true,"role":true,"class":false,"size":true},
+    {"id":"interior","runtimeAuthority":"InteriorConstructionSystem / ShipInteriorCarvingSystem","seed":true,"role":true,"class":false,"size":true},
+    {"id":"prop","runtimeAuthority":"ShipyardModelingSystem / AuthoringStandardsSystem","seed":true,"role":false,"class":false,"size":true},
+    {"id":"character","runtimeAuthority":"CharacterCustomizationSystem / CharacterAnimationLibrarySystem","seed":true,"role":false,"class":false,"size":true},
+    {"id":"planet_world","runtimeAuthority":"PlanetWorldEngineSystem","seed":true,"role":true,"class":false,"size":false},
+    {"id":"solar_system","runtimeAuthority":"SystemTopologySystem / OrbitalDynamicsSystem","seed":true,"role":false,"class":false,"size":false}
+  ]
+}

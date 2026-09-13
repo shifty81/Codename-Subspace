@@ -13,6 +13,7 @@
 #include "ships/ShipyardVisualAuthoritySystem.h"
 #include "ships/ShipyardAuthoredShipSystem.h"
 #include "ships/ShipPcgRuntimeClosureSystem.h"
+#include "ships/ShipClassRoleSystem.h"
 #include "input/InputState.h"
 #include "mining/MiningSalvageLoop.h"
 #include "rendering/SpaceMaterialSystem.h"
@@ -27,6 +28,7 @@
 #include "rendering/SolarPresentationSystem.h"
 #include "rendering/PlanetAtmospherePresentationSystem.h"
 #include "rendering/PlanetWeatherSystem.h"
+#include "rendering/ConformalShieldSurfaceSystem.h"
 #include "rendering/GasGiantWeatherSystem.h"
 #include "effects/PropulsionVisualSystem.h"
 #include "editor/EditorGizmoSystem.h"
@@ -91,6 +93,7 @@ struct NativeBattlefieldRenderer::VisualAssets {
     std::unordered_map<std::string, PlanetTextureDiagnostic> planetTextureDiagnostics;
     float lastCelestialTelemetryLog = -100.0f;
     std::unordered_map<std::string, unsigned int> shipTextures;
+    std::array<unsigned int,4> proceduralShipTextures{{0,0,0,0}}; // hull, structural, machinery, canopy
     bool importedPlanetPackReady = false;
 };
 
@@ -353,6 +356,47 @@ GLuint LoadWicTexture2D(const fs::path& path, PlanetTextureDiagnostic* diagnosti
     if(diagnostic){diagnostic->width=static_cast<int>(w);diagnostic->height=static_cast<int>(h);diagnostic->mipLevels=mipLevels;diagnostic->anisotropy=anisotropy;}
     if(converter)converter->Release();if(frame)frame->Release();if(decoder)decoder->Release();if(factory)factory->Release();if(uninit)CoUninitialize();
     return texture;
+}
+
+GLuint BuildProceduralShipTexture(int family){
+    constexpr int w=64,h=64;
+    std::vector<unsigned char> pixels(static_cast<std::size_t>(w*h*4),255);
+    for(int y=0;y<h;++y)for(int x=0;x<w;++x){
+        const int cellX=x/16,cellY=y/16;
+        const bool seam=(x%16==0)||(y%16==0);
+        const bool inset=(x%16==1)||(y%16==1);
+        const unsigned hash=static_cast<unsigned>((x*1103515245u+y*12345u+family*2654435761u)^(cellX*97+cellY*193));
+        float value=.86f+static_cast<float>(hash&15u)/15.0f*.10f;
+        if(seam)value=.34f;else if(inset)value=.58f;
+        float r=value,g=value,b=value;
+        if(family==1){r*=.86f;g*=.91f;b*=.96f;}          // structural cool metal
+        else if(family==2){r*=.68f;g*=.73f;b*=.78f;}     // machinery/engine darker
+        else if(family==3){r*=.42f;g*=.72f;b*=.88f;}     // canopy tint
+        const auto i=(static_cast<std::size_t>(y)*w+x)*4;
+        pixels[i+0]=static_cast<unsigned char>(std::clamp(r,0.0f,1.0f)*255.0f);
+        pixels[i+1]=static_cast<unsigned char>(std::clamp(g,0.0f,1.0f)*255.0f);
+        pixels[i+2]=static_cast<unsigned char>(std::clamp(b,0.0f,1.0f)*255.0f);
+        pixels[i+3]=255;
+    }
+    GLuint texture=0;glGenTextures(1,&texture);glBindTexture(GL_TEXTURE_2D,texture);glPixelStorei(GL_UNPACK_ALIGNMENT,1);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
+    glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,w,h,0,GL_RGBA,GL_UNSIGNED_BYTE,pixels.data());glBindTexture(GL_TEXTURE_2D,0);
+    return texture;
+}
+
+void InitializeProceduralShipTextures(NativeBattlefieldRenderer::VisualAssets& assets){
+    for(int i=0;i<4;++i)if(!assets.proceduralShipTextures[static_cast<std::size_t>(i)])
+        assets.proceduralShipTextures[static_cast<std::size_t>(i)]=BuildProceduralShipTexture(i);
+    Logger::Instance().Info("Renderer","Procedural material fallback ready for untextured hull/structural/engine/canopy regions.");
+}
+
+GLuint ProceduralShipTextureFor(const NativeBattlefieldRenderer::VisualAssets& assets,SpaceMaterialKind kind){
+    std::size_t slot=0;
+    if(kind==SpaceMaterialKind::Canopy)slot=3;
+    else if(kind==SpaceMaterialKind::EngineHousing||kind==SpaceMaterialKind::ThrusterCore)slot=2;
+    else if(kind==SpaceMaterialKind::StructuralMetal)slot=1;
+    return static_cast<GLuint>(assets.proceduralShipTextures[slot]);
 }
 
 void LoadImportedPlanetTextures(NativeBattlefieldRenderer::VisualAssets& assets){
@@ -1172,6 +1216,26 @@ std::size_t ShieldRecipeHash(const ProceduralShipVisualRecipe& recipe){
 }
 
 struct ShieldLocalTriangle{Vector3 a,b,c,n,center;float phase=0.0f;};
+Vector3 InversePlacementPoint(const VisualModulePlacement& p,Vector3 v){
+    v=v-Vector3{p.x,p.y,p.z};
+    if(std::fabs(p.yawDegrees)>.001f)v=RotateZ3(v,-p.yawDegrees*kPi/180.0f);
+    if(std::fabs(p.pitchDegrees)>.001f)v=RotateX3(v,-p.pitchDegrees*kPi/180.0f);
+    if(std::fabs(p.rollDegrees)>.001f)v=RotateY3(v,-p.rollDegrees*kPi/180.0f);
+    const float sx=(p.mirrorX?-p.scaleX:p.scaleX),sy=(p.mirrorY?-p.scaleY:p.scaleY),sz=(p.mirrorZ?-p.scaleZ:p.scaleZ);
+    v.x/=std::fabs(sx)>.0001f?sx:1.0f;v.y/=std::fabs(sy)>.0001f?sy:1.0f;v.z/=std::fabs(sz)>.0001f?sz:1.0f;
+    return v;
+}
+bool PointBuriedInsideAnotherModule(const NativeBattlefieldRenderer::VisualAssets& assets,const ProceduralShipVisualRecipe& recipe,std::size_t owner,const Vector3& assembledPoint){
+    constexpr float kInteriorMargin=.0125f;
+    for(std::size_t i=0;i<recipe.modules.size();++i){
+        if(i==owner)continue;const auto& other=recipe.modules[i];const auto meshIt=assets.shipModules.find(other.moduleId);if(meshIt==assets.shipModules.end())continue;
+        const auto bounds=CachedSourceLocalBounds(meshIt->second);if(!bounds.valid)continue;const auto local=InversePlacementPoint(other,assembledPoint);
+        if(local.x>bounds.min.x+kInteriorMargin&&local.x<bounds.max.x-kInteriorMargin&&
+           local.y>bounds.min.y+kInteriorMargin&&local.y<bounds.max.y-kInteriorMargin&&
+           local.z>bounds.min.z+kInteriorMargin&&local.z<bounds.max.z-kInteriorMargin)return true;
+    }
+    return false;
+}
 const std::vector<ShieldLocalTriangle>& CachedShieldTriangles(const NativeBattlefieldRenderer::VisualAssets& assets,const ProceduralShipVisualRecipe& recipe){
     static std::unordered_map<std::size_t,std::vector<ShieldLocalTriangle>> cache;
     const auto key=ShieldRecipeHash(recipe);auto found=cache.find(key);if(found!=cache.end())return found->second;
@@ -1179,8 +1243,8 @@ const std::vector<ShieldLocalTriangle>& CachedShieldTriangles(const NativeBattle
     std::vector<ShieldLocalTriangle> built;
     std::size_t triangleCount=0;for(const auto& p:recipe.modules){const auto it=assets.shipModules.find(p.moduleId);if(it!=assets.shipModules.end())triangleCount+=it->second.triangles.size();}
     built.reserve(triangleCount);
-    for(const auto& p:recipe.modules){
-        const auto it=assets.shipModules.find(p.moduleId);if(it==assets.shipModules.end())continue;const auto& mesh=it->second;
+    for(std::size_t moduleIndex=0;moduleIndex<recipe.modules.size();++moduleIndex){
+        const auto& p=recipe.modules[moduleIndex];const auto it=assets.shipModules.find(p.moduleId);if(it==assets.shipModules.end())continue;const auto& mesh=it->second;
         const auto sourceBounds=CachedSourceLocalBounds(mesh);const Vector3 sourceCenter=sourceBounds.valid?(sourceBounds.min+sourceBounds.max)*.5f:Vector3{};const Vector3 moduleCenter=TransformPlacementPoint(p,sourceCenter);
         for(const auto& tri:mesh.triangles){
             if(tri.position[0]<0||tri.position[1]<0||tri.position[2]<0||tri.position[0]>=static_cast<int>(mesh.positions.size())||tri.position[1]>=static_cast<int>(mesh.positions.size())||tri.position[2]>=static_cast<int>(mesh.positions.size()))continue;
@@ -1188,7 +1252,14 @@ const std::vector<ShieldLocalTriangle>& CachedShieldTriangles(const NativeBattle
             const Vector3 b=TransformPlacementPoint(p,RemapObjVertex(mesh.positions[tri.position[1]]));
             const Vector3 c=TransformPlacementPoint(p,RemapObjVertex(mesh.positions[tri.position[2]]));
             Vector3 n=Cross3(b-a,c-a).normalized();if(n.length()<=1.0e-6f)continue;
-            const Vector3 center=(a+b+c)*(1.0f/3.0f);if((n.x*(center.x-moduleCenter.x)+n.y*(center.y-moduleCenter.y)+n.z*(center.z-moduleCenter.z))<0.0f)n=n*-1.0f;
+            const Vector3 center=(a+b+c)*(1.0f/3.0f);
+            // The shield follows the assembly's exterior union approximation,
+            // not every overlapping module face. Faces buried by another
+            // module are culled here so the visible shield reads as one shell
+            // instead of stacked module-shaped panels. The cohesive bake later
+            // becomes the exact production shell source.
+            if(PointBuriedInsideAnotherModule(assets,recipe,moduleIndex,center))continue;
+            if((n.x*(center.x-moduleCenter.x)+n.y*(center.y-moduleCenter.y)+n.z*(center.z-moduleCenter.z))<0.0f)n=n*-1.0f;
             built.push_back({a,b,c,n,center,center.x*.73f+center.y*.41f+center.z*.57f});
         }
     }
@@ -1279,20 +1350,22 @@ void DrawObjMesh(const NativeBattlefieldRenderer::VisualAssets& assets,const Obj
         return style;
     };
     if(mesh.materialNames.empty()){
-        SetShipBaseTexture(0);Rgba c=color;c.a*=alpha;SetMaterial(c,48.0f,emission,kind);glBegin(GL_TRIANGLES);for(const auto& tri:mesh.triangles)drawTriangle(tri);glEnd();return;
+        SetShipBaseTexture(ProceduralShipTextureFor(assets,kind));Rgba c=color;c.a*=alpha;SetMaterial(c,48.0f,emission,kind);glBegin(GL_TRIANGLES);for(const auto& tri:mesh.triangles)drawTriangle(tri);glEnd();SetShipBaseTexture(0);return;
     }
     for(std::size_t mi=0;mi<mesh.materialNames.size();++mi){
         const auto* sourceMaterial=materialFor(mi);
         const auto zone=ShipyardPaintZoneSystem::ForMaterial(mesh.materialNames[mi]);
         auto style=applySource(sourceMaterial,ShipyardSourceMaterial(mesh.materialNames[mi],color,alpha,kind,appearance),ShipyardPaintZoneSystem::IsPaintable(zone));
         SetMaterial(style.color,style.shininess,std::max(emission,style.emission),style.kind,style.metallic,style.roughness);
-        SetShipBaseTexture(textureFor(sourceMaterial));
+        GLuint sourceTexture=textureFor(sourceMaterial);
+        if(!sourceTexture)sourceTexture=ProceduralShipTextureFor(assets,style.kind);
+        SetShipBaseTexture(sourceTexture);
         const bool transparent=style.color.a<.99f;if(transparent){glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);}
         glBegin(GL_TRIANGLES);for(const auto& tri:mesh.triangles)if(tri.materialIndex==static_cast<int>(mi))drawTriangle(tri);glEnd();
         if(transparent)glDisable(GL_BLEND);SetShipBaseTexture(0);
     }
     bool hasUnassigned=false;for(const auto& tri:mesh.triangles)if(tri.materialIndex<0){hasUnassigned=true;break;}
-    if(hasUnassigned){SetShipBaseTexture(0);Rgba c=color;c.a*=alpha;SetMaterial(c,48.0f,emission,kind);glBegin(GL_TRIANGLES);for(const auto& tri:mesh.triangles)if(tri.materialIndex<0)drawTriangle(tri);glEnd();}
+    if(hasUnassigned){SetShipBaseTexture(ProceduralShipTextureFor(assets,kind));Rgba c=color;c.a*=alpha;SetMaterial(c,48.0f,emission,kind);glBegin(GL_TRIANGLES);for(const auto& tri:mesh.triangles)if(tri.materialIndex<0)drawTriangle(tri);glEnd();SetShipBaseTexture(0);}
 }
 
 bool DrawModule(const NativeBattlefieldRenderer::VisualAssets& assets,const char* name,
@@ -2209,11 +2282,17 @@ void DrawShipProfileShield(const NativeBattlefieldRenderer::VisualAssets& assets
                            const ProceduralShipVisualRecipe* recipe,const ShipRenderAxisScale& axis,
                            float shieldFraction,float timeSeconds,const NativeBattlefieldFrame& frame) {
     shieldFraction=std::clamp(shieldFraction,0.0f,1.0f);if(shieldFraction<=0.005f||!recipe||recipe->modules.empty())return;
-    constexpr float kShieldGapWorld=0.3048f; // one foot from the rendered hull surface
-    constexpr float kShieldCalmWaveHeightWorld=0.0060f; // nearly-still pond surface
-    constexpr float kShieldImpactWaveHeightWorld=0.065f; // localized strike ripple crest
-    constexpr float kShieldRippleLifetime=2.35f;
+    const auto shieldPolicy=ConformalShieldSurfaceSystem::DefaultPolicy();
+    const float kShieldGapWorld=shieldPolicy.hullGapMeters;
+    const float kShieldCalmWaveHeightWorld=shieldPolicy.calmWaveAmplitudeMeters;
+    const float kShieldImpactWaveHeightWorld=shieldPolicy.impactWaveAmplitudeMeters;
+    const float kShieldRippleLifetime=shieldPolicy.rippleLifetimeSeconds;
     const auto& triangles=CachedShieldTriangles(assets,*recipe);if(triangles.empty())return;
+    ShieldSurfaceBudgetContext budgetContext;budgetContext.sourceTriangleCount=triangles.size();
+    budgetContext.visibleShieldCount=std::max<std::size_t>(1,frame.fleetRuntime.ships.size()+1);
+    budgetContext.localPlayer=frame.playerPhysics==&p;budgetContext.editorPreview=frame.shipBuilderRecipe==recipe;
+    const auto shieldBudget=ConformalShieldSurfaceSystem::Select(budgetContext,shieldPolicy);
+    if(shieldBudget.lod==ShieldSurfaceLod::StrategicOnly)return;
     const float rootYaw=p.rotation.z+RecipeForwardVisualYawRadians(recipe);
 
     // Keep a tiny, bounded visual state per shielded physics body.  Nearby
@@ -2221,7 +2300,7 @@ void DrawShipProfileShield(const NativeBattlefieldRenderer::VisualAssets& assets
     // measured shield-energy drop provides a generic fallback for beams or
     // other damage sources that do not currently publish a renderer hit point.
     static std::unordered_map<const PhysicsComponent*,ShieldSurfaceState> surfaceStates;
-    if(surfaceStates.size()>32)surfaceStates.clear();
+    if(surfaceStates.size()>256)surfaceStates.clear();
     auto& surface=surfaceStates[&p];
     bool seededExactImpact=false;
 
@@ -2279,14 +2358,16 @@ void DrawShipProfileShield(const NativeBattlefieldRenderer::VisualAssets& assets
     for(auto& pulse:surface.pulses){
         if(!pulse.active)continue;const float age=timeSeconds-pulse.started;
         if(age<0.0f||age>kShieldRippleLifetime){if(age>kShieldRippleLifetime)pulse.active=false;continue;}
-        activeRipples[activeRippleCount++]={pulse.localPoint,age,std::exp(-age*1.55f)*pulse.strength};
+        if(activeRippleCount<shieldBudget.rippleBudget&&activeRippleCount<activeRipples.size())
+            activeRipples[activeRippleCount++]={pulse.localPoint,age,std::exp(-age*1.55f)*pulse.strength};
     }
 
     const float baseAlpha=.016f+.040f*shieldFraction;
     DisableShader();SetShipBaseTexture(0);glDisable(GL_LIGHTING);glEnable(GL_DEPTH_TEST);glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);glDepthMask(GL_FALSE);
     glPushMatrix();glTranslatef(p.position.x,p.position.y,0.30f);glRotatef(rootYaw*180.0f/kPi,0,0,1);glScalef(axis.x,axis.y,axis.z);
     glBegin(GL_TRIANGLES);
-    for(const auto& tri:triangles){
+    for(std::size_t triangleIndex=0;triangleIndex<triangles.size();triangleIndex+=shieldBudget.triangleStride){
+        const auto& tri=triangles[triangleIndex];
         const Vector3 center=tri.center;
         float rippleHeight=0.0f,impactEnergy=0.0f;
         for(std::size_t ri=0;ri<activeRippleCount;++ri){
@@ -2299,7 +2380,7 @@ void DrawShipProfileShield(const NativeBattlefieldRenderer::VisualAssets& assets
         }
 
         const float calmPhase=timeSeconds*.62f+tri.phase*.22f+center.x*.13f+center.y*.09f;
-        const float calmWave=(std::sin(calmPhase)+.45f*std::sin(calmPhase*.63f+1.7f))*kShieldCalmWaveHeightWorld;
+        const float calmWave=shieldBudget.animateCalmWater?(std::sin(calmPhase)+.45f*std::sin(calmPhase*.63f+1.7f))*kShieldCalmWaveHeightWorld:0.0f;
         Vector3 wn{tri.n.x/std::max(.0001f,std::fabs(axis.x)),tri.n.y/std::max(.0001f,std::fabs(axis.y)),tri.n.z/std::max(.0001f,std::fabs(axis.z))};
         wn=wn.normalized();
         const float offsetWorld=kShieldGapWorld+calmWave+rippleHeight;
@@ -2322,77 +2403,17 @@ void DrawPlayableInterior(const NativeBattlefieldFrame& frame) {
     if(!frame.playerPhysics)return;
     const auto& p=frame.playerPhysics->position;
     DisableSceneLighting();glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
-
-    const auto* carve=frame.playerInteriorCarve;
-    if(carve && !carve->volumes.empty()){
-        constexpr float kInteriorDisplayScale=0.72f;
-        Vector3 minP{1.0e9f,1.0e9f,1.0e9f},maxP{-1.0e9f,-1.0e9f,-1.0e9f};
-        for(const auto& v:carve->volumes){
-            minP.x=std::min(minP.x,v.center.x-v.halfExtents.x);minP.y=std::min(minP.y,v.center.y-v.halfExtents.y);minP.z=std::min(minP.z,v.center.z-v.halfExtents.z);
-            maxP.x=std::max(maxP.x,v.center.x+v.halfExtents.x);maxP.y=std::max(maxP.y,v.center.y+v.halfExtents.y);maxP.z=std::max(maxP.z,v.center.z+v.halfExtents.z);
-        }
-        const Vector3 carveCenter=(minP+maxP)*0.5f;
-        const int activeDeck=std::max(0,frame.interiorAvatar.deck);
-        const auto roomColor=[](InteriorRoomType t)->Rgba{
-            switch(t){
-                case InteriorRoomType::Cockpit:return {0.10f,0.34f,0.43f,1.0f};
-                case InteriorRoomType::Engineering:case InteriorRoomType::Reactor:return {0.42f,0.27f,0.10f,1.0f};
-                case InteriorRoomType::Cargo:return {0.15f,0.37f,0.29f,1.0f};
-                case InteriorRoomType::CrewQuarters:case InteriorRoomType::Medbay:return {0.24f,0.30f,0.42f,1.0f};
-                case InteriorRoomType::Airlock:return {0.40f,0.32f,0.13f,1.0f};
-                case InteriorRoomType::Workshop:return {0.34f,0.24f,0.18f,1.0f};
-                default:return {0.18f,0.23f,0.25f,1.0f};
-            }
-        };
-        const auto worldOf=[&](const Vector3& q){return Vector3{p.x+(q.x-carveCenter.x)*kInteriorDisplayScale,p.y+(q.y-carveCenter.y)*kInteriorDisplayScale,0.0f};};
-
-        // Portal/corridor floors are drawn first so room shells read as one
-        // continuous interior instead of disconnected boxes.
-        for(const auto& portal:carve->portals){
-            if(!portal.walkable)continue;
-            const InteriorCarvedVolume* a=nullptr;const InteriorCarvedVolume* b=nullptr;
-            for(const auto& v:carve->volumes){if(v.moduleIndex==portal.moduleA)a=&v;if(v.moduleIndex==portal.moduleB)b=&v;}
-            if(!a||!b||a->deck!=activeDeck||b->deck!=activeDeck)continue;
-            const auto aw=worldOf(a->center),bw=worldOf(b->center);const float dx=bw.x-aw.x,dy=bw.y-aw.y;const float len=std::sqrt(dx*dx+dy*dy);if(len<.05f)continue;
-            glPushMatrix();glTranslatef((aw.x+bw.x)*.5f,(aw.y+bw.y)*.5f,0.035f);glRotatef(std::atan2(dy,dx)*180.0f/kPi,0,0,1);
-            DrawBox(0,0,0,len*.5f+.20f,0.48f,0.08f,{0.10f,0.16f,0.18f,1.0f});
-            glPopMatrix();
-        }
-
-        for(const auto& v:carve->volumes){
-            if(v.deck!=activeDeck)continue;
-            const auto c=worldOf(v.center);const float hx=std::max(.25f,v.halfExtents.x*kInteriorDisplayScale),hy=std::max(.25f,v.halfExtents.y*kInteriorDisplayScale);
-            const auto tint=roomColor(v.roomType);
-            glPushMatrix();glTranslatef(c.x,c.y,0.0f);glRotatef(v.yawDegrees,0,0,1);
-            DrawBox(0,0,0.02f,hx,hy,0.09f,{tint.r*.38f,tint.g*.38f,tint.b*.38f,1.0f});
-            // Thin pressure-hull boundary. Connected corridor floors visually
-            // bridge these shells; final mesh extraction will boolean portal
-            // openings into the wall skin rather than drawing independent boxes.
-            const float wh=.08f,wallZ=.34f;
-            DrawBox(0, hy, wallZ,hx,wh,.62f,{0.18f,0.23f,0.25f,.92f});
-            DrawBox(0,-hy, wallZ,hx,wh,.62f,{0.18f,0.23f,0.25f,.92f});
-            DrawBox(-hx,0, wallZ,wh,hy,.62f,{0.18f,0.23f,0.25f,.92f});
-            DrawBox( hx,0, wallZ,wh,hy,.62f,{0.18f,0.23f,0.25f,.92f});
-            DrawBox(0,0,0.16f,std::max(.18f,hx*.42f),std::max(.18f,hy*.28f),.16f,tint);
-            glPopMatrix();
-        }
-
-        // Visible carve status marker: green when every carved cavity is
-        // reachable from command/root, amber when a draft still needs repair.
-        const Rgba topo=carve->valid?Rgba{0.18f,0.78f,0.52f,.60f}:Rgba{0.92f,0.56f,0.16f,.72f};
-        Ring(p.x,p.y,0.46f,std::max(1.5f,std::min(5.0f,(maxP.x-minP.x+maxP.y-minP.y)*.09f)),topo,1.0f,44);
-    }else{
-        // Compatibility fallback only when the assembly has no carve authority.
-        DrawBox(p.x,p.y,0.02f,4.2f,5.8f,0.10f,{0.045f,0.065f,0.074f,1.0f});
-        DrawBox(p.x,p.y+2.82f,0.34f,4.2f,0.12f,0.62f,{0.18f,0.23f,0.25f,1.0f});
-        DrawBox(p.x,p.y-2.82f,0.34f,4.2f,0.12f,0.62f,{0.18f,0.23f,0.25f,1.0f});
-        DrawBox(p.x-2.04f,p.y,0.34f,0.12f,5.7f,0.62f,{0.18f,0.23f,0.25f,1.0f});
-        DrawBox(p.x+2.04f,p.y,0.34f,0.12f,5.7f,0.62f,{0.18f,0.23f,0.25f,1.0f});
-        DrawBox(p.x,p.y+1.55f,0.16f,2.8f,1.12f,0.20f,{0.10f,0.34f,0.43f,1.0f});
-        DrawBox(p.x-1.05f,p.y-0.20f,0.17f,1.35f,1.55f,0.22f,{0.42f,0.27f,0.10f,1.0f});
-        DrawBox(p.x+1.05f,p.y-0.20f,0.17f,1.35f,1.55f,0.22f,{0.15f,0.37f,0.29f,1.0f});
-        DrawBox(p.x,p.y-1.85f,0.17f,2.9f,0.82f,0.22f,{0.28f,0.31f,0.34f,1.0f});
-    }
+    // One compact starter deck; later ship construction metadata can replace
+    // these room bounds without changing the embodiment/camera authority.
+    DrawBox(p.x,p.y,0.02f,4.2f,5.8f,0.10f,{0.045f,0.065f,0.074f,1.0f});
+    DrawBox(p.x,p.y+2.82f,0.34f,4.2f,0.12f,0.62f,{0.18f,0.23f,0.25f,1.0f});
+    DrawBox(p.x,p.y-2.82f,0.34f,4.2f,0.12f,0.62f,{0.18f,0.23f,0.25f,1.0f});
+    DrawBox(p.x-2.04f,p.y,0.34f,0.12f,5.7f,0.62f,{0.18f,0.23f,0.25f,1.0f});
+    DrawBox(p.x+2.04f,p.y,0.34f,0.12f,5.7f,0.62f,{0.18f,0.23f,0.25f,1.0f});
+    DrawBox(p.x,p.y+1.55f,0.16f,2.8f,1.12f,0.20f,{0.10f,0.34f,0.43f,1.0f}); // cockpit
+    DrawBox(p.x-1.05f,p.y-0.20f,0.17f,1.35f,1.55f,0.22f,{0.42f,0.27f,0.10f,1.0f}); // furnace/engineering
+    DrawBox(p.x+1.05f,p.y-0.20f,0.17f,1.35f,1.55f,0.22f,{0.15f,0.37f,0.29f,1.0f}); // cargo/fabrication
+    DrawBox(p.x,p.y-1.85f,0.17f,2.9f,0.82f,0.22f,{0.28f,0.31f,0.34f,1.0f});
     const Vector3 av{p.x+frame.interiorAvatar.localPosition.x*0.72f,p.y+frame.interiorAvatar.localPosition.y*0.72f,0.50f};
     DrawSphere(av.x,av.y,av.z,0.18f,{0.88f,0.66f,0.22f,1.0f},16,8,SpaceMaterialKind::ShipHull);
     glDisable(GL_BLEND);SetupSceneLighting();
@@ -3066,19 +3087,24 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
         Line(x+112.0f,y+6.0f,0,x+width,y+6.0f,0,{.07f,.25f,.30f,.60f},1.0f);
     };
 
-    // Pane shells.  They deliberately stop above the status bar, making the
-    // editor read as two stable inspectors around the central 3D canvas.
+    // Blender-style shell: global workspace strip, Asset Browser on the left,
+    // uninterrupted viewport in the center, and hierarchy/properties on the
+    // right. The canonical dock model remains the long-term layout authority;
+    // this makes the visible native Shipyard follow that workflow now.
+    FilledRect(8.0f*s,layout.workspaceBarY-4.0f*s,0,w-16.0f*s,layout.workspaceBarHeight+8.0f*s,{.006f,.024f,.031f,.985f});
+    Line(8.0f*s,layout.workspaceBarY+layout.workspaceBarHeight+4.0f*s,0,w-8.0f*s,layout.workspaceBarY+layout.workspaceBarHeight+4.0f*s,0,{.10f,.38f,.44f,.75f},1.0f*s);
     FilledRect(left,top,0,libraryW,layout.statusY-top-12.0f,panel);
     FilledRect(right,top,0,rightW,layout.statusY-top-12.0f,panel);
     Line(left,top,0,left+libraryW,top,0,cyan,1.8f);
     Line(right,top,0,right+rightW,top,0,cyan,1.8f);
+    FilledRect(layout.toolRailX-3.0f*s,layout.toolRailY-8.0f*s,0,layout.toolRailWidth+6.0f*s,5.0f*(38.0f*s+6.0f*s)+10.0f*s,{.006f,.026f,.034f,.92f});
 
     std::size_t filteredCount=0;
     for(const auto& r:m.catalog)if(r.moduleClass==m.selectedClass)++filteredCount;
 
-    // Left library hierarchy.
-    ShipyardText("SHIPYARD",left+12,top+14,1.12f,text);
-    ShipyardText(frame.standaloneShipyard?"BLUEPRINT DESIGN":"LIVE REFIT",left+12,top+35,.72f,muted);
+    // Left asset browser hierarchy.
+    ShipyardText("ASSET BROWSER",left+12,top+14,1.02f,text);
+    ShipyardText(frame.standaloneShipyard?"SHIP MODULES / BLUEPRINT":"SHIP MODULES / LIVE REFIT",left+12,top+35,.68f,muted);
     ShipyardText(std::string("PARTS  /  ")+ShipyardModuleSystem::ClassName(m.selectedClass)+"  /  "+std::to_string(filteredCount),
         left+12,top+52,.62f,{.48f,.70f,.74f,.82f});
 
@@ -3150,10 +3176,19 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
         }
     }
 
-    // Right inspector hierarchy.
-    ShipyardText("SHIPYARD INSPECTOR",right+12,top+14,1.08f,text);
-    ShipyardText(m.role+"  /  SEED "+std::to_string(m.seed)+"  /  "+std::to_string(m.recipe.modules.size())+" MODULES",
-        right+12,top+35,.68f,muted);
+    // Right hierarchy + properties.
+    ShipyardText("OUTLINER / PROPERTIES",right+12,top+14,1.02f,text);
+    ShipyardText(m.role+"  /  "+ShipClassRoleSystem::ClassName(m.shipClass)+"  /  "+std::to_string(m.recipe.modules.size())+" MODULES",
+        right+12,top+35,.66f,muted);
+
+    if(m.dragPreview.staged){
+        const float bannerX=left+libraryW+layout.toolRailWidth+28.0f*s;
+        const float bannerW=std::max(280.0f*s,right-bannerX-12.0f*s);
+        FilledRect(bannerX,top+8.0f*s,0,bannerW,56.0f*s,{.018f,.115f,.135f,.94f});
+        Line(bannerX,top+8.0f*s,0,bannerX+bannerW,top+8.0f*s,0,cyan,1.4f*s);
+        ShipyardText("STAGED PART - NOT ATTACHED",bannerX+12.0f*s,top+17.0f*s,.72f,{.78f,1.0f,1.0f,.99f});
+        ShipyardText("W MOVE   E ROTATE   R SCALE   < > SNAP   CONFIRM ATTACH / CANCEL",bannerX+12.0f*s,top+38.0f*s,.50f,muted);
+    }
 
     const auto* selectedCatalog=[&]()->const ShipyardModuleRecord*{
         std::vector<std::size_t> f;
@@ -3597,6 +3632,7 @@ bool NativeBattlefieldRenderer::Initialize() {
 #ifdef _WIN32
     InitializeSpaceShader();
     InitializeNativeUiFonts();
+    InitializeProceduralShipTextures(*_assets);
     LoadImportedPlanetTextures(*_assets);
 #endif
     _initialized=true;
@@ -3636,6 +3672,7 @@ void NativeBattlefieldRenderer::Shutdown() {
         ReleaseImportedPlanetTextures(*_assets);
         for(auto& kv:_assets->shipTextures){GLuint id=static_cast<GLuint>(kv.second);if(id)glDeleteTextures(1,&id);}
         _assets->shipTextures.clear();
+        for(auto& raw:_assets->proceduralShipTextures){GLuint id=static_cast<GLuint>(raw);if(id)glDeleteTextures(1,&id);raw=0;}
     }
     ShutdownNativeUiFonts();
     ShutdownSpaceShader();
@@ -3663,15 +3700,8 @@ float NativeBattlefieldRenderer::PlanetRadiusToWorld(float radius) {
 Vector3 NativeBattlefieldRenderer::ScreenToWorld(float screenX,float screenY,
                                                   int viewportWidth,int viewportHeight,
                                                   const StrategicCamera& camera) {
-    return ScreenToWorldPlane(screenX,screenY,viewportWidth,viewportHeight,camera,0.0f);
-}
-
-Vector3 NativeBattlefieldRenderer::ScreenToWorldPlane(float screenX,float screenY,
-                                                       int viewportWidth,int viewportHeight,
-                                                       const StrategicCamera& camera,
-                                                       float worldPlaneZ) {
     return StrategicViewProjection::ScreenToGameplayPlane(
-        screenX,screenY,static_cast<float>(viewportWidth),static_cast<float>(viewportHeight),camera,worldPlaneZ);
+        screenX,screenY,static_cast<float>(viewportWidth),static_cast<float>(viewportHeight),camera,0.0f);
 }
 
 StrategicScreenPoint NativeBattlefieldRenderer::WorldToScreen(const Vector3& worldPoint,

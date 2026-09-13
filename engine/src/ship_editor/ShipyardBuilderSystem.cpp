@@ -4,6 +4,7 @@
 #include "ship_editor/ShipyardDefinitionOverrideSystem.h"
 #include "ship_editor/ShipyardKitbashTransformSystem.h"
 #include "ships/ShipPcgRuntimeClosureSystem.h"
+#include "ships/ShipClassGenerationAuthoritySystem.h"
 #include "ships/FactionShipDesignSystem.h"
 
 #include <algorithm>
@@ -138,32 +139,6 @@ float Distance3(float ax,float ay,float az,float bx,float by,float bz) {
     return std::sqrt(dx*dx+dy*dy+dz*dz);
 }
 
-VisualModulePlacement AttachPlacement(const VisualModulePlacement& parentPlacement,
-                                      const ShipyardAssemblySocket& parentSocket,
-                                      const ShipyardModuleRecord& child,
-                                      const ShipyardAssemblySocket& childSocket,
-                                      float uniformScale) {
-    VisualModulePlacement result;
-    result.moduleId = child.source.moduleId;
-    result.scaleX = result.scaleY = result.scaleZ = uniformScale;
-    result.material = child.moduleClass == ShipyardModuleClass::Command
-        ? SpaceMaterialKind::Canopy
-        : child.moduleClass == ShipyardModuleClass::Propulsion
-            ? SpaceMaterialKind::EngineHousing
-            : child.moduleClass == ShipyardModuleClass::Hull
-                ? SpaceMaterialKind::IndustrialHull
-                : SpaceMaterialKind::StructuralMetal;
-
-    const float px = SocketWorldX(parentPlacement,parentSocket);
-    const float py = SocketWorldY(parentPlacement,parentSocket);
-    const float pz = SocketWorldZ(parentPlacement,parentSocket);
-    const float insertion = parentSocket.insertionDepth * parentPlacement.scaleY;
-    result.x = px - childSocket.x * uniformScale - parentSocket.dirX * insertion;
-    result.y = py - childSocket.y * uniformScale - parentSocket.dirY * insertion;
-    result.z = pz - childSocket.z * uniformScale - parentSocket.dirZ * insertion;
-    return result;
-}
-
 bool IsStructuralClass(ShipyardModuleClass c) {
     // Connectivity BFS is the load-bearing spine graph, not every mounted
     // functional object. Command sections, engines/housings and wings mount to
@@ -284,6 +259,7 @@ void ShipyardBuilderSystem::Initialize(std::vector<ShipyardModuleRecord> catalog
     model_.pcgStudio.request.factionId = "PLAYER";
     model_.worldAuthoring.world.planetId = "shipyard.devworld";
     model_.worldScale = WorldScaleAuthoritySystem::DefaultProfile();
+    model_.dockWorkspace = ShipyardWorkspaceSystem::BuildDefaultDockWorkspace();
     model_.animationLibrary = CharacterAnimationLibrarySystem::QuaterniusUniversalAnimationLibrary2();
     model_.animationPreview.libraryId = model_.animationLibrary.libraryId;
     model_.devWorld = ShipyardDevWorldSystem::CreateDefault(model_.worldScale);
@@ -330,7 +306,9 @@ void ShipyardBuilderSystem::ApplyLiveryPreset(){
 }
 
 bool ShipyardBuilderSystem::AddSelectedDecal(){
-    if(model_.recipe.modules.empty())return false;const auto& presets=DecalPresets();if(presets.empty())return false;
+    if(model_.recipe.modules.empty()) return false;
+    const auto& presets=DecalPresets();
+    if(presets.empty()) return false;
     ShipDecalLayer d;d.id="D"+std::to_string(model_.appearance.decals.size()+1);d.decalAsset=presets[model_.decalPreset%presets.size()];
     d.moduleIndex=std::min(model_.selectedPlacedModule,model_.recipe.modules.size()-1);d.u=.50f;d.v=.52f;d.scale=.78f;d.rotationDegrees=0.0f;d.opacity=.92f;d.mirror=model_.mirrorX;
     model_.appearance.decals.push_back(d);model_.status="Added decal "+d.decalAsset+" to selected module";model_.dirty=true;return true;
@@ -663,7 +641,13 @@ bool ShipyardBuilderSystem::SaveDefinitionOverrides(const std::string& path,std:
 
 bool ShipyardBuilderSystem::LoadSocketOverrides(const std::string& path,std::string* error,std::size_t* appliedModules){
     std::size_t applied=0;if(!ShipyardSocketOverrideSystem::LoadAndApply(model_.catalog,path,error,&applied))return false;
-    if(appliedModules)*appliedModules=applied;socketHistory_.clear();socketHistoryCursor_=0;model_.socketOverridesDirty=false;SyncSocketSelection();ReflowRecipeAttachments();model_.validation=Validate();
+    if(appliedModules) *appliedModules=applied;
+    socketHistory_.clear();
+    socketHistoryCursor_=0;
+    model_.socketOverridesDirty=false;
+    SyncSocketSelection();
+    ReflowRecipeAttachments();
+    model_.validation=Validate();
     model_.status="Loaded "+std::to_string(applied)+" socket override module(s)";return true;
 }
 
@@ -808,62 +792,108 @@ bool ShipyardBuilderSystem::RemoveSelectedModule(){
 }
 
 bool ShipyardBuilderSystem::GenerateVariant(){
-    ++model_.seed;
-    // Pass790R2 SHIPYARD_SIZE_AWARE_GENERATION: XS/S/M/L/XL is now a generation input,
-    // not merely a manual-placement morph hint. Map the requested structural
-    // size to the canonical normal hull class and filter generation vocabulary
-    // through the existing runtime class-eligibility authority.
-    ShipClass generationClass=ShipClass::Frigate;
-    switch(model_.targetModuleSize){
-    case UniversalSizeClass::XS:generationClass=ShipClass::Frigate;break;
-    case UniversalSizeClass::S:generationClass=ShipClass::Destroyer;break;
-    case UniversalSizeClass::M:generationClass=ShipClass::Cruiser;break;
-    case UniversalSizeClass::L:generationClass=ShipClass::Battlecruiser;break;
-    case UniversalSizeClass::XL:generationClass=ShipClass::Battleship;break;
-    }
-    model_.shipClass=generationClass;
-    const auto eligibleIndices=ShipPcgRuntimeClosureSystem::FilterForClass(model_.catalog,generationClass,true);
-    std::vector<ShipyardModuleRecord> generationCatalog;
-    generationCatalog.reserve(eligibleIndices.size());
-    for(const auto index:eligibleIndices)if(index<model_.catalog.size())generationCatalog.push_back(model_.catalog[index]);
-    if(generationCatalog.empty()){
-        model_.status=std::string("Generator has no certified ")+UniversalKitbashAuthority::SizeName(model_.targetModuleSize)+" kitbash vocabulary";
+    // Generation is deterministic. GENERATE re-evaluates the exact current
+    // request; only the explicit REROLL command is allowed to mutate the seed.
+    // This also prevents the Systems and PCG surfaces from appearing to own
+    // different generators merely because each click silently changed input.
+    GeneratorParityRequest request;
+    request.domain=model_.authoringDomain;
+    request.seed=model_.seed;
+    request.profileId=model_.factionId+"_HULL_FAMILY_"+std::to_string(std::max(0,model_.hullFamilyIndex));
+    request.role=model_.role;
+    request.shipClass=model_.shipClass;
+    request.size=model_.targetModuleSize;
+    const auto requestValidation=GeneratorParitySystem::Validate(request);
+    if(!requestValidation.valid){
+        model_.status=requestValidation.errors.empty()?"Generator request is invalid":requestValidation.errors.front();
         return false;
     }
+    if(request.domain!=GeneratorDomain::Ship&&request.domain!=GeneratorDomain::Shuttle){
+        model_.status=std::string("Current generator domain ")+GeneratorParitySystem::DomainName(request.domain)+
+            " is not a ship recipe. Switch domain before GENERATE.";
+        return false;
+    }
+
+    const ShipClass generationClass=model_.shipClass;
+    const auto resolvedSize=ShipClassRoleSystem::ClampModuleSize(generationClass,model_.targetModuleSize,false);
+    const bool sizeClamped=resolvedSize!=model_.targetModuleSize;
+    model_.targetModuleSize=resolvedSize;
+    request.size=resolvedSize;
+    model_.pcgStudio.request.shipClass=generationClass;
+    model_.pcgStudio.request.size=resolvedSize;
+    model_.pcgStudio.request.role=model_.role;
+    model_.pcgStudio.request.factionId=model_.factionId;
+    model_.pcgStudio.request.hullFamilyIndex=model_.hullFamilyIndex;
+    model_.pcgStudio.request.seed=model_.seed;
+
+    std::vector<ShipyardModuleRecord> generationCatalog;
+    generationCatalog.reserve(model_.catalog.size());
+    for(const auto& record:model_.catalog){
+        const bool auxiliary=record.surfaceOnly||record.moduleClass==ShipyardModuleClass::Detail||record.moduleClass==ShipyardModuleClass::Hardpoint;
+        if(ShipPcgRuntimeClosureSystem::ModuleFitsClass(record,generationClass,auxiliary))generationCatalog.push_back(record);
+    }
+    if(generationCatalog.empty()){
+        model_.status=std::string("Generator has no certified vocabulary for ")+ShipClassRoleSystem::ClassName(generationClass);
+        return false;
+    }
+
     const auto generated=ShipyardModuleSystem::BuildShowcaseRecipes(generationCatalog,model_.seed);
     std::vector<ProceduralShipVisualRecipe> candidates;
     for(const auto&r:generated)if(r.role==model_.role)candidates.push_back(r);
-    if(candidates.empty()){model_.status="Generator could not resolve this role from the certified catalog";return false;}
+    if(candidates.empty()){model_.status="Generator could not resolve this role from the certified class catalog";return false;}
 
     const auto dna=FactionShipDesignSystem::DefaultFactionDna(model_.factionId);
-    const auto families=FactionShipDesignSystem::BuildClassFamilies(model_.factionId,model_.shipClass,dna);
+    const auto families=FactionShipDesignSystem::BuildClassFamilies(model_.factionId,generationClass,dna);
     const std::size_t familyIndex=families.empty()?0:std::min<std::size_t>(static_cast<std::size_t>(std::max(0,model_.hullFamilyIndex)),families.size()-1);
     const auto role=RoleFromGeneratorName(model_.role);
     const FactionHullFamilyDefinition* family=families.empty()?nullptr:&families[familyIndex];
 
     ProceduralShipVisualRecipe* selected=nullptr;
+    std::string firstReject;
     for(auto& candidate:candidates){
-        ShipPcgRuntimeClosureSystem::RepairCandidate(model_.catalog,candidate,5);
-        const auto report=ShipPcgRuntimeClosureSystem::EvaluateCandidate(model_.catalog,candidate,false,true);
+        const auto classReport=ShipClassGenerationAuthoritySystem::ApplyAndStamp(candidate,generationCatalog,generationClass,resolvedSize);
+        if(!classReport.valid){
+            candidate.runtimePcgCertified=false;
+            candidate.runtimeCertificationMessage=classReport.errors.empty()?"CLASS_TOPOLOGY_REGEN_REQUIRED":classReport.errors.front();
+            if(firstReject.empty())firstReject=candidate.runtimeCertificationMessage;
+            continue;
+        }
+        ShipPcgRuntimeClosureSystem::RepairCandidate(generationCatalog,candidate,5);
+        const auto report=ShipPcgRuntimeClosureSystem::EvaluateCandidate(generationCatalog,candidate,false,true);
         candidate.runtimePcgCertified=report.accepted;
-        candidate.runtimeCertificationMessage=report.accepted?"PCG_RUNTIME_CERTIFIED":(report.messages.empty()?"PCG_RUNTIME_REVIEW":report.messages.front());
+        candidate.runtimeCertificationMessage=candidate.runtimePcgCertified?"PCG_CLASS_SIZE_CERTIFIED":
+            (report.messages.empty()?"PCG_RUNTIME_REVIEW":report.messages.front());
         if(family){
             const auto runtime=ShipPcgRuntimeClosureSystem::BuildHullFamilyProfile(*family);
             ShipPcgRuntimeClosureSystem::ApplyLineage(candidate,runtime,role);
-            // A rejected generated candidate keeps its faction/class/hull labels
-            // for authoring/debugging but is not promoted to strict lineage.
-            // This preserves older/manual recipes as reviewable drafts while
-            // runtime selection prefers only fully certified lineage variants.
-            if(!report.accepted)candidate.lineageAuthority="FACTION_CLASS_HULL_ROLE_REVIEW";
+            if(!candidate.runtimePcgCertified)candidate.lineageAuthority="FACTION_CLASS_HULL_ROLE_REVIEW";
             candidate.appearancePresetId=model_.factionId+"_SHIP_DEFAULT";
         }
-        if(report.accepted&&!selected)selected=&candidate;
+        if(candidate.runtimePcgCertified&&!selected)selected=&candidate;
+        else if(!candidate.runtimePcgCertified&&firstReject.empty())firstReject=candidate.runtimeCertificationMessage;
     }
-    if(!selected)selected=&candidates[model_.seed%candidates.size()];
+
+    // Fail closed: a malformed generation candidate never replaces the last
+    // known-good authored ship. Invalid candidates remain diagnostics for PCG
+    // inspection instead of becoming player-visible geometry.
+    if(!selected){
+        model_.pcgStudio.lastReport=ShipyardPcgStudioSystem::AuditCandidate(generationCatalog,candidates.front(),model_.pcgStudio.request);
+        const std::string identity=GeneratorParitySystem::StableRequestIdentity(request);
+        model_.status="GENERATION REJECTED ["+identity+"]: "+
+            (firstReject.empty()?"no candidate satisfied class/topology/runtime certification":firstReject);
+        return false;
+    }
+
     model_.recipe=*selected;model_.selectedPlacedModule=0;model_.dirty=true;RefreshForwardAuthority();
-    model_.status=model_.recipe.runtimePcgCertified
-        ? "Generated spatially certified "+model_.role+" variant seed "+std::to_string(model_.seed)
-        : "Generated REVIEW variant; inspect spatial/propulsion validation before blueprint certification";
+    const auto envelope=ShipClassRoleSystem::Envelope(generationClass);
+    const auto bounds=ShipClassGenerationAuthoritySystem::MeasureBoundsMeters(model_.recipe,generationCatalog);
+    model_.status=std::string("Generated certified ")+ShipClassRoleSystem::ClassName(generationClass)+" / "+
+        UniversalKitbashAuthority::SizeName(resolvedSize)+" / "+
+        std::to_string(static_cast<int>(std::round(bounds.size.y)))+"x"+
+        std::to_string(static_cast<int>(std::round(bounds.size.x)))+"x"+
+        std::to_string(static_cast<int>(std::round(bounds.size.z)))+"m"+
+        (sizeClamped?" / requested size clamped by class":"")+
+        " / topology target "+std::to_string(envelope.targetModules)+" modules";
     NormalizeSelections();return true;
 }
 
@@ -934,6 +964,20 @@ ShipyardBuilderValidation ShipyardBuilderSystem::Validate() const {
     const auto core=ShipFunctionalCoreSystem::Validate(model_.catalog,model_.recipe,true);
     for(const auto& e:core.messages)if(std::find(v.warnings.begin(),v.warnings.end(),e)==v.warnings.end())v.warnings.push_back(e);
     if(model_.recipe.modules.size()<5)v.warnings.push_back("Very small design; role systems may have little attachment capacity");
+    std::string classError;
+    const bool strictClassLineage = model_.recipe.lineageAuthority=="CLASS_SIZE_ENVELOPE_V3" ||
+                                    model_.recipe.lineageAuthority=="FACTION_CLASS_HULL_ROLE_V1";
+    if(!ShipClassGenerationAuthoritySystem::Validate(model_.recipe,model_.catalog,model_.shipClass,model_.targetModuleSize,&classError)){
+        // Pass1122R1: class/topology envelopes are hard certification rules for
+        // generated lineage, but legacy/manual authored ships remain editable and
+        // dock-refittable while they are migrated.  Treat their class mismatch as
+        // review evidence rather than invalidating an otherwise sound socket graph.
+        auto& target = strictClassLineage ? v.errors : v.warnings;
+        target.push_back((strictClassLineage?std::string{}:std::string("Class envelope review: "))+classError);
+    }
+    const auto envelope=ShipClassRoleSystem::Envelope(model_.shipClass);
+    if(model_.recipe.modules.size()<envelope.minimumModules)v.warnings.push_back("Ship is sparse for selected class envelope");
+    if(model_.recipe.modules.size()>envelope.maximumModules)v.errors.push_back("Ship exceeds selected class module budget");
     v.valid=v.errors.empty();return v;
 }
 
@@ -964,9 +1008,13 @@ bool ShipyardBuilderSystem::Activate(ShipyardBuilderCommand command,int value){
         case ShipyardBuilderCommand::NextModule:{const auto f=FilteredCatalogIndices();if(!f.empty()){model_.selectedFilteredModule=(model_.selectedFilteredModule+1)%f.size();changed=true;}}break;
         case ShipyardBuilderCommand::PreviousPlaced:if(!model_.recipe.modules.empty()){model_.selectedPlacedModule=(model_.selectedPlacedModule+model_.recipe.modules.size()-1)%model_.recipe.modules.size();SyncCatalogSelectionToPlaced();changed=true;}break;
         case ShipyardBuilderCommand::NextPlaced:if(!model_.recipe.modules.empty()){model_.selectedPlacedModule=(model_.selectedPlacedModule+1)%model_.recipe.modules.size();SyncCatalogSelectionToPlaced();changed=true;}break;
-        case ShipyardBuilderCommand::AddModule:changed=AddSelectedModule();break;
+        case ShipyardBuilderCommand::AddModule:changed=model_.dragPreview.staged?CommitCatalogDrag():AddSelectedModule();break;
         case ShipyardBuilderCommand::ReplaceModule:changed=ReplaceSelectedModule();break;
         case ShipyardBuilderCommand::RemoveModule:changed=RemoveSelectedModule();break;
+        case ShipyardBuilderCommand::PreviousSnapCandidate:return CycleStagedSnapCandidate(-1);
+        case ShipyardBuilderCommand::NextSnapCandidate:return CycleStagedSnapCandidate(1);
+        case ShipyardBuilderCommand::ConfirmPlacement:return CommitCatalogDrag();
+        case ShipyardBuilderCommand::CancelPlacement:CancelCatalogDrag();model_.status="Staged placement cancelled";return true;
         case ShipyardBuilderCommand::PreviousSocket:{const auto* r=SelectedPlacedRecord();if(r&&!r->sockets.empty()){model_.selectedSocket=(model_.selectedSocket+r->sockets.size()-1)%r->sockets.size();model_.status="Selected socket "+r->sockets[model_.selectedSocket].name;return true;}}return false;
         case ShipyardBuilderCommand::NextSocket:{const auto* r=SelectedPlacedRecord();if(r&&!r->sockets.empty()){model_.selectedSocket=(model_.selectedSocket+1)%r->sockets.size();model_.status="Selected socket "+r->sockets[model_.selectedSocket].name;return true;}}return false;
         case ShipyardBuilderCommand::AddSocket:return AddSocket();
@@ -1022,6 +1070,9 @@ bool ShipyardBuilderSystem::Activate(ShipyardBuilderCommand command,int value){
         case ShipyardBuilderCommand::ModelPreviousPrimitive:
         case ShipyardBuilderCommand::ModelNextPrimitive:{if(!model_.capabilities.model)return false;constexpr int count=17;int i=static_cast<int>(model_.modeling.selectedPrimitive)+(command==ShipyardBuilderCommand::ModelNextPrimitive?1:-1);if(i<0)i=count-1;if(i>=count)i=0;model_.modeling.selectedPrimitive=static_cast<ModelingPrimitiveType>(i);model_.status=std::string("Add Shape: ")+ShipyardModelingSystem::PrimitiveName(model_.modeling.selectedPrimitive);return true;}
         case ShipyardBuilderCommand::ModelAddShape:{if(!model_.capabilities.model)return false;const auto i=ShipyardModelingSystem::AddPrimitive(model_.modeling.recipe,model_.modeling.selectedPrimitive);model_.modeling.selectedPrimitiveIndex=i;model_.dirty=true;model_.status=std::string("Added modeled ")+ShipyardModelingSystem::PrimitiveName(model_.modeling.selectedPrimitive)+" shape";return true;}
+        case ShipyardBuilderCommand::ModelPreviousPurpose:
+        case ShipyardBuilderCommand::ModelNextPurpose:{if(!model_.capabilities.model)return false;constexpr int count=11;int i=static_cast<int>(model_.modeling.selectedPurpose)+(command==ShipyardBuilderCommand::ModelNextPurpose?1:-1);if(i<0)i=count-1;if(i>=count)i=0;model_.modeling.selectedPurpose=static_cast<SemanticObjectPurpose>(i);model_.status=std::string("Object purpose: ")+AuthoringStandardsSystem::PurposeName(model_.modeling.selectedPurpose);return true;}
+        case ShipyardBuilderCommand::ModelAssignPurpose:{if(!model_.capabilities.model)return false;const bool ok=ShipyardModelingSystem::AssignSemanticPurpose(model_.modeling.recipe,model_.modeling.selectedPurpose,model_.worldScale);if(ok){model_.dirty=true;model_.status=std::string("Assigned gameplay purpose: ")+AuthoringStandardsSystem::PurposeName(model_.modeling.selectedPurpose)+" - validate character fit before publish";}return ok;}
         case ShipyardBuilderCommand::ModelCycleSelectionMode:{if(!model_.capabilities.model)return false;int i=(static_cast<int>(model_.modeling.selectionMode)+1)%4;model_.modeling.selectionMode=static_cast<ModelingSelectionMode>(i);model_.modeling.recipe.selectionMode=model_.modeling.selectionMode;model_.status=std::string("Model selection: ")+ShipyardModelingSystem::SelectionModeName(model_.modeling.selectionMode);return true;}
         case ShipyardBuilderCommand::ModelStretchXNegative:case ShipyardBuilderCommand::ModelStretchXPositive:case ShipyardBuilderCommand::ModelStretchYNegative:case ShipyardBuilderCommand::ModelStretchYPositive:case ShipyardBuilderCommand::ModelStretchZNegative:case ShipyardBuilderCommand::ModelStretchZPositive:{if(!model_.capabilities.model||model_.modeling.recipe.primitives.empty())return false;Vector3 d{};const float step=model_.modeling.stretchStep;const float sign=(command==ShipyardBuilderCommand::ModelStretchXNegative||command==ShipyardBuilderCommand::ModelStretchYNegative||command==ShipyardBuilderCommand::ModelStretchZNegative)?-1.0f:1.0f;if(command==ShipyardBuilderCommand::ModelStretchXNegative||command==ShipyardBuilderCommand::ModelStretchXPositive)d.x=step*sign;else if(command==ShipyardBuilderCommand::ModelStretchYNegative||command==ShipyardBuilderCommand::ModelStretchYPositive)d.y=step*sign;else d.z=step*sign;const bool ok=ShipyardModelingSystem::StretchPrimitive(model_.modeling.recipe,std::min(model_.modeling.selectedPrimitiveIndex,model_.modeling.recipe.primitives.size()-1),d,model_.modeling.symmetricStretch);if(ok){model_.dirty=true;model_.status="Modeled shape stretched; collision marked dirty";}return ok;}
         case ShipyardBuilderCommand::ModelToggleSymmetricStretch:if(!model_.capabilities.model)return false;model_.modeling.symmetricStretch=!model_.modeling.symmetricStretch;model_.status=std::string("Symmetric stretch ")+(model_.modeling.symmetricStretch?"ON":"OFF");return true;
@@ -1052,29 +1103,30 @@ bool ShipyardBuilderSystem::Activate(ShipyardBuilderCommand command,int value){
             else model_.transformSpace=ShipyardTransformSpace::View;
             model_.status=model_.transformSpace==ShipyardTransformSpace::View?"TRANSFORM SPACE: CAMERA":(model_.transformSpace==ShipyardTransformSpace::Ship?"TRANSFORM SPACE: SHIP":"TRANSFORM SPACE: LOCAL");return true;
         case ShipyardBuilderCommand::ToggleTransformSnap:model_.transformSnap=!model_.transformSnap;if(model_.transform.active)model_.transform.snap=model_.transformSnap;model_.status=std::string("TRANSFORM SNAP ")+(model_.transformSnap?"ON":"OFF");return true;
-        case ShipyardBuilderCommand::NudgePort:{model_.transformTool=ShipyardTransformTool::Move;if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!TranslateSelectedSocket({-.10f,0,0}))return false;return CommitSocketTransform();}if(!TranslateSelected({-.10f,0,0}))return false;return CommitTransform();}
-        case ShipyardBuilderCommand::NudgeStarboard:{model_.transformTool=ShipyardTransformTool::Move;if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!TranslateSelectedSocket({.10f,0,0}))return false;return CommitSocketTransform();}if(!TranslateSelected({.10f,0,0}))return false;return CommitTransform();}
-        case ShipyardBuilderCommand::NudgeForward:{model_.transformTool=ShipyardTransformTool::Move;if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!TranslateSelectedSocket({0,.10f,0}))return false;return CommitSocketTransform();}if(!TranslateSelected({0,.10f,0}))return false;return CommitTransform();}
-        case ShipyardBuilderCommand::NudgeAft:{model_.transformTool=ShipyardTransformTool::Move;if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!TranslateSelectedSocket({0,-.10f,0}))return false;return CommitSocketTransform();}if(!TranslateSelected({0,-.10f,0}))return false;return CommitTransform();}
-        case ShipyardBuilderCommand::NudgeDorsal:{model_.transformTool=ShipyardTransformTool::Move;if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!TranslateSelectedSocket({0,0,.10f}))return false;return CommitSocketTransform();}if(!TranslateSelected({0,0,.10f}))return false;return CommitTransform();}
-        case ShipyardBuilderCommand::NudgeVentral:{model_.transformTool=ShipyardTransformTool::Move;if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!TranslateSelectedSocket({0,0,-.10f}))return false;return CommitSocketTransform();}if(!TranslateSelected({0,0,-.10f}))return false;return CommitTransform();}
-        case ShipyardBuilderCommand::RotatePitchPositive:{model_.transformTool=ShipyardTransformTool::Rotate;if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!RotateSelectedSocket({model_.rotationStepDegrees,0,0}))return false;return CommitSocketTransform();}if(!RotateSelected({model_.rotationStepDegrees,0,0}))return false;return CommitTransform();}
-        case ShipyardBuilderCommand::RotatePitchNegative:{model_.transformTool=ShipyardTransformTool::Rotate;if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!RotateSelectedSocket({-model_.rotationStepDegrees,0,0}))return false;return CommitSocketTransform();}if(!RotateSelected({-model_.rotationStepDegrees,0,0}))return false;return CommitTransform();}
-        case ShipyardBuilderCommand::RotateYawPositive:{model_.transformTool=ShipyardTransformTool::Rotate;if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!RotateSelectedSocket({0,model_.rotationStepDegrees,0}))return false;return CommitSocketTransform();}if(!RotateSelected({0,model_.rotationStepDegrees,0}))return false;return CommitTransform();}
-        case ShipyardBuilderCommand::RotateYawNegative:{model_.transformTool=ShipyardTransformTool::Rotate;if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!RotateSelectedSocket({0,-model_.rotationStepDegrees,0}))return false;return CommitSocketTransform();}if(!RotateSelected({0,-model_.rotationStepDegrees,0}))return false;return CommitTransform();}
-        case ShipyardBuilderCommand::RotateRollPositive:{model_.transformTool=ShipyardTransformTool::Rotate;if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!RotateSelectedSocket({0,0,model_.rotationStepDegrees}))return false;return CommitSocketTransform();}if(!RotateSelected({0,0,model_.rotationStepDegrees}))return false;return CommitTransform();}
-        case ShipyardBuilderCommand::RotateRollNegative:{model_.transformTool=ShipyardTransformTool::Rotate;if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!RotateSelectedSocket({0,0,-model_.rotationStepDegrees}))return false;return CommitSocketTransform();}if(!RotateSelected({0,0,-model_.rotationStepDegrees}))return false;return CommitTransform();}
-        case ShipyardBuilderCommand::FlipPitch:{model_.transformTool=ShipyardTransformTool::Rotate;if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!RotateSelectedSocket({180,0,0}))return false;return CommitSocketTransform();}if(!RotateSelected({180,0,0}))return false;return CommitTransform();}
-        case ShipyardBuilderCommand::FlipYaw:{model_.transformTool=ShipyardTransformTool::Rotate;if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!RotateSelectedSocket({0,180,0}))return false;return CommitSocketTransform();}if(!RotateSelected({0,180,0}))return false;return CommitTransform();}
-        case ShipyardBuilderCommand::FlipRoll:{model_.transformTool=ShipyardTransformTool::Rotate;if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!RotateSelectedSocket({0,0,180}))return false;return CommitSocketTransform();}if(!RotateSelected({0,0,180}))return false;return CommitTransform();}
+        case ShipyardBuilderCommand::NudgePort:{model_.transformTool=ShipyardTransformTool::Move;if(model_.dragPreview.staged)return TranslateStagedPlacement({-.10f,0,0});if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!TranslateSelectedSocket({-.10f,0,0}))return false;return CommitSocketTransform();}if(!TranslateSelected({-.10f,0,0}))return false;return CommitTransform();}
+        case ShipyardBuilderCommand::NudgeStarboard:{model_.transformTool=ShipyardTransformTool::Move;if(model_.dragPreview.staged)return TranslateStagedPlacement({.10f,0,0});if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!TranslateSelectedSocket({.10f,0,0}))return false;return CommitSocketTransform();}if(!TranslateSelected({.10f,0,0}))return false;return CommitTransform();}
+        case ShipyardBuilderCommand::NudgeForward:{model_.transformTool=ShipyardTransformTool::Move;if(model_.dragPreview.staged)return TranslateStagedPlacement({0,.10f,0});if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!TranslateSelectedSocket({0,.10f,0}))return false;return CommitSocketTransform();}if(!TranslateSelected({0,.10f,0}))return false;return CommitTransform();}
+        case ShipyardBuilderCommand::NudgeAft:{model_.transformTool=ShipyardTransformTool::Move;if(model_.dragPreview.staged)return TranslateStagedPlacement({0,-.10f,0});if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!TranslateSelectedSocket({0,-.10f,0}))return false;return CommitSocketTransform();}if(!TranslateSelected({0,-.10f,0}))return false;return CommitTransform();}
+        case ShipyardBuilderCommand::NudgeDorsal:{model_.transformTool=ShipyardTransformTool::Move;if(model_.dragPreview.staged)return TranslateStagedPlacement({0,0,.10f});if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!TranslateSelectedSocket({0,0,.10f}))return false;return CommitSocketTransform();}if(!TranslateSelected({0,0,.10f}))return false;return CommitTransform();}
+        case ShipyardBuilderCommand::NudgeVentral:{model_.transformTool=ShipyardTransformTool::Move;if(model_.dragPreview.staged)return TranslateStagedPlacement({0,0,-.10f});if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!TranslateSelectedSocket({0,0,-.10f}))return false;return CommitSocketTransform();}if(!TranslateSelected({0,0,-.10f}))return false;return CommitTransform();}
+        case ShipyardBuilderCommand::RotatePitchPositive:{model_.transformTool=ShipyardTransformTool::Rotate;if(model_.dragPreview.staged)return RotateStagedPlacement({model_.rotationStepDegrees,0,0});if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!RotateSelectedSocket({model_.rotationStepDegrees,0,0}))return false;return CommitSocketTransform();}if(!RotateSelected({model_.rotationStepDegrees,0,0}))return false;return CommitTransform();}
+        case ShipyardBuilderCommand::RotatePitchNegative:{model_.transformTool=ShipyardTransformTool::Rotate;if(model_.dragPreview.staged)return RotateStagedPlacement({-model_.rotationStepDegrees,0,0});if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!RotateSelectedSocket({-model_.rotationStepDegrees,0,0}))return false;return CommitSocketTransform();}if(!RotateSelected({-model_.rotationStepDegrees,0,0}))return false;return CommitTransform();}
+        case ShipyardBuilderCommand::RotateYawPositive:{model_.transformTool=ShipyardTransformTool::Rotate;if(model_.dragPreview.staged)return RotateStagedPlacement({0,model_.rotationStepDegrees,0});if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!RotateSelectedSocket({0,model_.rotationStepDegrees,0}))return false;return CommitSocketTransform();}if(!RotateSelected({0,model_.rotationStepDegrees,0}))return false;return CommitTransform();}
+        case ShipyardBuilderCommand::RotateYawNegative:{model_.transformTool=ShipyardTransformTool::Rotate;if(model_.dragPreview.staged)return RotateStagedPlacement({0,-model_.rotationStepDegrees,0});if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!RotateSelectedSocket({0,-model_.rotationStepDegrees,0}))return false;return CommitSocketTransform();}if(!RotateSelected({0,-model_.rotationStepDegrees,0}))return false;return CommitTransform();}
+        case ShipyardBuilderCommand::RotateRollPositive:{model_.transformTool=ShipyardTransformTool::Rotate;if(model_.dragPreview.staged)return RotateStagedPlacement({0,0,model_.rotationStepDegrees});if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!RotateSelectedSocket({0,0,model_.rotationStepDegrees}))return false;return CommitSocketTransform();}if(!RotateSelected({0,0,model_.rotationStepDegrees}))return false;return CommitTransform();}
+        case ShipyardBuilderCommand::RotateRollNegative:{model_.transformTool=ShipyardTransformTool::Rotate;if(model_.dragPreview.staged)return RotateStagedPlacement({0,0,-model_.rotationStepDegrees});if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!RotateSelectedSocket({0,0,-model_.rotationStepDegrees}))return false;return CommitSocketTransform();}if(!RotateSelected({0,0,-model_.rotationStepDegrees}))return false;return CommitTransform();}
+        case ShipyardBuilderCommand::FlipPitch:{model_.transformTool=ShipyardTransformTool::Rotate;if(model_.dragPreview.staged)return RotateStagedPlacement({180,0,0});if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!RotateSelectedSocket({180,0,0}))return false;return CommitSocketTransform();}if(!RotateSelected({180,0,0}))return false;return CommitTransform();}
+        case ShipyardBuilderCommand::FlipYaw:{model_.transformTool=ShipyardTransformTool::Rotate;if(model_.dragPreview.staged)return RotateStagedPlacement({0,180,0});if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!RotateSelectedSocket({0,180,0}))return false;return CommitSocketTransform();}if(!RotateSelected({0,180,0}))return false;return CommitTransform();}
+        case ShipyardBuilderCommand::FlipRoll:{model_.transformTool=ShipyardTransformTool::Rotate;if(model_.dragPreview.staged)return RotateStagedPlacement({0,0,180});if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!RotateSelectedSocket({0,0,180}))return false;return CommitSocketTransform();}if(!RotateSelected({0,0,180}))return false;return CommitTransform();}
         case ShipyardBuilderCommand::MirrorSelectedX:return MirrorSelectedSubtreeX();
         case ShipyardBuilderCommand::CycleRotationStep:
             model_.rotationStepDegrees=model_.rotationStepDegrees>10.0f?5.0f:(model_.rotationStepDegrees>2.0f?1.0f:15.0f);
             if(model_.transform.active)model_.transform.rotationSnapDegrees=model_.rotationStepDegrees;
             model_.status="ROTATION STEP "+std::to_string(static_cast<int>(model_.rotationStepDegrees))+" DEG";return true;
-        case ShipyardBuilderCommand::ScaleUniformNegative:{model_.transformTool=ShipyardTransformTool::Scale;if(!ScaleSelected({-.05f,-.05f,-.05f}))return false;return CommitTransform();}
-        case ShipyardBuilderCommand::ScaleUniformPositive:{model_.transformTool=ShipyardTransformTool::Scale;if(!ScaleSelected({.05f,.05f,.05f}))return false;return CommitTransform();}
+        case ShipyardBuilderCommand::ScaleUniformNegative:{model_.transformTool=ShipyardTransformTool::Scale;if(model_.dragPreview.staged)return ScaleStagedPlacement(-.05f);if(!ScaleSelected({-.05f,-.05f,-.05f}))return false;return CommitTransform();}
+        case ShipyardBuilderCommand::ScaleUniformPositive:{model_.transformTool=ShipyardTransformTool::Scale;if(model_.dragPreview.staged)return ScaleStagedPlacement(.05f);if(!ScaleSelected({.05f,.05f,.05f}))return false;return CommitTransform();}
         case ShipyardBuilderCommand::ResetScale:{
+            if(model_.dragPreview.staged){const float current=(model_.dragPreview.ghost.scaleX+model_.dragPreview.ghost.scaleY+model_.dragPreview.ghost.scaleZ)/3.0f;return ScaleStagedPlacement(1.0f-current);}
             if(model_.recipe.modules.empty())return false;
             const auto index=std::min(model_.selectedPlacedModule,model_.recipe.modules.size()-1);
             model_.transform={};auto& placement=model_.recipe.modules[index];placement.scaleX=placement.scaleY=placement.scaleZ=1.0f;
@@ -1083,6 +1135,7 @@ bool ShipyardBuilderSystem::Activate(ShipyardBuilderCommand command,int value){
         case ShipyardBuilderCommand::ScaleAssemblyDown:return ScaleAssembly(1.0f/1.05f);
         case ShipyardBuilderCommand::ScaleAssemblyUp:return ScaleAssembly(1.05f);
         case ShipyardBuilderCommand::ResetRotation:{
+            if(model_.dragPreview.staged){model_.dragPreview.ghost.yawDegrees=0.0f;model_.dragPreview.ghost.pitchDegrees=0.0f;model_.dragPreview.ghost.rollDegrees=0.0f;model_.dragPreview.snapped=false;model_.dragPreview.freePlacement=true;model_.dragPreview.selectedCandidate=-1;model_.status="Staged rotation reset";RefreshDragSymmetryPreview();return true;}
             if(model_.recipe.modules.empty())return false;
             const auto index=std::min(model_.selectedPlacedModule,model_.recipe.modules.size()-1);
             model_.transform={};
@@ -1095,17 +1148,36 @@ bool ShipyardBuilderSystem::Activate(ShipyardBuilderCommand command,int value){
         case ShipyardBuilderCommand::FrameShip:model_.status="Frame whole ship";return true;
         case ShipyardBuilderCommand::PreviousRole:
         case ShipyardBuilderCommand::NextRole:{auto roles=Roles();auto it=std::find(roles.begin(),roles.end(),model_.role);std::size_t i=it==roles.end()?0:static_cast<std::size_t>(std::distance(roles.begin(),it));i=(command==ShipyardBuilderCommand::NextRole)?(i+1)%roles.size():(i+roles.size()-1)%roles.size();model_.role=roles[i];model_.status="Generator role: "+model_.role;changed=true;}break;
+        case ShipyardBuilderCommand::PreviousGeneratorDomain:
+        case ShipyardBuilderCommand::NextGeneratorDomain:{
+            const auto registry=GeneratorParitySystem::Registry();
+            if(registry.empty())return false;
+            auto it=std::find_if(registry.begin(),registry.end(),[&](const auto& d){return d.domain==model_.authoringDomain;});
+            std::size_t i=it==registry.end()?0u:static_cast<std::size_t>(std::distance(registry.begin(),it));
+            i=command==ShipyardBuilderCommand::NextGeneratorDomain?(i+1u)%registry.size():(i+registry.size()-1u)%registry.size();
+            model_.authoringDomain=registry[i].domain;
+            model_.status=std::string("Authoring domain: ")+GeneratorParitySystem::DomainName(model_.authoringDomain)+" / same contract in Blender";
+            changed=true;
+        }break;
         case ShipyardBuilderCommand::PreviousShipClass:
         case ShipyardBuilderCommand::NextShipClass:{
-            static const std::vector<ShipClass> kNormalClasses={ShipClass::Frigate,ShipClass::Destroyer,ShipClass::Cruiser,ShipClass::Battlecruiser,ShipClass::Battleship};
-            auto it=std::find(kNormalClasses.begin(),kNormalClasses.end(),model_.shipClass);
-            std::size_t i=it==kNormalClasses.end()?0u:static_cast<std::size_t>(std::distance(kNormalClasses.begin(),it));
-            i=command==ShipyardBuilderCommand::NextShipClass?(i+1u)%kNormalClasses.size():(i+kNormalClasses.size()-1u)%kNormalClasses.size();
-            model_.shipClass=kNormalClasses[i];
-            model_.targetModuleSize=ShipClassRoleSystem::Envelope(model_.shipClass).structuralSize;
-            model_.status=std::string("Ship class: ")+ShipClassRoleSystem::ClassName(model_.shipClass)+" / "+UniversalKitbashAuthority::SizeName(model_.targetModuleSize);changed=true;}break;
+            static const std::vector<ShipClass> kClasses={ShipClass::Fighter,ShipClass::Shuttle,ShipClass::Corvette,ShipClass::Frigate,ShipClass::Destroyer,ShipClass::Cruiser,ShipClass::Battlecruiser,ShipClass::Battleship,ShipClass::Dreadnought,ShipClass::Carrier,ShipClass::Freighter,ShipClass::Miner,ShipClass::Explorer,ShipClass::IndustrialCapital,ShipClass::Capital};
+            auto it=std::find(kClasses.begin(),kClasses.end(),model_.shipClass);
+            std::size_t i=it==kClasses.end()?0u:static_cast<std::size_t>(std::distance(kClasses.begin(),it));
+            i=command==ShipyardBuilderCommand::NextShipClass?(i+1u)%kClasses.size():(i+kClasses.size()-1u)%kClasses.size();
+            model_.shipClass=kClasses[i];
+            model_.targetModuleSize=ShipClassRoleSystem::ComponentProfile(model_.shipClass).preferredStructuralSize;
+            const auto e=ShipClassRoleSystem::Envelope(model_.shipClass);
+            model_.status=std::string("Ship class: ")+ShipClassRoleSystem::ClassName(model_.shipClass)+" / "+UniversalKitbashAuthority::SizeName(model_.targetModuleSize)+" / "+std::to_string(static_cast<int>(e.nominalLengthMeters))+"m envelope";changed=true;}break;
         case ShipyardBuilderCommand::PreviousTargetSize:
-        case ShipyardBuilderCommand::NextTargetSize:{int i=static_cast<int>(model_.targetModuleSize);i+=(command==ShipyardBuilderCommand::NextTargetSize)?1:-1;if(i<0)i=4;if(i>4)i=0;model_.targetModuleSize=static_cast<UniversalSizeClass>(i);model_.status=std::string("Module target size: ")+UniversalKitbashAuthority::SizeName(model_.targetModuleSize);changed=true;}break;
+        case ShipyardBuilderCommand::NextTargetSize:{
+            const auto profile=ShipClassRoleSystem::ComponentProfile(model_.shipClass);
+            const int lo=static_cast<int>(profile.minimumStructuralSize),hi=static_cast<int>(profile.maximumStructuralSize);
+            int i=static_cast<int>(model_.targetModuleSize)+(command==ShipyardBuilderCommand::NextTargetSize?1:-1);
+            if(i>hi) i=lo;
+            if(i<lo) i=hi;
+            model_.targetModuleSize=static_cast<UniversalSizeClass>(i);
+            model_.status=std::string("Module target size: ")+UniversalKitbashAuthority::SizeName(model_.targetModuleSize)+" / enforced by "+ShipClassRoleSystem::ClassName(model_.shipClass);changed=true;}break;
         case ShipyardBuilderCommand::CycleConstructionMode:{int i=(static_cast<int>(model_.constructionMode)+1)%4;model_.constructionMode=static_cast<ConstructionWorkspaceMode>(i);model_.status=std::string("Construction mode: ")+UniversalConstructionSystem::ModeName(model_.constructionMode);changed=true;}break;
         case ShipyardBuilderCommand::GenerateVariant:changed=GenerateVariant();break;
         case ShipyardBuilderCommand::Validate:model_.validation=Validate();model_.status=model_.validation.valid?"VALID - structural socket graph passes":"INVALID - inspect errors on right";return true;
@@ -1142,14 +1214,16 @@ bool ShipyardBuilderSystem::BeginSelectedTransform(){
 }
 
 bool ShipyardBuilderSystem::TranslateSelected(const Vector3& delta,bool fine){
-    if(!model_.transform.active&& !BeginSelectedTransform())return false;if(model_.transform.tool!=ShipyardTransformTool::Move)return false;
+    if(!model_.transform.active && !BeginSelectedTransform()) return false;
+    if(model_.transform.tool!=ShipyardTransformTool::Move) return false;
     ShipyardTransformSystem::Translate(model_.transform,delta,fine);
     if(model_.transform.moduleIndex<model_.recipe.modules.size())model_.recipe.modules[model_.transform.moduleIndex]=model_.transform.working;
     model_.dirty=true;InvalidateRecipeMetadata();return true;
 }
 
 bool ShipyardBuilderSystem::RotateSelected(const Vector3& deltaDegrees,bool fine){
-    if(!model_.transform.active&& !BeginSelectedTransform())return false;if(model_.transform.tool!=ShipyardTransformTool::Rotate)return false;
+    if(!model_.transform.active && !BeginSelectedTransform()) return false;
+    if(model_.transform.tool!=ShipyardTransformTool::Rotate) return false;
     ShipyardTransformSystem::Rotate(model_.transform,deltaDegrees,fine);
     // Manual authoring must be able to traverse every axis, including a full
     // 180-degree source-basis correction. Do not silently clamp the user's
@@ -1161,7 +1235,8 @@ bool ShipyardBuilderSystem::RotateSelected(const Vector3& deltaDegrees,bool fine
 }
 
 bool ShipyardBuilderSystem::ScaleSelected(const Vector3& deltaScale,bool fine){
-    if(!model_.transform.active&& !BeginSelectedTransform())return false;if(model_.transform.tool!=ShipyardTransformTool::Scale)return false;
+    if(!model_.transform.active && !BeginSelectedTransform()) return false;
+    if(model_.transform.tool!=ShipyardTransformTool::Scale) return false;
     ShipyardTransformSystem::Scale(model_.transform,deltaScale,fine);
     if(model_.transform.moduleIndex<model_.recipe.modules.size()){
         if(const auto* record=FindRecord(model_.recipe.modules[model_.transform.moduleIndex].moduleId))
@@ -1258,7 +1333,8 @@ bool ShipyardBuilderSystem::MirrorSelectedAcrossActiveSymmetry(){
 }
 
 bool ShipyardBuilderSystem::BreakSelectedSymmetryPair(){
-    if(model_.recipe.modules.empty())return false;const auto selected=std::min(model_.selectedPlacedModule,model_.recipe.modules.size()-1);
+    if(model_.recipe.modules.empty()) return false;
+    const auto selected=std::min(model_.selectedPlacedModule,model_.recipe.modules.size()-1);
     for(auto& pair:model_.symmetryPairs)if(pair.linked&&(pair.first==selected||pair.second==selected)){pair.linked=false;model_.status="Symmetry link broken; both modules are now independent";return true;}
     model_.status="Selected module has no linked symmetry partner";return false;
 }
@@ -1330,8 +1406,36 @@ bool ShipyardBuilderSystem::UpdateCatalogDrag(const Vector3& shipLocalPointer){
     model_.status=model_.dragPreview.status;return true;
 }
 
+bool ShipyardBuilderSystem::StageCatalogDrag(){
+    if(!ShipyardDragDropSystem::Stage(model_.dragPreview))return false;
+    RefreshDragSymmetryPreview();model_.status=model_.dragPreview.status;return true;
+}
+
+bool ShipyardBuilderSystem::CycleStagedSnapCandidate(int delta){
+    if(!ShipyardDragDropSystem::CycleCandidate(model_.dragPreview,delta))return false;
+    RefreshDragSymmetryPreview();model_.status=model_.dragPreview.status;return true;
+}
+
+bool ShipyardBuilderSystem::TranslateStagedPlacement(const Vector3& delta,bool fine){
+    const float f=fine?.10f:1.0f;
+    if(!ShipyardDragDropSystem::TranslateStaged(model_.dragPreview,delta*f,model_.transformSnap,fine?.025f:.25f))return false;
+    RefreshDragSymmetryPreview();model_.status=model_.dragPreview.status;return true;
+}
+
+bool ShipyardBuilderSystem::RotateStagedPlacement(const Vector3& deltaDegrees,bool fine){
+    const float f=fine?.10f:1.0f;
+    if(!ShipyardDragDropSystem::RotateStaged(model_.dragPreview,deltaDegrees*f,model_.transformSnap,model_.rotationStepDegrees*(fine?.10f:1.0f)))return false;
+    RefreshDragSymmetryPreview();model_.status=model_.dragPreview.status;return true;
+}
+
+bool ShipyardBuilderSystem::ScaleStagedPlacement(float delta,bool fine){
+    if(!ShipyardDragDropSystem::ScaleStaged(model_.dragPreview,delta*(fine?.10f:1.0f)))return false;
+    RefreshDragSymmetryPreview();model_.status=model_.dragPreview.status;return true;
+}
+
 bool ShipyardBuilderSystem::CommitCatalogDrag(){
     if(!model_.dragPreview.active||!model_.dragPreview.valid)return false;
+    if(!model_.dragPreview.staged)ShipyardDragDropSystem::Stage(model_.dragPreview);
     const auto preview=model_.dragPreview;
     const std::size_t childIndex=model_.recipe.modules.size();
     std::size_t primaryParent=static_cast<std::size_t>(-1);std::string primaryParentSocket,primaryChildSocket;
@@ -1385,10 +1489,12 @@ ShipyardBuilderLayout ShipyardBuilderSystem::Layout(int w,int h){
     // Pass585+: the project-wide UI authority is resolution-aware.  The old
     // fixed 390px/520px caps made the Shipyard look nearly unchanged and tiny
     // at 1440p/4K even when the internal editor architecture had improved.
-    l.left=24.0f*s;
-    l.top=34.0f*s;
-    l.leftWidth=std::clamp(static_cast<float>(w)*.235f,400.0f*s,560.0f*s);
-    l.rightWidth=std::clamp(static_cast<float>(w)*.300f,520.0f*s,700.0f*s);
+    l.workspaceBarY=8.0f*s;
+    l.workspaceBarHeight=36.0f*s;
+    l.left=12.0f*s;
+    l.top=54.0f*s;
+    l.leftWidth=std::clamp(static_cast<float>(w)*.210f,340.0f*s,560.0f*s);
+    l.rightWidth=std::clamp(static_cast<float>(w)*.265f,420.0f*s,660.0f*s);
     l.right=static_cast<float>(w)-l.rightWidth-16.0f*s;
     l.rowHeight=(l.compact?32.0f:36.0f)*s;
     l.rowGap=6.0f*s;
@@ -1403,12 +1509,12 @@ ShipyardBuilderLayout ShipyardBuilderSystem::Layout(int w,int h){
     // Right: explicit one-click workflow tabs. SOCKETS is intentionally a
     // first-class visible tab during development; advanced metadata remains in
     // AUTHORING.  This restores the corrective workflow lost in Pass535.
-    l.tabRowY=l.top+56.0f*s;
-    l.tabHeight=38.0f*s;
-    // Reserve three workflow rows. Dev Mode now exposes BUILD/MODEL/INTERIOR,
-    // CHARACTER, PCG, WORLD, DEV WORLD and raw AUTHORING without shrinking
-    // mouse targets. Player-docked mode simply leaves unused rows empty.
-    l.contentTopY=l.tabRowY+3.0f*l.tabHeight+2.0f*l.rowGap+14.0f*s;
+    l.tabRowY=l.workspaceBarY;
+    l.tabHeight=l.workspaceBarHeight;
+    l.contentTopY=l.top+58.0f*s;
+    l.toolRailWidth=52.0f*s;
+    l.toolRailX=l.left+l.leftWidth+8.0f*s;
+    l.toolRailY=l.top+18.0f*s;
     l.selectedSummaryY=l.contentTopY;
     l.placedListY=l.contentTopY+64.0f*s;
     l.placedPageSize=l.compact?5u:6u;
@@ -1491,11 +1597,20 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
     const float navW=52.0f*s,buttonH=34.0f*s;
     add(ShipyardBuilderCommand::PreviousModule,0,left+10.0f*s,actionsY,navW,buttonH,"<");
     add(ShipyardBuilderCommand::NextModule,0,left+68.0f*s,actionsY,navW,buttonH,">");
-    add(ShipyardBuilderCommand::AddModule,0,left+126.0f*s,actionsY,96.0f*s,buttonH,"PLACE",false,!filtered.empty());
-    add(ShipyardBuilderCommand::ReplaceModule,0,left+228.0f*s,actionsY,inner-218.0f*s,buttonH,"REPLACE",false,!filtered.empty()&&!model.recipe.modules.empty());
-    add(ShipyardBuilderCommand::RemoveModule,0,left+10.0f*s,actionsY+40.0f*s,92.0f*s,buttonH,"REMOVE",false,!model.recipe.modules.empty());
-    add(ShipyardBuilderCommand::ToggleLiveSymmetry,0,left+108.0f*s,actionsY+40.0f*s,126.0f*s,buttonH,model.symmetryFrame.live?"LIVE SYM ON":"LIVE SYM OFF",model.symmetryFrame.live);
-    add(ShipyardBuilderCommand::Validate,0,left+240.0f*s,actionsY+40.0f*s,inner-230.0f*s,buttonH,"VALIDATE");
+    if(model.dragPreview.staged){
+        add(ShipyardBuilderCommand::ConfirmPlacement,0,left+126.0f*s,actionsY,112.0f*s,buttonH,"CONFIRM ATTACH",true,true);
+        add(ShipyardBuilderCommand::CancelPlacement,0,left+244.0f*s,actionsY,inner-234.0f*s,buttonH,"CANCEL",false,true);
+        const std::string snapLabel=model.dragPreview.candidates.empty()?"NO SNAP":("SNAP "+std::to_string(std::max(0,model.dragPreview.selectedCandidate)+1)+"/"+std::to_string(model.dragPreview.candidates.size()));
+        add(ShipyardBuilderCommand::PreviousSnapCandidate,0,left+10.0f*s,actionsY+40.0f*s,92.0f*s,buttonH,"< SNAP",false,!model.dragPreview.candidates.empty());
+        add(ShipyardBuilderCommand::NextSnapCandidate,0,left+108.0f*s,actionsY+40.0f*s,126.0f*s,buttonH,snapLabel+" >",model.dragPreview.snapped,!model.dragPreview.candidates.empty());
+        add(ShipyardBuilderCommand::ToggleTransformSnap,0,left+240.0f*s,actionsY+40.0f*s,inner-230.0f*s,buttonH,model.transformSnap?"GRID ON":"GRID OFF",model.transformSnap,true);
+    }else{
+        add(ShipyardBuilderCommand::AddModule,0,left+126.0f*s,actionsY,96.0f*s,buttonH,"PLACE",false,!filtered.empty());
+        add(ShipyardBuilderCommand::ReplaceModule,0,left+228.0f*s,actionsY,inner-218.0f*s,buttonH,"REPLACE",false,!filtered.empty()&&!model.recipe.modules.empty());
+        add(ShipyardBuilderCommand::RemoveModule,0,left+10.0f*s,actionsY+40.0f*s,92.0f*s,buttonH,"REMOVE",false,!model.recipe.modules.empty());
+        add(ShipyardBuilderCommand::ToggleLiveSymmetry,0,left+108.0f*s,actionsY+40.0f*s,126.0f*s,buttonH,model.symmetryFrame.live?"LIVE SYM ON":"LIVE SYM OFF",model.symmetryFrame.live);
+        add(ShipyardBuilderCommand::Validate,0,left+240.0f*s,actionsY+40.0f*s,inner-230.0f*s,buttonH,"VALIDATE");
+    }
 
     const float rx=right+12.0f*s,rw=rightW-24.0f*s,smallGap=7.0f*s;
     auto row=[&](float y,const std::vector<std::tuple<ShipyardBuilderCommand,std::string,bool,bool>>& items,float ch=0.0f){
@@ -1508,6 +1623,7 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         }
     };
     const bool hasPlaced=!model.recipe.modules.empty();
+    const bool hasTransformSubject=hasPlaced||model.dragPreview.staged;
     // Compatibility bridge for older callers/tests that set inspectorTab
     // directly. Runtime navigation now owns workspaceMode, but a directly
     // supplied legacy page still resolves to the matching modern workspace.
@@ -1537,13 +1653,29 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
     // Expanded Dev Mode uses a three-row workflow strip. Keep every tab large
     // enough for mouse-first use rather than compressing the complete authoring
     // environment into unreadable tiny tabs.
-    const std::size_t tabsPerRow=4;
-    for(std::size_t start=0;start<workspaceTabs.size();start+=tabsPerRow){
-        const auto end=std::min(start+tabsPerRow,workspaceTabs.size());
-        std::vector<std::tuple<ShipyardBuilderCommand,std::string,bool,bool>> tabRow(workspaceTabs.begin()+static_cast<std::ptrdiff_t>(start),workspaceTabs.begin()+static_cast<std::ptrdiff_t>(end));
-        const float tabY=l.tabRowY+static_cast<float>(start/tabsPerRow)*(l.tabHeight+l.rowGap);
-        row(tabY,tabRow,l.tabHeight);
+    if(!workspaceTabs.empty()){
+        const float barX=14.0f*s,barW=static_cast<float>(w)-28.0f*s;
+        const float tabGap=4.0f*s;
+        const float tabW=(barW-tabGap*static_cast<float>(workspaceTabs.size()-1))/static_cast<float>(workspaceTabs.size());
+        float x=barX;
+        for(const auto& item:workspaceTabs){
+            add(std::get<0>(item),0,x,l.workspaceBarY,tabW,l.workspaceBarHeight,std::get<1>(item),std::get<2>(item),std::get<3>(item));
+            x+=tabW+tabGap;
+        }
     }
+    // Blender-style viewport tool rail. These duplicate the transform commands
+    // from Properties so mouse-first users can switch tools without leaving the
+    // canvas. Q/W/E/R remain the keyboard authority.
+    {
+        const float tx=l.toolRailX,tw=l.toolRailWidth,th=38.0f*s,tg=6.0f*s;
+        float ty=l.toolRailY;
+        add(ShipyardBuilderCommand::ToolSelect,0,tx,ty,tw,th,"[Q]",model.transformTool==ShipyardTransformTool::Select,true);ty+=th+tg;
+        add(ShipyardBuilderCommand::ToolMove,0,tx,ty,tw,th,"[W]",model.transformTool==ShipyardTransformTool::Move,hasTransformSubject);ty+=th+tg;
+        add(ShipyardBuilderCommand::ToolRotate,0,tx,ty,tw,th,"[E]",model.transformTool==ShipyardTransformTool::Rotate,hasTransformSubject);ty+=th+tg;
+        add(ShipyardBuilderCommand::ToolScale,0,tx,ty,tw,th,"[R]",model.transformTool==ShipyardTransformTool::Scale,hasTransformSubject);ty+=th+tg;
+        add(ShipyardBuilderCommand::ToggleTransformSnap,0,tx,ty,tw,th,model.transformSnap?"SN":"FR",model.transformSnap,hasTransformSubject);
+    }
+
     // Zero-size legacy navigation sentinels preserve source/API compatibility
     // without reintroducing the old five-peer-tab visual clutter.
     add(ShipyardBuilderCommand::InspectorTransform,0,-100,-100,0,0,"",false,false);
@@ -1554,11 +1686,11 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         const std::string spaceLabel=model.transformSpace==ShipyardTransformSpace::View?"CAMERA":(model.transformSpace==ShipyardTransformSpace::Ship?"SHIP":"LOCAL");
         row(l.editRowY,{
             {ShipyardBuilderCommand::ToolSelect,"[Q] SELECT",model.transformTool==ShipyardTransformTool::Select,true},
-            {ShipyardBuilderCommand::ToolMove,"[W] MOVE",model.transformTool==ShipyardTransformTool::Move,hasPlaced},
-            {ShipyardBuilderCommand::ToolRotate,"[E] ROTATE",model.transformTool==ShipyardTransformTool::Rotate,hasPlaced},
-            {ShipyardBuilderCommand::ToolScale,"[R] SCALE",model.transformTool==ShipyardTransformTool::Scale,hasPlaced},
-            {ShipyardBuilderCommand::ToggleTransformSpace,spaceLabel,false,hasPlaced},
-            {ShipyardBuilderCommand::ToggleTransformSnap,model.transformSnap?"SNAP":"FREE",model.transformSnap,hasPlaced}
+            {ShipyardBuilderCommand::ToolMove,"[W] MOVE",model.transformTool==ShipyardTransformTool::Move,hasTransformSubject},
+            {ShipyardBuilderCommand::ToolRotate,"[E] ROTATE",model.transformTool==ShipyardTransformTool::Rotate,hasTransformSubject},
+            {ShipyardBuilderCommand::ToolScale,"[R] SCALE",model.transformTool==ShipyardTransformTool::Scale,hasTransformSubject},
+            {ShipyardBuilderCommand::ToggleTransformSpace,spaceLabel,false,hasTransformSubject},
+            {ShipyardBuilderCommand::ToggleTransformSnap,model.transformSnap?"SNAP":"FREE",model.transformSnap,hasTransformSubject}
         });
         row(l.focusRowY,{
             {ShipyardBuilderCommand::PreviousPlaced,"PREV",false,hasPlaced},
@@ -1568,29 +1700,29 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         });
         if(model.transformTool==ShipyardTransformTool::Move){
             row(l.moveRowY,{
-                {ShipyardBuilderCommand::NudgePort,"PORT",false,hasPlaced},
-                {ShipyardBuilderCommand::NudgeStarboard,"STARBOARD",false,hasPlaced},
-                {ShipyardBuilderCommand::NudgeForward,"FORWARD",false,hasPlaced}
+                {ShipyardBuilderCommand::NudgePort,"PORT",false,hasTransformSubject},
+                {ShipyardBuilderCommand::NudgeStarboard,"STARBOARD",false,hasTransformSubject},
+                {ShipyardBuilderCommand::NudgeForward,"FORWARD",false,hasTransformSubject}
             });
             row(l.moveRow2Y,{
-                {ShipyardBuilderCommand::NudgeAft,"AFT",false,hasPlaced},
-                {ShipyardBuilderCommand::NudgeDorsal,"UP",false,hasPlaced},
-                {ShipyardBuilderCommand::NudgeVentral,"DOWN",false,hasPlaced}
+                {ShipyardBuilderCommand::NudgeAft,"AFT",false,hasTransformSubject},
+                {ShipyardBuilderCommand::NudgeDorsal,"UP",false,hasTransformSubject},
+                {ShipyardBuilderCommand::NudgeVentral,"DOWN",false,hasTransformSubject}
             });
         }else if(model.transformTool==ShipyardTransformTool::Rotate){
             row(l.moveRowY,{
-                {ShipyardBuilderCommand::RotatePitchNegative,"PITCH -",false,hasPlaced},
-                {ShipyardBuilderCommand::RotatePitchPositive,"PITCH +",false,hasPlaced},
+                {ShipyardBuilderCommand::RotatePitchNegative,"PITCH -",false,hasTransformSubject},
+                {ShipyardBuilderCommand::RotatePitchPositive,"PITCH +",false,hasTransformSubject},
                 {ShipyardBuilderCommand::FlipPitch,"FLIP PITCH",false,hasPlaced}
             });
             row(l.moveRow2Y,{
-                {ShipyardBuilderCommand::RotateYawNegative,"YAW -",false,hasPlaced},
-                {ShipyardBuilderCommand::RotateYawPositive,"YAW +",false,hasPlaced},
+                {ShipyardBuilderCommand::RotateYawNegative,"YAW -",false,hasTransformSubject},
+                {ShipyardBuilderCommand::RotateYawPositive,"YAW +",false,hasTransformSubject},
                 {ShipyardBuilderCommand::FlipYaw,"FLIP YAW",false,hasPlaced}
             });
             row(l.rotateRowY,{
-                {ShipyardBuilderCommand::RotateRollNegative,"ROLL -",false,hasPlaced},
-                {ShipyardBuilderCommand::RotateRollPositive,"ROLL +",false,hasPlaced},
+                {ShipyardBuilderCommand::RotateRollNegative,"ROLL -",false,hasTransformSubject},
+                {ShipyardBuilderCommand::RotateRollPositive,"ROLL +",false,hasTransformSubject},
                 {ShipyardBuilderCommand::FlipRoll,"FLIP ROLL",false,hasPlaced}
             });
             row(l.yawRowY,{
@@ -1600,8 +1732,8 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
             });
         }else if(model.transformTool==ShipyardTransformTool::Scale){
             row(l.moveRowY,{
-                {ShipyardBuilderCommand::ScaleUniformNegative,"PART  -5%",false,hasPlaced},
-                {ShipyardBuilderCommand::ScaleUniformPositive,"PART  +5%",false,hasPlaced},
+                {ShipyardBuilderCommand::ScaleUniformNegative,"PART  -5%",false,hasTransformSubject},
+                {ShipyardBuilderCommand::ScaleUniformPositive,"PART  +5%",false,hasTransformSubject},
                 {ShipyardBuilderCommand::ResetScale,"RESET PART",false,hasPlaced}
             });
             row(l.moveRow2Y,{
@@ -1648,6 +1780,12 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         row(l.moveRow2Y,{
             {ShipyardBuilderCommand::ModelStretchZNegative,"HEIGHT -",false,hasShape},
             {ShipyardBuilderCommand::ModelStretchZPositive,"HEIGHT +",false,hasShape}
+        });
+        const auto purpose=AuthoringStandardsSystem::PurposeName(model.modeling.selectedPurpose);
+        row(l.yawRowY,{
+            {ShipyardBuilderCommand::ModelPreviousPurpose,"< PURPOSE",false,true},
+            {ShipyardBuilderCommand::ModelAssignPurpose,std::string("SET ")+purpose,model.modeling.recipe.semanticPurposeAssigned,true},
+            {ShipyardBuilderCommand::ModelNextPurpose,"PURPOSE >",false,true}
         });
         row(l.rotateRowY,{
             {ShipyardBuilderCommand::ModelValidate,"VALIDATE MODEL",false,true},
@@ -1780,10 +1918,11 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
             {ShipyardBuilderCommand::CycleConstructionMode,std::string("MODE  ")+UniversalConstructionSystem::ModeName(model.constructionMode),true,true}
         });
         row(l.generateRowY,{
-            {ShipyardBuilderCommand::PreviousRole,"PREV ROLE",false,true},
-            {ShipyardBuilderCommand::NextRole,"NEXT ROLE",false,true},
-            {ShipyardBuilderCommand::GenerateVariant,"GENERATE",false,true},
-            {ShipyardBuilderCommand::Validate,"VALIDATE",false,true}
+            {ShipyardBuilderCommand::PreviousRole,"< ROLE",false,true},
+            {ShipyardBuilderCommand::NextRole,model.role+" >",false,true},
+            {ShipyardBuilderCommand::PreviousGeneratorDomain,"< DOMAIN",false,true},
+            {ShipyardBuilderCommand::NextGeneratorDomain,std::string(GeneratorParitySystem::DomainName(model.authoringDomain))+" >",true,true},
+            {ShipyardBuilderCommand::GenerateVariant,"GENERATE",false,true}
         });
         row(l.saveRowY,{
             {ShipyardBuilderCommand::Reset,"RESET SHIP",false,true},

@@ -1,0 +1,28 @@
+{
+  "schema": "subspace.shipyard-authoring-runtime-authority.v2",
+  "principles": [
+    "Shipyard is an in-game authoring/dev mode over live runtime authorities, not a detached editor simulation.",
+    "Authoring domain and workspace are separate: domain selects what is being authored; workspace selects the active tool surface.",
+    "Palette drag release stages an unattached object; move/rotate/scale/snap selection happens before explicit confirmation.",
+    "Measured planar contact surfaces outrank bounding-box guesses for generic socket generation.",
+    "Typed sockets, bounded insertion depth, collision clearance and character-scale clearance gate final attachment.",
+    "Saved assemblies retain editable modules as source and derive a cohesive welded exterior/interior bake product.",
+    "1 world unit is 1 meter and canonical 1.80 m player scale drives doors, corridors, seats, consoles, decks and interaction reach.",
+    "Cockpit first-person and on-foot first-person are embodied defaults; the legacy overhead game view becomes Remote Fleet Command.",
+    "The Blender addon is a client of the same generator registry and request schema used in game."
+  ],
+  "cohesiveBake": {
+    "interchange": "OBJ",
+    "unionExterior": true,
+    "removeOccludedInternalExteriorFaces": true,
+    "carveWalkableInterior": true,
+    "preservePortals": true,
+    "retainEditableAssemblySource": true
+  },
+  "shield": {
+    "surface": "single hull-conformal derived shell",
+    "gapMeters": 0.3048,
+    "visual": "still-water shimmer with point-impact ripples",
+    "performance": "distance/count LOD with bounded ripple pools"
+  }
+}

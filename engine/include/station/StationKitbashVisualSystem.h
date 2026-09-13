@@ -30,12 +30,16 @@ struct StationKitbashVisualRecipe {
     bool usedHardpointModule = false;
     bool usedDedicatedDock = false;
     float maxMeasuredGap = 0.0f;
+    // This visual recipe remains a compatibility/exterior-preview path until
+    // station generation is rebuilt from an interior/service program first.
+    bool legacyExteriorPreview = true;
+    std::string generationAuthority = "LEGACY_EXTERIOR_STACKING_PREVIEW";
 };
 
-/// Pass556+ station visual authority. Stations reuse certified Shipyard geometry
-/// through a station-specific logical kitbash and deterministic connection graph.
-/// Generated modules never receive unrelated free-floating coordinates: every
-/// non-root module is placed relative to a parent and recorded in attachments.
+/// Compatibility station exterior-preview authority. Stations currently reuse
+/// certified Shipyard geometry through a deterministic connection graph, but
+/// this is not the final station PCG authority: interior/service programming,
+/// circulation, docking and apertures must precede exterior expression.
 class StationKitbashVisualSystem {
 public:
     static StationKitbashVisualRecipe Build(const std::vector<ShipyardModuleRecord>& catalog,

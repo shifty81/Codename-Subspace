@@ -18,8 +18,6 @@
 #include "procedural/SolarSystemPlacementSystem.h"
 #include "procedural/SolarSystemEcologySystem.h"
 #include "interior/ShipInteriorLayoutSystem.h"
-#include "editor/ShipyardScreenSpaceTransformSystem.h"
-#include "rendering/ForwardSpacePresentationSystem.h"
 #include "ui/RuntimeControlContextSystem.h"
 
 #include <algorithm>
@@ -54,16 +52,6 @@ Vector3 WorldDeltaToShipLocal(const Vector3& worldDelta,float shipYaw)
 {
     const float c=std::cos(shipYaw),s=std::sin(shipYaw);
     return {worldDelta.x*c+worldDelta.y*s,-worldDelta.x*s+worldDelta.y*c,worldDelta.z};
-}
-
-ShipyardVisualTransform CurrentShipyardVisualTransform(const ProceduralShipVisualRecipe& recipe,
-                                                      const Vector3& shipWorldOrigin,
-                                                      float gameplayYawRadians)
-{
-    constexpr float kShipyardRenderScale=0.24f;
-    constexpr float kShipyardScreenFraction=0.22f;
-    const auto presentation=ForwardSpacePresentationSystem{}.ForShip(recipe.role.empty()?"INDUSTRIAL":recipe.role,true,kShipyardScreenFraction);
-    return ShipyardScreenSpaceTransformSystem::Build(recipe,shipWorldOrigin,gameplayYawRadians,kShipyardRenderScale,presentation.widthScale,presentation.lengthScale);
 }
 
 Vector3 ShipDeltaToModuleLocal(const Vector3& shipDelta,const VisualModulePlacement& p)
@@ -252,8 +240,7 @@ int NativeGameApplication::Run(const NativeGameRunOptions& options)
         _hasPlayerShipRecipe = true;
         if(_playerEntity!=0 && !_engine.GetRuntimeServices().interiors.GetLayout(_playerEntity)){
             ShipInteriorLayoutSystem interiorLayout;
-            const auto interiorPlan=interiorLayout.Materialize(_playerEntity,_renderer.ShipyardCatalog(),_playerShipRecipe,_engine.GetRuntimeServices().interiors);
-            _playerInteriorCarve=interiorPlan.carve;
+            interiorLayout.Materialize(_playerEntity,_renderer.ShipyardCatalog(),_playerShipRecipe,_engine.GetRuntimeServices().interiors);
         }
     }
 
@@ -611,19 +598,23 @@ void NativeGameApplication::HandleShipyardTransformHotkeys()
             const Vector3 world=camera.ViewRightPlanar()*x+camera.ViewUpPlanar()*y+Vector3{0,0,z};
             float shipYaw=0.0f;
             if(!_standaloneShipyard){if(const auto* player=_engine.GetEntityManager().GetComponent<PhysicsComponent>(_playerEntity))shipYaw=player->rotation.z;}
-            const auto transform=CurrentShipyardVisualTransform(_shipBuilder.Recipe(),{},shipYaw);
-            local=ShipyardScreenSpaceTransformSystem::WorldDeltaToRecipeLocal(world,transform);
+            local=WorldDeltaToShipLocal(world,shipYaw);
             if(socketEdit)if(const auto* placed=_shipBuilder.SelectedPlacedModule())local=ShipDeltaToModuleLocal(local,*placed);
         }else if(space==ShipyardTransformSpace::Ship&&socketEdit){
             if(const auto* placed=_shipBuilder.SelectedPlacedModule())local=ShipDeltaToModuleLocal(local,*placed);
         }else if(space==ShipyardTransformSpace::Local&&!socketEdit){
-            if(const auto* placed=_shipBuilder.SelectedPlacedModule()){
+            if(_shipBuilder.Model().dragPreview.staged){
+                constexpr float kDegToRad=3.14159265358979323846f/180.0f;
+                const float a=_shipBuilder.Model().dragPreview.ghost.yawDegrees*kDegToRad,c=std::cos(a),sn=std::sin(a);
+                local={x*c-y*sn,x*sn+y*c,z};
+            }else if(const auto* placed=_shipBuilder.SelectedPlacedModule()){
                 constexpr float kDegToRad=3.14159265358979323846f/180.0f;
                 const float a=placed->yawDegrees*kDegToRad,c=std::cos(a),sn=std::sin(a);
                 local={x*c-y*sn,x*sn+y*c,z};
             }
         }
-        if(socketEdit){if(_shipBuilder.TranslateSelectedSocket(local,fine))_shipBuilder.CommitSocketTransform();}
+        if(_shipBuilder.Model().dragPreview.staged){_shipBuilder.TranslateStagedPlacement(local,fine);}
+        else if(socketEdit){if(_shipBuilder.TranslateSelectedSocket(local,fine))_shipBuilder.CommitSocketTransform();}
         else if(_shipBuilder.TranslateSelected(local,fine))_shipBuilder.CommitTransform();
         return;
     }
@@ -638,7 +629,8 @@ void NativeGameApplication::HandleShipyardTransformHotkeys()
         if(input.WasPressed(InputAction::EditorNudgeUp))delta.z+=step;
         if(input.WasPressed(InputAction::EditorNudgeDown))delta.z-=step;
         if(std::fabs(delta.x)+std::fabs(delta.y)+std::fabs(delta.z)>0.0001f){
-            if(_shipBuilder.Model().inspectorTab==ShipyardInspectorTab::Sockets){if(_shipBuilder.RotateSelectedSocket(delta,fine))_shipBuilder.CommitSocketTransform();}
+            if(_shipBuilder.Model().dragPreview.staged)_shipBuilder.RotateStagedPlacement(delta,fine);
+            else if(_shipBuilder.Model().inspectorTab==ShipyardInspectorTab::Sockets){if(_shipBuilder.RotateSelectedSocket(delta,fine))_shipBuilder.CommitSocketTransform();}
             else if(_shipBuilder.RotateSelected(delta,fine))_shipBuilder.CommitTransform();
         }
         return;
@@ -648,7 +640,7 @@ void NativeGameApplication::HandleShipyardTransformHotkeys()
         float amount=0.0f;
         if(input.WasPressed(InputAction::EditorNudgeRight)||input.WasPressed(InputAction::EditorNudgeForward)||input.WasPressed(InputAction::EditorNudgeUp))amount+=.05f;
         if(input.WasPressed(InputAction::EditorNudgeLeft)||input.WasPressed(InputAction::EditorNudgeAft)||input.WasPressed(InputAction::EditorNudgeDown))amount-=.05f;
-        if(std::fabs(amount)>0.0001f&&_shipBuilder.ScaleSelected({amount,amount,amount},fine))_shipBuilder.CommitTransform();
+        if(std::fabs(amount)>0.0001f){if(_shipBuilder.Model().dragPreview.staged)_shipBuilder.ScaleStagedPlacement(amount,fine);else if(_shipBuilder.ScaleSelected({amount,amount,amount},fine))_shipBuilder.CommitTransform();}
     }
 }
 
@@ -757,7 +749,7 @@ void NativeGameApplication::ProcessShipyardRequests()
         ShipyardRefitDelta delta;
         if(_docking.stage==DockingExperienceStage::Docked&&ShipyardRefitSystem::Commit(_shipyardRefit,_shipBuilder.Recipe(),&delta)){
             _playerShipRecipe=_shipBuilder.Recipe();_playerShipAppearance=_shipBuilder.Appearance();_hasPlayerShipRecipe=!_playerShipRecipe.modules.empty();_shipBuilder.MarkApplied();
-            if(_playerEntity!=0&&_hasPlayerShipRecipe){auto& interiors=_engine.GetRuntimeServices().interiors;interiors.ClearLayout(_playerEntity);ShipInteriorLayoutSystem layout;const auto interiorPlan=layout.Materialize(_playerEntity,_shipBuilder.Model().catalog,_playerShipRecipe,interiors);_playerInteriorCarve=interiorPlan.carve;}
+            if(_playerEntity!=0&&_hasPlayerShipRecipe){auto& interiors=_engine.GetRuntimeServices().interiors;interiors.ClearLayout(_playerEntity);ShipInteriorLayoutSystem layout;layout.Materialize(_playerEntity,_shipBuilder.Model().catalog,_playerShipRecipe,interiors);}
         }
     }
 }
@@ -986,8 +978,7 @@ void NativeGameApplication::BootstrapPlayableSlice()
     if(_hasPlayerShipRecipe&&!_playerShipRecipe.modules.empty()){
         ShipInteriorLayoutSystem interiorLayout;
         const auto plan=interiorLayout.Materialize(_playerEntity,_renderer.ShipyardCatalog(),_playerShipRecipe,_engine.GetRuntimeServices().interiors);
-        _playerInteriorCarve=plan.carve;
-        Logger::Instance().Info("Interior","Assembly-derived interior materialized: rooms="+std::to_string(plan.rooms)+" decks="+std::to_string(plan.decks)+" airlocks="+std::to_string(plan.airlocks)+" connected="+std::to_string(plan.carve.connectedWalkableCount)+"/"+std::to_string(plan.carve.walkableModuleCount));
+        Logger::Instance().Info("Interior","Pass527 authored interior materialized: rooms="+std::to_string(plan.rooms)+" decks="+std::to_string(plan.decks)+" airlocks="+std::to_string(plan.airlocks));
     }
 
     if (auto* controls=_engine.GetPlayerControlSystem()) controls->SetControlledShip(_playerEntity);
@@ -1504,6 +1495,7 @@ void NativeGameApplication::HandleGlobalActions()
 
     if(_standaloneShipyard){
         if(input.WasPressed(InputAction::MenuBack)){
+            if(_shipBuilder.IsInitialized()&&_shipBuilder.Model().dragPreview.staged){_shipBuilder.CancelCatalogDrag();return;}
             _workspace.Close();_standaloneShipyard=false;RestoreGameplayCameraLimits();GoToFrontendScreen(FrontendScreen::MainMenu);return;
         }
         if(input.WasPressed(InputAction::MenuAccept))_shipBuilder.Activate(ShipyardBuilderCommand::AddModule);
@@ -1549,8 +1541,12 @@ void NativeGameApplication::HandleGlobalActions()
                 _shipyardCatalogPressX=pressX;_shipyardCatalogPressY=pressY;
             }
             else if(control.command==ShipyardBuilderCommand::None){
-                const int picked=NativeBattlefieldRenderer::PickShipyardModule(_shipBuilder.Model().catalog,_shipBuilder.Recipe(),_engine.GetStrategicCamera(),_window.GetWidth(),_window.GetHeight(),pressX,pressY,0,0,0,.24f,.22f,true);
-                if(picked>=0){_shipBuilder.Activate(ShipyardBuilderCommand::SelectPlaced,picked);if(_shipBuilder.Model().transformTool!=ShipyardTransformTool::Select)_shipyardPointerTransform=_shipBuilder.Model().inspectorTab==ShipyardInspectorTab::Sockets?_shipBuilder.BeginSelectedSocketTransform():_shipBuilder.BeginSelectedTransform();}
+                if(_shipBuilder.Model().dragPreview.staged&&_shipBuilder.Model().transformTool!=ShipyardTransformTool::Select){
+                    _shipyardPointerTransform=true;
+                }else{
+                    const int picked=NativeBattlefieldRenderer::PickShipyardModule(_shipBuilder.Model().catalog,_shipBuilder.Recipe(),_engine.GetStrategicCamera(),_window.GetWidth(),_window.GetHeight(),pressX,pressY,0,0,0,.24f,.22f,true);
+                    if(picked>=0){_shipBuilder.Activate(ShipyardBuilderCommand::SelectPlaced,picked);if(_shipBuilder.Model().transformTool!=ShipyardTransformTool::Select)_shipyardPointerTransform=_shipBuilder.Model().inspectorTab==ShipyardInspectorTab::Sockets?_shipBuilder.BeginSelectedSocketTransform():_shipBuilder.BeginSelectedTransform();}
+                }
             }
         }
         float dragX=0.0f,dragY=0.0f;
@@ -1563,48 +1559,39 @@ void NativeGameApplication::HandleGlobalActions()
                 }
             }
             if(_shipyardCatalogPointerDrag){
-                auto& camera=_engine.GetStrategicCamera();
-                const auto transform=CurrentShipyardVisualTransform(_shipBuilder.Recipe(),{},0.0f);
-                const float planeZ=transform.worldOrigin.z+_shipBuilder.Model().dragPreview.ghost.z*transform.axisScale.z;
-                const auto world=NativeBattlefieldRenderer::ScreenToWorldPlane(_window.GetPointerX(),_window.GetPointerY(),_window.GetWidth(),_window.GetHeight(),camera,planeZ);
-                _shipBuilder.UpdateCatalogDrag(ShipyardScreenSpaceTransformSystem::WorldPointToRecipeLocal(world,transform));
+                const auto world=NativeBattlefieldRenderer::ScreenToWorld(_window.GetPointerX(),_window.GetPointerY(),_window.GetWidth(),_window.GetHeight(),_engine.GetStrategicCamera());
+                _shipBuilder.UpdateCatalogDrag(world);
             }else if(_shipyardPointerTransform){
                 const bool fine=_window.IsShiftDown();auto& camera=_engine.GetStrategicCamera();
                 const bool socketEdit=_shipBuilder.Model().inspectorTab==ShipyardInspectorTab::Sockets;
-                if(_shipBuilder.Model().transformTool==ShipyardTransformTool::Move){
-                    const auto transform=CurrentShipyardVisualTransform(_shipBuilder.Recipe(),{},0.0f);
-                    float planeZ=transform.worldOrigin.z;
-                    if(const auto* placed=_shipBuilder.SelectedPlacedModule())planeZ+=placed->z*transform.axisScale.z;
-                    const float cx=_window.GetPointerX(),cy=_window.GetPointerY();
-                    const auto now=NativeBattlefieldRenderer::ScreenToWorldPlane(cx,cy,_window.GetWidth(),_window.GetHeight(),camera,planeZ);
-                    const auto prev=NativeBattlefieldRenderer::ScreenToWorldPlane(cx-dragX,cy-dragY,_window.GetWidth(),_window.GetHeight(),camera,planeZ);
-                    Vector3 delta=ShipyardScreenSpaceTransformSystem::WorldDeltaToRecipeLocal(now-prev,transform);
-                    if(socketEdit)if(const auto* placed=_shipBuilder.SelectedPlacedModule())delta=ShipDeltaToModuleLocal(delta,*placed);
-                    if(socketEdit)_shipBuilder.TranslateSelectedSocket(delta,fine);else _shipBuilder.TranslateSelected(delta,fine);
-                }
+                if(_shipBuilder.Model().transformTool==ShipyardTransformTool::Move){const float scale=.012f/std::max(.35f,camera.GetZoom());Vector3 delta=camera.ViewRightPlanar()*(dragX*scale)+camera.ViewUpPlanar()*(-dragY*scale);if(socketEdit)if(const auto* placed=_shipBuilder.SelectedPlacedModule())delta=ShipDeltaToModuleLocal(delta,*placed);if(_shipBuilder.Model().dragPreview.staged)_shipBuilder.TranslateStagedPlacement(delta,fine);else if(socketEdit)_shipBuilder.TranslateSelectedSocket(delta,fine);else _shipBuilder.TranslateSelected(delta,fine);}
                 else if(_shipBuilder.Model().transformTool==ShipyardTransformTool::Rotate){
                     const Vector3 delta=_window.IsControlDown()?Vector3{0.0f,0.0f,dragX*.35f}:Vector3{-dragY*.35f,dragX*.35f,0.0f};
-                    if(socketEdit)_shipBuilder.RotateSelectedSocket(delta,fine);else _shipBuilder.RotateSelected(delta,fine);
+                    if(_shipBuilder.Model().dragPreview.staged)_shipBuilder.RotateStagedPlacement(delta,fine);else if(socketEdit)_shipBuilder.RotateSelectedSocket(delta,fine);else _shipBuilder.RotateSelected(delta,fine);
                 }
-                else if(!socketEdit&&_shipBuilder.Model().transformTool==ShipyardTransformTool::Scale){const float amount=(dragX-dragY)*.0030f;_shipBuilder.ScaleSelected({amount,amount,amount},fine);}
+                else if(!socketEdit&&_shipBuilder.Model().transformTool==ShipyardTransformTool::Scale){const float amount=(dragX-dragY)*.0030f;if(_shipBuilder.Model().dragPreview.staged)_shipBuilder.ScaleStagedPlacement(amount,fine);else _shipBuilder.ScaleSelected({amount,amount,amount},fine);}
             }
         }
         float releaseX=0.0f,releaseY=0.0f;
         if(_window.ConsumePrimaryRelease(releaseX,releaseY)){
-            if(_shipyardCatalogPointerDrag){_shipBuilder.CommitCatalogDrag();_shipyardCatalogPointerDrag=false;}
+            if(_shipyardCatalogPointerDrag){_shipBuilder.StageCatalogDrag();_shipyardCatalogPointerDrag=false;}
             _shipyardCatalogPointerCandidate=false;_shipyardCatalogPointerCandidateIndex=-1;
-            if(_shipyardPointerTransform){if(_shipBuilder.Model().inspectorTab==ShipyardInspectorTab::Sockets)_shipBuilder.CommitSocketTransform();else _shipBuilder.CommitTransform();_shipyardPointerTransform=false;}
+            if(_shipyardPointerTransform){if(!_shipBuilder.Model().dragPreview.staged){if(_shipBuilder.Model().inspectorTab==ShipyardInspectorTab::Sockets)_shipBuilder.CommitSocketTransform();else _shipBuilder.CommitTransform();}_shipyardPointerTransform=false;}
         }
-        float sx=0.0f,sy=0.0f;if(_window.ConsumePrimaryClick(sx,sy)){const auto c=ShipyardBuilderSystem::HitTest(_shipBuilder.Model(),_window.GetWidth(),_window.GetHeight(),sx,sy);if(c.command!=ShipyardBuilderCommand::None)ActivateShipyardControl(c.command,c.value);else {const int picked=NativeBattlefieldRenderer::PickShipyardModule(_shipBuilder.Model().catalog,_shipBuilder.Recipe(),_engine.GetStrategicCamera(),_window.GetWidth(),_window.GetHeight(),sx,sy,0,0,0,.24f,.22f,true);if(picked>=0)_shipBuilder.Activate(ShipyardBuilderCommand::SelectPlaced,picked);}}
+        float sx=0.0f,sy=0.0f;if(_window.ConsumePrimaryClick(sx,sy)){const auto c=ShipyardBuilderSystem::HitTest(_shipBuilder.Model(),_window.GetWidth(),_window.GetHeight(),sx,sy);if(c.command!=ShipyardBuilderCommand::None)ActivateShipyardControl(c.command,c.value);else if(!_shipBuilder.Model().dragPreview.staged){const int picked=NativeBattlefieldRenderer::PickShipyardModule(_shipBuilder.Model().catalog,_shipBuilder.Recipe(),_engine.GetStrategicCamera(),_window.GetWidth(),_window.GetHeight(),sx,sy,0,0,0,.24f,.22f,true);if(picked>=0)_shipBuilder.Activate(ShipyardBuilderCommand::SelectPlaced,picked);}}
         ProcessShipyardRequests();return;
     }
 
     bool closedWorkspace = false;
     if (inGame && _workspace.IsOverlayOpen() && input.WasPressed(InputAction::MenuBack)) {
         const bool closingShipyard=_workspace.Mode()==SandboxWorkspaceMode::ShipBuilder;
-        _workspace.Close();
-        if(closingShipyard)RestoreGameplayCameraLimits();
-        closedWorkspace = true;
+        if(closingShipyard&&_shipBuilder.IsInitialized()&&_shipBuilder.Model().dragPreview.staged){
+            _shipBuilder.CancelCatalogDrag();
+        }else{
+            _workspace.Close();
+            if(closingShipyard)RestoreGameplayCameraLimits();
+            closedWorkspace = true;
+        }
     }
 
     if (inGame) {
@@ -1659,7 +1646,7 @@ void NativeGameApplication::HandleGlobalActions()
                     if(action->id=="takeover" && _selection.kind==NativeContactKind::Ship && _selection.index<_sector.ships.size()){
                         auto& captured=_sector.ships[_selection.index];
                         if(captured.capturable&&captured.disabled&&!captured.claimed){
-                            if(const auto* def=ShipyardAuthoredShipSystem::Find(captured.authoredShipId)){_playerShipRecipe=ShipyardAuthoredShipSystem::BuildRecipe(*def);_playerShipAppearance=ShipAppearanceState{};_hasPlayerShipRecipe=true;captured.claimed=true;captured.hostile=false;auto& interiors=_engine.GetRuntimeServices().interiors;interiors.ClearLayout(_playerEntity);ShipInteriorLayoutSystem layout;const auto interiorPlan=layout.Materialize(_playerEntity,_shipBuilder.Model().catalog,_playerShipRecipe,interiors);_playerInteriorCarve=interiorPlan.carve;}
+                            if(const auto* def=ShipyardAuthoredShipSystem::Find(captured.authoredShipId)){_playerShipRecipe=ShipyardAuthoredShipSystem::BuildRecipe(*def);_playerShipAppearance=ShipAppearanceState{};_hasPlayerShipRecipe=true;captured.claimed=true;captured.hostile=false;auto& interiors=_engine.GetRuntimeServices().interiors;interiors.ClearLayout(_playerEntity);ShipInteriorLayoutSystem layout;layout.Materialize(_playerEntity,_shipBuilder.Model().catalog,_playerShipRecipe,interiors);}
                         }
                         _contextMenu.open=false;return;
                     }
@@ -1962,9 +1949,13 @@ void NativeGameApplication::HandleGlobalActions()
                 _shipyardCatalogPointerCandidateIndex=control.value;
                 _shipyardCatalogPressX=px;_shipyardCatalogPressY=py;
             }else if(control.command==ShipyardBuilderCommand::None){
-                float shipX=0,shipY=0,shipYaw=0;if(!_standaloneShipyard&&player){shipX=player->position.x;shipY=player->position.y;shipYaw=player->rotation.z;}
-                const int picked=NativeBattlefieldRenderer::PickShipyardModule(_shipBuilder.Model().catalog,_shipBuilder.Recipe(),activeCamera,_window.GetWidth(),_window.GetHeight(),px,py,shipX,shipY,shipYaw,.24f,.22f,true);
-                if(picked>=0){_shipBuilder.Activate(ShipyardBuilderCommand::SelectPlaced,picked);if(_shipBuilder.Model().transformTool!=ShipyardTransformTool::Select)_shipyardPointerTransform=_shipBuilder.Model().inspectorTab==ShipyardInspectorTab::Sockets?_shipBuilder.BeginSelectedSocketTransform():_shipBuilder.BeginSelectedTransform();}
+                if(_shipBuilder.Model().dragPreview.staged&&_shipBuilder.Model().transformTool!=ShipyardTransformTool::Select){
+                    _shipyardPointerTransform=true;
+                }else{
+                    float shipX=0,shipY=0,shipYaw=0;if(!_standaloneShipyard&&player){shipX=player->position.x;shipY=player->position.y;shipYaw=player->rotation.z;}
+                    const int picked=NativeBattlefieldRenderer::PickShipyardModule(_shipBuilder.Model().catalog,_shipBuilder.Recipe(),activeCamera,_window.GetWidth(),_window.GetHeight(),px,py,shipX,shipY,shipYaw,.24f,.22f,true);
+                    if(picked>=0){_shipBuilder.Activate(ShipyardBuilderCommand::SelectPlaced,picked);if(_shipBuilder.Model().transformTool!=ShipyardTransformTool::Select)_shipyardPointerTransform=_shipBuilder.Model().inspectorTab==ShipyardInspectorTab::Sockets?_shipBuilder.BeginSelectedSocketTransform():_shipBuilder.BeginSelectedTransform();}
+                }
             }
         }
         float dx=0,dy=0;if(_window.ConsumePrimaryDragDelta(dx,dy)){
@@ -1973,33 +1964,19 @@ void NativeGameApplication::HandleGlobalActions()
                 if(ddx*ddx+ddy*ddy>=64.0f){_shipyardCatalogPointerDrag=_shipBuilder.BeginCatalogDrag(_shipyardCatalogPointerCandidateIndex);_shipyardCatalogPointerCandidate=false;}
             }
             if(_shipyardCatalogPointerDrag){
-                float shipYaw=0.0f;Vector3 shipOrigin{};if(!_standaloneShipyard&&player){shipOrigin=player->position;shipYaw=player->rotation.z;}
-                const auto transform=CurrentShipyardVisualTransform(_shipBuilder.Recipe(),shipOrigin,shipYaw);
-                const float planeZ=transform.worldOrigin.z+_shipBuilder.Model().dragPreview.ghost.z*transform.axisScale.z;
-                const auto world=NativeBattlefieldRenderer::ScreenToWorldPlane(_window.GetPointerX(),_window.GetPointerY(),_window.GetWidth(),_window.GetHeight(),activeCamera,planeZ);
-                _shipBuilder.UpdateCatalogDrag(ShipyardScreenSpaceTransformSystem::WorldPointToRecipeLocal(world,transform));
+                const auto world=NativeBattlefieldRenderer::ScreenToWorld(_window.GetPointerX(),_window.GetPointerY(),_window.GetWidth(),_window.GetHeight(),activeCamera);float shipX=0,shipY=0,shipYaw=0;if(!_standaloneShipyard&&player){shipX=player->position.x;shipY=player->position.y;shipYaw=player->rotation.z;}const Vector3 local=WorldDeltaToShipLocal(world-Vector3{shipX,shipY,0},shipYaw);_shipBuilder.UpdateCatalogDrag(local);
             }else if(_shipyardPointerTransform){
                 const bool fine=_window.IsShiftDown();
                 const bool socketEdit=_shipBuilder.Model().inspectorTab==ShipyardInspectorTab::Sockets;
-                if(_shipBuilder.Model().transformTool==ShipyardTransformTool::Move){
-                    float shipYaw=0.0f;Vector3 shipOrigin{};if(!_standaloneShipyard&&player){shipOrigin=player->position;shipYaw=player->rotation.z;}
-                    const auto transform=CurrentShipyardVisualTransform(_shipBuilder.Recipe(),shipOrigin,shipYaw);
-                    float planeZ=transform.worldOrigin.z;if(const auto* placed=_shipBuilder.SelectedPlacedModule())planeZ+=placed->z*transform.axisScale.z;
-                    const float cx=_window.GetPointerX(),cy=_window.GetPointerY();
-                    const auto now=NativeBattlefieldRenderer::ScreenToWorldPlane(cx,cy,_window.GetWidth(),_window.GetHeight(),activeCamera,planeZ);
-                    const auto prev=NativeBattlefieldRenderer::ScreenToWorldPlane(cx-dx,cy-dy,_window.GetWidth(),_window.GetHeight(),activeCamera,planeZ);
-                    Vector3 delta=ShipyardScreenSpaceTransformSystem::WorldDeltaToRecipeLocal(now-prev,transform);
-                    if(socketEdit)if(const auto* placed=_shipBuilder.SelectedPlacedModule())delta=ShipDeltaToModuleLocal(delta,*placed);
-                    if(socketEdit)_shipBuilder.TranslateSelectedSocket(delta,fine);else _shipBuilder.TranslateSelected(delta,fine);
-                }
+                if(_shipBuilder.Model().transformTool==ShipyardTransformTool::Move){const float scale=.012f/std::max(.35f,activeCamera.GetZoom());const Vector3 worldDelta=activeCamera.ViewRightPlanar()*(dx*scale)+activeCamera.ViewUpPlanar()*(-dy*scale);Vector3 delta=WorldDeltaToShipLocal(worldDelta,player?player->rotation.z:0.0f);if(socketEdit)if(const auto* placed=_shipBuilder.SelectedPlacedModule())delta=ShipDeltaToModuleLocal(delta,*placed);if(_shipBuilder.Model().dragPreview.staged)_shipBuilder.TranslateStagedPlacement(delta,fine);else if(socketEdit)_shipBuilder.TranslateSelectedSocket(delta,fine);else _shipBuilder.TranslateSelected(delta,fine);}
                 else if(_shipBuilder.Model().transformTool==ShipyardTransformTool::Rotate){
                     const Vector3 delta=_window.IsControlDown()?Vector3{0.0f,0.0f,dx*.35f}:Vector3{-dy*.35f,dx*.35f,0.0f};
-                    if(socketEdit)_shipBuilder.RotateSelectedSocket(delta,fine);else _shipBuilder.RotateSelected(delta,fine);
+                    if(_shipBuilder.Model().dragPreview.staged)_shipBuilder.RotateStagedPlacement(delta,fine);else if(socketEdit)_shipBuilder.RotateSelectedSocket(delta,fine);else _shipBuilder.RotateSelected(delta,fine);
                 }
-                else if(!socketEdit&&_shipBuilder.Model().transformTool==ShipyardTransformTool::Scale){const float amount=(dx-dy)*.0030f;_shipBuilder.ScaleSelected({amount,amount,amount},fine);}
+                else if(!socketEdit&&_shipBuilder.Model().transformTool==ShipyardTransformTool::Scale){const float amount=(dx-dy)*.0030f;if(_shipBuilder.Model().dragPreview.staged)_shipBuilder.ScaleStagedPlacement(amount,fine);else _shipBuilder.ScaleSelected({amount,amount,amount},fine);}
             }
         }
-        float rx=0,ry=0;if(_window.ConsumePrimaryRelease(rx,ry)){if(_shipyardCatalogPointerDrag){_shipBuilder.CommitCatalogDrag();_shipyardCatalogPointerDrag=false;}_shipyardCatalogPointerCandidate=false;_shipyardCatalogPointerCandidateIndex=-1;if(_shipyardPointerTransform){if(_shipBuilder.Model().inspectorTab==ShipyardInspectorTab::Sockets)_shipBuilder.CommitSocketTransform();else _shipBuilder.CommitTransform();_shipyardPointerTransform=false;}ProcessShipyardRequests();}
+        float rx=0,ry=0;if(_window.ConsumePrimaryRelease(rx,ry)){if(_shipyardCatalogPointerDrag){_shipBuilder.StageCatalogDrag();_shipyardCatalogPointerDrag=false;}_shipyardCatalogPointerCandidate=false;_shipyardCatalogPointerCandidateIndex=-1;if(_shipyardPointerTransform){if(!_shipBuilder.Model().dragPreview.staged){if(_shipBuilder.Model().inspectorTab==ShipyardInspectorTab::Sockets)_shipBuilder.CommitSocketTransform();else _shipBuilder.CommitTransform();}_shipyardPointerTransform=false;}ProcessShipyardRequests();}
     }
 
     float sx=0.0f,sy=0.0f;
@@ -2012,7 +1989,7 @@ void NativeGameApplication::HandleGlobalActions()
                 ProcessShipyardRequests();
             }
         }
-        if(!uiConsumed&&_workspace.Mode()==SandboxWorkspaceMode::ShipBuilder&&_shipBuilder.IsInitialized()){
+        if(!uiConsumed&&_workspace.Mode()==SandboxWorkspaceMode::ShipBuilder&&_shipBuilder.IsInitialized()&&!_shipBuilder.Model().dragPreview.staged){
             float shipX=0.0f,shipY=0.0f,shipYaw=0.0f;
             if(!_standaloneShipyard&&player){
                 shipX=player->position.x;shipY=player->position.y;shipYaw=player->rotation.z;
@@ -2158,7 +2135,6 @@ NativeBattlefieldFrame NativeGameApplication::BuildRenderFrame() const
     f.shipBuilderRecipe=_shipBuilder.IsInitialized()?&_shipBuilder.Recipe():nullptr;
     f.shipBuilderAppearance=_shipBuilder.IsInitialized()?&_shipBuilder.Appearance():nullptr;
     f.playerShipRecipe=_hasPlayerShipRecipe?&_playerShipRecipe:nullptr;
-    f.playerInteriorCarve=(!_playerInteriorCarve.volumes.empty())?&_playerInteriorCarve:nullptr;
     f.playerShipAppearance=_hasPlayerShipRecipe?&_playerShipAppearance:nullptr;
     f.sector=(_frontend.Screen()==FrontendScreen::InGame)?&_sector:nullptr;
     f.playerPhysics=const_cast<Engine&>(_engine).GetEntityManager().GetComponent<PhysicsComponent>(_playerEntity);

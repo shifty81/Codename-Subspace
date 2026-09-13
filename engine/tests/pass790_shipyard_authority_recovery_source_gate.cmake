@@ -22,12 +22,24 @@ endif()
 
 file(READ "${ROOT}/src/ship_editor/ShipyardBuilderSystem.cpp" BUILDER)
 foreach(TOKEN
-    "SHIPYARD_SIZE_AWARE_GENERATION"
-    "FilterForClass(model_.catalog,generationClass,true)"
-    "UniversalSizeClass::XL:generationClass=ShipClass::Battleship")
+    "const ShipClass generationClass=model_.shipClass"
+    "ShipClassRoleSystem::ClampModuleSize"
+    "ShipPcgRuntimeClosureSystem::ModuleFitsClass"
+    "ShipClassGenerationAuthoritySystem::ApplyAndStamp")
   string(FIND "${BUILDER}" "${TOKEN}" POS)
   if(POS EQUAL -1)
-    message(FATAL_ERROR "Pass790 size-aware generation closure missing: ${TOKEN}")
+    message(FATAL_ERROR "Pass790 class/size generation closure missing: ${TOKEN}")
+  endif()
+endforeach()
+file(READ "${ROOT}/src/ships/ShipClassGenerationAuthoritySystem.cpp" CLASS_AUTHORITY)
+foreach(TOKEN
+    "CLASS_SIZE_ENVELOPE_V3"
+    "TargetLengthMeters"
+    "MeasureLengthMeters"
+    "generated ship length is outside selected class envelope")
+  string(FIND "${CLASS_AUTHORITY}" "${TOKEN}" POS)
+  if(POS EQUAL -1)
+    message(FATAL_ERROR "Pass790 physical class-envelope authority missing: ${TOKEN}")
   endif()
 endforeach()
 

@@ -28,15 +28,27 @@ ShipClassComponentProfile Profile(ShipClass c,
 } // namespace
 
 ShipClassEnvelope ShipClassRoleSystem::Envelope(ShipClass c){
+    // Lengths are design-space meters and are hard generation targets. The
+    // construction camera is responsible for framing large classes; geometry
+    // is not compressed merely to fit the editor viewport.
     switch(c){
-    case ShipClass::Frigate:return {c,UniversalSizeClass::XS,40.0f,90.0f,65.0f};
-    case ShipClass::Destroyer:return {c,UniversalSizeClass::S,90.0f,160.0f,125.0f};
-    case ShipClass::Cruiser:return {c,UniversalSizeClass::M,160.0f,280.0f,220.0f};
-    case ShipClass::Battlecruiser:return {c,UniversalSizeClass::L,280.0f,450.0f,365.0f};
-    case ShipClass::Battleship:return {c,UniversalSizeClass::XL,450.0f,750.0f,600.0f};
-    case ShipClass::Capital:return {c,UniversalSizeClass::XL,750.0f,1800.0f,1050.0f};
+    case ShipClass::Fighter:return {c,UniversalSizeClass::XS,8.0f,18.0f,13.0f,3,6,10};
+    case ShipClass::Shuttle:return {c,UniversalSizeClass::XS,10.0f,30.0f,20.0f,4,8,12};
+    case ShipClass::Corvette:return {c,UniversalSizeClass::XS,20.0f,50.0f,35.0f,5,10,16};
+    case ShipClass::Frigate:return {c,UniversalSizeClass::S,40.0f,90.0f,65.0f,6,12,22};
+    case ShipClass::Destroyer:return {c,UniversalSizeClass::S,90.0f,160.0f,125.0f,8,16,28};
+    case ShipClass::Cruiser:return {c,UniversalSizeClass::M,160.0f,280.0f,220.0f,10,22,38};
+    case ShipClass::Battlecruiser:return {c,UniversalSizeClass::L,280.0f,450.0f,365.0f,14,30,50};
+    case ShipClass::Battleship:return {c,UniversalSizeClass::L,450.0f,750.0f,600.0f,18,38,64};
+    case ShipClass::Carrier:return {c,UniversalSizeClass::L,450.0f,950.0f,680.0f,22,46,78};
+    case ShipClass::Freighter:return {c,UniversalSizeClass::M,120.0f,650.0f,330.0f,12,28,62};
+    case ShipClass::Miner:return {c,UniversalSizeClass::M,70.0f,420.0f,240.0f,10,24,52};
+    case ShipClass::Explorer:return {c,UniversalSizeClass::S,30.0f,200.0f,105.0f,6,14,28};
+    case ShipClass::Dreadnought:return {c,UniversalSizeClass::XL,650.0f,1250.0f,900.0f,28,58,96};
+    case ShipClass::IndustrialCapital:return {c,UniversalSizeClass::XL,700.0f,1600.0f,1100.0f,30,64,110};
+    case ShipClass::Capital:return {c,UniversalSizeClass::XL,750.0f,1800.0f,1250.0f,32,72,128};
     }
-    return {};
+    return {ShipClass::Frigate,UniversalSizeClass::S,40.0f,90.0f,65.0f,6,12,22};
 }
 
 ShipClassComponentProfile ShipClassRoleSystem::ComponentProfile(ShipClass c){
@@ -217,6 +229,13 @@ bool ShipClassRoleSystem::SupportsModuleSize(const ShipClassComponentProfile& p,
     const auto minSize=auxiliary?p.minimumAuxiliarySize:p.minimumStructuralSize;
     const auto maxSize=auxiliary?p.maximumAuxiliarySize:p.maximumStructuralSize;
     return UniversalKitbashAuthority::SizeWithin(s,minSize,maxSize)&&SizeWeight(p,s,auxiliary)>0.0f;
+}
+
+UniversalSizeClass ShipClassRoleSystem::ClampModuleSize(ShipClass shipClass,UniversalSizeClass requested,bool auxiliary){
+    const auto p=ComponentProfile(shipClass);
+    const int lo=static_cast<int>(auxiliary?p.minimumAuxiliarySize:p.minimumStructuralSize);
+    const int hi=static_cast<int>(auxiliary?p.maximumAuxiliarySize:p.maximumStructuralSize);
+    return static_cast<UniversalSizeClass>(std::clamp(static_cast<int>(requested),lo,hi));
 }
 
 std::vector<FactionHullFamilyDefinition> ShipClassRoleSystem::BuildDefaultHullFamilies(const std::string& faction,ShipClass c){

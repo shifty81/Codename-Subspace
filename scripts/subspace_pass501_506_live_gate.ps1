@@ -124,13 +124,17 @@ $variantSystemCpp = (Join-Path $Root 'engine\src\rendering\ProceduralVisualVaria
 $mathCpp = (Join-Path $Root 'engine\src\core\Math.cpp').Replace('\','/')
 $taxonomyCpp = (Join-Path $Root 'engine\src\content\ShipyardPartTaxonomySystem.cpp').Replace('\','/')
 $designLanguageCpp = (Join-Path $Root 'engine\src\ships\ShipyardDesignLanguageSystem.cpp').Replace('\','/')
+$worldScaleCpp = (Join-Path $Root 'engine\src\world\WorldScaleAuthoritySystem.cpp').Replace('\','/')
+$authoringStandardsCpp = (Join-Path $Root 'engine\src\editor\AuthoringStandardsSystem.cpp').Replace('\','/')
 $smokeCpp = (Join-Path $Root 'tools\smoke\pass497_506_shipyard_authoring_smoke.cpp').Replace('\','/')
 $includeDir = (Join-Path $Root 'engine\include').Replace('\','/')
 
 $liveLinkDeps = @(
     'engine\src\core\Math.cpp',
     'engine\src\content\ShipyardPartTaxonomySystem.cpp',
-    'engine\src\ships\ShipyardDesignLanguageSystem.cpp'
+    'engine\src\ships\ShipyardDesignLanguageSystem.cpp',
+    'engine\src\world\WorldScaleAuthoritySystem.cpp',
+    'engine\src\editor\AuthoringStandardsSystem.cpp'
 )
 foreach ($rel in $liveLinkDeps) {
     if (-not (Test-Path -LiteralPath (Join-Path $Root $rel))) {
@@ -154,6 +158,8 @@ add_executable(subspace_pass501_506_live_gate
     "$mathCpp"
     "$taxonomyCpp"
     "$designLanguageCpp"
+    "$worldScaleCpp"
+    "$authoringStandardsCpp"
 )
 target_include_directories(subspace_pass501_506_live_gate PRIVATE "$includeDir")
 if(MSVC)

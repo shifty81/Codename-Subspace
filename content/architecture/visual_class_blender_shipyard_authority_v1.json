@@ -1,0 +1,31 @@
+{
+  "schema": "subspace.visual-class-blender-shipyard-authority.v1",
+  "passes": "1023-1047",
+  "visualFidelity": {
+    "planetProvider": "Various Planets / governed source GLB",
+    "materializer": "tools/assets/materialize_various_planets.py",
+    "fullGateRequired": true,
+    "silentCertifiedDowngradeAllowed": false,
+    "untexturedShipRegionFallback": "deterministic procedural semantic material"
+  },
+  "shipSizing": {
+    "moduleAuthority": "UniversalKitbashAuthority XS-S-M-L-XL",
+    "classAuthority": "ShipClassRoleSystem",
+    "generationAuthority": "ShipClassGenerationAuthoritySystem",
+    "classChangesPhysicalHullEnvelope": true,
+    "targetSizeChangesPhysicalLengthInsideClass": true,
+    "classModuleBudgetEnforced": true
+  },
+  "placementWorkflow": {
+    "paletteReleaseAttachesImmediately": false,
+    "states": ["dragging", "staged", "transformed", "snap-selected", "confirmed-or-cancelled"],
+    "stagedTools": ["move", "rotate", "scale", "snap-cycle"],
+    "confirmation": "explicit CONFIRM ATTACH",
+    "cancel": "CANCEL or Escape"
+  },
+  "workspace": {
+    "direction": "Blender-like",
+    "regions": ["workspace strip", "asset browser", "viewport tool rail", "3D viewport", "outliner/properties"],
+    "hotkeys": {"select": "Q", "move": "W", "rotate": "E", "scale": "R"}
+  }
+}

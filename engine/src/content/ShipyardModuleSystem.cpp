@@ -1,4 +1,5 @@
 #include "content/ShipyardModuleSystem.h"
+#include "editor/AuthoringStandardsSystem.h"
 #include "content/ShipyardNameClassification.h"
 #include "content/ShipyardPartTaxonomySystem.h"
 #include "content/ShipyardAuthoredOrientation.generated.h"
@@ -53,11 +54,6 @@ Vector3 RotateRecipeVisual(const Vector3& value, const ProceduralShipVisualRecip
 const ShipyardAssemblySocket* FindNamedSocket(const ShipyardModuleRecord& record, std::string_view name) {
     for(const auto& socket:record.sockets) if(socket.name==name) return &socket;
     return nullptr;
-}
-
-bool ContainsAny(const std::string& value, std::initializer_list<const char*> tokens) {
-    for (const char* token : tokens) if (value.find(token) != std::string::npos) return true;
-    return false;
 }
 
 void ApplyR6PlacementMetadata(ShipyardModuleRecord& record) {
@@ -130,25 +126,6 @@ VisualModulePlacement Placement(const ShipyardModuleRecord& record,
     p.scaleX = p.scaleY = p.scaleZ = uniformScale;
     p.material = material;
     return p;
-}
-
-VisualModulePlacement Attach(const VisualModulePlacement& parentPlacement,
-                             const ShipyardAssemblySocket& parentSocket,
-                             const ShipyardModuleRecord& child,
-                             const ShipyardAssemblySocket& childSocket,
-                             float uniformScale,
-                             SpaceMaterialKind material,
-                             float insertionMultiplier = 1.0f) {
-    const float px = parentPlacement.x + parentSocket.x * parentPlacement.scaleX;
-    const float py = parentPlacement.y + parentSocket.y * parentPlacement.scaleY;
-    const float pz = parentPlacement.z + parentSocket.z * parentPlacement.scaleZ;
-    const float insertion = parentSocket.insertionDepth * parentPlacement.scaleY * insertionMultiplier;
-
-    VisualModulePlacement result = Placement(child, 0.0f, 0.0f, 0.0f, uniformScale, material);
-    result.x = px - childSocket.x * uniformScale - parentSocket.dirX * insertion;
-    result.y = py - childSocket.y * uniformScale - parentSocket.dirY * insertion;
-    result.z = pz - childSocket.z * uniformScale - parentSocket.dirZ * insertion;
-    return result;
 }
 
 struct Pools {
@@ -426,7 +403,13 @@ ProceduralShipVisualRecipe BuildOne(const std::string& role,
     float minX=std::numeric_limits<float>::max(),maxX=-minX,minY=minX,maxY=-minX,minZ=minX,maxZ=-minX;
     auto findRecord=[&](const std::string& id)->const ShipyardModuleRecord*{
         const std::vector<const ShipyardModuleRecord*>* poolsAll[]={&pools.spine,&pools.command,&pools.drive,&pools.engineHousing,&pools.lateral,&pools.hardpoint,&pools.sensor,&pools.utility,&pools.detail,&pools.adapter};
-        for(auto* pool:poolsAll)for(auto* r:*pool)if(r->source.moduleId==id)return r;return nullptr;};
+        for(const auto* pool:poolsAll){
+            for(const auto* record:*pool){
+                if(record->source.moduleId==id)return record;
+            }
+        }
+        return nullptr;
+    };
     for(const auto& m:recipe.modules){const auto* r=findRecord(m.moduleId);if(!r)continue;minX=std::min(minX,m.x-r->source.halfWidth*m.scaleX);maxX=std::max(maxX,m.x+r->source.halfWidth*m.scaleX);minY=std::min(minY,m.y-r->source.halfLength*m.scaleY);maxY=std::max(maxY,m.y+r->source.halfLength*m.scaleY);minZ=std::min(minZ,m.z-r->source.halfHeight*m.scaleZ);maxZ=std::max(maxZ,m.z+r->source.halfHeight*m.scaleZ);}
     if(minX>maxX){minX=-1;maxX=1;minY=-2;maxY=2;minZ=-.5f;maxZ=.5f;}
     const float width=std::max(.1f,maxX-minX),length=std::max(.1f,maxY-minY),height=std::max(.1f,maxZ-minZ);
@@ -604,6 +587,34 @@ std::vector<ShipyardAssemblySocket> ShipyardModuleSystem::BuildSockets(const Vis
             add("dorsal_starboard_forward","dorsal_surface",centerX+spanX*.22f,centerY+spanY*.20f,dorsal.z,dorsalN.x,dorsalN.y,dorsalN.z,insertion);
             add("dorsal_port_aft","dorsal_surface",centerX-spanX*.22f,centerY-spanY*.20f,dorsal.z,dorsalN.x,dorsalN.y,dorsalN.z,insertion);
             add("dorsal_starboard_aft","dorsal_surface",centerX+spanX*.22f,centerY-spanY*.20f,dorsal.z,dorsalN.x,dorsalN.y,dorsalN.z,insertion);
+
+            // Pass1048+: dense editor snap points are projected over measured
+            // planar contact surfaces, not guessed from bounding-box extrema.
+            // The stable named sockets above remain the PCG vocabulary; these
+            // surface_* sockets are an editor-facing field derived from the same
+            // geometry-analysis evidence used by authoring validation.
+            ShipyardModuleRecord surfaceRecord;surfaceRecord.source=s;surfaceRecord.semantic=semantic;
+            const auto flatSurfaces=AuthoringStandardsSystem::DiscoverFlatSnapSurfaces(surfaceRecord);
+            for(const auto& surface:flatSurfaces){
+                std::string type="detail_mount";
+                if(surface.id=="forward")type="hull_forward";
+                else if(surface.id=="aft")type="hull_aft";
+                else if(surface.id=="port"||surface.id=="starboard")type="lateral_surface";
+                else if(surface.id=="dorsal")type="dorsal_surface";
+                else if(surface.id=="ventral")type="ventral_surface";
+                const float usableU=std::max(0.0f,surface.spanUMeters-surface.gridPitchMeters*.45f);
+                const float usableV=std::max(0.0f,surface.spanVMeters-surface.gridPitchMeters*.45f);
+                for(int row=0;row<surface.gridRows;++row){
+                    const float fv=surface.gridRows<=1?0.0f:(static_cast<float>(row)/static_cast<float>(surface.gridRows-1)-.5f);
+                    for(int col=0;col<surface.gridColumns;++col){
+                        const float fu=surface.gridColumns<=1?0.0f:(static_cast<float>(col)/static_cast<float>(surface.gridColumns-1)-.5f);
+                        const Vector3 p=surface.point+surface.tangentU*(fu*usableU)+surface.tangentV*(fv*usableV);
+                        add("surface_"+surface.id+"_"+std::to_string(col)+"_"+std::to_string(row),type,
+                            p.x,p.y,p.z,surface.normal.x,surface.normal.y,surface.normal.z,
+                            std::min(insertion,surface.maximumInsertionMeters));
+                    }
+                }
+            }
         }
         // Canonical rear-drive sockets must follow the *rendered* Shipyard
         // forward authority, not merely the OBJ +Y/-Y extrema. Greyoxide v0.7

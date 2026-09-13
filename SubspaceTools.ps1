@@ -2151,6 +2151,30 @@ function Invoke-EnsureApprovedContentDependencies {
 }
 
 
+function Invoke-EnsurePlanetVisualAssets {
+    param([switch]$VerifyOnly)
+
+    $materializer = Join-Path $Global:SubspaceRoot "tools\assets\materialize_various_planets.py"
+    if (-not (Test-Path -LiteralPath $materializer)) {
+        throw "Various Planets materializer is missing: $materializer"
+    }
+
+    $python = Get-ToolPath "python"
+    $prefix = @()
+    if (-not $python) { $python = Get-ToolPath "python3" }
+    if (-not $python) {
+        $python = Get-ToolPath "py"
+        if ($python) { $prefix = @("-3") }
+    }
+    if (-not $python) {
+        throw "Python 3 is required to verify/materialize the governed Various Planets runtime pack."
+    }
+
+    $arguments = @($prefix + @($materializer, "--root", $Global:SubspaceRoot))
+    if ($VerifyOnly) { $arguments += "--verify-only" }
+    Invoke-LoggedCommand -Label "Various Planets visual fidelity materialization" -FilePath $python -Arguments $arguments
+}
+
 function Invoke-SupplyChainGate {
     param(
         [ValidateSet("AUTO", "VERIFY_ONLY", "CACHE_ONLY", "OFFLINE")]
@@ -2318,6 +2342,7 @@ function Invoke-FullGate {
     $gateException = $null
     try {
     Invoke-UtilityStep -Name "Supply-chain source / asset / dependency gate" -ScriptBlock { Invoke-SupplyChainGate -Mode "AUTO" }
+    Invoke-UtilityStep -Name "Planet texture/cloud fidelity pack" -ScriptBlock { Invoke-EnsurePlanetVisualAssets }
     Invoke-UtilityStep -Name "Retire stale conversion build artifacts" -ScriptBlock { Invoke-ProjectScript -RelativePath "scripts\subspace_legacy_artifact_cleanup.ps1" -Arguments @("-Root", $Global:SubspaceRoot) }
     Invoke-UtilityStep -Name "Project scope/status" -ScriptBlock { Invoke-ProjectScript -RelativePath "scripts\subspace_project_scope_status.ps1" -Arguments @("-Root", $Global:SubspaceRoot) } -ContinueOnError
     Invoke-UtilityStep -Name "Root cleanliness audit" -ScriptBlock { Invoke-ProjectScript -RelativePath "scripts\subspace_root_cleanliness_audit.ps1" -Arguments @("-Root", $Global:SubspaceRoot) } -ContinueOnError
@@ -2393,6 +2418,7 @@ function Invoke-FastDevelopmentGate {
         Invoke-UtilityStep -Name "Pre-patch source safety snapshot" -ScriptBlock { Invoke-SourceSafetySnapshot -Label "FAST_PREPATCH" -OnlyIfUpdates }
         Invoke-UtilityStep -Name "Pending-update certification guard" -ScriptBlock { Invoke-AutoApplyUpdateInbox -Reason "fast development gate" }
         Invoke-UtilityStep -Name "Supply-chain verification (offline-safe)" -ScriptBlock { Invoke-SupplyChainGate -Mode "VERIFY_ONLY" }
+        Invoke-UtilityStep -Name "Planet texture/cloud fidelity verification" -ScriptBlock { Invoke-EnsurePlanetVisualAssets -VerifyOnly }
         Invoke-UtilityStep -Name "Native runtime regression guard" -ScriptBlock { Invoke-NativeRuntimeGuard }
         Invoke-UtilityStep -Name "Pass/source continuity audit" -ScriptBlock { Invoke-PassContinuityAudit }
         Invoke-UtilityStep -Name "Incremental native configure/build/test" -ScriptBlock { Invoke-CMakeBuild }

@@ -3,7 +3,7 @@ from __future__ import annotations
 bl_info = {
     "name": "Codename Subspace Shipyard",
     "author": "Codename Subspace Project",
-    "version": (0, 1, 5),
+    "version": (0, 2, 0),
     "blender": (4, 5, 0),
     "location": "3D Viewport > Sidebar > Subspace Shipyard",
     "description": "Subspace-native modular ship authoring, socket editing, procedural generation and design export",
@@ -33,7 +33,7 @@ from bpy.types import Operator, Panel, PropertyGroup
 from mathutils import Matrix, Vector
 
 
-ADDON_VERSION = "0.1.5"
+ADDON_VERSION = "0.2.0"
 DESIGN_SCHEMA = "subspace.shipyard_design"
 DESIGN_VERSION = 1
 SHIP_COLLECTION_NAME = "SUBSPACE_SHIP"
@@ -49,6 +49,26 @@ ROLE_ITEMS = [
     ("HAULER", "Hauler", "Longer large hull and cargo-oriented silhouette"),
     ("EXPLORATION", "Exploration", "Compact command/sensor-biased silhouette"),
 ]
+
+GENERATOR_DOMAIN_ITEMS = [
+    ("ship", "Ship", "Canonical ship generator request"),
+    ("shuttle", "Shuttle", "Small craft / shuttle generator request"),
+    ("rover", "Rover", "Planetary rover / vehicle generator request"),
+    ("station", "Station", "Station generator request"),
+    ("interior", "Interior", "Interior layout / carve generator request"),
+    ("prop", "Prop / Fixture", "Semantic prop and interior fixture generator request"),
+    ("character", "Character", "Character/customization generator request"),
+    ("planet_world", "Planet / World", "Planetary world generator request"),
+    ("solar_system", "Solar System", "Solar-system proving-ground generator request"),
+]
+SHIP_CLASS_ITEMS = [
+    ("FIGHTER", "Fighter", ""), ("SHUTTLE", "Shuttle", ""), ("CORVETTE", "Corvette", ""),
+    ("FRIGATE", "Frigate", ""), ("DESTROYER", "Destroyer", ""), ("CRUISER", "Cruiser", ""),
+    ("BATTLECRUISER", "Battlecruiser", ""), ("BATTLESHIP", "Battleship", ""), ("DREADNOUGHT", "Dreadnought", ""),
+    ("CARRIER", "Carrier", ""), ("FREIGHTER", "Freighter", ""), ("MINER", "Miner", ""),
+    ("EXPLORER", "Explorer", ""), ("INDUSTRIAL CAPITAL", "Industrial Capital", ""), ("CAPITAL", "Capital", ""),
+]
+GENERATOR_SIZE_ITEMS = [("XS","XS",""),("S","S",""),("M","M",""),("L","L",""),("XL","XL","")]
 
 EQUIPMENT_ITEMS = [
     ("PrimaryWeapon", "Primary Weapon", "Fixed or primary weapon"),
@@ -1391,6 +1411,11 @@ class SSY_Settings(PropertyGroup):
     catalog_file: StringProperty(name="Catalog Override", subtype="FILE_PATH", description="Optional direct path to certified_module_catalog.csv")
     module_choice: EnumProperty(name="Module", items=_module_enum_items)
     role: EnumProperty(name="Role", items=ROLE_ITEMS, default="INDUSTRIAL")
+    generator_domain: EnumProperty(name="Generator Domain", items=GENERATOR_DOMAIN_ITEMS, default="ship")
+    generator_profile: StringProperty(name="Generator Profile", default="DEFAULT")
+    generator_ship_class: EnumProperty(name="Ship Class", items=SHIP_CLASS_ITEMS, default="FRIGATE")
+    generator_size: EnumProperty(name="Size", items=GENERATOR_SIZE_ITEMS, default="S")
+    generator_request_path: StringProperty(name="Generator Request", subtype="FILE_PATH", default="//exports/generators/generator_request.json")
     ship_name: StringProperty(name="Ship Name", default="New Ship")
     author: StringProperty(name="Author", default="")
     seed: IntProperty(name="Seed", default=425026, min=0, max=2147483647)
@@ -1539,6 +1564,38 @@ class SSY_OT_generate_ship(Operator):
         context.scene.ssy_settings.last_status = message
         self.report({"INFO" if count else "ERROR"}, message)
         return {"FINISHED" if count else "CANCELLED"}
+
+
+class SSY_OT_export_generator_request(Operator):
+    bl_idname = "ssy.export_generator_request"
+    bl_label = "Export Canonical Generator Request"
+    bl_options = {"REGISTER"}
+
+    def execute(self, context):
+        s = context.scene.ssy_settings
+        root = _project_root_from_scene(context)
+        registry = root / "content" / "architecture" / "generator_parity_registry_v1.json" if root else None
+        if registry is None or not registry.is_file():
+            self.report({"ERROR"}, "Generator parity registry is missing from the Subspace project")
+            return {"CANCELLED"}
+        request = {
+            "schema": "subspace.generator-request.v1",
+            "domain": s.generator_domain,
+            "seed": int(s.seed),
+            "profileId": s.generator_profile or "DEFAULT",
+            "role": s.role,
+            "shipClass": s.generator_ship_class,
+            "size": s.generator_size,
+            "client": "blender.SubspaceShipyard",
+            "addonVersion": ADDON_VERSION,
+        }
+        path = Path(_norm(s.generator_request_path))
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(request, indent=2) + "\n", encoding="utf-8")
+        s.generator_request_path = str(path)
+        s.last_status = f"Parity request exported: {s.generator_domain} / seed {s.seed}"
+        self.report({"INFO"}, f"Exported canonical {s.generator_domain} generator request")
+        return {"FINISHED"}
 
 
 class SSY_OT_randomize_seed(Operator):
@@ -1747,7 +1804,7 @@ class SSY_PT_author(Panel):
 
 
 class SSY_PT_generator(Panel):
-    bl_label = "Procedural Ship Generator"
+    bl_label = "Generator Parity"
     bl_idname = "SSY_PT_generator"
     bl_parent_id = "SSY_PT_project"
     bl_space_type = "VIEW_3D"
@@ -1756,6 +1813,22 @@ class SSY_PT_generator(Panel):
     def draw(self, context):
         s = context.scene.ssy_settings
         layout = self.layout
+        parity = layout.box()
+        parity.label(text="Same generator contract as in-game Shipyard", icon="LINKED")
+        parity.prop(s, "generator_domain")
+        parity.prop(s, "generator_profile")
+        row = parity.row(align=True)
+        row.prop(s, "generator_ship_class")
+        row.prop(s, "generator_size")
+        parity.prop(s, "role")
+        row = parity.row(align=True)
+        row.prop(s, "seed")
+        row.operator("ssy.randomize_seed", text="", icon="FILE_REFRESH")
+        parity.prop(s, "generator_request_path")
+        parity.operator("ssy.export_generator_request", icon="EXPORT")
+        parity.label(text="Blender sends requests; runtime owns generator math")
+        layout.separator()
+        layout.label(text="Local Ship Preview (compatibility)")
         layout.prop(s, "ship_name")
         layout.prop(s, "role")
         row = layout.row(align=True)
@@ -1826,6 +1899,7 @@ CLASSES = [
     SSY_OT_add_equipment_slot,
     SSY_OT_apply_colors,
     SSY_OT_generate_ship,
+    SSY_OT_export_generator_request,
     SSY_OT_randomize_seed,
     SSY_OT_clear_ship,
     SSY_OT_validate_ship,

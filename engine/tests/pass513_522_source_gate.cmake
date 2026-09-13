@@ -30,7 +30,8 @@ require_text("${RENDERER_TEXT}" "DrawHud")
 
 # Historical shield behavior must remain gated by live reserve/state, while
 # regression to the spherical/bubble envelope is explicitly forbidden.
-require_text("${RENDERER_TEXT}" "kShieldGapWorld=0.3048f")
+require_text("${RENDERER_TEXT}" "ConformalShieldSurfaceSystem::DefaultPolicy")
+require_text("${RENDERER_TEXT}" "shieldPolicy.hullGapMeters")
 require_text("${RENDERER_TEXT}" "ShieldRipplePulse")
 
 string(FIND "${RENDERER_TEXT}" "DrawPlayerShieldEnvelope" LEGACY_SHIELD)

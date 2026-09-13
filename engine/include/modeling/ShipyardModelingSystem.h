@@ -2,6 +2,7 @@
 
 #include "assets/CanonicalAsset.h"
 #include "core/Math.h"
+#include "editor/AuthoringStandardsSystem.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -78,6 +79,8 @@ struct ShipyardModelRecipe {
     ModelingSelectionMode selectionMode = ModelingSelectionMode::Object;
     std::vector<ModelingPrimitiveDefinition> primitives;
     std::vector<ModelingModifier> modifiers;
+    bool semanticPurposeAssigned = false;
+    SemanticObjectDefinition semanticObject{};
     bool draft = true;
     bool collisionDirty = true;
     bool socketsDirty = false;
@@ -95,6 +98,7 @@ struct ShipyardModelingState {
     ShipyardModelRecipe recipe{};
     ModelingPrimitiveType selectedPrimitive = ModelingPrimitiveType::Box;
     ModelingSelectionMode selectionMode = ModelingSelectionMode::Object;
+    SemanticObjectPurpose selectedPurpose = SemanticObjectPurpose::Generic;
     std::size_t selectedPrimitiveIndex = 0;
     float stretchStep = 0.10f;
     bool symmetricStretch = false;
@@ -119,6 +123,9 @@ public:
                                  bool symmetric);
     static bool AddModifier(ShipyardModelRecipe& recipe,
                             ModelingModifier modifier);
+    static bool AssignSemanticPurpose(ShipyardModelRecipe& recipe,
+                                      SemanticObjectPurpose purpose,
+                                      const WorldScaleProfile& scale = WorldScaleAuthoritySystem::DefaultProfile());
     static ShipyardModelingValidation Validate(const ShipyardModelRecipe& recipe);
 
     // Generates real canonical geometry for the primitive/model recipe. The

@@ -43,7 +43,7 @@ PlanetSurfaceProfile PlanetSurfaceSystem::Build(const PlanetData& planet) {
             p.detailColor = Jitter({0.91f,0.67f,0.31f},0.10f,b);
             p.atmosphereColor = {0.83f,0.53f,0.27f};
             p.cloudColor = {0.86f,0.70f,0.50f};
-            p.atmosphereOpacity = 0.10f + 0.06f*c; p.cloudOpacity = 0.018f;
+            p.atmosphereOpacity = 0.10f + 0.06f*c; p.cloudOpacity = 0.070f;
             p.surfaceVariation = 0.52f; p.detailScale = 8.0f + 4.0f*b;
             p.bandStrength = 0.10f + 0.14f*c;
             p.descriptor = "dune fields / dry basins / exposed ridges";
@@ -54,7 +54,7 @@ PlanetSurfaceProfile PlanetSurfaceSystem::Build(const PlanetData& planet) {
             p.detailColor = {0.86f,0.94f,0.98f};
             p.atmosphereColor = {0.55f,0.78f,0.94f};
             p.cloudColor = {0.94f,0.98f,1.0f};
-            p.atmosphereOpacity = 0.10f; p.cloudOpacity = 0.035f;
+            p.atmosphereOpacity = 0.10f; p.cloudOpacity = 0.085f;
             p.surfaceVariation = 0.48f; p.detailScale = 13.0f;
             p.iceFraction = 0.75f + 0.22f*b;
             p.descriptor = "ice shelves / fractured glaciers / frozen plains";
@@ -65,7 +65,7 @@ PlanetSurfaceProfile PlanetSurfaceSystem::Build(const PlanetData& planet) {
             p.detailColor = Jitter({0.23f,0.48f,0.24f},0.10f,b);
             p.atmosphereColor = {0.20f,0.62f,0.91f};
             p.cloudColor = {0.93f,0.97f,1.0f};
-            p.atmosphereOpacity = 0.16f; p.cloudOpacity = 0.065f;
+            p.atmosphereOpacity = 0.16f; p.cloudOpacity = 0.120f;
             p.surfaceVariation = 0.70f; p.detailScale = 6.5f;
             p.oceanFraction = 0.56f + 0.30f*a;
             p.stormStrength = 0.12f + 0.42f*planet.hazardLevel;
@@ -77,7 +77,7 @@ PlanetSurfaceProfile PlanetSurfaceSystem::Build(const PlanetData& planet) {
             p.detailColor = {0.72f,0.18f,0.035f};
             p.atmosphereColor = {0.58f,0.18f,0.07f};
             p.cloudColor = {0.30f,0.22f,0.20f};
-            p.atmosphereOpacity = 0.13f; p.cloudOpacity = 0.045f;
+            p.atmosphereOpacity = 0.13f; p.cloudOpacity = 0.080f;
             p.surfaceVariation = 0.86f; p.detailScale = 16.0f;
             p.lavaGlow = 0.55f + 0.40f*planet.hazardLevel;
             p.descriptor = "basalt crust / lava rifts / volcanic calderas";
@@ -97,7 +97,7 @@ PlanetSurfaceProfile PlanetSurfaceSystem::Build(const PlanetData& planet) {
             p.detailColor = Jitter({0.87f,0.72f,0.50f},0.12f,b);
             p.atmosphereColor = Jitter({0.68f,0.52f,0.38f},0.10f,c);
             p.cloudColor = {0.91f,0.84f,0.72f};
-            p.atmosphereOpacity = 0.19f; p.cloudOpacity = 0.075f;
+            p.atmosphereOpacity = 0.19f; p.cloudOpacity = 0.135f;
             p.surfaceVariation = 0.76f; p.detailScale = 7.0f;
             p.bandStrength = 0.82f + 0.15f*b;
             p.stormStrength = 0.30f + 0.62f*planet.hazardLevel;

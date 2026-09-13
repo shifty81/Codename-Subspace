@@ -1,0 +1,53 @@
+{
+  "schema": "subspace.generation-foundation-authority.v2",
+  "status": "candidate",
+  "authority": "GeneratorParitySystem + ShipClassGenerationAuthoritySystem",
+  "principles": [
+    "one canonical generator request per domain",
+    "GENERATE is deterministic and never mutates seed",
+    "REROLL is the only ordinary seed mutation path",
+    "class and size are realized by topology and certified module families before geometry correction",
+    "whole-assembly scale correction is limited to 0.85..1.15",
+    "generated module instances may not exceed 1.50 absolute scale",
+    "invalid generation fails closed and never replaces the last known-good assembly",
+    "all class certification uses transformed three-dimensional bounds",
+    "collapsed planar hulls are rejected",
+    "Systems and PCG are clients/inspectors of the same generation request rather than competing generators",
+    "Blender is a parity client of the same request contract",
+    "station radial/vertical kitbash assembly is compatibility exterior preview only until interior/service-program generation replaces it"
+  ],
+  "currentShipPipeline": [
+    "canonical GeneratorParityRequest",
+    "class-compatible catalog filtering",
+    "legacy showcase candidate synthesis (temporary)",
+    "3D transformed-bounds measurement",
+    "class topology/scale integrity certification",
+    "runtime PCG closure repair/audit",
+    "fail-closed promotion of certified candidate only"
+  ],
+  "nextShipPipeline": [
+    "player-scale calibrated asset vocabulary",
+    "capability/interior program",
+    "structural topology synthesis",
+    "module-family selection",
+    "aperture/docking/hangar reservation",
+    "exterior assembly",
+    "systems and fixture realization",
+    "cohesive shell/interior bake",
+    "runtime products",
+    "PCG proof/exemplar receipt"
+  ],
+  "stationPolicy": {
+    "legacyAuthority": "StationKitbashVisualSystem",
+    "legacyMarker": "LEGACY_EXTERIOR_STACKING_PREVIEW",
+    "replacementOrder": [
+      "service/capability program",
+      "player-scaled deck/circulation plan",
+      "docking/hangar/aperture plan",
+      "structural frame",
+      "exterior expression",
+      "systems/furnishing",
+      "certification"
+    ]
+  }
+}

@@ -29,6 +29,10 @@ struct ShipyardDragPreview {
     bool valid = false;
     bool snapped = false;
     bool freePlacement = false;
+    // Mouse release enters a staged authoring state. The ghost remains editable
+    // until explicit confirmation; releasing the palette drag is never the same
+    // operation as attaching a module.
+    bool staged = false;
     float snapRadius = 1.0f;
     UniversalSizeClass requestedSize = UniversalSizeClass::M;
     UniversalSizeClass resolvedSize = UniversalSizeClass::M;
@@ -52,6 +56,11 @@ public:
                                      const ProceduralShipVisualRecipe& recipe,
                                      UniversalSizeClass targetSize);
     static bool SelectBest(ShipyardDragPreview& preview);
+    static bool Stage(ShipyardDragPreview& preview);
+    static bool CycleCandidate(ShipyardDragPreview& preview, int delta);
+    static bool TranslateStaged(ShipyardDragPreview& preview, const Vector3& delta, bool snap = true, float snapStep = 0.25f);
+    static bool RotateStaged(ShipyardDragPreview& preview, const Vector3& deltaDegrees, bool snap = true, float rotationStepDegrees = 15.0f);
+    static bool ScaleStaged(ShipyardDragPreview& preview, float delta, float minimum = 0.20f, float maximum = 4.0f);
 };
 
 } // namespace subspace

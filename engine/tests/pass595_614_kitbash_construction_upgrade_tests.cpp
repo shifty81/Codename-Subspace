@@ -101,8 +101,10 @@ int main(){
     Check(broken.state==KitbashCertificationState::Quarantined,"Pass612 broken source/material dependency fails closed into quarantine");
 
     const auto frigate=ShipClassRoleSystem::Envelope(ShipClass::Frigate);const auto battleship=ShipClassRoleSystem::Envelope(ShipClass::Battleship);
-    Check(frigate.structuralSize==UniversalSizeClass::XS&&Near(frigate.minimumLengthMeters,40)&&Near(frigate.maximumLengthMeters,90),"Pass613 frigates normalize to XS 40-90m structural envelope");
-    Check(battleship.structuralSize==UniversalSizeClass::XL&&Near(battleship.minimumLengthMeters,450)&&Near(battleship.maximumLengthMeters,750),"Pass613 battleships normalize to XL 450-750m structural envelope");
+    const auto frigateProfile=ShipClassRoleSystem::ComponentProfile(ShipClass::Frigate);
+    const auto battleshipProfile=ShipClassRoleSystem::ComponentProfile(ShipClass::Battleship);
+    Check(frigate.structuralSize==UniversalSizeClass::S&&frigateProfile.preferredStructuralSize==UniversalSizeClass::S&&Near(frigate.minimumLengthMeters,40)&&Near(frigate.maximumLengthMeters,90),"Pass613 frigates normalize to preferred S modules inside the hard 40-90m hull envelope");
+    Check(battleship.structuralSize==UniversalSizeClass::L&&battleshipProfile.preferredStructuralSize==UniversalSizeClass::L&&Near(battleship.minimumLengthMeters,450)&&Near(battleship.maximumLengthMeters,750),"Pass613 battleships normalize to preferred L modules inside the hard 450-750m hull envelope");
     const auto cruiserFamilies=ShipClassRoleSystem::BuildDefaultHullFamilies("TEST_FACTION",ShipClass::Cruiser);
     Check(cruiserFamilies.size()==4,"Pass613 every faction/class receives four physical hull design families");
     Check(std::count_if(cruiserFamilies.begin(),cruiserFamilies.end(),[](const auto& family){return ShipClassRoleSystem::SupportsRole(family,ShipRole::GeneralCombat);})>=2,"Pass613 hull families can support overlapping role-specialized variants");

@@ -18,6 +18,7 @@
 #include "developer/ShipyardDevWorldSystem.h"
 #include "interior/ShipModuleInteriorLinkSystem.h"
 #include "ships/ShipClassRoleSystem.h"
+#include "generator/GeneratorParitySystem.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -61,6 +62,10 @@ enum class ShipyardBuilderCommand {
     AddModule,
     ReplaceModule,
     RemoveModule,
+    PreviousSnapCandidate,
+    NextSnapCandidate,
+    ConfirmPlacement,
+    CancelPlacement,
     PreviousSocket,
     NextSocket,
     AddSocket,
@@ -98,6 +103,9 @@ enum class ShipyardBuilderCommand {
     ModelPreviousPrimitive,
     ModelNextPrimitive,
     ModelAddShape,
+    ModelPreviousPurpose,
+    ModelNextPurpose,
+    ModelAssignPurpose,
     ModelCycleSelectionMode,
     ModelStretchXNegative,
     ModelStretchXPositive,
@@ -166,6 +174,8 @@ enum class ShipyardBuilderCommand {
     FrameShip,
     PreviousRole,
     NextRole,
+    PreviousGeneratorDomain,
+    NextGeneratorDomain,
     PreviousShipClass,
     NextShipClass,
     PreviousTargetSize,
@@ -201,6 +211,11 @@ struct ShipyardBuilderLayout {
     float uiScale = 1.0f;
     float left = 0.0f;
     float top = 0.0f;
+    float workspaceBarY = 0.0f;
+    float workspaceBarHeight = 0.0f;
+    float toolRailX = 0.0f;
+    float toolRailY = 0.0f;
+    float toolRailWidth = 0.0f;
     float leftWidth = 0.0f;
     float right = 0.0f;
     float rightWidth = 0.0f;
@@ -278,7 +293,9 @@ struct ShipyardBuilderRuntimeModel {
     bool definitionOverridesDirty = false;
     ShipyardInspectorTab inspectorTab = ShipyardInspectorTab::Transform;
     ShipyardWorkspaceMode workspaceMode = ShipyardWorkspaceMode::Build;
+    SubspaceDockWorkspace dockWorkspace{};
     std::string role = "INDUSTRIAL";
+    GeneratorDomain authoringDomain = GeneratorDomain::Ship;
     ShipClass shipClass = ShipClass::Frigate;
     UniversalSizeClass targetModuleSize = UniversalSizeClass::XS;
     ConstructionWorkspaceMode constructionMode = ConstructionWorkspaceMode::Ship;
@@ -357,6 +374,11 @@ public:
     bool BeginCatalogDrag(int filteredIndex);
     bool HandleWheel(float pointerX,float pointerY,float wheelDelta,int viewportWidth,int viewportHeight);
     bool UpdateCatalogDrag(const Vector3& shipLocalPointer);
+    bool StageCatalogDrag();
+    bool CycleStagedSnapCandidate(int delta);
+    bool TranslateStagedPlacement(const Vector3& delta, bool fine = false);
+    bool RotateStagedPlacement(const Vector3& deltaDegrees, bool fine = false);
+    bool ScaleStagedPlacement(float delta, bool fine = false);
     bool CommitCatalogDrag();
     void CancelCatalogDrag();
 

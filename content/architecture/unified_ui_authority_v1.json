@@ -1,0 +1,19 @@
+{
+  "schema": "subspace.unified-ui-authority.v1",
+  "themeAuthority": "SubspaceUiTheme::Dark",
+  "dockAuthority": "SubspaceDockSystem",
+  "surfaces": ["runtime", "shipyard_dev", "remote_fleet", "station", "dialogs", "tooling"],
+  "rules": [
+    "one standardized minimal dark theme and widget token set",
+    "one dock model for runtime and authoring panels",
+    "splitters resize dock regions",
+    "ordinary panels can float and redock",
+    "panel opacity is user adjustable within a readable clamped range",
+    "scrollbars, inputs, popups, focus and hover states use the same tokens",
+    "critical action panels may forbid transparency, floating or pointer pass-through",
+    "workspace layout persists as data rather than being re-hardcoded per screen"
+  ],
+  "defaultPanelOpacity": 0.92,
+  "minimumPanelOpacity": 0.28,
+  "maximumPanelOpacity": 1.0
+}

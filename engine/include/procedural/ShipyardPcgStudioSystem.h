@@ -24,6 +24,7 @@ struct ShipyardPcgOverlayState {
 struct ShipyardPcgStudioRequest {
     std::string factionId = "PLAYER";
     ShipClass shipClass = ShipClass::Frigate;
+    UniversalSizeClass size = UniversalSizeClass::S;
     int hullFamilyIndex = 1;
     std::string role = "INDUSTRIAL";
     std::uint32_t seed = 0x51A7D007u;

@@ -5,8 +5,12 @@
 #include "ui/SandboxWorkspaceSystem.h"
 #include <string>
 namespace subspace {
+enum class RuntimeViewAuthority { CockpitFirstPerson, OnFootFirstPerson, RemoteFleetCommand, AuthoringDev, DockedService, Transit };
 struct RuntimeControlContext {
     CameraMode cameraMode=CameraMode::ShipFlight;
+    RuntimeViewAuthority viewAuthority=RuntimeViewAuthority::CockpitFirstPerson;
+    bool firstPerson=true;
+    bool remoteFleetCommand=false;
     bool flightControls=true;
     bool interiorControls=false;
     bool dockingControls=false;

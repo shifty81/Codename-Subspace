@@ -72,10 +72,15 @@ static void Pass428_NativeShipyardBuilder(){
 
     builder.Activate(ShipyardBuilderCommand::NextRole);
     const auto beforeSeed=builder.Model().seed;
+    const auto beforeRecipe=builder.Recipe();
     const bool generated=builder.Activate(ShipyardBuilderCommand::GenerateVariant);
-    TEST("Pass428 in-game generator creates a new certified role variant",generated&&builder.Model().seed==beforeSeed+1&&!builder.Recipe().modules.empty());
-    TEST("Pass428 generated variants remain structurally valid before apply",builder.Validate().valid);
-    TEST("Pass428 Apply only raises a commit request for a valid design",builder.Activate(ShipyardBuilderCommand::Apply)&&builder.ConsumeApplyRequested());
+    TEST("Pass428 deterministic GENERATE preserves seed; only REROLL may mutate it",builder.Model().seed==beforeSeed);
+    const bool generatedCertified=generated&&builder.Validate().valid&&!builder.Recipe().modules.empty();
+    const bool failedClosed=!generated&&builder.Recipe().modules.size()==beforeRecipe.modules.size()&&
+        (!beforeRecipe.modules.empty()&&!builder.Recipe().modules.empty()?builder.Recipe().modules.front().moduleId==beforeRecipe.modules.front().moduleId:true)&&
+        builder.Model().status.find("GENERATION REJECTED")!=std::string::npos;
+    TEST("Pass428 generator either certifies a class-correct result or fails closed without replacing the prior ship",generatedCertified||failedClosed);
+    TEST("Pass428 Apply only raises a commit request for the current structurally valid design",builder.Validate().valid&&builder.Activate(ShipyardBuilderCommand::Apply)&&builder.ConsumeApplyRequested());
 }
 
 int main(){

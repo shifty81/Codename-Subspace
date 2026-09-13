@@ -17,6 +17,15 @@ std::filesystem::path ImportedPlanetVisualSystem::PackRoot(const std::filesystem
 }
 bool ImportedPlanetVisualSystem::PackReady(const std::filesystem::path& repositoryRoot){
     std::error_code ec; const auto root=PackRoot(repositoryRoot);
-    return std::filesystem::exists(root/"VARIOUS_PLANETS_READY.txt",ec) && std::filesystem::exists(root/"planet_pack_manifest.json",ec);
+    if(!std::filesystem::exists(root/"VARIOUS_PLANETS_READY.txt",ec) ||
+       !std::filesystem::exists(root/"planet_pack_manifest.json",ec)) return false;
+    const PlanetType types[]={PlanetType::Rocky,PlanetType::Desert,PlanetType::Ice,PlanetType::Oceanic,PlanetType::Volcanic,PlanetType::Barren,PlanetType::GasGiant};
+    for(const auto type:types){
+        const auto profile=ProfileFor(type);
+        if(profile.surfaceTexture.empty() || !std::filesystem::exists(root/profile.surfaceTexture,ec)) return false;
+        for(const auto& cloud:profile.cloudTextures)
+            if(cloud.empty() || !std::filesystem::exists(root/cloud,ec)) return false;
+    }
+    return true;
 }
 }

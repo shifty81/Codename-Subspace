@@ -121,6 +121,7 @@ file(GLOB_RECURSE ENGINE_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/economy/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/effects/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/editor/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/generator/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/station/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/interior/*.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/integration/*.cpp"
@@ -748,4 +749,42 @@ if(SUBSPACE_BUILD_TESTS)
     add_executable(subspace_pass998_1022_tests tests/pass998_1022_shipyard_streaming_integration_tests.cpp)
     target_link_libraries(subspace_pass998_1022_tests PRIVATE subspace_engine)
     add_test(NAME SubspacePass998To1022ShipyardStreamingIntegrationTests COMMAND subspace_pass998_1022_tests)
+endif()
+
+# Pass1023-1047: visible-fidelity recovery plus hard ship class/XS-XL authority
+# and Blender-style staged placement. Planet source textures/cloud layers are
+# Full-Gate materialized, missing ship textures receive deterministic material
+# fallbacks, and palette drags must be transformed/snapped before confirmation.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_pass1023_1047_tests tests/pass1023_1047_visual_class_blender_workflow_tests.cpp)
+    target_link_libraries(subspace_pass1023_1047_tests PRIVATE subspace_engine)
+    add_test(NAME SubspacePass1023To1047VisualClassBlenderWorkflowTests COMMAND subspace_pass1023_1047_tests)
+    add_test(NAME SubspacePass1023To1047VisualClassBlenderSourceGate COMMAND ${CMAKE_COMMAND}
+        -DROOT=${CMAKE_CURRENT_SOURCE_DIR}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/pass1023_1047_visual_class_blender_source_gate.cmake)
+endif()
+
+# Pass1048-1097: measured-surface authoring, character-scale semantic objects,
+# cohesive assembly/shield authority, FPS/remote-fleet view semantics, universal
+# dockable dark UI, and one runtime/Blender generator request registry.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_pass1048_1097_tests tests/pass1048_1097_authoring_runtime_ui_parity_tests.cpp)
+    target_link_libraries(subspace_pass1048_1097_tests PRIVATE subspace_engine)
+    add_test(NAME SubspacePass1048To1097AuthoringRuntimeUiParityTests COMMAND subspace_pass1048_1097_tests)
+    add_test(NAME SubspacePass1048To1097AuthoringRuntimeUiParitySourceGate COMMAND ${CMAKE_COMMAND}
+        -DROOT=${CMAKE_CURRENT_SOURCE_DIR}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/pass1048_1097_authoring_runtime_ui_parity_source_gate.cmake)
+endif()
+
+# Pass1098-1122: emergency generator normalization. GENERATE is deterministic,
+# only REROLL mutates seed, class size can no longer be achieved through huge
+# whole-ship scaling, invalid candidates fail closed, bounds are truly 3D, and
+# the old station stacking generator is quarantined as compatibility preview.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_pass1098_1122_tests tests/pass1098_1122_generation_foundation_normalization_tests.cpp)
+    target_link_libraries(subspace_pass1098_1122_tests PRIVATE subspace_engine)
+    add_test(NAME SubspacePass1098To1122GenerationFoundationNormalizationTests COMMAND subspace_pass1098_1122_tests)
+    add_test(NAME SubspacePass1098To1122GenerationFoundationSourceGate COMMAND ${CMAKE_COMMAND}
+        -DROOT=${CMAKE_CURRENT_SOURCE_DIR}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/pass1098_1122_generation_foundation_source_gate.cmake)
 endif()

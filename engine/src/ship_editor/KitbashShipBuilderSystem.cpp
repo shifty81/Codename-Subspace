@@ -1,4 +1,5 @@
 #include "ship_editor/KitbashShipBuilderSystem.h"
+#include "ships/ShipClassRoleSystem.h"
 
 #include <algorithm>
 #include <cmath>
@@ -29,14 +30,14 @@ SpaceMaterialKind MaterialFor(const ShipyardModuleRecord& record) {
 }
 
 float RootScale(const ShipyardModuleRecord& root) {
-    switch (root.size) {
-    case ShipyardModuleSize::XS: return 0.78f;
-    case ShipyardModuleSize::S: return 0.74f;
-    case ShipyardModuleSize::M: return 0.68f;
-    case ShipyardModuleSize::L: return 0.62f;
-    case ShipyardModuleSize::XL: return 0.56f;
-    }
-    return 0.68f;
+    const auto profile=UniversalKitbashAuthority::BuildProfile(root,KitbashMaterialCertification::NormalizedFallback);
+    return UniversalKitbashAuthority::SafeUniformScale(profile,UniversalKitbashAuthority::FromShipyardSize(root.size));
+}
+
+float ChildScaleForFrigate(const ShipyardModuleRecord& child) {
+    const auto profile=UniversalKitbashAuthority::BuildProfile(child,KitbashMaterialCertification::NormalizedFallback);
+    const auto target=ShipClassRoleSystem::ClampModuleSize(ShipClass::Frigate,ShipClassRoleSystem::ComponentProfile(ShipClass::Frigate).preferredStructuralSize,child.surfaceOnly);
+    return UniversalKitbashAuthority::SafeUniformScale(profile,target);
 }
 
 KitbashShipBuilderSnapshot Snapshot(const KitbashShipBuilderState& state) {
@@ -167,7 +168,7 @@ KitbashShipBuilderPreview KitbashShipBuilderSystem::PreviewDrop(
         preview.reason = "part size is incompatible - use an adapter"; return preview;
     }
 
-    const float childScale = state.blueprint.modules.front().scaleX;
+    const float childScale = ChildScaleForFrigate(*childRecord);
     if (!ShipyardModuleSystem::BuildAttachmentPlacement(*parentRecord, state.blueprint.modules[parentModuleIndex],
                                                         parentSocketName, *childRecord, childSocket->name,
                                                         childScale, MaterialFor(*childRecord),
@@ -228,11 +229,23 @@ void KitbashShipBuilderSystem::SelectModule(KitbashShipBuilderState& state, std:
 }
 
 bool KitbashShipBuilderSystem::Undo(KitbashShipBuilderState& state) {
-    if(state.undoStack.empty())return false;state.redoStack.push_back(Snapshot(state));const auto snap=state.undoStack.back();state.undoStack.pop_back();Restore(state,snap);state.status="UNDO";return true;
+    if(state.undoStack.empty()) return false;
+    state.redoStack.push_back(Snapshot(state));
+    const auto snap=state.undoStack.back();
+    state.undoStack.pop_back();
+    Restore(state,snap);
+    state.status="UNDO";
+    return true;
 }
 
 bool KitbashShipBuilderSystem::Redo(KitbashShipBuilderState& state) {
-    if(state.redoStack.empty())return false;state.undoStack.push_back(Snapshot(state));const auto snap=state.redoStack.back();state.redoStack.pop_back();Restore(state,snap);state.status="REDO";return true;
+    if(state.redoStack.empty()) return false;
+    state.undoStack.push_back(Snapshot(state));
+    const auto snap=state.redoStack.back();
+    state.redoStack.pop_back();
+    Restore(state,snap);
+    state.status="REDO";
+    return true;
 }
 
 bool KitbashShipBuilderSystem::ValidateBlueprint(const KitbashShipBuilderState& state,

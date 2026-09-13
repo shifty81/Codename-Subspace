@@ -4,6 +4,7 @@
 #include "ships/ShipClassSystem.h"
 
 #include <array>
+#include <cstddef>
 #include <string>
 #include <vector>
 
@@ -19,6 +20,13 @@ struct ShipClassEnvelope {
     float minimumLengthMeters = 40.0f;
     float maximumLengthMeters = 90.0f;
     float nominalLengthMeters = 65.0f;
+
+    // Runtime/editor generation envelope. Class is physical authority, not a
+    // cosmetic label: it constrains the normal module-count range. Physical
+    // length comes from minimum/nominal/maximumLengthMeters above.
+    std::size_t minimumModules = 6;
+    std::size_t targetModules = 12;
+    std::size_t maximumModules = 20;
 };
 
 struct ShipClassComponentProfile {
@@ -94,6 +102,9 @@ public:
     static bool SupportsModuleSize(const ShipClassComponentProfile& profile,
                                    UniversalSizeClass size,
                                    bool auxiliary);
+    static UniversalSizeClass ClampModuleSize(ShipClass shipClass,
+                                              UniversalSizeClass requested,
+                                              bool auxiliary = false);
 
     // Every faction receives four physical hull families per normal combat
     // class. Roles are configurations of those platforms, not one-model-per-role.

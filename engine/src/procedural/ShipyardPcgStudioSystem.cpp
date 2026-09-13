@@ -24,6 +24,6 @@ ShipyardPcgStudioReport ShipyardPcgStudioSystem::AuditCandidate(const std::vecto
 
 std::uint32_t ShipyardPcgStudioSystem::RerollSeed(ShipyardPcgStudioState& state){++state.rerollCounter;std::uint32_t x=state.request.seed+0x9E3779B9u*state.rerollCounter;x^=x>>16;x*=0x7feb352du;x^=x>>15;x*=0x846ca68bu;x^=x>>16;state.request.seed=x;state.status="PCG seed rerolled to "+std::to_string(x);return x;}
 std::vector<std::string> ShipyardPcgStudioSystem::EnabledOverlayNames(const ShipyardPcgOverlayState&o){std::vector<std::string>r;if(o.structuralSkeleton)r.push_back("STRUCTURAL");if(o.occupancy)r.push_back("OCCUPANCY");if(o.sockets)r.push_back("SOCKETS");if(o.propulsion)r.push_back("PROPULSION");if(o.exhaust)r.push_back("EXHAUST");if(o.commandExposure)r.push_back("COMMAND EXPOSURE");if(o.detailDensity)r.push_back("DETAIL DENSITY");if(o.functionalCore)r.push_back("FUNCTIONAL CORE");return r;}
-std::string ShipyardPcgStudioSystem::ExplainRequest(const ShipyardPcgStudioRequest&r){std::ostringstream o;o<<"Faction "<<r.factionId<<" / "<<ShipClassRoleSystem::ClassName(r.shipClass)<<" / Hull Family "<<r.hullFamilyIndex<<" / "<<r.role<<" / Seed "<<r.seed;return o.str();}
+std::string ShipyardPcgStudioSystem::ExplainRequest(const ShipyardPcgStudioRequest&r){std::ostringstream o;o<<"Faction "<<r.factionId<<" / "<<ShipClassRoleSystem::ClassName(r.shipClass)<<" / "<<UniversalKitbashAuthority::SizeName(r.size)<<" / Hull Family "<<r.hullFamilyIndex<<" / "<<r.role<<" / Seed "<<r.seed;return o.str();}
 
 } // namespace subspace
