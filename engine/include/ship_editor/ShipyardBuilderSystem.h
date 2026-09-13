@@ -19,6 +19,9 @@
 #include "interior/ShipModuleInteriorLinkSystem.h"
 #include "ships/ShipClassRoleSystem.h"
 #include "generator/GeneratorParitySystem.h"
+#include "editor/ForgeWorkspaceSystem.h"
+
+#include <optional>
 
 #include <cstddef>
 #include <cstdint>
@@ -37,6 +40,8 @@ enum class ShipyardInspectorTab {
 
 enum class ShipyardBuilderCommand {
     None,
+    UndoAuthoring,
+    RedoAuthoring,
     WorkspaceBuild,
     WorkspaceModel,
     WorkspaceInterior,
@@ -46,6 +51,7 @@ enum class ShipyardBuilderCommand {
     WorkspacePcg,
     WorkspaceWorld,
     WorkspaceDevWorld,
+    WorkspaceProjectTools,
     WorkspaceAuthoring,
     InspectorTransform,
     InspectorAssembly,
@@ -182,6 +188,7 @@ enum class ShipyardBuilderCommand {
     NextTargetSize,
     CycleConstructionMode,
     GenerateVariant,
+    RunProjectTool,
     Validate,
     SaveBlueprint,
     Apply,
@@ -296,6 +303,7 @@ struct ShipyardBuilderRuntimeModel {
     SubspaceDockWorkspace dockWorkspace{};
     std::string role = "INDUSTRIAL";
     GeneratorDomain authoringDomain = GeneratorDomain::Ship;
+    ForgeWorkspaceSnapshot projectTools{};
     ShipClass shipClass = ShipClass::Frigate;
     UniversalSizeClass targetModuleSize = UniversalSizeClass::XS;
     ConstructionWorkspaceMode constructionMode = ConstructionWorkspaceMode::Ship;
@@ -349,6 +357,12 @@ public:
     const ShipyardAssemblySocket* SelectedSocket() const;
 
     bool Activate(ShipyardBuilderCommand command, int value = 0);
+    bool CanUndoAuthoring() const { return !authoringUndo_.empty(); }
+    bool CanRedoAuthoring() const { return !authoringRedo_.empty(); }
+    bool UndoAuthoring();
+    bool RedoAuthoring();
+    std::size_t AuthoringUndoCount() const { return authoringUndo_.size(); }
+    std::size_t AuthoringRedoCount() const { return authoringRedo_.size(); }
     ShipyardBuilderValidation Validate() const;
 
     bool BeginSelectedTransform();
@@ -383,6 +397,7 @@ public:
     void CancelCatalogDrag();
 
     bool ConsumeApplyRequested();
+    bool ConsumeProjectToolRequest(std::size_t* commandIndex = nullptr);
     bool ConsumeSaveRequested();
     bool ConsumeSocketOverridesSaveRequested();
     bool ConsumeDefinitionOverridesSaveRequested();
@@ -402,6 +417,10 @@ public:
                                           float y);
 
 private:
+    bool ActivateInternal(ShipyardBuilderCommand command, int value);
+    static bool RecordsAuthoringHistory(ShipyardBuilderCommand command);
+    void PushAuthoringSnapshot(const ShipyardBuilderRuntimeModel& before);
+    void RestoreAuthoringSnapshot(ShipyardBuilderRuntimeModel snapshot, const char* action);
     const ShipyardModuleRecord* FindRecord(const std::string& moduleId) const;
     bool AddSelectedModule();
     bool ReplaceSelectedModule();
@@ -456,6 +475,11 @@ private:
     };
 
     ShipyardBuilderRuntimeModel model_{};
+    std::vector<ShipyardBuilderRuntimeModel> authoringUndo_{};
+    std::vector<ShipyardBuilderRuntimeModel> authoringRedo_{};
+    std::optional<ShipyardBuilderRuntimeModel> pendingTransformHistory_{};
+    std::optional<ShipyardBuilderRuntimeModel> pendingSocketTransformHistory_{};
+    std::optional<ShipyardBuilderRuntimeModel> pendingDragHistory_{};
     ProceduralShipVisualRecipe initialRecipe_{};
     std::vector<ShipyardModuleRecord> initialCatalog_{};
     std::vector<SocketEditHistoryEntry> socketHistory_{};
@@ -466,6 +490,7 @@ private:
     bool saveRequested_ = false;
     bool socketOverridesSaveRequested_ = false;
     bool definitionOverridesSaveRequested_ = false;
+    int pendingProjectToolIndex_ = -1;
     std::vector<std::string> availableModuleIds_;
 };
 

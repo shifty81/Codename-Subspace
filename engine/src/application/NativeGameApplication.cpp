@@ -1,4 +1,5 @@
 #include "application/NativeGameApplication.h"
+#include "editor/EditorTransformSpaceSystem.h"
 #include "ships/ShipyardAuthoredShipSystem.h"
 
 #include "core/config/ConfigurationManager.h"
@@ -32,6 +33,8 @@
 #include <filesystem>
 #include <fstream>
 #include <ctime>
+#include <thread>
+#include <cstdlib>
 #include <cctype>
 
 namespace subspace {
@@ -46,28 +49,6 @@ float Distance2D(const Vector3& a,const Vector3& b)
 bool SameContact(const NativeContactSelection& a,const NativeContactSelection& b)
 {
     return a.kind==b.kind && a.kind!=NativeContactKind::None && a.index==b.index && a.id==b.id;
-}
-
-Vector3 WorldDeltaToShipLocal(const Vector3& worldDelta,float shipYaw)
-{
-    const float c=std::cos(shipYaw),s=std::sin(shipYaw);
-    return {worldDelta.x*c+worldDelta.y*s,-worldDelta.x*s+worldDelta.y*c,worldDelta.z};
-}
-
-Vector3 ShipDeltaToModuleLocal(const Vector3& shipDelta,const VisualModulePlacement& p)
-{
-    constexpr float kDegToRad=3.14159265358979323846f/180.0f;
-    Vector3 v=shipDelta;
-    // Inverse of renderer Rz(yaw) * Rx(pitch) * Ry(roll).
-    const float yaw=-p.yawDegrees*kDegToRad,cy=std::cos(yaw),sy=std::sin(yaw);
-    v={v.x*cy-v.y*sy,v.x*sy+v.y*cy,v.z};
-    const float pitch=-p.pitchDegrees*kDegToRad,cp=std::cos(pitch),sp=std::sin(pitch);
-    v={v.x,v.y*cp-v.z*sp,v.y*sp+v.z*cp};
-    const float roll=-p.rollDegrees*kDegToRad,cr=std::cos(roll),sr=std::sin(roll);
-    v={v.x*cr+v.z*sr,v.y,-v.x*sr+v.z*cr};
-    const float sx=std::max(.05f,p.scaleX),syScale=std::max(.05f,p.scaleY),sz=std::max(.05f,p.scaleZ);
-    v.x/=sx;v.y/=syScale;v.z/=sz;if(p.mirrorX)v.x=-v.x;if(p.mirrorY)v.y=-v.y;if(p.mirrorZ)v.z=-v.z;
-    return v;
 }
 
 Vector3 ShipLocalToWorld(const Vector3& local,float shipYaw)
@@ -564,6 +545,8 @@ void NativeGameApplication::HandleShipyardTransformHotkeys()
     // Alt+W/Q/E/R simultaneously switch editor tools.
     if(_window.IsAltDown())return;
     const auto& input=_engine.GetInputState();
+    if(input.WasPressed(InputAction::Undo)){_shipBuilder.Activate(ShipyardBuilderCommand::UndoAuthoring);return;}
+    if(input.WasPressed(InputAction::Redo)){_shipBuilder.Activate(ShipyardBuilderCommand::RedoAuthoring);return;}
     if(input.WasPressed(InputAction::EditorToolSelect))_shipBuilder.Activate(ShipyardBuilderCommand::ToolSelect);
     if(input.WasPressed(InputAction::EditorToolMove))_shipBuilder.Activate(ShipyardBuilderCommand::ToolMove);
     if(input.WasPressed(InputAction::EditorToolRotate))_shipBuilder.Activate(ShipyardBuilderCommand::ToolRotate);
@@ -596,12 +579,13 @@ void NativeGameApplication::HandleShipyardTransformHotkeys()
         if(space==ShipyardTransformSpace::View){
             const auto& camera=_engine.GetStrategicCamera();
             const Vector3 world=camera.ViewRightPlanar()*x+camera.ViewUpPlanar()*y+Vector3{0,0,z};
-            float shipYaw=0.0f;
-            if(!_standaloneShipyard){if(const auto* player=_engine.GetEntityManager().GetComponent<PhysicsComponent>(_playerEntity))shipYaw=player->rotation.z;}
-            local=WorldDeltaToShipLocal(world,shipYaw);
-            if(socketEdit)if(const auto* placed=_shipBuilder.SelectedPlacedModule())local=ShipDeltaToModuleLocal(local,*placed);
+            float runtimeYaw=0.0f;
+            if(!_standaloneShipyard){if(const auto* player=_engine.GetEntityManager().GetComponent<PhysicsComponent>(_playerEntity))runtimeYaw=player->rotation.z;}
+            const float rootYaw=EditorTransformSpaceSystem::RenderedRootYawRadians(runtimeYaw,_shipBuilder.Recipe().forwardVisualYawDegrees);
+            local=EditorTransformSpaceSystem::WorldToAssemblyDelta(world,rootYaw);
+            if(socketEdit)if(const auto* placed=_shipBuilder.SelectedPlacedModule())local=EditorTransformSpaceSystem::AssemblyToModuleLocalDelta(local,*placed);
         }else if(space==ShipyardTransformSpace::Ship&&socketEdit){
-            if(const auto* placed=_shipBuilder.SelectedPlacedModule())local=ShipDeltaToModuleLocal(local,*placed);
+            if(const auto* placed=_shipBuilder.SelectedPlacedModule())local=EditorTransformSpaceSystem::AssemblyToModuleLocalDelta(local,*placed);
         }else if(space==ShipyardTransformSpace::Local&&!socketEdit){
             if(_shipBuilder.Model().dragPreview.staged){
                 constexpr float kDegToRad=3.14159265358979323846f/180.0f;
@@ -742,6 +726,24 @@ void NativeGameApplication::LoadCurrentShipyardDefinitionOverrides()
 
 void NativeGameApplication::ProcessShipyardRequests()
 {
+    std::size_t projectToolIndex=0;
+    if(_shipBuilder.ConsumeProjectToolRequest(&projectToolIndex)){
+        const auto snapshot=_shipBuilder.Model().projectTools;
+        if(projectToolIndex<snapshot.commands.size()){
+            const auto command=snapshot.commands[projectToolIndex];
+            const auto preview=ForgeWorkspaceSystem::CommandPreview(command);
+            const auto root=snapshot.projectRoot.string();
+            std::thread([root,preview](){
+#ifdef _WIN32
+                const std::string line="cd /d \""+root+"\" && "+preview;
+#else
+                const std::string line="cd \""+root+"\" && "+preview;
+#endif
+                (void)std::system(line.c_str());
+            }).detach();
+            Logger::Instance().Info("Shipyard","Queued project-control command: "+command.key+" / "+preview);
+        }
+    }
     if(_shipBuilder.ConsumeSaveRequested())SaveCurrentShipyardBlueprint();
     if(_shipBuilder.ConsumeSocketOverridesSaveRequested())SaveCurrentShipyardSocketOverrides();
     if(_shipBuilder.ConsumeDefinitionOverridesSaveRequested())SaveCurrentShipyardDefinitionOverrides();
@@ -1560,11 +1562,12 @@ void NativeGameApplication::HandleGlobalActions()
             }
             if(_shipyardCatalogPointerDrag){
                 const auto world=NativeBattlefieldRenderer::ScreenToWorld(_window.GetPointerX(),_window.GetPointerY(),_window.GetWidth(),_window.GetHeight(),_engine.GetStrategicCamera());
-                _shipBuilder.UpdateCatalogDrag(world);
+                const float rootYaw=EditorTransformSpaceSystem::RenderedRootYawRadians(0.0f,_shipBuilder.Recipe().forwardVisualYawDegrees);
+                _shipBuilder.UpdateCatalogDrag(EditorTransformSpaceSystem::WorldToAssemblyDelta(world,rootYaw));
             }else if(_shipyardPointerTransform){
                 const bool fine=_window.IsShiftDown();auto& camera=_engine.GetStrategicCamera();
                 const bool socketEdit=_shipBuilder.Model().inspectorTab==ShipyardInspectorTab::Sockets;
-                if(_shipBuilder.Model().transformTool==ShipyardTransformTool::Move){const float scale=.012f/std::max(.35f,camera.GetZoom());Vector3 delta=camera.ViewRightPlanar()*(dragX*scale)+camera.ViewUpPlanar()*(-dragY*scale);if(socketEdit)if(const auto* placed=_shipBuilder.SelectedPlacedModule())delta=ShipDeltaToModuleLocal(delta,*placed);if(_shipBuilder.Model().dragPreview.staged)_shipBuilder.TranslateStagedPlacement(delta,fine);else if(socketEdit)_shipBuilder.TranslateSelectedSocket(delta,fine);else _shipBuilder.TranslateSelected(delta,fine);}
+                if(_shipBuilder.Model().transformTool==ShipyardTransformTool::Move){const float scale=.012f/std::max(.35f,camera.GetZoom());const Vector3 worldDelta=camera.ViewRightPlanar()*(dragX*scale)+camera.ViewUpPlanar()*(-dragY*scale);const float rootYaw=EditorTransformSpaceSystem::RenderedRootYawRadians(0.0f,_shipBuilder.Recipe().forwardVisualYawDegrees);Vector3 delta=EditorTransformSpaceSystem::WorldToAssemblyDelta(worldDelta,rootYaw);if(socketEdit)if(const auto* placed=_shipBuilder.SelectedPlacedModule())delta=EditorTransformSpaceSystem::AssemblyToModuleLocalDelta(delta,*placed);if(_shipBuilder.Model().dragPreview.staged)_shipBuilder.TranslateStagedPlacement(delta,fine);else if(socketEdit)_shipBuilder.TranslateSelectedSocket(delta,fine);else _shipBuilder.TranslateSelected(delta,fine);}
                 else if(_shipBuilder.Model().transformTool==ShipyardTransformTool::Rotate){
                     const Vector3 delta=_window.IsControlDown()?Vector3{0.0f,0.0f,dragX*.35f}:Vector3{-dragY*.35f,dragX*.35f,0.0f};
                     if(_shipBuilder.Model().dragPreview.staged)_shipBuilder.RotateStagedPlacement(delta,fine);else if(socketEdit)_shipBuilder.RotateSelectedSocket(delta,fine);else _shipBuilder.RotateSelected(delta,fine);
@@ -1964,11 +1967,11 @@ void NativeGameApplication::HandleGlobalActions()
                 if(ddx*ddx+ddy*ddy>=64.0f){_shipyardCatalogPointerDrag=_shipBuilder.BeginCatalogDrag(_shipyardCatalogPointerCandidateIndex);_shipyardCatalogPointerCandidate=false;}
             }
             if(_shipyardCatalogPointerDrag){
-                const auto world=NativeBattlefieldRenderer::ScreenToWorld(_window.GetPointerX(),_window.GetPointerY(),_window.GetWidth(),_window.GetHeight(),activeCamera);float shipX=0,shipY=0,shipYaw=0;if(!_standaloneShipyard&&player){shipX=player->position.x;shipY=player->position.y;shipYaw=player->rotation.z;}const Vector3 local=WorldDeltaToShipLocal(world-Vector3{shipX,shipY,0},shipYaw);_shipBuilder.UpdateCatalogDrag(local);
+                const auto world=NativeBattlefieldRenderer::ScreenToWorld(_window.GetPointerX(),_window.GetPointerY(),_window.GetWidth(),_window.GetHeight(),activeCamera);float shipX=0,shipY=0,runtimeYaw=0;if(!_standaloneShipyard&&player){shipX=player->position.x;shipY=player->position.y;runtimeYaw=player->rotation.z;}const float rootYaw=EditorTransformSpaceSystem::RenderedRootYawRadians(runtimeYaw,_shipBuilder.Recipe().forwardVisualYawDegrees);const Vector3 local=EditorTransformSpaceSystem::WorldToAssemblyDelta(world-Vector3{shipX,shipY,0},rootYaw);_shipBuilder.UpdateCatalogDrag(local);
             }else if(_shipyardPointerTransform){
                 const bool fine=_window.IsShiftDown();
                 const bool socketEdit=_shipBuilder.Model().inspectorTab==ShipyardInspectorTab::Sockets;
-                if(_shipBuilder.Model().transformTool==ShipyardTransformTool::Move){const float scale=.012f/std::max(.35f,activeCamera.GetZoom());const Vector3 worldDelta=activeCamera.ViewRightPlanar()*(dx*scale)+activeCamera.ViewUpPlanar()*(-dy*scale);Vector3 delta=WorldDeltaToShipLocal(worldDelta,player?player->rotation.z:0.0f);if(socketEdit)if(const auto* placed=_shipBuilder.SelectedPlacedModule())delta=ShipDeltaToModuleLocal(delta,*placed);if(_shipBuilder.Model().dragPreview.staged)_shipBuilder.TranslateStagedPlacement(delta,fine);else if(socketEdit)_shipBuilder.TranslateSelectedSocket(delta,fine);else _shipBuilder.TranslateSelected(delta,fine);}
+                if(_shipBuilder.Model().transformTool==ShipyardTransformTool::Move){const float scale=.012f/std::max(.35f,activeCamera.GetZoom());const Vector3 worldDelta=activeCamera.ViewRightPlanar()*(dx*scale)+activeCamera.ViewUpPlanar()*(-dy*scale);const float rootYaw=EditorTransformSpaceSystem::RenderedRootYawRadians(player?player->rotation.z:0.0f,_shipBuilder.Recipe().forwardVisualYawDegrees);Vector3 delta=EditorTransformSpaceSystem::WorldToAssemblyDelta(worldDelta,rootYaw);if(socketEdit)if(const auto* placed=_shipBuilder.SelectedPlacedModule())delta=EditorTransformSpaceSystem::AssemblyToModuleLocalDelta(delta,*placed);if(_shipBuilder.Model().dragPreview.staged)_shipBuilder.TranslateStagedPlacement(delta,fine);else if(socketEdit)_shipBuilder.TranslateSelectedSocket(delta,fine);else _shipBuilder.TranslateSelected(delta,fine);}
                 else if(_shipBuilder.Model().transformTool==ShipyardTransformTool::Rotate){
                     const Vector3 delta=_window.IsControlDown()?Vector3{0.0f,0.0f,dx*.35f}:Vector3{-dy*.35f,dx*.35f,0.0f};
                     if(_shipBuilder.Model().dragPreview.staged)_shipBuilder.RotateStagedPlacement(delta,fine);else if(socketEdit)_shipBuilder.RotateSelectedSocket(delta,fine);else _shipBuilder.RotateSelected(delta,fine);

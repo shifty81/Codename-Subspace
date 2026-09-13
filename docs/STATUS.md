@@ -2,7 +2,7 @@
 
 ## Current source line
 
-**Pass1098-1122 — Generation Foundation Emergency Normalization candidate** on top of the Pass1023-1097 + R1/R2/R3 working line rooted at certified GitHub baseline `9440a5254ee80ab901f5c2d67e6a5bc14ae8423a`.
+**Pass1123-1162 — Core Authority Convergence candidate** on top of the Pass1098-1122 + Pass1122R1 working line rooted at certified GitHub baseline `9440a5254ee80ab901f5c2d67e6a5bc14ae8423a`.
 
 ## Promotion state
 
@@ -10,8 +10,10 @@
 - Baseline certified source commit: **`9440a5254ee80ab901f5c2d67e6a5bc14ae8423a`**.
 - Pass1023-1097 established player-scale authoring, measured-surface snapping, cohesive-shell/shield direction, shared UI/dock contracts and Blender/runtime generator parity.
 - Pass1097R1/R2/R3 repaired planet-source recovery and historical certification/live-gate compatibility.
-- Pass1098-1122 is an emergency generator integrity candidate: deterministic request handling, true 3D bounds, fail-closed candidate promotion, and removal of giant whole-ship scale inflation.
-- Portable pass-scoped validation: **25/25 PASS** plus source gate PASS; authoritative Windows project-owned PCC **Full Quality Gate is still required** before promotion/commit.
+- Pass1098-1122 established generator integrity: deterministic requests, true 3D bounds, fail-closed promotion and removal of giant whole-ship scale inflation.
+- Pass1122R1 retained manual/legacy editability while keeping generated lineages strict.
+- Pass1123-1162 converges deterministic safe-draft generation, facing-independent View transforms, one authoring Undo/Redo history, and native dockable Forge/PCC project tools.
+- Portable pass-scoped validation is recorded in the Pass1123-1162 handoff; authoritative Windows project-owned PCC **Full Quality Gate is still required** before promotion/commit.
 
 ## Highest-impact current truths
 
@@ -40,4 +42,4 @@
 - promote corrected Shipyard outputs into durable PCG Proof exemplars;
 - then normalize Remote Fleet Command/Fleet Console/true 6DOF flight against the same persistent runtime authority.
 
-See `docs/passes/PASS1098_1122_GENERATION_FOUNDATION_EMERGENCY_NORMALIZATION.md`.
+See `docs/passes/PASS1123_1162_CORE_AUTHORITY_CONVERGENCE.md`.

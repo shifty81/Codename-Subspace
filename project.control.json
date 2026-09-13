@@ -4,8 +4,8 @@
     "id": "codename-subspace",
     "name": "Codename Subspace",
     "kind": "native-cpp-game",
-    "version": "931R1",
-    "build": "SUBSPACE-PASS922-931-FOUNDATION-CONVERGENCE-R1"
+    "version": "1162",
+    "build": "SUBSPACE-PASS1123-1162-CORE-AUTHORITY-CONVERGENCE"
   },
   "root_control_center": {
     "launcher": "SubspaceTools.cmd",
@@ -1083,5 +1083,13 @@
     "manifestOptionalBaseline": true,
     "legacyBootstrapBaselineFieldAccepted": true,
     "patchFailureRequiresAcknowledgement": true
+  },
+  "editorIntegration": {
+    "forgeWorkspace": "native-thin-client",
+    "providerAuthority": "project.control.json / forge.project.v1",
+    "embeddedForgePyGui": false,
+    "interpreterPolicy": "honor-command-executable-verbatim",
+    "shipyardHistory": "one-authoring-history-bridge",
+    "defaultTransformSpace": "view-camera"
   }
 }

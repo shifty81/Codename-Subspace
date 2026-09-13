@@ -284,6 +284,19 @@ void NativeWindow::ApplyKey(unsigned long long virtualKey, bool down)
         case 'Q': _inputState.SetAction(InputAction::TurnLeft, down); _inputState.SetAction(InputAction::EditorToolSelect, down); break;
         case 'E': _inputState.SetAction(InputAction::TurnRight, down); _inputState.SetAction(InputAction::EditorToolRotate, down); break;
         case 'X': _inputState.SetAction(InputAction::EmergencyBrake, down); break;
+        case 'Z':
+            if(down&&_controlDown){
+                if(_shiftDown)_inputState.SetAction(InputAction::Redo,true);
+                else _inputState.SetAction(InputAction::Undo,true);
+            } else if(!down){
+                _inputState.SetAction(InputAction::Undo,false);
+                _inputState.SetAction(InputAction::Redo,false);
+            }
+            break;
+        case 'Y':
+            if(down&&_controlDown)_inputState.SetAction(InputAction::Redo,true);
+            else if(!down)_inputState.SetAction(InputAction::Redo,false);
+            break;
         case 'V': _inputState.SetAction(InputAction::ToggleDampening, down); break;
         case VK_SPACE: _inputState.SetAction(InputAction::FirePrimary, down); break;
         case 'F': _inputState.SetAction(InputAction::FireMiningMissile, down); _inputState.SetAction(InputAction::EditorFrameSelected, down); break;

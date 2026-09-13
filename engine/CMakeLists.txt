@@ -788,3 +788,17 @@ if(SUBSPACE_BUILD_TESTS)
         -DROOT=${CMAKE_CURRENT_SOURCE_DIR}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/pass1098_1122_generation_foundation_source_gate.cmake)
 endif()
+
+# Pass1123-1162: core authority convergence. Seed-stable generation exposes
+# bounded deterministic drafts without reviving scale cheating; Shipyard input
+# defaults to view/camera space, authoring mutations share one undo/redo history,
+# and Forge/PCC project operations surface through a native project-contract
+# thin client rather than embedding ForgePY or guessing command interpreters.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_pass1123_1162_tests tests/pass1123_1162_core_authority_convergence_tests.cpp)
+    target_link_libraries(subspace_pass1123_1162_tests PRIVATE subspace_engine)
+    add_test(NAME SubspacePass1123To1162CoreAuthorityConvergenceTests COMMAND subspace_pass1123_1162_tests)
+    add_test(NAME SubspacePass1123To1162CoreAuthorityConvergenceSourceGate COMMAND ${CMAKE_COMMAND}
+        -DROOT=${CMAKE_CURRENT_SOURCE_DIR}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/pass1123_1162_core_authority_convergence_source_gate.cmake)
+endif()

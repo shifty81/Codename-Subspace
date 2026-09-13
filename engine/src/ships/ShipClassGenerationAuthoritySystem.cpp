@@ -139,6 +139,20 @@ void ShipClassGenerationAuthoritySystem::ApplyScale(ProceduralShipVisualRecipe& 
     recipe.widthScale*=uniformScale;recipe.lengthScale*=uniformScale;
 }
 
+bool ShipClassGenerationAuthoritySystem::IsSafeDraft(const ShipClassGenerationReport& report) {
+    if(report.moduleCount==0||report.measuredLengthMeters<=0.001f)return false;
+    if(report.maximumInstanceScale>MaximumGeneratedInstanceScale)return false;
+    const float widthRatio=report.measuredWidthMeters/report.measuredLengthMeters;
+    const float heightRatio=report.measuredHeightMeters/report.measuredLengthMeters;
+    if(widthRatio<0.025f||heightRatio<0.015f)return false;
+    const auto envelope=ShipClassRoleSystem::Envelope(report.shipClass);
+    // A draft may be topology-incomplete, but it must remain bounded enough to
+    // be useful as a seed-driven visual candidate rather than another malformed
+    // giant/degenerate assembly.
+    if(report.moduleCount>std::max<std::size_t>(envelope.maximumModules*2u,envelope.maximumModules+8u))return false;
+    return true;
+}
+
 ShipClassGenerationReport ShipClassGenerationAuthoritySystem::ApplyAndStamp(ProceduralShipVisualRecipe& recipe,
                                                                              const std::vector<ShipyardModuleRecord>& catalog,
                                                                              ShipClass shipClass,

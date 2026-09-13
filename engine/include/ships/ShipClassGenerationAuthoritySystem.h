@@ -63,6 +63,7 @@ public:
                                UniversalSizeClass requestedSize,
                                UniversalSizeClass* resolvedSize = nullptr);
     static void ApplyScale(ProceduralShipVisualRecipe& recipe, float uniformScale);
+    static bool IsSafeDraft(const ShipClassGenerationReport& report);
     static ShipClassGenerationReport ApplyAndStamp(ProceduralShipVisualRecipe& recipe,
                                                    const std::vector<ShipyardModuleRecord>& catalog,
                                                    ShipClass shipClass,

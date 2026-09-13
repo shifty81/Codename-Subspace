@@ -1,0 +1,36 @@
+{
+  "schema": "subspace.core-authority-convergence.v1",
+  "pass": "1123-1162",
+  "generator": {
+    "requestAuthority": "subspace.generator-request.v1",
+    "seedPolicy": "Generate re-evaluates the visible seed; only Reroll mutates seed",
+    "promotion": ["certified", "safe deterministic draft", "reject"],
+    "draftRules": ["no >1.50 module scale", "no collapsed width/height", "bounded topology"],
+    "forbidden": ["extreme whole-ship scale correction", "workspace-owned alternate generators"]
+  },
+  "editorTransforms": {
+    "default": "view-camera",
+    "authority": "EditorTransformSpaceSystem",
+    "rootTransform": "runtime ship yaw + recipe forward visual yaw",
+    "explicitAlternates": ["ship", "local"]
+  },
+  "authoringHistory": {
+    "authority": "ShipyardBuilderSystem authoring transaction history",
+    "shortcuts": ["Ctrl+Z", "Ctrl+Y", "Ctrl+Shift+Z"],
+    "rule": "one user gesture commits one history transaction"
+  },
+  "projectTools": {
+    "authority": "project.control.json / forge.project.v1",
+    "editorClient": "ForgeWorkspaceSystem",
+    "embeddedForgePyGui": false,
+    "interpreterPolicy": "honor each registered command executable verbatim",
+    "destructivePolicy": "confirmation-requiring operations remain PCC-authorized"
+  },
+  "nextDependencies": [
+    "canonical player physical calibration",
+    "source-to-meter kitbash calibration",
+    "interior vocabulary and aperture/traversal definitions",
+    "topology-first ship and station generation",
+    "true 6DOF fleet/FPS authority"
+  ]
+}
