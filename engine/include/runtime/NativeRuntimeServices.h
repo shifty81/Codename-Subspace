@@ -20,6 +20,7 @@
 #include "fleet/CarrierOperationsSystem.h"
 #include "fleet/CorporationProgressionSystem.h"
 #include "runtime/PersistentUniverseSystem.h"
+#include "runtime/WorldSimulationAuthority.h"
 #include "runtime/SandboxAcceptanceIISystem.h"
 #include "integration/CombatShipIntegration.h"
 #include "integration/NavigationMiningIntegration.h"
@@ -77,6 +78,8 @@ public:
     CarrierOperationsSystem carrierOperations{8};
     CorporationProgressionSystem corporationProgression;
     PersistentUniverseSystem persistentUniverse;
+    // Pass973-986: one representation-independent world composition authority.
+    WorldSimulationAuthority worldSimulation;
     SandboxAcceptanceIISystem sandboxAcceptanceII;
 
     // Pass266-295 normalized production integration authorities.

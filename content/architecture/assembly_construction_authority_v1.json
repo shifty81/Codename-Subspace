@@ -1,0 +1,28 @@
+{
+  "schema": "subspace.assembly-construction-authority.v1",
+  "passes": "987-997",
+  "editableAuthority": "AssemblyDefinition",
+  "editor": "AssemblyConstructionSystem",
+  "shipyardTransaction": "ShipyardAssemblySession",
+  "constructionQuantumMeters": 0.25,
+  "elementKinds": [
+    "parametric_structure",
+    "authored_module",
+    "generated_connector"
+  ],
+  "attachmentAuthority": {
+    "semanticSockets": true,
+    "faces": ["fore", "aft", "port", "starboard", "dorsal", "ventral"],
+    "structuralGraphCertification": true
+  },
+  "commands": ["add_element", "remove_element", "move_element", "attach", "detach"],
+  "requirements": [
+    "all element translations quantize to the canonical construction unit",
+    "subassemblies form a valid hierarchy",
+    "multi-element assemblies are structurally connected",
+    "semantic socket types must be compatible",
+    "required runtime capabilities must validate before commit",
+    "compile snapshots are deterministic from canonical editable source",
+    "Shipyard commits mark the same persistent ship identity dirty for persistence/replication"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "schema": "subspace.runtime-composition-authority.v1",
+  "authority": "WorldSimulationAuthority",
+  "owner": "NativeRuntimeServices",
+  "passes": "973-986",
+  "principles": [
+    "persistent identity is independent of render and physics entities",
+    "one parent graph owns world/system/cell/ship/settlement containment",
+    "spatial frames own nested local coordinate spaces and kinematic handoff",
+    "full simulation requires residency",
+    "destination prefetch is explicit and priority ordered",
+    "dirty revisions are persistence and replication inputs",
+    "unresolved references are surfaced and checkpointed rather than silently dropped"
+  ],
+  "representations": ["unloaded", "strategic", "proxy", "full"],
+  "persistence": {
+    "currentSchemaVersion": 2,
+    "migrationFromV1": true,
+    "checkpointAuthority": "WorldSimulationAuthority.CreateCheckpoint"
+  },
+  "forbiddenParallelAuthority": [
+    "renderer-owned persistent entity identity",
+    "editor-only ship identity",
+    "physics-only world parent graph",
+    "silent unresolved save references"
+  ]
+}

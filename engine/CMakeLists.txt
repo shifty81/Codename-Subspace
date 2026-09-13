@@ -728,3 +728,13 @@ if(SUBSPACE_BUILD_TESTS)
     target_link_libraries(subspace_pass942_951_tests PRIVATE subspace_engine)
     add_test(NAME SubspacePass942To951InteriorDragAuthorityTests COMMAND subspace_pass942_951_tests)
 endif()
+
+# Pass973-997: Runtime Composition + Assembly Authority A. Consolidates
+# representation-independent world identity/frame/residency/persistence state
+# under NativeRuntimeServices, then establishes the canonical editable assembly,
+# BuildCommand journal and persistent-ship Shipyard transaction boundary.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_pass973_997_tests tests/pass973_997_runtime_assembly_authority_tests.cpp)
+    target_link_libraries(subspace_pass973_997_tests PRIVATE subspace_engine)
+    add_test(NAME SubspacePass973To997RuntimeAssemblyAuthorityTests COMMAND subspace_pass973_997_tests)
+endif()
