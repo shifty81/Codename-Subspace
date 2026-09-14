@@ -122,9 +122,12 @@ function FullGate {
 }
 function CommitPushGreen {
     RequireNoPendingPatch
-    $rc=RunRoot @('-Action','git-commit-green','-NoPause');if($rc -ne 0){throw "Certified GREEN commit failed with exit code $rc."}
-    $rc=RunRoot @('-Action','git-push','-NoPause');if($rc -ne 0){throw "GitHub push failed with exit code $rc. Nothing was force-pushed."}
-    P '[PASS] Certified GREEN source committed and pushed through the project-owned PCC.' Green
+    P '[STEP] COMMIT: verify or create the exact certified GREEN commit.' Cyan
+    $rc=RunRoot @('-Action','git-commit-green','-NoPause');if($rc -ne 0){throw "Certified GREEN commit verification/creation failed with exit code $rc."}
+    P '[PASS] COMMIT: certified GREEN source is committed.' Green
+    P '[STEP] PUSH + REMOTE VERIFY: publish current branch and verify origin matches local HEAD.' Cyan
+    $rc=RunRoot @('-Action','git-push','-NoPause');if($rc -ne 0){throw "GitHub push/remote verification failed with exit code $rc. Nothing was force-pushed."}
+    P '[PASS] REMOTE VERIFY: certified GREEN source is committed and present on origin.' Green
 }
 function PatchStatus {
     Header;$p=@(PendingPatches);if($p.Count -eq 0){P 'No root .patch files pending.' Green}else{P 'Pending root patches:' Yellow;foreach($x in $p){P ('  - '+$x.Name) Yellow}}

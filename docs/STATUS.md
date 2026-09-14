@@ -2,7 +2,7 @@
 
 ## Current source line
 
-**Pass1163-1202 — Embodied Authoring Foundation candidate** on top of certified GitHub baseline `c9754358185115a4fd929f3e79a4e8bae676b3b3` (Pass1123-1162 Core Authority Convergence).
+**Pass1202R1 — PCC Commit/Push Idempotency Repair candidate** on top of certified GitHub commit `7e9fda2e19b436d7f9cde90175a1dcc69615fba5` (Pass1163-1202 Embodied Authoring Foundation).
 
 ## Promotion state
 
@@ -11,7 +11,9 @@
 - Pass1098-1122 established generator integrity: deterministic requests, true 3D bounds, fail-closed promotion and removal of giant whole-ship scale inflation.
 - Pass1123-1162 converged deterministic safe-draft generation, View-space transforms, one authoring Undo/Redo history and native Forge/PCC project tools.
 - Pass1163-1202 makes `Full3D` flight physically six-degree-of-freedom, establishes FPS embodiment/playtest camera authority, repairs Shipyard drag projection against the 6DOF construction camera, adds professional primary/developer workspace separation, and establishes aperture/hangar/cohesive-shield contracts.
-- Portable pass-scoped validation: **42/42 PASS**; authoritative Windows project-owned PCC **Full Quality Gate is still required** before promotion/commit.
+- Pass1163-1202 was certified GREEN as `QG-20260913-201834-full-ce3e7748` and successfully reached GitHub as commit `7e9fda2e19b436d7f9cde90175a1dcc69615fba5` despite option 2 reporting a false FAIL afterward.
+- Pass1202R1 repairs that option-2 post-commit lineage/reporting defect and adds explicit remote-head verification.
+- Authoritative Windows project-owned PCC **Full Quality Gate is required after applying R1** before the repair itself may be committed.
 
 ## Highest-impact current truths
 
@@ -39,4 +41,4 @@
 - replace the temporary ship/station candidate generators with capability/interior/topology-first synthesis;
 - then migrate Remote Fleet Command from faux-3D strategic projection to true 3D 6DOF camera/order placement and hierarchical fleet/armada command.
 
-See `docs/passes/PASS1163_1202_EMBODIED_AUTHORING_FOUNDATION.md`.
+See `docs/passes/PASS1163_1202_EMBODIED_AUTHORING_FOUNDATION.md` and `docs/passes/PASS1202R1_PCC_COMMIT_PUSH_IDEMPOTENCY.md`.

@@ -580,13 +580,11 @@ function Invoke-GitCommitGreen {
     if ([int]$currentManifest.schemaVersion -ne [int]$green.gitManifestVersion) {
         throw ("Certifiable Git manifest schema changed since GREEN (certified v{0}, current v{1}). Re-run Full Quality Gate before committing." -f [int]$green.gitManifestVersion,[int]$currentManifest.schemaVersion)
     }
-    if (-not [string]::IsNullOrWhiteSpace([string]$green.gitHead) -and [string]$currentManifest.head -ne [string]$green.gitHead) {
-        Write-Host '[FAIL] Git HEAD changed after the GREEN gate even though worktree content may be identical.' -ForegroundColor Red
-        Write-Host (" Certified HEAD : {0}" -f [string]$green.gitHead)
-        Write-Host (" Current HEAD   : {0}" -f [string]$currentManifest.head)
-        throw 'Git lineage changed since certification. Re-run Full Quality Gate before committing.'
-    }
 
+    # Content authority is checked before lineage so a repeated option-2 run can
+    # distinguish the exact certified commit created by the previous run from a
+    # genuinely unrelated post-GREEN commit. The worktree fingerprint remains
+    # staging/commit invariant by design.
     if ([string]$currentManifest.fingerprint -ne [string]$green.gitFingerprint) {
         Write-Host '[FAIL] Certifiable Git worktree bytes/path set changed after the GREEN gate.' -ForegroundColor Red
         Write-Host (" Certified fingerprint : {0}" -f [string]$green.gitFingerprint)
@@ -595,6 +593,36 @@ function Invoke-GitCommitGreen {
         $rows = @(Get-ManifestDriftRows -CertifiedEntries @($green.gitManifest) -CurrentEntries @($currentManifest.entries))
         Write-ManifestDrift -Title ' Actual post-GREEN Git worktree drift:' -Rows $rows
         throw 'Certified Git worktree changed since the GREEN gate. Re-run Full Quality Gate before committing.'
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace([string]$green.gitHead) -and [string]$currentManifest.head -ne [string]$green.gitHead) {
+        $alreadyCommitted = $false
+        $parentHead = ''
+        $remainingCertifiedChanges = @()
+        Push-Location $Root
+        try {
+            $parentHead = [string](& $git rev-parse "$($currentManifest.head)^1" 2>$null)
+            if ($LASTEXITCODE -eq 0) { $parentHead = $parentHead.Trim() } else { $parentHead = '' }
+        }
+        finally { Pop-Location }
+
+        if ($parentHead -eq [string]$green.gitHead) {
+            $remainingCertifiedChanges = @(Get-ProjectOpsCertifiableGitChangePaths -Root $Root)
+            $alreadyCommitted = $remainingCertifiedChanges.Count -eq 0
+        }
+
+        if ($alreadyCommitted) {
+            Write-Host '[PASS] COMMIT: current HEAD is already the exact certified GREEN commit created from this gate.' -ForegroundColor Green
+            Write-Host (" Certified parent : {0}" -f [string]$green.gitHead)
+            Write-Host (" Current HEAD     : {0}" -f [string]$currentManifest.head)
+            return
+        }
+
+        Write-Host '[FAIL] Git HEAD changed after the GREEN gate and is not the verified direct certified commit.' -ForegroundColor Red
+        Write-Host (" Certified HEAD : {0}" -f [string]$green.gitHead)
+        Write-Host (" Current HEAD   : {0}" -f [string]$currentManifest.head)
+        if (-not [string]::IsNullOrWhiteSpace($parentHead)) { Write-Host (" Current parent : {0}" -f $parentHead) }
+        throw 'Git lineage changed since certification. Re-run Full Quality Gate before committing.'
     }
 
     $message = Read-Host 'Commit message (blank uses certified gate id)'
@@ -650,8 +678,52 @@ function Invoke-GitPush {
     try {
         $branch = [string](& $git branch --show-current)
         if ([string]::IsNullOrWhiteSpace($branch)) { throw 'Current branch could not be determined.' }
-        & $git push -u origin $branch
-        if ($LASTEXITCODE -ne 0) { throw 'git push failed.' }
+        $branch = $branch.Trim()
+        # Read branch/HEAD through the shared ProjectOps process probe. Direct
+        # PowerShell-native direct HEAD probe is intentionally forbidden
+        # because an unborn repository writes ordinary Git diagnostics to the
+        # PowerShell error stream and destabilizes historical clean-clone gates.
+        $gitState = Get-ProjectGitRepositoryState -Root $Root
+        if (-not [bool]$gitState.hasHead -or [string]::IsNullOrWhiteSpace([string]$gitState.head)) {
+            throw 'Current Git HEAD could not be determined.'
+        }
+        $localHead = ([string]$gitState.head).Trim()
+
+        Write-Host ("[STEP] PUSH: origin/{0} <= {1}" -f $branch,$localHead) -ForegroundColor Cyan
+        $pushLines = @(& $git push -u origin $branch 2>&1)
+        $pushCode = $LASTEXITCODE
+        foreach ($line in $pushLines) { Write-Host ([string]$line) }
+
+        Write-Host '[STEP] REMOTE VERIFY: querying origin branch head.' -ForegroundColor Cyan
+        $remoteLines = @(& $git ls-remote --heads origin ("refs/heads/{0}" -f $branch) 2>&1)
+        $verifyCode = $LASTEXITCODE
+        $remoteHead = ''
+        if ($verifyCode -eq 0) {
+            foreach ($line in $remoteLines) {
+                $text = [string]$line
+                if ($text -match '^([0-9a-fA-F]{40})\s+refs/heads/') { $remoteHead = $Matches[1].ToLowerInvariant(); break }
+            }
+        }
+
+        if (-not [string]::IsNullOrWhiteSpace($remoteHead) -and $remoteHead -eq $localHead.ToLowerInvariant()) {
+            if ($pushCode -ne 0) {
+                Write-Host '[WARN] PUSH returned non-zero, but REMOTE VERIFY proves origin already contains this exact HEAD.' -ForegroundColor Yellow
+            } else {
+                Write-Host '[PASS] PUSH: Git accepted the branch update.' -ForegroundColor Green
+            }
+            Write-Host ("[PASS] REMOTE VERIFY: origin/{0} == local HEAD {1}" -f $branch,$localHead) -ForegroundColor Green
+            return
+        }
+
+        if ($pushCode -eq 0 -and $verifyCode -ne 0) {
+            Write-Host '[WARN] REMOTE VERIFY could not query origin after a successful git push; push itself returned success.' -ForegroundColor Yellow
+            return
+        }
+
+        if ($pushCode -ne 0) {
+            throw ("git push failed and origin/{0} could not be verified at local HEAD {1}." -f $branch,$localHead)
+        }
+        throw ("Remote verification failed: origin/{0} is '{1}', local HEAD is '{2}'." -f $branch,$remoteHead,$localHead)
     } finally { Pop-Location }
 }
 

@@ -2913,17 +2913,20 @@ function Invoke-CommitAndPushCertifiedGreen {
     Write-Host "This action only commits the exact source certified by the latest GREEN Full Gate, then pushes the current branch." -ForegroundColor $Global:UiMutedForeground
     Write-Host ""
 
+    Write-Host "[STEP] COMMIT: verify or create the exact certified GREEN commit." -ForegroundColor $Global:UiAccentForeground
     $commitCode = Invoke-StandardControlAction -ControlAction "git-commit-green" -ContinueOnError
     if ($commitCode -ne 0) {
-        throw "Certified GREEN commit failed. Push was not attempted."
+        throw "Certified GREEN commit verification/creation failed. Push was not attempted."
     }
+    Write-Host "[PASS] COMMIT: certified GREEN source is committed." -ForegroundColor $Global:UiGoodForeground
 
+    Write-Host "[STEP] PUSH + REMOTE VERIFY: publish current branch and verify origin matches local HEAD." -ForegroundColor $Global:UiAccentForeground
     $pushCode = Invoke-StandardControlAction -ControlAction "git-push" -ContinueOnError
     if ($pushCode -ne 0) {
-        throw "Commit succeeded but Git push failed. Source remains committed locally."
+        throw "Push/remote verification failed. The commit remains local and the debug bundle identifies the exact stage."
     }
 
-    Write-Host "[PASS] Certified GREEN source committed and pushed." -ForegroundColor $Global:UiGoodForeground
+    Write-Host "[PASS] REMOTE VERIFY: certified GREEN source is committed and present on origin." -ForegroundColor $Global:UiGoodForeground
 }
 
 
