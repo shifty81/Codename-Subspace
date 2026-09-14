@@ -1,0 +1,44 @@
+{
+  "schema": "subspace.professional-shipyard-normalization.v1",
+  "pass": "1203-1222",
+  "authority": {
+    "document": "ShipyardDocumentSystem",
+    "stableIdentity": "ShipyardStableIdSystem",
+    "selection": "ShipyardSelectionSystem",
+    "session": "ShipyardSessionSystem",
+    "commands": "ShipyardCommandSystem",
+    "history": "ShipyardHistorySystem",
+    "mounting": "ShipyardMountProfileSystem",
+    "uiComposition": "ShipyardProfessionalUiSystem",
+    "dockLayout": "SubspaceDockSystem remains the project docking authority"
+  },
+  "rules": [
+    "UI panels are views and command dispatchers, never owners of ship data",
+    "stable object IDs are distinct from vector/storage indices",
+    "one user gesture produces at most one undoable document transaction",
+    "session state is not rewound as authored document state",
+    "primary module mounting is a geometry-backed MountProfile concern",
+    "Build/Interior/Systems/Appearance/Test are the permanent workflow strip",
+    "specialist workspaces live under Advanced/Dev progressive disclosure",
+    "existing runtime recipe/save authority remains compatible while editor internals are normalized"
+  ],
+  "mountProfile": {
+    "primaryRootSurface": true,
+    "secondarySurfaces": true,
+    "insertionDepth": true,
+    "clearance": true,
+    "generatorEligibility": true,
+    "pairedPlacement": true,
+    "provenance": true,
+    "engineStrutFootPolicy": "broad geometry-supported flat root surface is primary attachment authority"
+  },
+  "next": [
+    "migrate ShipyardBuilderSystem runtime state into ShipyardDocument + ShipyardSession",
+    "route legacy buttons/hotkeys through ShipyardCommandSystem",
+    "replace full-runtime-model undo snapshots with document-only history",
+    "split visible Outliner and Properties panels",
+    "replace expanded workspace strip with five primary workspaces plus Dev menu",
+    "wire Generate and New Seed + Generate through one deterministic generation service",
+    "replace detached project-tool execution with managed process/job authority"
+  ]
+}
