@@ -1,0 +1,53 @@
+{
+  "schema": "subspace.embodied-authoring-foundation.v1",
+  "pass": "1163-1202",
+  "baselineGit": "c9754358185115a4fd929f3e79a4e8bae676b3b3",
+  "flight": {
+    "worldAuthority": "3D",
+    "cockpitAuthority": "first-person six-degree-of-freedom",
+    "localAxes": ["forward", "right", "up"],
+    "rotationAxes": ["pitch", "roll", "yaw"],
+    "planarMode": "explicit compatibility constraint only",
+    "temporaryNativeFallbackBindings": {
+      "vertical": ["PageUp", "PageDown"],
+      "pitch": ["ArrowUp", "ArrowDown"],
+      "roll": ["ArrowLeft", "ArrowRight"],
+      "yaw": ["Q", "E"]
+    }
+  },
+  "embodiment": {
+    "playerHeightMeters": 1.8,
+    "eyeHeightMeters": 1.68,
+    "onFoot": "yaw/pitch first-person look plus look-relative locomotion",
+    "shipyardPlay": ["InteriorWalk", "CockpitFlight", "RemoteFleetCommand"],
+    "persistentShipIdentity": true
+  },
+  "shipyard": {
+    "primaryWorkspaces": ["Build", "Interior", "Systems", "Appearance", "Test"],
+    "developerWorkspaces": ["Model", "Character", "PCG Lab", "World", "Dev World", "Project Tools", "Authoring"],
+    "defaultPanels": ["Tools", "Asset Browser", "3D Viewport", "Outliner", "Properties"],
+    "optionalPanels": ["Generator", "Interior Program", "Apertures & Hangars", "Systems", "Play / Test", "History", "Validation", "Console", "Forge / Project Tools"],
+    "pointerProjection": "construction-camera focus plane via perspective screen ray"
+  },
+  "aperturesAndHangars": {
+    "apertureKinds": ["Door", "Window", "Airlock", "DockingCollar", "HangarDoor", "ForceField"],
+    "vehicleEnvelopeKinds": ["Hoverbike", "Mech", "Rover", "Shuttle"],
+    "capabilityRule": "exterior cuts permit traversal; connected interior plus systems produces gameplay capability",
+    "articulatedRegionRule": "door/ramp/antenna/hatch may be authored from a selected sub-region with pivot and axis"
+  },
+  "shield": {
+    "source": "future unified baked exterior shell",
+    "singleClosedComponent": true,
+    "suppressMicroDetail": true,
+    "bridgeMicroDetailBelowMeters": 1.25,
+    "walkableExteriorClearanceMeters": 2.4,
+    "near": "conformal water-like surface with bounded point ripples",
+    "far": "decimated silhouette or strategic-only representation"
+  },
+  "notClaimedComplete": [
+    "mouse-look events are not yet wired from raw Win32 mouse motion into cockpit flight",
+    "final arbitrary-mesh cohesive shield bake is not yet wired into NativeBattlefieldRenderer",
+    "full station/ship topology-first generator remains the next generator tranche",
+    "player Quaternius source model calibration still requires governed asset intake through Vault"
+  ]
+}

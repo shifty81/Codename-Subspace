@@ -7,13 +7,12 @@
 
 namespace subspace {
 
-/// Native replacement for the legacy C# PlayerControlSystem.
+/// Native first-person ship-flight authority.
 ///
-/// Subspace world/physics authority is fully three-dimensional. The current
-/// keyboard flight mapping remains predominantly planar for feel/backward
-/// compatibility, but the controller must not erase valid Z force/velocity or
-/// pitch/roll torque produced by other systems. TacticalPlanar is an explicit
-/// opt-in constraint mode for command/tutorial contexts, never world truth.
+/// Full3D uses the ship's complete Euler orientation to derive local forward,
+/// right and up axes and permits translation/rotation on all six degrees of
+/// freedom. TacticalPlanar is retained only as an explicit opt-in compatibility
+/// constraint; it is never the physical truth of the world.
 class PlayerControlSystem : public SystemBase {
 public:
     enum class FlightAuthorityMode { Full3D, TacticalPlanar };
@@ -23,6 +22,10 @@ public:
         float forwardThrustRatio = 1.0f;
         float reverseThrustRatio = 0.58f;
         float lateralThrustRatio = 0.42f;
+        float verticalThrustRatio = 0.38f;
+        float pitchTorqueRatio = 0.82f;
+        float rollTorqueRatio = 0.76f;
+        float yawTorqueRatio = 1.0f;
         float dampeningStrength = 0.42f;
         float boostMultiplier = 1.65f;
         float idleLinearDampeningLimit = 0.56f; // maxThrust multiplier
@@ -64,7 +67,11 @@ private:
     float _reverseResponse = 0.0f;
     float _leftResponse = 0.0f;
     float _rightResponse = 0.0f;
-    float _turnResponse = 0.0f;
+    float _upResponse = 0.0f;
+    float _downResponse = 0.0f;
+    float _yawResponse = 0.0f;
+    float _pitchResponse = 0.0f;
+    float _rollResponse = 0.0f;
 };
 
 } // namespace subspace

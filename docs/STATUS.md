@@ -2,44 +2,41 @@
 
 ## Current source line
 
-**Pass1123-1162 — Core Authority Convergence candidate** on top of the Pass1098-1122 + Pass1122R1 working line rooted at certified GitHub baseline `9440a5254ee80ab901f5c2d67e6a5bc14ae8423a`.
+**Pass1163-1202 — Embodied Authoring Foundation candidate** on top of certified GitHub baseline `c9754358185115a4fd929f3e79a4e8bae676b3b3` (Pass1123-1162 Core Authority Convergence).
 
 ## Promotion state
 
-- Baseline Full Gate: **GREEN** (`QG-20260913-092557-full-54aaeb65`).
-- Baseline certified source commit: **`9440a5254ee80ab901f5c2d67e6a5bc14ae8423a`**.
-- Pass1023-1097 established player-scale authoring, measured-surface snapping, cohesive-shell/shield direction, shared UI/dock contracts and Blender/runtime generator parity.
-- Pass1097R1/R2/R3 repaired planet-source recovery and historical certification/live-gate compatibility.
+- Baseline Full Gate: **GREEN** (`QG-20260913-184114-full-7478ecb7`).
+- Baseline certified source commit: **`c9754358185115a4fd929f3e79a4e8bae676b3b3`**.
 - Pass1098-1122 established generator integrity: deterministic requests, true 3D bounds, fail-closed promotion and removal of giant whole-ship scale inflation.
-- Pass1122R1 retained manual/legacy editability while keeping generated lineages strict.
-- Pass1123-1162 converges deterministic safe-draft generation, facing-independent View transforms, one authoring Undo/Redo history, and native dockable Forge/PCC project tools.
-- Portable pass-scoped validation is recorded in the Pass1123-1162 handoff; authoritative Windows project-owned PCC **Full Quality Gate is still required** before promotion/commit.
+- Pass1123-1162 converged deterministic safe-draft generation, View-space transforms, one authoring Undo/Redo history and native Forge/PCC project tools.
+- Pass1163-1202 makes `Full3D` flight physically six-degree-of-freedom, establishes FPS embodiment/playtest camera authority, repairs Shipyard drag projection against the 6DOF construction camera, adds professional primary/developer workspace separation, and establishes aperture/hangar/cohesive-shield contracts.
+- Portable pass-scoped validation: **42/42 PASS**; authoritative Windows project-owned PCC **Full Quality Gate is still required** before promotion/commit.
 
 ## Highest-impact current truths
 
-1. `GeneratorParityRequest` is the canonical generator input contract. The same request fields are intended for Shipyard, PCG diagnostics and Blender parity tooling.
-2. **GENERATE does not mutate seed.** Only explicit Reroll changes the seed.
-3. Ship class/XS-XL may no longer be achieved by inflating or shrinking an already-generated craft by extreme multipliers. Final correction is limited to `0.85..1.15`.
-4. Generated module instances above `1.50` absolute scale fail class generation certification.
-5. Ship class measurement uses transformed three-dimensional bounds, including module orientation.
-6. Class minimum/maximum module counts are hard generation constraints.
-7. Extremely collapsed width/length or height/length candidates fail generation instead of becoming player-visible flat planes.
-8. Invalid generation fails closed and leaves the current authored ship intact.
-9. Non-ship generator domains may not silently execute the ship generator.
-10. The existing `StationKitbashVisualSystem` radial/vertical assembly path is explicitly a `LEGACY_EXTERIOR_STACKING_PREVIEW`, not the future station PCG authority.
-11. The old `BuildShowcaseRecipes/BuildOne` ship synthesizer remains a temporary candidate source behind the new integrity boundary. Large classes may reject until class-driven topology generation replaces it.
-12. Canonical player calibration, governed interior kitbash intake, traversal/aperture standards, vehicle/hangar envelopes, then interior-first ship/station generation remain the immediate dependency chain.
+1. `GeneratorParityRequest` remains the canonical generator input contract. Generate does not mutate seed; Reroll alone changes it.
+2. Generated ships may not satisfy class/XS-XL by extreme whole-ship scaling. Unsafe/collapsed candidates fail closed.
+3. `PlayerControlSystem::Full3D` now applies local forward/right/up thrust and pitch/roll/yaw torque in real three-dimensional physics.
+4. Cockpit flight, on-foot FPS and Remote Fleet Command are separate control perspectives over the same persistent simulation.
+5. On-foot embodiment is player-scale, look-relative and traversal-bound aware rather than permanently top-down/prototype-room constrained.
+6. Shipyard pointer projection follows the explicit construction camera focus plane instead of the old gameplay Z=0 plane.
+7. Shipyard primary workspaces are Build / Interior / Systems / Appearance / Test; deeper Model/Character/PCG/World/Project/Authoring tools remain available as advanced workspaces.
+8. Doors, windows, airlocks, docking collars, hangar doors and force fields are first-class aperture concepts. Hangars validate against physical vehicle envelopes.
+9. Exterior modules describe shape/placement/interface opportunities; connected interior program + systems compile actual ship capability.
+10. Final shield authority is one cohesive smoothed closed envelope with micro-detail suppression and fleet-scale LOD; the visible renderer still needs migration to that source.
+11. The legacy ship showcase synthesizer and station stacking preview are still temporary candidate sources behind integrity gates.
+12. Quaternius character/animation/interior packs remain governed external-source dependencies pending Vault intake and metric calibration.
 
 ## Next implementation lane
 
-- lock the real Quaternius player model to the one-meter world-scale contract;
-- certify source-unit-to-meter calibration and texel-density policy for kitbash families;
-- ingest/classify sci-fi interior vocabulary;
-- establish door/window/airlock/stair/ladder/elevator definitions around the certified player capsule;
-- establish rover/mech/hoverbike/shuttle transport envelopes and hangar clearance rules;
-- replace `BuildShowcaseRecipes/BuildOne` with class/capability/interior-driven structural topology synthesis;
-- replace station hub/radial stacking with service/interior/circulation-first station generation;
-- promote corrected Shipyard outputs into durable PCG Proof exemplars;
-- then normalize Remote Fleet Command/Fleet Console/true 6DOF flight against the same persistent runtime authority.
+- wire native mouse-look and input contexts into cockpit/on-foot first-person cameras;
+- connect Shipyard Play/Test controls to the visible runtime button/workspace and actual interior collision/nav products;
+- add sub-object/region selection and use articulated regions to carve doors, ramps, hangar panels and moving fixtures from authored geometry;
+- route cohesive exterior bake output into the shield renderer so the visible shield becomes one connected atmosphere-capable shell;
+- calibrate the governed Quaternius player model and animation libraries against the 1 m world / 1.8 m player contract;
+- ingest and classify Quaternius sci-fi interior vocabulary through Vault;
+- replace the temporary ship/station candidate generators with capability/interior/topology-first synthesis;
+- then migrate Remote Fleet Command from faux-3D strategic projection to true 3D 6DOF camera/order placement and hierarchical fleet/armada command.
 
-See `docs/passes/PASS1123_1162_CORE_AUTHORITY_CONVERGENCE.md`.
+See `docs/passes/PASS1163_1202_EMBODIED_AUTHORING_FOUNDATION.md`.

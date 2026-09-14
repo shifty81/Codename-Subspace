@@ -10,6 +10,8 @@ struct RuntimeControlContext {
     CameraMode cameraMode=CameraMode::ShipFlight;
     RuntimeViewAuthority viewAuthority=RuntimeViewAuthority::CockpitFirstPerson;
     bool firstPerson=true;
+    bool mouseLook=true;
+    bool sixDofFlight=true;
     bool remoteFleetCommand=false;
     bool flightControls=true;
     bool interiorControls=false;
@@ -17,7 +19,8 @@ struct RuntimeControlContext {
     bool weapons=true;
     bool scanner=true;
     bool vectorCommands=true;
-    std::string modeLabel="FLIGHT";
+    bool authoringPlaytest=false;
+    std::string modeLabel="COCKPIT / FIRST PERSON 6DOF";
 };
 class RuntimeControlContextSystem {
 public:

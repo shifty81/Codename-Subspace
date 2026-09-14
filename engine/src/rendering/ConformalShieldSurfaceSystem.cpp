@@ -12,5 +12,6 @@ ShieldSurfaceBudgetDecision ConformalShieldSurfaceSystem::Select(const ShieldSur
     else {d.lod=ShieldSurfaceLod::StrategicOnly;d.rippleBudget=0;d.animateCalmWater=false;d.receivePointImpacts=false;d.triangleStride=std::max<std::size_t>(1,c.sourceTriangleCount);return d;}
     const std::size_t budget=d.lod==ShieldSurfaceLod::NearConformal?p.nearTriangleBudget:(d.lod==ShieldSurfaceLod::MidDecimated?p.midTriangleBudget:p.farTriangleBudget);d.triangleStride=std::max<std::size_t>(1,(c.sourceTriangleCount+std::max<std::size_t>(1,budget)-1)/std::max<std::size_t>(1,budget));return d;
 }
+ShieldEnvelopeDecision ConformalShieldSurfaceSystem::Envelope(bool walkable,const ShieldSurfacePolicy&p){ShieldEnvelopeDecision e;e.requestedGapMeters=walkable?std::max(p.walkableExteriorClearanceMeters,p.minimumCohesiveGapMeters):p.minimumCohesiveGapMeters;e.bridgeDetailBelowMeters=p.bridgeMicroDetailBelowMeters;e.smoothingPasses=std::max(1u,p.smoothingPasses);return e;}
 const char* ConformalShieldSurfaceSystem::LodName(ShieldSurfaceLod l){switch(l){case ShieldSurfaceLod::NearConformal:return"NEAR_CONFORMAL";case ShieldSurfaceLod::MidDecimated:return"MID_DECIMATED";case ShieldSurfaceLod::FarSilhouette:return"FAR_SILHOUETTE";case ShieldSurfaceLod::StrategicOnly:return"STRATEGIC_ONLY";}return"NEAR_CONFORMAL";}
 } // namespace subspace

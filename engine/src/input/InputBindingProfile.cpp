@@ -11,6 +11,12 @@ InputBindingProfile InputBindingProfile::Defaults(){
     p.Rebind(InputAction::StrafeRight,"D");
     p.Rebind(InputAction::TurnLeft,"Q");
     p.Rebind(InputAction::TurnRight,"E");
+    p.Rebind(InputAction::FlightThrustUp,"PageUp");
+    p.Rebind(InputAction::FlightThrustDown,"PageDown");
+    p.Rebind(InputAction::FlightPitchUp,"ArrowUp");
+    p.Rebind(InputAction::FlightPitchDown,"ArrowDown");
+    p.Rebind(InputAction::FlightRollLeft,"ArrowLeft");
+    p.Rebind(InputAction::FlightRollRight,"ArrowRight");
     p.Rebind(InputAction::ToggleFlightMode,"TAB");
     p.Rebind(InputAction::Boost,"SHIFT");
     p.Rebind(InputAction::RequestDock,"J");

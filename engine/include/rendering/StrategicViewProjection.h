@@ -28,6 +28,12 @@ struct StrategicViewBasis {
     float farPlane = 10000.0f;
 };
 
+struct StrategicScreenRay {
+    Vector3 origin{};
+    Vector3 direction{0.0f,1.0f,0.0f};
+    bool valid=false;
+};
+
 struct StrategicScreenPoint {
     float x = 0.0f;
     float y = 0.0f;
@@ -35,17 +41,22 @@ struct StrategicScreenPoint {
     bool visible = false;
 };
 
-/// Pure-math perspective authority for the faux-3D strategic view.
-///
-/// The camera may sit above and behind the authoritative X/Y gameplay plane,
-/// but all picking explicitly intersects that plane again.  Presentation Z
-/// therefore cannot leak into ship physics or world simulation.
+/// Perspective authority shared by tactical rendering and the explicit
+/// construction-camera override. Tactical/default picking still intersects the
+/// requested gameplay plane; construction picking intersects the camera focus
+/// plane so rotating underneath/around an assembly cannot make drag previews
+/// disappear against an unrelated Z=0 plane.
 class StrategicViewProjection {
 public:
     static StrategicViewBasis Build(const StrategicCamera& camera,
                                     float viewportWidth,
                                     float viewportHeight,
                                     const StrategicViewProjectionConfig& config = {});
+
+    static StrategicScreenRay ScreenRay(float screenX,float screenY,
+                                        float viewportWidth,float viewportHeight,
+                                        const StrategicCamera& camera,
+                                        const StrategicViewProjectionConfig& config = {});
 
     static Vector3 ScreenToGameplayPlane(float screenX,
                                          float screenY,
@@ -54,6 +65,11 @@ public:
                                          const StrategicCamera& camera,
                                          float gameplayPlaneZ = 0.0f,
                                          const StrategicViewProjectionConfig& config = {});
+
+    static Vector3 ScreenToEditorFocusPlane(float screenX,float screenY,
+                                            float viewportWidth,float viewportHeight,
+                                            const StrategicCamera& camera,
+                                            const StrategicViewProjectionConfig& config = {});
 
     static StrategicScreenPoint WorldToScreen(const Vector3& world,
                                                float viewportWidth,

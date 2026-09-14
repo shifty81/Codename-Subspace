@@ -59,6 +59,17 @@ enum class InputAction : std::size_t {
     EditorNudgeAft,
     EditorNudgeUp,
     EditorNudgeDown,
+
+    // Pass1163+: semantic 6DOF flight axes. These are appended so historical
+    // serialized/action indices remain stable. Native keyboard fallbacks remain
+    // supported by PlayerControlSystem until every platform backend exposes the
+    // new bindings directly.
+    FlightThrustUp,
+    FlightThrustDown,
+    FlightPitchUp,
+    FlightPitchDown,
+    FlightRollLeft,
+    FlightRollRight,
     Count
 };
 
