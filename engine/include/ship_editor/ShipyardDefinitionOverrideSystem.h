@@ -29,3 +29,17 @@ public:
 };
 
 } // namespace subspace
+
+
+// Pass1268-1292 visible-cutover strangler shim.
+// ShipyardBuilderSystem.cpp includes ShipyardBuilderSystem.h first and this
+// header later. Only in that implementation TU do we rename the legacy public
+// entrypoints so the professional shell can own the canonical methods without
+// overwriting the large, still-certified legacy implementation file. Normal
+// users of this header never see these aliases.
+#if defined(SUBSPACE_SHIPYARD_BUILDER_SYSTEM_DECLARED)
+#define Activate LegacyActivate
+#define Layout LegacyLayout
+#define BuildControls LegacyBuildControls
+#define HitTest LegacyHitTest
+#endif

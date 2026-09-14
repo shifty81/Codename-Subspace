@@ -300,6 +300,8 @@ struct ShipyardBuilderRuntimeModel {
     bool definitionOverridesDirty = false;
     ShipyardInspectorTab inspectorTab = ShipyardInspectorTab::Transform;
     ShipyardWorkspaceMode workspaceMode = ShipyardWorkspaceMode::Build;
+    bool developerWorkspacesVisible = false;
+    bool testWorkspaceActive = false;
     SubspaceDockWorkspace dockWorkspace{};
     std::string role = "INDUSTRIAL";
     GeneratorDomain authoringDomain = GeneratorDomain::Ship;
@@ -357,6 +359,10 @@ public:
     const ShipyardAssemblySocket* SelectedSocket() const;
 
     bool Activate(ShipyardBuilderCommand command, int value = 0);
+    // Pass1268+: transitional legacy implementation entrypoints. The current
+    // monolithic .cpp is compiled through a confined compatibility alias while
+    // the public methods below are owned by the professional visible shell.
+    bool LegacyActivate(ShipyardBuilderCommand command, int value = 0);
     bool CanUndoAuthoring() const { return !authoringUndo_.empty(); }
     bool CanRedoAuthoring() const { return !authoringRedo_.empty(); }
     bool UndoAuthoring();
@@ -407,14 +413,23 @@ public:
     void MarkDefinitionOverridesSaved(const std::string& path);
 
     static ShipyardBuilderLayout Layout(int viewportWidth, int viewportHeight);
+    static ShipyardBuilderLayout LegacyLayout(int viewportWidth, int viewportHeight);
     static std::vector<ShipyardBuilderControl> BuildControls(const ShipyardBuilderRuntimeModel& model,
                                                              int viewportWidth,
                                                              int viewportHeight);
+    static std::vector<ShipyardBuilderControl> LegacyBuildControls(const ShipyardBuilderRuntimeModel& model,
+                                                                   int viewportWidth,
+                                                                   int viewportHeight);
     static ShipyardBuilderControl HitTest(const ShipyardBuilderRuntimeModel& model,
                                           int viewportWidth,
                                           int viewportHeight,
                                           float x,
                                           float y);
+    static ShipyardBuilderControl LegacyHitTest(const ShipyardBuilderRuntimeModel& model,
+                                                int viewportWidth,
+                                                int viewportHeight,
+                                                float x,
+                                                float y);
 
 private:
     bool ActivateInternal(ShipyardBuilderCommand command, int value);
@@ -495,3 +510,5 @@ private:
 };
 
 } // namespace subspace
+
+#define SUBSPACE_SHIPYARD_BUILDER_SYSTEM_DECLARED 1

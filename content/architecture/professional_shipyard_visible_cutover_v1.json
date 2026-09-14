@@ -1,0 +1,31 @@
+{
+  "schema": "subspace.professional-shipyard-visible-cutover.v1",
+  "pass": "1268-1292",
+  "baseline": "ea3ee381f908dddeb0500b33802baaae49dde235",
+  "status": "candidate",
+  "intent": "first deliberately visible professional Shipyard cutover",
+  "visibleAcceptance": [
+    "main-menu Shipyard immediately shows BUILD INTERIOR SYSTEMS APPEARANCE TEST DEV",
+    "specialist workspaces are hidden behind DEV until explicitly expanded",
+    "asset browser occupies the left construction surface",
+    "readable SELECT MOVE ROTATE SCALE SNAP tool rail borders the viewport",
+    "right surface is visibly split into OUTLINER and PROPERTIES / INSTANCE + DEFINITION",
+    "Systems exposes GENERATE, NEW SEED + GENERATE, and EXPLAIN",
+    "legacy drag, staged placement, transform, symmetry, undo/redo, generator, save and refit actions remain implementation authority during cutover"
+  ],
+  "migration": {
+    "publicVisibleAuthority": "ShipyardProfessionalVisibleCutover.cpp",
+    "legacyImplementationAuthority": "ShipyardBuilderSystem.cpp",
+    "strategy": "strangler",
+    "temporaryCompatibility": "legacy public method symbols are renamed only inside the legacy implementation translation unit",
+    "removalCondition": "delete compatibility shim after renderer/input are fully migrated to ShipyardProfessionalShellSystem"
+  },
+  "primaryWorkspaces": ["BUILD", "INTERIOR", "SYSTEMS", "APPEARANCE", "TEST"],
+  "advancedEntry": "DEV",
+  "advancedWorkspaces": ["MODEL", "SOCKETS", "CHARACTER", "PCG LAB", "WORLD", "DEV WORLD", "PROJECT", "AUTHOR"],
+  "generatorPolicy": {
+    "generateMutatesSeed": false,
+    "newSeedGenerate": "legacy PcgReroll followed by the exact same legacy GenerateVariant path",
+    "alternateGeneratorAllowed": false
+  }
+}
