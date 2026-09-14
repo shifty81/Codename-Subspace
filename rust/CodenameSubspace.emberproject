@@ -1,0 +1,92 @@
+{
+  "schema": "ember.project.v1",
+  "schemaVersion": 1,
+  "project": {
+    "id": "codename-subspace",
+    "name": "Codename Subspace",
+    "kind": "game",
+    "language": "rust",
+    "workspace": "rust",
+    "status": "parallel-rust-rewrite",
+    "authoringHost": "ember"
+  },
+  "repositoryBoundary": {
+    "mode": "single-subspace-repository-parallel-lanes",
+    "cppLane": "../engine",
+    "rustLane": ".",
+    "ember": "external-host-repository",
+    "forge": "external-tooling-repository",
+    "cortex": "external-intelligence-repository",
+    "rule": "C++ remains donor/runtime reference while Rust is rebuilt in-place under /rust"
+  },
+  "targets": {
+    "game": "apps/subspace_game",
+    "shipyard": "apps/subspace_shipyard",
+    "server": "apps/subspace_server",
+    "tools": "apps/subspace_tools"
+  },
+  "editor": {
+    "bridge": "editor/subspace_ember_bridge",
+    "primaryWorkspaces": [
+      "BUILD",
+      "INTERIOR",
+      "SYSTEMS",
+      "APPEARANCE",
+      "TEST",
+      "DEV"
+    ],
+    "panels": [
+      "asset-browser",
+      "ship-viewport",
+      "outliner",
+      "inspector",
+      "generator",
+      "interior-program",
+      "apertures-hangars",
+      "systems",
+      "appearance",
+      "validation",
+      "history",
+      "activity",
+      "console",
+      "search",
+      "blueprints",
+      "playtest",
+      "forge-project",
+      "cortex"
+    ],
+    "tools": [
+      "select",
+      "move",
+      "rotate",
+      "scale",
+      "attach",
+      "socket",
+      "symmetry",
+      "measure",
+      "pivot",
+      "snap",
+      "frame-selection",
+      "frame-ship"
+    ]
+  },
+  "content": {
+    "definitions": "content/definitions",
+    "derived": "content/derived",
+    "blueprints": "content/blueprints",
+    "fixtures": "content/fixtures",
+    "provenance": "content/provenance"
+  },
+  "migration": {
+    "mode": "parallel-contract-parity",
+    "cppDonor": "../engine",
+    "fixtures": "migration/cpp_fixtures",
+    "parity": "migration/parity",
+    "reports": "migration/reports"
+  },
+  "operations": {
+    "contract": "forge.project.v1",
+    "descriptor": "project.control.json",
+    "launcher": "PROJECT_CONTROL_CENTER.cmd"
+  }
+}

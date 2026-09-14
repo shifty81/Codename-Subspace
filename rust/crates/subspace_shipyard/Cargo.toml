@@ -1,0 +1,11 @@
+[package]
+name = "subspace_shipyard"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde.workspace = true
+subspace_core = { path = "../subspace_core" }
+subspace_ship = { path = "../subspace_ship" }
+subspace_activity = { path = "../subspace_activity" }

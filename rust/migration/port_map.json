@@ -1,0 +1,50 @@
+{
+  "schema": "subspace.cpp-to-rust.port-map.v1",
+  "cppDonorCommit": "0197c7937976ca61c52b076ea5caeed103a3ab16",
+  "lanes": {
+    "cpp": "../engine",
+    "rust": "."
+  },
+  "areas": [
+    {
+      "area": "Shipyard GUI",
+      "disposition": "RETIRE",
+      "rust": "Ember shared panel host + subspace_ember_bridge"
+    },
+    {
+      "area": "Ship contracts",
+      "disposition": "PORT_CONTRACT",
+      "rust": "crates/subspace_ship"
+    },
+    {
+      "area": "Shipyard document/session/commands",
+      "disposition": "REWRITE_RUST",
+      "rust": "crates/subspace_shipyard"
+    },
+    {
+      "area": "Ship PCG",
+      "disposition": "PORT_ALGORITHM_FIXTURES",
+      "rust": "crates/subspace_ship_pcg"
+    },
+    {
+      "area": "Interiors",
+      "disposition": "PORT_CONTRACT_BEHAVIOR",
+      "rust": "crates/subspace_ship_interior"
+    },
+    {
+      "area": "Systems/HP/power/heat/propulsion/shields",
+      "disposition": "PORT_BEHAVIOR",
+      "rust": "crates/subspace_ship_systems"
+    },
+    {
+      "area": "Jobs/activity",
+      "disposition": "REWRITE_SHARED",
+      "rust": "crates/subspace_activity"
+    },
+    {
+      "area": "C++ renderer/editor UI architecture",
+      "disposition": "DONOR_ONLY",
+      "rust": null
+    }
+  ]
+}

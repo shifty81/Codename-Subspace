@@ -1,0 +1,9 @@
+[package]
+name = "subspace_ship_pcg"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde.workspace = true
+subspace_ship = { path = "../subspace_ship" }

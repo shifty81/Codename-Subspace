@@ -1,0 +1,14 @@
+[package]
+name = "subspace_shipyard_app"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+subspace_ember_bridge = { path = "../../editor/subspace_ember_bridge" }
+subspace_shipyard = { path = "../../crates/subspace_shipyard" }
+subspace_ship_pcg = { path = "../../crates/subspace_ship_pcg" }
+subspace_ship_interior = { path = "../../crates/subspace_ship_interior" }
+subspace_ship_systems = { path = "../../crates/subspace_ship_systems" }
+subspace_activity = { path = "../../crates/subspace_activity" }
+subspace_test_fixtures = { path = "../../crates/subspace_test_fixtures" }

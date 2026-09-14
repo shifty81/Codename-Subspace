@@ -1,0 +1,15 @@
+{
+  "schema": "subspace.rust.bootstrap.v1",
+  "created": "2026-09-14",
+  "project": "Codename Subspace",
+  "phase": "R0-R1",
+  "direction": "Rust rewrite hosted by Ember",
+  "repositoryBoundary": "Subspace, Ember, Forge and Cortex remain separate repositories",
+  "cppSourceRole": "external read-only donor/reference",
+  "firstMilestone": "Rust Shipyard Editor Shell",
+  "validation": {
+    "structural": true,
+    "rustCompile": false,
+    "reason": "Rust toolchain is not installed in the artifact-generation environment; project-owned Full Gate is authoritative."
+  }
+}

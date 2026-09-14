@@ -1,0 +1,9 @@
+[package]
+name = "subspace_test_fixtures"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde_json.workspace = true
+subspace_ship = { path = "../subspace_ship" }
