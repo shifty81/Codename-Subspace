@@ -1,5 +1,0 @@
-[package]
-name = "subspace_server"
-version.workspace = true
-edition.workspace = true
-publish.workspace = true

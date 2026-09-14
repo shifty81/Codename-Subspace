@@ -1,9 +1,0 @@
-[package]
-name = "subspace_ship_interior"
-version.workspace = true
-edition.workspace = true
-publish.workspace = true
-
-[dependencies]
-serde.workspace = true
-subspace_core = { path = "../subspace_core" }
