@@ -1,0 +1,43 @@
+{
+  "schema": "subspace.professional-shipyard-gamemaker-gui.v1",
+  "pass": "1243-1267",
+  "baseline": "8ca9e9ab90d5ab044643fb177682dfd4a99345bb",
+  "designLanguage": {
+    "viewportInteraction": "Blender-inspired",
+    "assetAndWorkspaceDiscoverability": "GameMaker-inspired",
+    "dockAndProjectOperations": "Forge-inspired",
+    "domainWorkflow": "Subspace-native"
+  },
+  "primaryWorkspaces": ["BUILD", "INTERIOR", "SYSTEMS", "APPEARANCE", "TEST"],
+  "advancedWorkspaces": ["MODEL", "CHARACTER", "PCG LAB", "WORLD", "DEV WORLD", "PROJECT TOOLS", "RAW AUTHORING"],
+  "assetBrowser": {
+    "capabilities": ["search", "tags", "saved filters", "favorites", "recent", "thumbnail density", "compatibility filtering", "generator eligibility"],
+    "rule": "selected attachment context may narrow compatible assets without hiding the explicit incompatible toggle"
+  },
+  "properties": {
+    "rule": "instance edits and reusable definition edits are explicit separate scopes",
+    "instanceLabel": "INSTANCE",
+    "definitionAction": "Open Definition"
+  },
+  "universalSearch": {
+    "shortcut": "F3",
+    "groups": ["commands", "assets", "ship objects", "properties", "panels", "validation", "developer"]
+  },
+  "activityDock": {
+    "tabs": ["Activity", "Validation", "History", "Console", "Search", "Build", "PCC"],
+    "default": "collapsed",
+    "rule": "long-running work and diagnostics converge here rather than creating permanent panel clutter"
+  },
+  "layout": {
+    "collapseAuxiliaryDocks": "F12",
+    "maximizeHoveredPanel": "Ctrl+Space",
+    "resettable": true,
+    "customLayouts": true
+  },
+  "constructionGuides": ["primary mount plane", "socket normal", "clearance", "player scale", "distance", "alignment", "weapon clearance", "thruster exclusion"],
+  "generator": {
+    "actions": ["Generate", "New Seed + Generate", "Explain Candidate"],
+    "singleGeneratorAuthority": true
+  },
+  "migration": "ShipyardProfessionalShellSystem is the single render-facing projection; legacy BuildControls remains compatibility-only until renderer cutover."
+}

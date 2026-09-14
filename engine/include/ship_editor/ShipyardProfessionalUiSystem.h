@@ -41,11 +41,26 @@ struct ShipyardToolDescriptor {
     std::string tooltip;
 };
 
+struct ShipyardMenuDescriptor {
+    std::string id;
+    std::string label;
+    std::vector<std::string> commandIds;
+};
+
+struct ShipyardQuickActionDescriptor {
+    std::string commandId;
+    std::string label;
+    std::string shortcut;
+    bool advanced = false;
+};
+
 class ShipyardProfessionalUiSystem {
 public:
     static std::vector<ShipyardPanelDescriptor> Panels();
     static std::vector<ShipyardLayoutPreset> LayoutPresets();
     static std::vector<ShipyardToolDescriptor> PrimaryTools();
+    static std::vector<ShipyardMenuDescriptor> Menus();
+    static std::vector<ShipyardQuickActionDescriptor> QuickActions();
     static std::vector<ShipyardWorkspaceMode> PrimaryWorkspaceStrip();
     static std::vector<ShipyardWorkspaceMode> AdvancedWorkspaceMenu();
     static bool PanelAppliesTo(const ShipyardPanelDescriptor& panel, ShipyardWorkspaceMode workspace);

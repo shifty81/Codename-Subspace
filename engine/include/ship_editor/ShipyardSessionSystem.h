@@ -24,6 +24,10 @@ struct ShipyardSession {
     bool transformSnap = true;
     bool advancedVisible = false;
     bool layoutLocked = false;
+    bool universalSearchOpen = false;
+    bool auxiliaryDocksCollapsed = false;
+    std::string maximizedPanelId;
+    std::string hoveredPanelId;
     std::string layoutPreset = "BUILD";
     std::string commandSearch;
     ShipyardSelectionState selection{};

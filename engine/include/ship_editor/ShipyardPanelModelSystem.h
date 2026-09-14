@@ -24,7 +24,11 @@ struct ShipyardOutlinerNode {
 struct ShipyardPanelModel {
     std::vector<ShipyardOutlinerNode> outliner;
     std::vector<EditorPropertySection> properties;
+    std::vector<EditorContextAction> actions;
     std::string selectedLabel;
+    std::string selectedInstanceId;
+    std::string selectedDefinitionId;
+    bool definitionEditable = false;
 };
 
 class ShipyardPanelModelSystem {

@@ -26,7 +26,14 @@ ShipyardPanelModel ShipyardPanelModelSystem::Build(const ShipyardDocument& d,
     ShipyardPanelModel out;out.outliner=BuildOutliner(d,c);out.properties=BuildProperties(d,c,s);
     if(s.primary.Valid()){
         const auto i=ShipyardDocumentSystem::FindModuleIndex(d,s.primary);
-        if(i&&*i<d.recipe.modules.size())out.selectedLabel=Label(FindRecord(c,d.recipe.modules[*i].moduleId),d.recipe.modules[*i]);
+        if(i&&*i<d.recipe.modules.size()){
+            const auto& placement=d.recipe.modules[*i];
+            out.selectedLabel=Label(FindRecord(c,placement.moduleId),placement);
+            out.selectedInstanceId=ShipyardStableIdSystem::ToString(s.primary);
+            out.selectedDefinitionId=placement.moduleId;
+            out.definitionEditable=true;
+            out.actions.push_back({"definition.open","Open Definition","","shipyard.definition",true,""});
+        }
     }
     return out;
 }
@@ -57,9 +64,10 @@ std::vector<EditorPropertySection> ShipyardPanelModelSystem::BuildProperties(
     if(!i||*i>=d.recipe.modules.size())return out;
     const auto& p=d.recipe.modules[*i];const auto* r=FindRecord(c,p.moduleId);
 
-    EditorPropertySection identity{"identity","Module",false,false,{}};
-    identity.properties.push_back({"module.id","Asset",EditorPropertyType::ReadOnly,p.moduleId,"","",false,false});
+    EditorPropertySection identity{"identity","Identity",false,false,{}};
+    identity.properties.push_back({"module.scope","Editing Scope",EditorPropertyType::ReadOnly,"INSTANCE","","shipyard.instance",false,false});
     identity.properties.push_back({"module.instance","Instance ID",EditorPropertyType::ReadOnly,ShipyardStableIdSystem::ToString(s.primary),"","",false,true});
+    identity.properties.push_back({"module.definition","Definition",EditorPropertyType::AssetReference,p.moduleId,"","shipyard.definition",false,false});
     if(r){identity.properties.push_back({"module.class","Class",EditorPropertyType::ReadOnly,ShipyardModuleSystem::ClassName(r->moduleClass),"","",false,false});
           identity.properties.push_back({"module.semantic","Semantic",EditorPropertyType::ReadOnly,ShipyardModuleSystem::SemanticName(r->semantic),"","",false,true});}
     out.push_back(std::move(identity));

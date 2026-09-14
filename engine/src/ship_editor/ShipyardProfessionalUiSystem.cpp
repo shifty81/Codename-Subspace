@@ -8,14 +8,14 @@ std::vector<ShipyardPanelDescriptor> ShipyardProfessionalUiSystem::Panels() {
     using D = ShipyardPanelDockHint;
     using W = ShipyardWorkspaceMode;
     return {
-        {"asset-browser", "Asset Browser", D::Left, 280, 260, false, false, {W::Build, W::Interior, W::Systems, W::Appearance}},
-        {"outliner", "Outliner", D::RightTop, 260, 180, false, false, {W::Build, W::Interior, W::Systems, W::Appearance, W::Test}},
-        {"properties", "Properties", D::RightBottom, 300, 260, false, false, {W::Build, W::Interior, W::Systems, W::Appearance, W::Test}},
+        {"asset-browser", "Asset Browser", D::Left, 300, 280, false, false, {W::Build, W::Interior, W::Systems, W::Appearance}},
+        {"outliner", "Outliner", D::RightTop, 280, 190, false, false, {W::Build, W::Interior, W::Systems, W::Appearance, W::Test}},
+        {"properties", "Properties", D::RightBottom, 320, 280, false, false, {W::Build, W::Interior, W::Systems, W::Appearance, W::Test}},
         {"history", "History", D::Bottom, 300, 160, false, false, {W::Build, W::Interior, W::Systems, W::Appearance}},
         {"activity", "Activity / Jobs", D::Bottom, 360, 170, false, false, {W::Build, W::Interior, W::Systems, W::Appearance, W::Test}},
         {"validation", "Validation", D::Bottom, 320, 160, false, false, {W::Build, W::Interior, W::Systems, W::Appearance, W::Test}},
         {"console", "Console", D::Hidden, 420, 180, false, true, {}},
-        {"generator", "Generator", D::Hidden, 320, 240, false, true, {W::Build, W::Pcg}},
+        {"generator", "Generator", D::Hidden, 340, 250, false, false, {W::Build, W::Systems, W::Pcg}},
         {"interior-program", "Interior Program", D::Hidden, 320, 240, false, true, {W::Interior}},
         {"apertures-hangars", "Apertures & Hangars", D::Hidden, 320, 240, false, true, {W::Interior}},
         {"systems", "Systems", D::Hidden, 320, 240, false, false, {W::Systems}},
@@ -29,10 +29,10 @@ std::vector<ShipyardPanelDescriptor> ShipyardProfessionalUiSystem::Panels() {
 
 std::vector<ShipyardLayoutPreset> ShipyardProfessionalUiSystem::LayoutPresets() {
     return {
-        {"BUILD", "Build", {"asset-browser", "outliner", "properties", "history", "activity", "validation"}, false},
+        {"BUILD", "Build", {"asset-browser", "outliner", "properties", "activity", "validation"}, false},
         {"INTERIOR", "Interior", {"asset-browser", "outliner", "properties", "interior-program", "apertures-hangars", "validation"}, false},
         {"SYSTEMS", "Systems", {"outliner", "properties", "systems", "validation"}, false},
-        {"APPEARANCE", "Appearance", {"asset-browser", "outliner", "properties", "history"}, false},
+        {"APPEARANCE", "Appearance", {"asset-browser", "outliner", "properties", "activity"}, false},
         {"TEST", "Test", {"outliner", "properties", "play-test", "activity", "validation"}, false},
         {"PCG", "PCG Lab", {"asset-browser", "generator", "pcg-proof", "validation", "console"}, true},
         {"DEBUG", "Developer Debug", {"outliner", "properties", "validation", "console", "project-tools"}, true},
@@ -48,6 +48,26 @@ std::vector<ShipyardToolDescriptor> ShipyardProfessionalUiSystem::PrimaryTools()
         {"tool.scale", "Scale", "R", "Scale within certified morph limits"},
         {"tool.attach", "Attach", "A", "Place using the module primary mount surface"},
         {"tool.measure", "Measure", "M", "Measure physical clearances in meters"}
+    };
+}
+
+
+std::vector<ShipyardMenuDescriptor> ShipyardProfessionalUiSystem::Menus() {
+    return {
+        {"shipyard", "Shipyard", {"validation.run", "layout.reset-current"}},
+        {"edit", "Edit", {"edit.undo", "edit.redo"}},
+        {"view", "View", {"search.open", "view.toggle-aux-docks", "view.maximize-hovered", "view.toggle-advanced"}},
+        {"add", "Add", {"panel.asset-browser", "panel.generator"}}
+    };
+}
+
+std::vector<ShipyardQuickActionDescriptor> ShipyardProfessionalUiSystem::QuickActions() {
+    return {
+        {"search.open", "Search", "F3", false},
+        {"validation.run", "Validate", "", false},
+        {"generator.generate", "Generate", "", false},
+        {"generator.new-seed-generate", "New Seed + Generate", "", false},
+        {"view.toggle-advanced", "Dev", "", false}
     };
 }
 

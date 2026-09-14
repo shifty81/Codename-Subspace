@@ -124,6 +124,20 @@ ShipyardCommandSystem ShipyardCommandSystem::BuildProfessionalDefaults() {
     out.Register({"validation.run", "Validate Ship", "Validation", "", false, false, false},
                  runtime("validation.run","Validation runtime is not bound"));
 
+    out.Register({"search.open", "Universal Shipyard Search", "View", "F3", false, false, false},
+                 [](auto& c){if(!c.session)return ShipyardCommandResult{false,false,"No Shipyard session"};c.session->universalSearchOpen=true;return ShipyardCommandResult{true,false,"Universal Shipyard Search"};});
+    out.Register({"view.toggle-aux-docks", "Collapse / Restore Auxiliary Docks", "View", "F12", false, false, false},
+                 [](auto& c){if(!c.session)return ShipyardCommandResult{false,false,"No Shipyard session"};c.session->auxiliaryDocksCollapsed=!c.session->auxiliaryDocksCollapsed;return ShipyardCommandResult{true,false,c.session->auxiliaryDocksCollapsed?"Auxiliary docks collapsed":"Auxiliary docks restored"};});
+    out.Register({"view.maximize-hovered", "Maximize Hovered Panel", "View", "Ctrl+Space", false, false, false},
+                 [](auto& c){if(!c.session||c.session->hoveredPanelId.empty())return ShipyardCommandResult{false,false,"No hovered Shipyard panel"};c.session->maximizedPanelId=c.session->maximizedPanelId==c.session->hoveredPanelId?std::string{}:c.session->hoveredPanelId;return ShipyardCommandResult{true,false,c.session->maximizedPanelId.empty()?"Panel restored":"Panel maximized: "+c.session->maximizedPanelId};});
+    out.Register({"layout.reset-current", "Reset Current Workspace Layout", "View", "", false, false, false},
+                 [](auto& c){if(!c.session)return ShipyardCommandResult{false,false,"No Shipyard session"};c.session->maximizedPanelId.clear();c.session->auxiliaryDocksCollapsed=false;return ShipyardCommandResult{true,false,"Current workspace layout reset requested"};});
+    out.Register({"panel.asset-browser", "Asset Browser", "Panel", "", false, false, false}, runtime("panel.asset-browser","Panel runtime is not bound"));
+    out.Register({"panel.generator", "Generator", "Panel", "", false, false, false}, runtime("panel.generator","Panel runtime is not bound"));
+    out.Register({"panel.outliner", "Outliner", "Panel", "", false, false, false}, runtime("panel.outliner","Panel runtime is not bound"));
+    out.Register({"panel.properties", "Properties", "Panel", "", false, false, false}, runtime("panel.properties","Panel runtime is not bound"));
+    out.Register({"selection.open-definition", "Open Selected Definition", "Selection", "", false, false, true}, runtime("selection.open-definition","Definition editor runtime is not bound"));
+
     out.Register({"edit.undo", "Undo", "Edit", "Ctrl+Z", true, false, false},
                  [](auto& c) {
                      if (!c.document || !c.history) return ShipyardCommandResult{false, false, "Undo unavailable"};

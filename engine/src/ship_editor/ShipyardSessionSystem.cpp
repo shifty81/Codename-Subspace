@@ -33,6 +33,9 @@ void ShipyardSessionSystem::ResetTransientState(ShipyardSession& session) {
     ShipyardSelectionSystem::Clear(session.selection);
     session.candidateState = ShipyardCandidateState::None;
     session.commandSearch.clear();
+    session.universalSearchOpen = false;
+    session.maximizedPanelId.clear();
+    session.hoveredPanelId.clear();
 }
 
 const char* ShipyardSessionSystem::CandidateStateName(ShipyardCandidateState state) {
