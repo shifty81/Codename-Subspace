@@ -21,18 +21,21 @@ struct ShipyardCommandDescriptor {
     bool advanced = false;
 };
 
-struct ShipyardCommandContext {
-    ShipyardDocument* document = nullptr;
-    ShipyardSession* session = nullptr;
-    ShipyardHistorySystem* history = nullptr;
-    int value = 0;
-    std::string text;
-};
-
 struct ShipyardCommandResult {
     bool handled = false;
     bool changed = false;
     std::string message;
+};
+
+using ShipyardRuntimeCommandExecutor = std::function<ShipyardCommandResult(std::string_view, int)>;
+
+struct ShipyardCommandContext {
+    ShipyardDocument* document = nullptr;
+    ShipyardSession* session = nullptr;
+    ShipyardHistorySystem* history = nullptr;
+    ShipyardRuntimeCommandExecutor runtimeExecutor{};
+    int value = 0;
+    std::string text;
 };
 
 using ShipyardCommandHandler = std::function<ShipyardCommandResult(ShipyardCommandContext&)>;

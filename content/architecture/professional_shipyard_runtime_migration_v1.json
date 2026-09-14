@@ -1,0 +1,25 @@
+{
+  "schema": "subspace.professional-shipyard-runtime-migration.v1",
+  "pass": "1223-1242",
+  "baseline": "686c829ece5da70715e6258562c7f6fd2fb899ed",
+  "strategy": "strangler-fig / behavior-preserving migration",
+  "authorities": {
+    "legacyCompatibility": "ShipyardBuilderSystem",
+    "migrationBridge": "ShipyardBuilderMigrationSystem",
+    "professionalController": "ShipyardProfessionalController",
+    "document": "ShipyardDocumentSystem",
+    "session": "ShipyardSessionSystem",
+    "commands": "ShipyardCommandSystem",
+    "panelModels": "ShipyardPanelModelSystem",
+    "jobs": "ShipyardJobSystem"
+  },
+  "rules": [
+    "No new panel directly mutates the legacy runtime model",
+    "New UI invokes stable command IDs through ShipyardProfessionalController",
+    "New Seed + Generate composes PcgReroll then the same deterministic GenerateVariant path",
+    "Test remains a real primary session workspace and is never aliased to Dev World",
+    "Outliner and Properties are separate models over stable object IDs",
+    "Project/background work reports through Activity / Jobs state rather than panel-owned log buffers",
+    "Legacy builder can be removed only after command, document, selection, generation, validation and playtest parity are certified"
+  ]
+}

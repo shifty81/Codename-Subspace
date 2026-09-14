@@ -12,6 +12,7 @@ std::vector<ShipyardPanelDescriptor> ShipyardProfessionalUiSystem::Panels() {
         {"outliner", "Outliner", D::RightTop, 260, 180, false, false, {W::Build, W::Interior, W::Systems, W::Appearance, W::Test}},
         {"properties", "Properties", D::RightBottom, 300, 260, false, false, {W::Build, W::Interior, W::Systems, W::Appearance, W::Test}},
         {"history", "History", D::Bottom, 300, 160, false, false, {W::Build, W::Interior, W::Systems, W::Appearance}},
+        {"activity", "Activity / Jobs", D::Bottom, 360, 170, false, false, {W::Build, W::Interior, W::Systems, W::Appearance, W::Test}},
         {"validation", "Validation", D::Bottom, 320, 160, false, false, {W::Build, W::Interior, W::Systems, W::Appearance, W::Test}},
         {"console", "Console", D::Hidden, 420, 180, false, true, {}},
         {"generator", "Generator", D::Hidden, 320, 240, false, true, {W::Build, W::Pcg}},
@@ -28,11 +29,11 @@ std::vector<ShipyardPanelDescriptor> ShipyardProfessionalUiSystem::Panels() {
 
 std::vector<ShipyardLayoutPreset> ShipyardProfessionalUiSystem::LayoutPresets() {
     return {
-        {"BUILD", "Build", {"asset-browser", "outliner", "properties", "history", "validation"}, false},
+        {"BUILD", "Build", {"asset-browser", "outliner", "properties", "history", "activity", "validation"}, false},
         {"INTERIOR", "Interior", {"asset-browser", "outliner", "properties", "interior-program", "apertures-hangars", "validation"}, false},
         {"SYSTEMS", "Systems", {"outliner", "properties", "systems", "validation"}, false},
         {"APPEARANCE", "Appearance", {"asset-browser", "outliner", "properties", "history"}, false},
-        {"TEST", "Test", {"outliner", "properties", "play-test", "validation"}, false},
+        {"TEST", "Test", {"outliner", "properties", "play-test", "activity", "validation"}, false},
         {"PCG", "PCG Lab", {"asset-browser", "generator", "pcg-proof", "validation", "console"}, true},
         {"DEBUG", "Developer Debug", {"outliner", "properties", "validation", "console", "project-tools"}, true},
         {"MINIMAL", "Minimal", {"outliner", "properties"}, false}
@@ -60,6 +61,7 @@ std::vector<ShipyardWorkspaceMode> ShipyardProfessionalUiSystem::PrimaryWorkspac
 
 std::vector<ShipyardWorkspaceMode> ShipyardProfessionalUiSystem::AdvancedWorkspaceMenu() {
     return {ShipyardWorkspaceMode::Model,
+            ShipyardWorkspaceMode::Character,
             ShipyardWorkspaceMode::Pcg,
             ShipyardWorkspaceMode::World,
             ShipyardWorkspaceMode::DevWorld,

@@ -29,7 +29,10 @@ ShipyardCommandResult SessionTool(ShipyardTransformTool tool, ShipyardCommandCon
 
 bool ShipyardCommandSystem::Register(ShipyardCommandDescriptor descriptor, ShipyardCommandHandler handler) {
     if (descriptor.id.empty() || !handler) return false;
-    return commands_.emplace(descriptor.id, Record{std::move(descriptor), std::move(handler)}).second;
+    // Capture the key before moving the descriptor. Function-argument evaluation
+    // order must never be allowed to turn moved-from descriptor.id into the map key.
+    const std::string key = descriptor.id;
+    return commands_.emplace(key, Record{std::move(descriptor), std::move(handler)}).second;
 }
 
 const ShipyardCommandDescriptor* ShipyardCommandSystem::Find(std::string_view id) const {
@@ -98,6 +101,29 @@ ShipyardCommandSystem ShipyardCommandSystem::BuildProfessionalDefaults() {
     out.Register({"tool.scale", "Scale", "Tool", "R", false, false, false},
                  [](auto& c) { return SessionTool(ShipyardTransformTool::Scale, c); });
 
+    out.Register({"view.toggle-advanced", "Advanced / Dev", "View", "", false, false, false},
+                 [](auto& c) {
+                     if (!c.session) return ShipyardCommandResult{false, false, "No Shipyard session"};
+                     c.session->advancedVisible = !c.session->advancedVisible;
+                     return ShipyardCommandResult{true, false,
+                         c.session->advancedVisible ? "Advanced Shipyard tools visible" : "Advanced Shipyard tools hidden"};
+                 });
+
+    auto runtime=[](const char* id,const char* unavailable){
+        return [id,unavailable](ShipyardCommandContext& c){
+            if(!c.runtimeExecutor)return ShipyardCommandResult{false,false,unavailable};
+            return c.runtimeExecutor(id,c.value);
+        };
+    };
+    out.Register({"generator.generate", "Generate", "Generator", "", true, true, false},
+                 runtime("generator.generate","Generator runtime is not bound"));
+    out.Register({"generator.new-seed-generate", "New Seed + Generate", "Generator", "", true, true, false},
+                 runtime("generator.new-seed-generate","Generator runtime is not bound"));
+    out.Register({"generator.explain", "Explain Candidate", "Generator", "", false, false, false},
+                 runtime("generator.explain","Generator audit runtime is not bound"));
+    out.Register({"validation.run", "Validate Ship", "Validation", "", false, false, false},
+                 runtime("validation.run","Validation runtime is not bound"));
+
     out.Register({"edit.undo", "Undo", "Edit", "Ctrl+Z", true, false, false},
                  [](auto& c) {
                      if (!c.document || !c.history) return ShipyardCommandResult{false, false, "Undo unavailable"};
@@ -117,6 +143,7 @@ ShipyardCommandSystem ShipyardCommandSystem::BuildProfessionalDefaults() {
     // five primary workflow tabs.
     const struct AdvancedWorkspace { const char* id; const char* label; ShipyardWorkspaceMode mode; } advanced[] = {
         {"workspace.model", "Model", ShipyardWorkspaceMode::Model},
+        {"workspace.character", "Character", ShipyardWorkspaceMode::Character},
         {"workspace.pcg", "PCG Lab", ShipyardWorkspaceMode::Pcg},
         {"workspace.world", "World", ShipyardWorkspaceMode::World},
         {"workspace.devworld", "Dev World", ShipyardWorkspaceMode::DevWorld},
