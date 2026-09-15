@@ -64,10 +64,6 @@ bool ShipyardBuilderSystem::Activate(ShipyardBuilderCommand command,int value){
         break;
     case ShipyardBuilderCommand::PcgReroll:
         if(value==-1268){
-            // One visible gesture = one authoring transaction. Compose the
-            // existing internal Reroll and Generate actions directly, then
-            // commit a single legacy history snapshot. Generation itself is
-            // still the exact canonical GenerateVariant implementation.
             const auto before=model_;
             model_.testWorkspaceActive=false;
             if(!ActivateInternal(ShipyardBuilderCommand::PcgReroll,0))return false;
@@ -101,8 +97,6 @@ bool ShipyardBuilderSystem::Activate(ShipyardBuilderCommand command,int value){
             model_.developerWorkspacesVisible=true;
             break;
         case ShipyardBuilderCommand::InspectorSockets:
-            // Socket authoring is a developer surface. Keep the DEV strip
-            // visible and let the certified legacy inspector own the details.
             model_.testWorkspaceActive=false;
             model_.developerWorkspacesVisible=true;
             break;
@@ -120,19 +114,18 @@ ShipyardBuilderLayout ShipyardBuilderSystem::Layout(int w,int h){
     const float s=l.uiScale;
     l.compact=h<static_cast<int>(860.0f*s);
 
-    // Professional shell: compact global workspace bar, GameMaker-like asset
-    // browser left, Blender-like tool rail beside the viewport, split
-    // Outliner/Properties authority on the right, and a reserved bottom dock.
+    // Pass1335: reserve a real navigation band. The optional DEV shelf occupies
+    // y=49..79 at 1x, so panels begin below it instead of being painted through it.
     l.workspaceBarY=8.0f*s;
     l.workspaceBarHeight=36.0f*s;
     l.left=18.0f*s;
-    l.top=58.0f*s;
+    l.top=88.0f*s;
     l.leftWidth=std::clamp(static_cast<float>(w)*.22f,330.0f*s,520.0f*s);
     l.rightWidth=std::clamp(static_cast<float>(w)*.27f,390.0f*s,640.0f*s);
     l.right=static_cast<float>(w)-l.rightWidth-14.0f*s;
     l.toolRailWidth=76.0f*s;
     l.toolRailX=l.left+l.leftWidth+10.0f*s;
-    l.toolRailY=l.top+72.0f*s;
+    l.toolRailY=l.top+58.0f*s;
     l.rowHeight=(l.compact?30.0f:34.0f)*s;
     l.rowGap=6.0f*s;
 
@@ -142,13 +135,13 @@ ShipyardBuilderLayout ShipyardBuilderSystem::Layout(int w,int h){
     l.leftActionsY=l.moduleCardsY+5.0f*(l.moduleCardHeight+l.rowGap)+12.0f*s;
     l.leftInfoY=l.leftActionsY+82.0f*s;
 
-    // Existing renderer consumes these coordinates for the right panel content.
-    // They now describe a visible Outliner region followed by Properties.
+    // The selected summary card is 54 px high. Start the hierarchy after the
+    // card plus a breathing gap; the old +34 position physically intersected it.
     l.tabRowY=l.top+58.0f*s;
     l.tabHeight=34.0f*s;
-    l.contentTopY=l.top+112.0f*s;
+    l.contentTopY=l.top+96.0f*s;
     l.selectedSummaryY=l.contentTopY;
-    l.placedListY=l.contentTopY+34.0f*s;
+    l.placedListY=l.contentTopY+64.0f*s;
     l.placedPageSize=l.compact?4u:5u;
 
     const float outlinerBottom=l.placedListY+static_cast<float>(l.placedPageSize)*(l.rowHeight+l.rowGap)+18.0f*s;
@@ -190,14 +183,12 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         out.push_back({c,value,x,y,cw,ch,std::move(label),active,enabled});
     };
 
-    // Primary workspace strip. It is deliberately screen-wide and shallow so
-    // the center viewport remains the dominant surface.
+    // One global workspace strip. DEV is a single gateway; advanced workspaces
+    // are shown only on its second shelf and are never re-projected from legacy UI.
     const float barX=l.left;
     const float barRight=l.right+l.rightWidth;
     const float barGap=6.0f*s;
     const float devW=82.0f*s;
-    // Task workspaces are compact navigation tabs, not giant screen-wide
-    // buttons. Preserve viewport/titlebar room for status and future search.
     const float primaryW=145.0f*s;
     float bx=barX;
     auto tab=[&](ShipyardBuilderCommand c,const char* label,bool active){add(c,0,bx,l.workspaceBarY,primaryW,l.workspaceBarHeight,label,active,true);bx+=primaryW+barGap;};
@@ -205,7 +196,7 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
     tab(ShipyardBuilderCommand::WorkspaceInterior,"INTERIOR",!model.testWorkspaceActive&&model.workspaceMode==ShipyardWorkspaceMode::Interior);
     tab(ShipyardBuilderCommand::WorkspaceSystems,"SYSTEMS",!model.testWorkspaceActive&&model.workspaceMode==ShipyardWorkspaceMode::Systems);
     tab(ShipyardBuilderCommand::WorkspaceAppearance,"APPEARANCE",!model.testWorkspaceActive&&model.workspaceMode==ShipyardWorkspaceMode::Appearance);
-    add(ShipyardBuilderCommand::WorkspaceDevWorld,-1268,bx,l.workspaceBarY,primaryW,l.workspaceBarHeight,"TEST",model.testWorkspaceActive,true);bx+=primaryW+barGap;
+    add(ShipyardBuilderCommand::WorkspaceDevWorld,-1268,bx,l.workspaceBarY,primaryW,l.workspaceBarHeight,"TEST",model.testWorkspaceActive,true);
     add(ShipyardBuilderCommand::WorkspaceAuthoring,-1268,barRight-devW,l.workspaceBarY,devW,l.workspaceBarHeight,"DEV",model.developerWorkspacesVisible||IsAdvancedWorkspace(model.workspaceMode),true);
 
     if(model.developerWorkspacesVisible){
@@ -226,7 +217,6 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         float x=x0;for(const auto& d:dev){add(std::get<0>(d),0,x,y,cw,30.0f*s,std::get<1>(d),std::get<2>(d),std::get<3>(d));x+=cw+gap;}
     }
 
-    // GameMaker-style Asset Browser: categories/tags plus real visual cards.
     const float left=l.left,libraryW=l.leftWidth,rowH=l.rowHeight;
     add(ShipyardBuilderCommand::SelectClass,-1,left+10*s,l.top+42*s,libraryW-20*s,28*s,"SEARCH ASSETS  [F3]",false,false);
     const float categoryGap=5.0f*s;
@@ -251,6 +241,7 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         add(ShipyardBuilderCommand::SelectModule,static_cast<int>(fi),left+10*s,l.moduleCardsY+i*(l.moduleCardHeight+gap),libraryW-20*s,l.moduleCardHeight,
             FriendlyModuleLabel(rec),fi==selected,true);
     }
+
     const float actionY=l.leftActionsY;
     const float inner=libraryW-20*s;
     add(ShipyardBuilderCommand::PreviousModule,0,left+10*s,actionY,52*s,32*s,"<");
@@ -261,7 +252,7 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
     add(ShipyardBuilderCommand::ToggleLiveSymmetry,0,left+108*s,actionY+38*s,126*s,32*s,model.symmetryFrame.live?"SYMMETRY ON":"SYMMETRY OFF",model.symmetryFrame.live,true);
     add(ShipyardBuilderCommand::Validate,0,left+240*s,actionY+38*s,inner-230*s,32*s,"VALIDATE",false,true);
 
-    // Blender-style tool rail: readable names, original hotkeys preserved.
+    // Compact Blender-like tool rail; no duplicated text labels elsewhere.
     const float tx=l.toolRailX,tw=l.toolRailWidth,th=38.0f*s;
     add(ShipyardBuilderCommand::ToolSelect,0,tx,l.toolRailY,tw,th,"SELECT [Q]",model.transformTool==ShipyardTransformTool::Select,true);
     add(ShipyardBuilderCommand::ToolMove,0,tx,l.toolRailY+(th+gap),tw,th,"MOVE [W]",model.transformTool==ShipyardTransformTool::Move,HasPlaced(model));
@@ -270,10 +261,9 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
     add(ShipyardBuilderCommand::ToggleTransformSnap,0,tx,l.toolRailY+4*(th+gap),tw,th,model.transformSnap?"SNAP ON":"SNAP OFF",model.transformSnap,HasPlaced(model));
     add(ShipyardBuilderCommand::FrameSelected,0,tx,l.toolRailY+5*(th+gap),tw,th,"FRAME [F]",false,HasPlaced(model));
 
-    // Right side: visible Outliner region first. Selection remains the same
-    // authoritative recipe selection used by viewport transforms.
+    // Renderer owns the Outliner/Properties section chrome. Controls below are
+    // interaction rows only, so headers are never drawn twice.
     const float rx=l.right+12*s,rw=l.rightWidth-24*s;
-    add(ShipyardBuilderCommand::SelectPlaced,-1,rx,l.top+44*s,rw,28*s,"OUTLINER  /  SHIP HIERARCHY",false,false);
     const std::size_t psel=model.recipe.modules.empty()?0:std::min(model.selectedPlacedModule,model.recipe.modules.size()-1);
     const std::size_t placedPage=l.placedPageSize;
     const std::size_t maxPlaced=model.recipe.modules.size()>placedPage?model.recipe.modules.size()-placedPage:0;
@@ -285,8 +275,6 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         add(ShipyardBuilderCommand::SelectPlaced,static_cast<int>(pi),rx,l.placedListY+r*(rowH+gap),rw,rowH,label,pi==psel,true);
     }
 
-    const float propertiesY=l.editLabelY-6*s;
-    add(ShipyardBuilderCommand::SelectPlaced,-1,rx,propertiesY,rw,28*s,"PROPERTIES  /  INSTANCE + DEFINITION",false,false);
     auto row=[&](float y,const std::vector<std::tuple<ShipyardBuilderCommand,std::string,bool,bool>>& items){
         const float g=6*s;const float cw=(rw-g*static_cast<float>(items.size()-1))/static_cast<float>(items.size());float x=rx;
         for(const auto& item:items){add(std::get<0>(item),0,x,y,cw,34*s,std::get<1>(item),std::get<2>(item),std::get<3>(item));x+=cw+g;}
@@ -299,12 +287,10 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
     }else if(model.workspaceMode==ShipyardWorkspaceMode::Systems){
         row(l.editRowY,{{ShipyardBuilderCommand::PreviousShipClass,"< CLASS",false,true},{ShipyardBuilderCommand::NextShipClass,std::string(ShipClassRoleSystem::ClassName(model.shipClass))+" >",true,true}});
         row(l.focusRowY,{{ShipyardBuilderCommand::PreviousTargetSize,"< SIZE",false,true},{ShipyardBuilderCommand::NextTargetSize,std::string(UniversalKitbashAuthority::SizeName(model.targetModuleSize))+" >",true,true}});
-        {
-            const float g=6*s; const float cw=(rw-g*2.0f)/3.0f;
-            add(ShipyardBuilderCommand::GenerateVariant,0,rx,l.moveRowY,cw,34*s,"GENERATE",false,true);
-            add(ShipyardBuilderCommand::PcgReroll,-1268,rx+cw+g,l.moveRowY,cw,34*s,"NEW SEED + GENERATE",false,true);
-            add(ShipyardBuilderCommand::PcgAudit,0,rx+2*(cw+g),l.moveRowY,cw,34*s,"EXPLAIN",false,model.capabilities.pcgStudio);
-        }
+        const float g=6*s; const float cw=(rw-g*2.0f)/3.0f;
+        add(ShipyardBuilderCommand::GenerateVariant,0,rx,l.moveRowY,cw,34*s,"GENERATE",false,true);
+        add(ShipyardBuilderCommand::PcgReroll,-1268,rx+cw+g,l.moveRowY,cw,34*s,"NEW SEED + GENERATE",false,true);
+        add(ShipyardBuilderCommand::PcgAudit,0,rx+2*(cw+g),l.moveRowY,cw,34*s,"EXPLAIN",false,model.capabilities.pcgStudio);
         row(l.moveRow2Y,{{ShipyardBuilderCommand::Validate,"VALIDATE",false,true},{ShipyardBuilderCommand::SaveBlueprint,model.validation.valid?"SAVE BLUEPRINT":"SAVE DRAFT",false,HasPlaced(model)}});
     }else if(model.workspaceMode==ShipyardWorkspaceMode::Appearance){
         row(l.editRowY,{{ShipyardBuilderCommand::PreviousLiveryPreset,"< PRESET",false,true},{ShipyardBuilderCommand::NextLiveryPreset,"PRESET >",false,true}});
@@ -322,27 +308,16 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         else if(model.transformTool==ShipyardTransformTool::Scale)row(l.moveRowY,{{ShipyardBuilderCommand::ScaleUniformNegative,"PART -5%",false,HasPlaced(model)},{ShipyardBuilderCommand::ScaleUniformPositive,"PART +5%",false,HasPlaced(model)},{ShipyardBuilderCommand::ResetScale,"RESET SCALE",false,HasPlaced(model)}});
         else row(l.moveRowY,{{ShipyardBuilderCommand::MirrorSelectedAcrossSymmetry,"MIRROR COPY",false,HasPlaced(model)},{ShipyardBuilderCommand::BreakSymmetryPair,"BREAK PAIR",false,HasPlaced(model)}});
     }else{
-        // Advanced workspaces keep the already-certified legacy controls
-        // reachable while the permanent shell stays compact.
-        const auto legacy=LegacyBuildControls(model,w,h);
-        for(const auto& c:legacy){
-            if(c.command==ShipyardBuilderCommand::WorkspaceBuild||c.command==ShipyardBuilderCommand::WorkspaceInterior||c.command==ShipyardBuilderCommand::WorkspaceSystems||c.command==ShipyardBuilderCommand::WorkspaceAppearance)continue;
-            if(c.x<l.right-1.0f)continue;
-            out.push_back(c);
-        }
+        // Advanced pages remain selectable, but the old right-side page is no
+        // longer re-rendered on top of the professional shell. Until a dedicated
+        // panel is promoted, keep only safe universal actions visible here.
+        row(l.editRowY,{{ShipyardBuilderCommand::FrameShip,"FRAME SHIP",false,HasPlaced(model)},{ShipyardBuilderCommand::Validate,"VALIDATE",false,true}});
+        row(l.focusRowY,{{ShipyardBuilderCommand::WorkspaceBuild,"RETURN TO BUILD",false,true},{ShipyardBuilderCommand::SaveBlueprint,model.validation.valid?"SAVE BLUEPRINT":"SAVE DRAFT",false,HasPlaced(model)}});
     }
 
-    // Migration compatibility projection. Historical native tests and older
-    // automation discover commands through BuildControls. Preserve that API
-    // without re-rendering the old shell by moving the certified legacy page
-    // controls far outside the viewport. Workspace-strip duplicates are
-    // excluded because the new primary/DEV hierarchy is now authoritative.
-    // This block is deleted when historical tests are migrated to command IDs.
+    // Migration compatibility stays command-discoverable but permanently
+    // off-screen. It must never be visible geometry.
     const auto compatibility=LegacyBuildControls(model,w,h);
-    // Historical controls remain discoverable to older tests/automation, but
-    // they must never participate in visible layout geometry. A large diagonal
-    // stride guarantees each compatibility rectangle is isolated even when a
-    // later legacy control is substantially wider/taller than the previous one.
     constexpr float kCompatibilityStride=100000.0f;
     std::size_t compatibilityIndex=0;
     for(auto c:compatibility){
@@ -361,8 +336,6 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
             continue;
         default:break;
         }
-        // Do not duplicate commands already present in the professional visible
-        // shell unless the historical page needs a different command family.
         const bool visibleDuplicate=std::any_of(out.begin(),out.end(),[&](const auto& current){
             return current.command==c.command && current.value==c.value && current.width>0.0f && current.height>0.0f;
         });
