@@ -16,10 +16,13 @@ function Resolve-StandaloneRepositoryRoot([string]$Candidate) {
 $Root=Resolve-StandaloneRepositoryRoot $Root
 $RootTools=Join-Path $Root 'SubspaceTools.ps1'
 $PatchEngine=Join-Path $Root 'tools\control\StandalonePatchEngine.ps1'
+$BranchManager=Join-Path $Root 'tools\control\GitBranchManager.ps1'
 $State=Join-Path $Root '.subspace'
+$BranchSwitchState=Join-Path $State 'control-center\branch-switch-state.json'
 $ContractPath=Join-Path $Root 'project.control.json'
 if(-not(Test-Path -LiteralPath $RootTools -PathType Leaf)){throw "Existing project PCC authority missing: $RootTools"}
 if(-not(Test-Path -LiteralPath $PatchEngine -PathType Leaf)){throw "Standalone patch engine missing: $PatchEngine"}
+if(-not(Test-Path -LiteralPath $BranchManager -PathType Leaf)){throw "Git branch manager missing: $BranchManager"}
 
 function P([string]$Text,[string]$Color='Gray'){Write-Host $Text -ForegroundColor $Color}
 function Get-ControlContract {
@@ -38,32 +41,66 @@ function Assert-StartupIntakePolicy {
     if($updates.transactional -ne $true -or $updates.rollbackOnFailure -ne $true){throw 'Transactional apply + rollback must remain enabled.'}
     return $contract
 }
+function Get-CurrentBranch {
+    if(-not(Test-Path -LiteralPath (Join-Path $Root '.git'))){return ''}
+    Push-Location $Root
+    try{return ([string](& git branch --show-current 2>$null|Select-Object -First 1)).Trim()}
+    finally{Pop-Location}
+}
+function Get-BranchSwitchState {
+    if(-not(Test-Path -LiteralPath $BranchSwitchState -PathType Leaf)){return $null}
+    try{return (Get-Content -LiteralPath $BranchSwitchState -Raw|ConvertFrom-Json)}catch{return $null}
+}
 function Header {
     try{Clear-Host}catch{}
-    $branch='Not initialized';$dirty='';$head=''
+    $branch='Not initialized';$dirty='';$head='';$upstream=''
     if(Test-Path -LiteralPath (Join-Path $Root '.git') -PathType Container){
         Push-Location $Root
-        try{$branch=([string](& git branch --show-current 2>$null|Select-Object -First 1)).Trim();$head=([string](& git rev-parse --short HEAD 2>$null|Select-Object -First 1)).Trim();$s=@(& git status --short 2>$null);$dirty=if($s.Count -gt 0){' / Modified'}else{' / Clean'}}finally{Pop-Location}
+        try{
+            $branch=([string](& git branch --show-current 2>$null|Select-Object -First 1)).Trim()
+            if([string]::IsNullOrWhiteSpace($branch)){$branch='DETACHED HEAD'}
+            $head=([string](& git rev-parse --short HEAD 2>$null|Select-Object -First 1)).Trim()
+            $s=@(& git status --short 2>$null)
+            $dirty=if($s.Count -gt 0){' / Modified'}else{' / Clean'}
+            $upstream=([string](& git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>$null|Select-Object -First 1)).Trim()
+        }finally{Pop-Location}
     }
-    $gate='None';$g=Join-Path $State 'last-green-quality-gate.json';if(Test-Path -LiteralPath $g){try{$x=Get-Content -LiteralPath $g -Raw|ConvertFrom-Json;$gate="$($x.result) $($x.gateId)"}catch{$gate='Unreadable'}}
+    $gate='None'
+    $gateColor='Gray'
+    $g=Join-Path $State 'last-green-quality-gate.json'
+    if(Test-Path -LiteralPath $g){
+        try{$x=Get-Content -LiteralPath $g -Raw|ConvertFrom-Json;$gate="$($x.result) $($x.gateId)";$gateColor='Green'}catch{$gate='Unreadable';$gateColor='Yellow'}
+    }
+    else{
+        $branchState=Get-BranchSwitchState
+        if($null -ne $branchState -and $branchState.requiresFullGate -eq $true){
+            $current=Get-CurrentBranch
+            if([string]$branchState.toBranch -eq $current){
+                $gate=("REQUIRED after branch switch to {0}" -f $current)
+                $gateColor='Yellow'
+            }
+        }
+    }
     $rootPatches=@(Get-ChildItem -LiteralPath $Root -Filter '*.patch' -File -ErrorAction SilentlyContinue|Sort-Object Name)
     P '========================================================================' DarkGray
     P ' CODENAME SUBSPACE PROJECT CONTROL CENTER' Cyan
     P '========================================================================' DarkGray
     P (" Repository : {0}" -f $Root)
     P (" Git        : {0}{1}{2}" -f $branch,$dirty,$(if($head){" @ $head"}else{''}))
-    P (" Gate       : {0}" -f $gate)
+    if(-not [string]::IsNullOrWhiteSpace($upstream)){P (" Tracking   : {0}" -f $upstream) DarkGray}
+    P (" Gate       : {0}" -f $gate) $gateColor
     P (" Patches    : {0} root .patch file(s)" -f $rootPatches.Count) $(if($rootPatches.Count -gt 0){'Yellow'}else{'Green'})
     P (" PowerShell : {0}" -f $PSVersionTable.PSVersion.ToString()) DarkGray
     P ' Authority  : Project-owned PCC / forge.project.v1 (Forge-compatible provider)' DarkGray
     P ' Intake     : startup scan + explicit approval; Full Gate never auto-applies' DarkGray
+    P ' Branches   : safe switch/create/toggle; no auto-stash/reset/force operations' DarkGray
     P '------------------------------------------------------------------------' DarkGray
 }
 function RunRoot([string[]]$Arguments){
-    # IMPORTANT: callers assign the result of RunRoot to $rc.  Native process
+    # IMPORTANT: callers assign the result of RunRoot to $rc. Native process
     # stdout is part of PowerShell's success-output stream, so without an
     # explicit sink every line from the child process is captured into $rc and
-    # the PCC appears frozen until the child exits.  Stream every child line to
+    # the PCC appears frozen until the child exits. Stream every child line to
     # the host and return only the integer process exit code.
     $displayArgs=($Arguments -join ' ')
     P ("[RUN] SubspaceTools.ps1 {0}" -f $displayArgs) Cyan
@@ -110,6 +147,15 @@ function RequireNoPendingPatch {
     $pending=@(PendingPatches)
     if($pending.Count -gt 0){throw "Root .patch file(s) are still pending. Restart the PCC and apply/clear them before certifying GREEN. Pending: $($pending.Name -join ', ')"}
 }
+function RequireBranchGateFresh {
+    $branchState=Get-BranchSwitchState
+    if($null -eq $branchState){return}
+    if($branchState.requiresFullGate -ne $true){return}
+    $current=Get-CurrentBranch
+    if([string]$branchState.toBranch -eq $current){
+        throw "Branch '$current' points at a different source HEAD than the previously certified branch. Run option 1 Full Quality Gate before committing/pushing."
+    }
+}
 function FullGate {
     RequireNoPendingPatch
     P ''
@@ -118,10 +164,15 @@ function FullGate {
     P '[INFO] Build/test output will stream below in this console.' DarkGray
     $rc=RunRoot @('-Action','full-gate','-NoPause')
     if($rc -ne 0){throw "Full Quality Gate failed with exit code $rc."}
+    if(Test-Path -LiteralPath $BranchSwitchState -PathType Leaf){
+        Remove-Item -LiteralPath $BranchSwitchState -Force
+        P '[PASS] Branch-switch certification requirement cleared by this GREEN Full Gate.' Green
+    }
     P '[PASS] Full Quality Gate returned GREEN. Test the game before option 2.' Green
 }
 function CommitPushGreen {
     RequireNoPendingPatch
+    RequireBranchGateFresh
     P '[STEP] COMMIT: verify or create the exact certified GREEN commit.' Cyan
     $rc=RunRoot @('-Action','git-commit-green','-NoPause');if($rc -ne 0){throw "Certified GREEN commit verification/creation failed with exit code $rc."}
     P '[PASS] COMMIT: certified GREEN source is committed.' Green
@@ -133,6 +184,13 @@ function PatchStatus {
     Header;$p=@(PendingPatches);if($p.Count -eq 0){P 'No root .patch files pending.' Green}else{P 'Pending root patches:' Yellow;foreach($x in $p){P ('  - '+$x.Name) Yellow}}
     $tx=Join-Path $Root 'updates\transactions';if(Test-Path -LiteralPath $tx){$latest=Get-ChildItem -LiteralPath $tx -Filter '*.json' -File -ErrorAction SilentlyContinue|Sort-Object LastWriteTime -Descending|Select-Object -First 1;if($latest){P '';P ('Latest patch receipt: '+$latest.FullName) Cyan;Get-Content -LiteralPath $latest.FullName|ForEach-Object{Write-Host $_}}}
     $failed=Join-Path $Root 'updates\failed';if(Test-Path -LiteralPath $failed){$latestFailed=Get-ChildItem -LiteralPath $failed -Filter '*.patch' -File -ErrorAction SilentlyContinue|Sort-Object LastWriteTime -Descending|Select-Object -First 1;if($latestFailed){P '';P ('Latest failed patch evidence: '+$latestFailed.FullName) Yellow}}
+}
+function BranchControl {
+    RequireNoPendingPatch
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $BranchManager -Root $Root
+    $rc=$LASTEXITCODE
+    if($null -eq $rc){$rc=0}
+    if($rc -ne 0){throw "Git branch manager exited with code $rc."}
 }
 
 StartupPatchScan
@@ -146,6 +204,7 @@ while($true){
     P ' 5. Project status / health'
     P ' 6. Package debug bundle'
     P ' 7. Advanced / original PCC'
+    P ' 8. Branches / switch / create / toggle' Cyan
     P ' 0. Exit'
     P ''
     $choice=Read-Host 'Select'
@@ -158,6 +217,7 @@ while($true){
             '5'{$rc=RunRoot @('-Action','health','-NoPause');if($rc -ne 0){$rc=RunRoot @('-Action','status','-NoPause')}}
             '6'{$rc=RunRoot @('-Action','debug-bundle','-NoPause');if($rc -ne 0){throw "Debug bundle failed with exit code $rc"}}
             '7'{& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $RootTools -Action menu; if($LASTEXITCODE -ne 0){throw "Original PCC exited $LASTEXITCODE"}}
+            '8'{BranchControl}
             '0'{exit 0}
             default{P 'Unknown option.' Yellow}
         }
