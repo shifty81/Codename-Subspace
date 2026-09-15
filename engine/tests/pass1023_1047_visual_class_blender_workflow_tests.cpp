@@ -57,9 +57,10 @@ int main(){
     Check(Near(ShipClassGenerationAuthoritySystem::MeasureLengthMeters(measured,catalog),8.0f,.01f),"1030 generator measures real placed authored-module hull length");
     auto frigateXs=measured;const float beforeUnsafe=ShipClassGenerationAuthoritySystem::MeasureLengthMeters(frigateXs,catalog);auto frXs=ShipClassGenerationAuthoritySystem::ApplyAndStamp(frigateXs,catalog,ShipClass::Frigate,U::XS);
     Check(!frXs.valid&&frXs.topologyRegenerationRequired&&Near(ShipClassGenerationAuthoritySystem::MeasureLengthMeters(frigateXs,catalog),beforeUnsafe,.01f),"1031 unsafe whole-ship inflation is rejected and does not mutate the recipe");
-    ProceduralShipVisualRecipe frigateSized;frigateSized.recipeId="frigate_sized";for(int i=0;i<6;++i){VisualModulePlacement p;p.moduleId=hull.source.moduleId;p.y=-18.0f+7.2f*static_cast<float>(i);frigateSized.modules.push_back(p);}
-    auto frSafe=ShipClassGenerationAuthoritySystem::ApplyAndStamp(frigateSized,catalog,ShipClass::Frigate,U::XS);
-    Check(frSafe.valid&&Near(ShipClassGenerationAuthoritySystem::MeasureLengthMeters(frigateSized,catalog),40.0f,.05f),"1032 correctly sized Frigate topology certifies without destructive scaling");
+    auto frame=Module("frame",ShipyardModuleSemantic::StructuralFrame,ShipyardModuleSize::M,2.0f);std::vector<ShipyardModuleRecord> classCatalog{hull,frame};
+    ProceduralShipVisualRecipe frigateSized;frigateSized.recipeId="frigate_sized";for(int i=0;i<6;++i){VisualModulePlacement p;p.moduleId=(i==0?hull.source.moduleId:frame.source.moduleId);p.y=-18.0f+7.2f*static_cast<float>(i);frigateSized.modules.push_back(p);}
+    auto frSafe=ShipClassGenerationAuthoritySystem::ApplyAndStamp(frigateSized,classCatalog,ShipClass::Frigate,U::XS);
+    Check(frSafe.valid&&Near(ShipClassGenerationAuthoritySystem::MeasureLengthMeters(frigateSized,classCatalog),40.0f,.05f),"1032 correctly sized Frigate topology certifies without destructive scaling");
     auto rotated=Recipe(hull,1);rotated.modules.front().yawDegrees=90.0f;const auto rotatedBounds=ShipClassGenerationAuthoritySystem::MeasureBoundsMeters(rotated,catalog);
     Check(rotatedBounds.valid&&Near(rotatedBounds.size.y,3.0f,.05f)&&Near(rotatedBounds.size.x,4.0f,.05f),"1033 class measurement uses transformed 3D module bounds rather than Y-only authored extents");
     auto battleshipM=measured;auto bsM=ShipClassGenerationAuthoritySystem::ApplyAndStamp(battleshipM,catalog,ShipClass::Battleship,U::M);
@@ -68,7 +69,7 @@ int main(){
     Check(!over.valid&&!over.errors.empty(),"1035 class module-count maximum is a hard generation constraint");
     const auto clamped=ShipClassGenerationAuthoritySystem::Resolve(measured,catalog,ShipClass::Frigate,U::XL);
     Check(clamped.resolvedSize==U::M&&!clamped.warnings.empty(),"1036 impossible requested module size is reported rather than silently ignored");
-    Check(frigateXs.shipClassId=="FRIGATE"&&frigateXs.lineageAuthority=="CLASS_SIZE_ENVELOPE_V3","1037 class/topology authority preserves compatible lineage stamping while rejecting unsafe scaling");
+    Check(frigateXs.shipClassId=="FRIGATE"&&frigateXs.lineageAuthority=="CLASS_HULL_TOPOLOGY_V4","1037 class/topology authority preserves compatible lineage stamping while rejecting unsafe scaling");
 
     Check(hull.sockets.size()>=30,"1038 hull modules expose a dense editor snap vocabulary");
     Check(CountSockets(hull,"surface_dorsal_")>=9,"1039 dorsal surface exposes a 3x3 editor snap grid");

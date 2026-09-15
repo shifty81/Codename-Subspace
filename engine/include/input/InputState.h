@@ -70,6 +70,16 @@ enum class InputAction : std::size_t {
     FlightPitchDown,
     FlightRollLeft,
     FlightRollRight,
+
+    // Pass1340-1439: DCC/editor-shell actions append after all historical
+    // gameplay indices so serialized input mappings remain stable.
+    DccToggleToolbar,
+    DccToggleSidebar,
+    DccMaximizeArea,
+    DccCommandSearch,
+    DccWorkspacePrevious,
+    DccWorkspaceNext,
+    DccCycleAssetFilter,
     Count
 };
 

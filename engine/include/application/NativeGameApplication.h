@@ -45,6 +45,7 @@ namespace subspace {
 
 struct NativeGameRunOptions {
     bool runtimeSmoke = false;
+    bool shipyardSmoke = false;
     bool startShipyard = false;
     std::uint64_t maxFrames = 0; // 0 = unlimited interactive run
 };

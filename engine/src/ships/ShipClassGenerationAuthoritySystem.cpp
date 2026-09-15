@@ -1,5 +1,8 @@
 #include "ships/ShipClassGenerationAuthoritySystem.h"
 
+// Historical CLASS_SIZE_ENVELOPE_V3 remains recognized for saved recipes;
+// new generation stamps CLASS_HULL_TOPOLOGY_V4.
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -34,6 +37,17 @@ float MaxInstanceScale(const ProceduralShipVisualRecipe& recipe){
     }
     return out;
 }
+}
+
+std::size_t ShipClassGenerationAuthoritySystem::CountPrimaryHulls(
+    const ProceduralShipVisualRecipe& recipe,
+    const std::vector<ShipyardModuleRecord>& catalog) {
+    std::size_t count=0;
+    for(const auto& placement:recipe.modules){
+        const auto* record=Find(catalog,placement.moduleId);
+        if(record&&(record->primaryHull||record->partRole==ShipyardPartRole::PrimaryHull))++count;
+    }
+    return count;
 }
 
 ShipGenerationBounds ShipClassGenerationAuthoritySystem::MeasureBoundsMeters(
@@ -85,6 +99,13 @@ ShipClassGenerationReport ShipClassGenerationAuthoritySystem::Resolve(const Proc
                                                                        UniversalSizeClass requestedSize) {
     ShipClassGenerationReport out;
     out.shipClass=shipClass;out.requestedSize=requestedSize;out.moduleCount=recipe.modules.size();
+    const auto hullTopology=ShipClassRoleSystem::HullTopology(shipClass);
+    out.primaryHullCount=CountPrimaryHulls(recipe,catalog);
+    out.minimumPrimaryHulls=hullTopology.minimumPrimaryHulls;
+    out.targetPrimaryHulls=hullTopology.targetPrimaryHulls;
+    out.maximumPrimaryHulls=hullTopology.maximumPrimaryHulls;
+    out.capitalMultiHull=hullTopology.capitalMultiHull;
+    out.hullTopologyValid=out.primaryHullCount>=out.minimumPrimaryHulls&&out.primaryHullCount<=out.maximumPrimaryHulls;
     out.targetLengthMeters=TargetLengthMeters(shipClass,requestedSize,&out.resolvedSize);
     const auto bounds=MeasureBoundsMeters(recipe,catalog);
     if(bounds.valid){out.measuredWidthMeters=bounds.size.x;out.measuredLengthMeters=bounds.size.y;out.measuredHeightMeters=bounds.size.z;}
@@ -97,6 +118,15 @@ ShipClassGenerationReport ShipClassGenerationAuthoritySystem::Resolve(const Proc
     const auto envelope=ShipClassRoleSystem::Envelope(shipClass);
     if(out.moduleCount<envelope.minimumModules)out.errors.push_back("generated hull is below selected class topology/module minimum");
     if(out.moduleCount>envelope.maximumModules)out.errors.push_back("generated hull exceeds selected class module budget");
+
+    if(!out.hullTopologyValid){
+        if(hullTopology.capitalMultiHull){
+            out.errors.push_back("capital class requires multiple certified primary hull roots");
+        }else{
+            out.errors.push_back("non-capital ship classes require exactly one certified primary hull");
+        }
+        out.topologyRegenerationRequired=true;
+    }
 
     if(out.maximumInstanceScale>MaximumGeneratedInstanceScale){
         out.errors.push_back("generated recipe contains a module instance scaled beyond certified authoring limits");
@@ -141,6 +171,7 @@ void ShipClassGenerationAuthoritySystem::ApplyScale(ProceduralShipVisualRecipe& 
 
 bool ShipClassGenerationAuthoritySystem::IsSafeDraft(const ShipClassGenerationReport& report) {
     if(report.moduleCount==0||report.measuredLengthMeters<=0.001f)return false;
+    if(!report.hullTopologyValid)return false;
     if(report.maximumInstanceScale>MaximumGeneratedInstanceScale)return false;
     const float widthRatio=report.measuredWidthMeters/report.measuredLengthMeters;
     const float heightRatio=report.measuredHeightMeters/report.measuredLengthMeters;
@@ -160,7 +191,7 @@ ShipClassGenerationReport ShipClassGenerationAuthoritySystem::ApplyAndStamp(Proc
     auto report=Resolve(recipe,catalog,shipClass,requestedSize);
     if(report.valid)ApplyScale(recipe,report.appliedScale);
     recipe.shipClassId=ShipClassRoleSystem::ClassName(shipClass);
-    recipe.lineageAuthority="CLASS_SIZE_ENVELOPE_V3";
+    recipe.lineageAuthority="CLASS_HULL_TOPOLOGY_V4";
     recipe.runtimeCertificationMessage=report.valid?"CLASS_TOPOLOGY_ENVELOPE_CERTIFIED":"CLASS_TOPOLOGY_REGEN_REQUIRED";
     return report;
 }
@@ -176,7 +207,7 @@ bool ShipClassGenerationAuthoritySystem::Validate(const ProceduralShipVisualReci
         return false;
     }
     if(!report.valid){if(error)*error=report.errors.empty()?"class generation envelope rejected recipe":report.errors.front();return false;}
-    if(recipe.lineageAuthority=="CLASS_SIZE_ENVELOPE_V3"||recipe.lineageAuthority=="FACTION_CLASS_HULL_ROLE_V1"){
+    if(recipe.lineageAuthority=="CLASS_HULL_TOPOLOGY_V4"||recipe.lineageAuthority=="CLASS_SIZE_ENVELOPE_V3"||recipe.lineageAuthority=="FACTION_CLASS_HULL_ROLE_V1"){
         const auto envelope=ShipClassRoleSystem::Envelope(shipClass);
         const float measured=report.measuredLengthMeters;
         if(measured<envelope.minimumLengthMeters*.96f||measured>envelope.maximumLengthMeters*1.04f){

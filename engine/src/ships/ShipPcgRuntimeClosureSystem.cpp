@@ -210,6 +210,7 @@ HullFamilyRuntimeProfile ShipPcgRuntimeClosureSystem::BuildHullFamilyProfile(con
     HullFamilyRuntimeProfile p;
     p.factionId=family.factionId;p.familyId=family.familyId;p.shipClass=family.shipClass;
     p.componentProfile=ShipClassRoleSystem::ComponentProfile(family.shipClass);
+    p.hullTopology=ShipClassRoleSystem::HullTopology(family.shipClass);
     p.structuralSize=p.componentProfile.preferredStructuralSize;
     p.chassisStyle=family.chassisStyle;p.allowedRoles=family.allowedRoles;p.preferredRoles=family.preferredRoles;
     const auto e=ShipClassRoleSystem::Envelope(family.shipClass);p.targetLengthMeters=e.nominalLengthMeters;

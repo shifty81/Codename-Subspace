@@ -14,6 +14,7 @@
 #include <sstream>
 #include <tuple>
 #include <unordered_set>
+#include <unordered_map>
 
 namespace subspace {
 namespace {
@@ -346,19 +347,41 @@ void ShipyardBuilderSystem::SetAccessMode(ShipyardAccessMode mode){
     if(!model_.capabilities.rawAuthoring&&model_.workspaceMode==ShipyardWorkspaceMode::Authoring)model_.workspaceMode=ShipyardWorkspaceMode::Build;
 }
 
-std::vector<std::size_t> ShipyardBuilderSystem::FilteredCatalogIndices() const {
-    std::vector<std::size_t> out;
-    const auto wantedDomain=UniversalConstructionSystem::Domain(model_.constructionMode);
-    for(std::size_t i=0;i<model_.catalog.size();++i){
-        const auto& record=model_.catalog[i];
-        if(record.moduleClass!=model_.selectedClass)continue;
-        if(!availableModuleIds_.empty()&&std::find(availableModuleIds_.begin(),availableModuleIds_.end(),record.source.moduleId)==availableModuleIds_.end())continue;
+std::vector<std::size_t> ShipyardBuilderSystem::VisibleCatalogIndices(const ShipyardBuilderRuntimeModel& model) {
+    std::vector<ShipyardModuleRecord> candidates;
+    std::unordered_map<std::string,std::size_t> sourceIndex;
+    const auto wantedDomain=UniversalConstructionSystem::Domain(model.constructionMode);
+    for(std::size_t i=0;i<model.catalog.size();++i){
+        const auto& record=model.catalog[i];
+        if(record.moduleClass!=model.selectedClass)continue;
         const auto profile=UniversalKitbashAuthority::BuildProfile(record,KitbashMaterialCertification::NormalizedFallback);
         const bool domainMatch=std::any_of(profile.domainRoles.begin(),profile.domainRoles.end(),[&](const auto& role){return role.domain==wantedDomain;});
         if(!domainMatch)continue;
-        if(model_.constructionMode==ConstructionWorkspaceMode::Ship && !ShipPcgRuntimeClosureSystem::ModuleFitsClass(record,model_.shipClass,true))continue;
-        out.push_back(i);
+        if(model.constructionMode==ConstructionWorkspaceMode::Ship && !ShipPcgRuntimeClosureSystem::ModuleFitsClass(record,model.shipClass,true))continue;
+        sourceIndex[record.source.moduleId]=i;
+        candidates.push_back(record);
     }
+
+    const ShipyardModuleRecord* selectedParent=nullptr;
+    if(!model.recipe.modules.empty()){
+        const auto selected=std::min(model.selectedPlacedModule,model.recipe.modules.size()-1);
+        const auto& id=model.recipe.modules[selected].moduleId;
+        const auto it=std::find_if(model.catalog.begin(),model.catalog.end(),[&](const auto& record){return record.source.moduleId==id;});
+        if(it!=model.catalog.end())selectedParent=&*it;
+    }
+
+    const auto items=ShipyardAssetBrowserSystem::Query(candidates,model.dcc.assetBrowser,selectedParent);
+    std::vector<std::size_t> out;out.reserve(items.size());
+    for(const auto& item:items){const auto it=sourceIndex.find(item.moduleId);if(it!=sourceIndex.end())out.push_back(it->second);}
+    return out;
+}
+
+std::vector<std::size_t> ShipyardBuilderSystem::FilteredCatalogIndices() const {
+    auto out=VisibleCatalogIndices(model_);
+    if(availableModuleIds_.empty())return out;
+    out.erase(std::remove_if(out.begin(),out.end(),[&](std::size_t i){
+        return i>=model_.catalog.size()||std::find(availableModuleIds_.begin(),availableModuleIds_.end(),model_.catalog[i].source.moduleId)==availableModuleIds_.end();
+    }),out.end());
     return out;
 }
 
@@ -1640,37 +1663,36 @@ ShipyardBuilderLayout ShipyardBuilderSystem::Layout(int w,int h){
     const float s=l.uiScale;
     l.compact=h<static_cast<int>(860.0f*s);
 
-    // Pass585+: the project-wide UI authority is resolution-aware.  The old
-    // fixed 390px/520px caps made the Shipyard look nearly unchanged and tiny
-    // at 1440p/4K even when the internal editor architecture had improved.
-    l.workspaceBarY=8.0f*s;
-    l.workspaceBarHeight=36.0f*s;
-    l.left=12.0f*s;
-    l.top=54.0f*s;
-    l.leftWidth=std::clamp(static_cast<float>(w)*.210f,340.0f*s,560.0f*s);
-    l.rightWidth=std::clamp(static_cast<float>(w)*.265f,420.0f*s,660.0f*s);
-    l.right=static_cast<float>(w)-l.rightWidth-16.0f*s;
-    l.rowHeight=(l.compact?32.0f:36.0f)*s;
-    l.rowGap=6.0f*s;
+    // Pass1338: make the standalone Shipyard read like a dense Blender-style
+    // DCC instead of a dashboard. Reserve stable application/menu, workspace,
+    // and 3D-view headers; keep side editors compact so the ship dominates.
+    l.workspaceBarY=27.0f*s;
+    l.workspaceBarHeight=34.0f*s;
+    l.left=8.0f*s;
+    l.top=88.0f*s;
+    l.leftWidth=std::clamp(static_cast<float>(w)*.175f,300.0f*s,372.0f*s);
+    l.rightWidth=std::clamp(static_cast<float>(w)*.215f,360.0f*s,448.0f*s);
+    l.right=static_cast<float>(w)-l.rightWidth-8.0f*s;
+    l.rowHeight=(l.compact?28.0f:32.0f)*s;
+    l.rowGap=5.0f*s;
 
-    // Left: two-row category grid followed by five large visual asset cards.
-    l.libraryListY=l.top+62.0f*s;
-    l.moduleCardsY=l.libraryListY+2.0f*(l.rowHeight+l.rowGap)+12.0f*s;
-    l.moduleCardHeight=(l.compact?58.0f:70.0f)*s;
-    l.leftActionsY=l.moduleCardsY+5.0f*(l.moduleCardHeight+l.rowGap)+12.0f*s;
-    l.leftInfoY=l.leftActionsY+82.0f*s;
+    // Asset Browser: compact category grid followed by geometry thumbnails.
+    l.libraryListY=l.top+58.0f*s;
+    l.moduleCardsY=l.libraryListY+2.0f*(l.rowHeight+l.rowGap)+10.0f*s;
+    l.moduleCardHeight=(l.compact?52.0f:62.0f)*s;
+    l.leftActionsY=l.moduleCardsY+5.0f*(l.moduleCardHeight+l.rowGap)+10.0f*s;
+    l.leftInfoY=l.leftActionsY+76.0f*s;
 
-    // Right: explicit one-click workflow tabs. SOCKETS is intentionally a
-    // first-class visible tab during development; advanced metadata remains in
-    // AUTHORING.  This restores the corrective workflow lost in Pass535.
+    // Workspaces live in the top strip. The right editor is an Outliner over a
+    // contextual Properties region; command content begins below the Outliner.
     l.tabRowY=l.workspaceBarY;
     l.tabHeight=l.workspaceBarHeight;
-    l.contentTopY=l.top+58.0f*s;
-    l.toolRailWidth=52.0f*s;
-    l.toolRailX=l.left+l.leftWidth+8.0f*s;
-    l.toolRailY=l.top+18.0f*s;
-    l.selectedSummaryY=l.contentTopY;
-    l.placedListY=l.contentTopY+64.0f*s;
+    l.contentTopY=l.top+(l.compact?126.0f:164.0f)*s;
+    l.toolRailWidth=34.0f*s;
+    l.toolRailX=l.left+l.leftWidth+14.0f*s;
+    l.toolRailY=l.top+10.0f*s;
+    l.selectedSummaryY=l.contentTopY+24.0f*s;
+    l.placedListY=l.selectedSummaryY+64.0f*s;
     l.placedPageSize=l.compact?5u:6u;
 
     l.editLabelY=l.contentTopY+70.0f*s;

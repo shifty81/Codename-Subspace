@@ -278,7 +278,7 @@ void NativeWindow::ApplyKey(unsigned long long virtualKey, bool down)
 {
     switch (static_cast<WPARAM>(virtualKey)) {
         case 'W': _inputState.SetAction(InputAction::ThrustForward, down); _inputState.SetAction(InputAction::EditorToolMove, down); break;
-        case 'S': _inputState.SetAction(InputAction::ThrustReverse, down); break;
+        case 'S': _inputState.SetAction(InputAction::ThrustReverse, down); _inputState.SetAction(InputAction::EditorToolScale, down); break;
         case 'A': _inputState.SetAction(InputAction::StrafeLeft, down); break;
         case 'D': _inputState.SetAction(InputAction::StrafeRight, down); break;
         case 'Q': _inputState.SetAction(InputAction::TurnLeft, down); _inputState.SetAction(InputAction::EditorToolSelect, down); break;
@@ -298,26 +298,37 @@ void NativeWindow::ApplyKey(unsigned long long virtualKey, bool down)
             else if(!down)_inputState.SetAction(InputAction::Redo,false);
             break;
         case 'V': _inputState.SetAction(InputAction::ToggleDampening, down); break;
-        case VK_SPACE: _inputState.SetAction(InputAction::FirePrimary, down); break;
-        case 'F': _inputState.SetAction(InputAction::FireMiningMissile, down); _inputState.SetAction(InputAction::EditorFrameSelected, down); break;
+        case VK_SPACE:
+            if(_controlDown)_inputState.SetAction(InputAction::DccMaximizeArea, down);
+            else _inputState.SetAction(InputAction::FirePrimary, down);
+            if(!down){_inputState.SetAction(InputAction::FirePrimary,false);_inputState.SetAction(InputAction::DccMaximizeArea,false);}
+            break;
+        case 'F':
+            if(_shiftDown)_inputState.SetAction(InputAction::DccCycleAssetFilter, down);
+            else {_inputState.SetAction(InputAction::FireMiningMissile, down); _inputState.SetAction(InputAction::EditorFrameSelected, down);}
+            if(!down){_inputState.SetAction(InputAction::DccCycleAssetFilter,false);_inputState.SetAction(InputAction::FireMiningMissile,false);_inputState.SetAction(InputAction::EditorFrameSelected,false);}
+            break;
         case VK_HOME: _inputState.SetAction(InputAction::EditorFrameShip, down); break;
         case 'J': _inputState.SetAction(InputAction::RequestDock, down); break;
         case 'I': _inputState.SetAction(InputAction::ToggleInterior, down); break;
         case 'M': _inputState.SetAction(InputAction::OpenGalaxyMap, down); break;
-        case 'N': _inputState.SetAction(InputAction::OpenSystemMap, down); break;
-        case 'R': _inputState.SetAction(InputAction::OpenPlanetSurvey, down); _inputState.SetAction(InputAction::EditorToolScale, down); break;
+        case 'N': _inputState.SetAction(InputAction::OpenSystemMap, down); _inputState.SetAction(InputAction::DccToggleSidebar, down); break;
+        case 'R': _inputState.SetAction(InputAction::OpenPlanetSurvey, down); _inputState.SetAction(InputAction::EditorToolRotate, down); break;
         case 'P': _inputState.SetAction(InputAction::OpenPlanetaryManufacturing, down); break;
         case 'B': _inputState.SetAction(InputAction::OpenStationBuilder, down); break;
         case 'K': _inputState.SetAction(InputAction::OpenShipBuilder, down); break;
         case 'H': _inputState.SetAction(InputAction::OpenHangarFitting, down); break;
-        case 'T': _inputState.SetAction(InputAction::OpenMarketContracts, down); break;
+        case 'T': _inputState.SetAction(InputAction::OpenMarketContracts, down); _inputState.SetAction(InputAction::DccToggleToolbar, down); break;
         case 'O': _inputState.SetAction(InputAction::OpenExploration, down); break;
-        case 'G': _inputState.SetAction(InputAction::OpenFleetCorporation, down); break;
+        case 'G': _inputState.SetAction(InputAction::OpenFleetCorporation, down); _inputState.SetAction(InputAction::EditorToolMove, down); break;
         case VK_TAB: _inputState.SetAction(InputAction::ToggleFlightMode, down); break;
         case VK_SHIFT: _shiftDown=down; _inputState.SetAction(InputAction::Boost, down); break;
         case VK_CONTROL: _controlDown=down; break;
         case VK_MENU: _altDown=down; break;
+        case VK_F3: _inputState.SetAction(InputAction::DccCommandSearch, down); break;
         case VK_F6: _inputState.SetAction(InputAction::ToggleShipInspection, down); break;
+        case VK_OEM_4: _inputState.SetAction(InputAction::DccWorkspacePrevious, down); break;
+        case VK_OEM_6: _inputState.SetAction(InputAction::DccWorkspaceNext, down); break;
         case VK_RETURN: _inputState.SetAction(InputAction::MenuAccept, down); break;
         case VK_DOWN: _inputState.SetAction(InputAction::MenuNext, down); _inputState.SetAction(InputAction::EditorNudgeAft, down); break;
         case VK_UP: _inputState.SetAction(InputAction::MenuPrevious, down); _inputState.SetAction(InputAction::EditorNudgeForward, down); break;

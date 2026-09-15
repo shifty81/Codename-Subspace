@@ -44,6 +44,16 @@ struct ShipClassComponentProfile {
     std::array<float,5> auxiliaryWeights{{0.45f,0.40f,0.15f,0.0f,0.0f}};
 };
 
+
+
+struct ShipHullTopologyProfile {
+    ShipClass shipClass = ShipClass::Frigate;
+    bool capitalMultiHull = false;
+    std::size_t minimumPrimaryHulls = 1;
+    std::size_t targetPrimaryHulls = 1;
+    std::size_t maximumPrimaryHulls = 1;
+};
+
 struct ShipRoleBudget {
     ShipRole role = ShipRole::GeneralCombat;
     float weapons = 1.0f;
@@ -91,7 +101,10 @@ class ShipClassRoleSystem {
 public:
     static ShipClassEnvelope Envelope(ShipClass shipClass);
     static ShipClassComponentProfile ComponentProfile(ShipClass shipClass);
-    static const char* ClassName(ShipClass shipClass);
+    static std::string ClassName(ShipClass shipClass);
+    static bool IsCapitalClass(ShipClass shipClass);
+    static ShipHullTopologyProfile HullTopology(ShipClass shipClass);
+    static float NominalClassJumpRatio(ShipClass smaller, ShipClass larger);
     static const char* RoleName(ShipRole role);
     static ShipRoleBudget RoleBudget(ShipRole role);
     static ShipRoleSpatialProfile RoleSpatialProfile(ShipRole role);

@@ -1,0 +1,115 @@
+{
+  "schema": "subspace.shipyard.blender_dcc_100pass.v1",
+  "authority": "shipyard.blender-dcc",
+  "status": "portable-certified-windows-pending",
+  "tranche": {
+    "firstPass": 1340,
+    "lastPass": 1439,
+    "count": 100,
+    "prerequisites": [
+      "PASS1338",
+      "PASS1339"
+    ]
+  },
+  "buildIdentity": {
+    "uiProfile": "BLENDER-DCC-100",
+    "visualPass": "PASS1439",
+    "buildId": "SUBSPACE-SHIPYARD-BLENDER-DCC-1439"
+  },
+  "layout": {
+    "top": [
+      "application-menu",
+      "workspace-strip",
+      "3d-view-header"
+    ],
+    "left": [
+      "asset-browser"
+    ],
+    "center": [
+      "3d-ship-view",
+      "tool-rail"
+    ],
+    "right": [
+      "outliner",
+      "properties"
+    ],
+    "bottom": [
+      "status-bar"
+    ]
+  },
+  "keymap": {
+    "move": "G",
+    "rotate": "R",
+    "scale": "S",
+    "toolbar": "T",
+    "sidebar": "N",
+    "commandSearch": "F3",
+    "maximize": "Ctrl+Space",
+    "cycleAssetFilter": "Shift+F",
+    "workspacePrevious": "[",
+    "workspaceNext": "]"
+  },
+  "viewport": {
+    "shading": [
+      "SOLID",
+      "MATERIAL",
+      "WIREFRAME"
+    ],
+    "overlays": [
+      "grid",
+      "gizmos",
+      "sockets",
+      "statistics",
+      "conformal-shield"
+    ],
+    "maximize": true
+  },
+  "assetBrowser": {
+    "presets": [
+      "ALL",
+      "CERTIFIED STRUCTURE",
+      "GENERATOR READY",
+      "COMPATIBLE",
+      "FAVORITES"
+    ],
+    "density": [
+      "COMPACT",
+      "COMFORTABLE",
+      "LARGE"
+    ],
+    "favorites": true,
+    "thumbnailZoom": true
+  },
+  "outliner": {
+    "modes": [
+      "HIERARCHY",
+      "ROLE",
+      "CLASS"
+    ],
+    "selectionSynchronized": true,
+    "friendlyNames": true
+  },
+  "properties": {
+    "contexts": [
+      "TRANSFORM",
+      "ASSEMBLY",
+      "SOCKETS",
+      "AUTHORING",
+      "APPEARANCE"
+    ]
+  },
+  "acceptance": {
+    "portable": [
+      "subspace_engine-link",
+      "subspace_game-link",
+      "ctest-all",
+      "projectops-static-all"
+    ],
+    "windows": [
+      "full-quality-gate",
+      "--runtime-smoke",
+      "--shipyard-smoke",
+      "visible-build-identity"
+    ]
+  }
+}

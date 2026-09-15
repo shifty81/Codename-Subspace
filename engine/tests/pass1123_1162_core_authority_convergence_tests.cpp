@@ -16,8 +16,8 @@ namespace {
 int failures=0, assertions=0;
 void Check(bool ok,const char* name){++assertions;std::cout<<(ok?"[PASS] ":"[FAIL] ")<<name<<"\n";if(!ok)++failures;}
 bool Near(float a,float b,float e=.025f){return std::fabs(a-b)<=e;}
-ShipyardModuleRecord Module(const char* id,float hw=1.5f,float hl=2.0f,float hh=1.0f){ShipyardModuleRecord r;r.source.moduleId=id;r.source.halfWidth=hw;r.source.halfLength=hl;r.source.halfHeight=hh;r.moduleClass=ShipyardModuleClass::Hull;r.semantic=ShipyardModuleSemantic::HullMid;r.size=ShipyardModuleSize::M;r.builderCategory=ShipyardPartCategory::Hull;r.partRole=ShipyardPartRole::PrimaryHull;r.primaryHull=true;r.generatorEligible=true;r.placementRole="STRUCTURAL";return r;}
-ProceduralShipVisualRecipe Recipe(const ShipyardModuleRecord& m,int count,float lo,float hi){ProceduralShipVisualRecipe r;r.recipeId="draft";for(int i=0;i<count;++i){VisualModulePlacement p;p.moduleId=m.source.moduleId;float t=count<=1?.5f:float(i)/float(count-1);p.y=lo+(hi-lo)*t;r.modules.push_back(p);}return r;}
+ShipyardModuleRecord Module(const char* id,float hw=1.5f,float hl=2.0f,float hh=1.0f,bool primary=true){ShipyardModuleRecord r;r.source.moduleId=id;r.source.halfWidth=hw;r.source.halfLength=hl;r.source.halfHeight=hh;r.moduleClass=primary?ShipyardModuleClass::Hull:ShipyardModuleClass::Adapter;r.semantic=primary?ShipyardModuleSemantic::HullMid:ShipyardModuleSemantic::StructuralFrame;r.size=ShipyardModuleSize::M;r.builderCategory=primary?ShipyardPartCategory::Hull:ShipyardPartCategory::Adapter;r.partRole=primary?ShipyardPartRole::PrimaryHull:ShipyardPartRole::StructuralFrame;r.primaryHull=primary;r.generatorEligible=true;r.placementRole="STRUCTURAL";return r;}
+ProceduralShipVisualRecipe Recipe(const ShipyardModuleRecord& hull,const ShipyardModuleRecord& structural,int count,float lo,float hi){ProceduralShipVisualRecipe r;r.recipeId="draft";for(int i=0;i<count;++i){VisualModulePlacement p;p.moduleId=(i==0?hull.source.moduleId:structural.source.moduleId);float t=count<=1?.5f:float(i)/float(count-1);p.y=lo+(hi-lo)*t;r.modules.push_back(p);}return r;}
 }
 int main(){
     std::cout<<"[Pass1123-1162 Core Authority Convergence]\n";
@@ -40,14 +40,36 @@ int main(){
     Check(std::string(GeneratorParitySystem::DomainId(GeneratorDomain::Ship))=="ship","1136 ship domain id remains stable across clients");
     Check(GeneratorParitySystem::RequestJson(q).find("77123")!=std::string::npos,"1137 serialized request preserves visible seed");
 
-    auto hull=Module("hull");std::vector<ShipyardModuleRecord> catalog{hull};
-    auto tiny=Recipe(hull,2,-2,2);auto tr=ShipClassGenerationAuthoritySystem::Resolve(tiny,catalog,ShipClass::Battlecruiser,UniversalSizeClass::L);Check(!tr.valid&&tr.topologyRegenerationRequired,"1138 undersized Battlecruiser still cannot be globally inflated");
+    auto hull=Module("hull");auto frame=Module("frame",1.5f,2.0f,1.0f,false);std::vector<ShipyardModuleRecord> catalog{hull,frame};
+    auto tiny=Recipe(hull,frame,2,-2,2);auto tr=ShipClassGenerationAuthoritySystem::Resolve(tiny,catalog,ShipClass::Battlecruiser,UniversalSizeClass::L);Check(!tr.valid&&tr.topologyRegenerationRequired,"1138 undersized Battlecruiser still cannot be globally inflated");
     Check(ShipClassGenerationAuthoritySystem::IsSafeDraft(tr),"1139 physically sane topology-incomplete seed may remain a deterministic draft");
-    auto flatM=Module("flat",1.5f,2.0f,.02f);std::vector<ShipyardModuleRecord> flatC{flatM};auto flat=Recipe(flatM,2,-2,2);auto fr=ShipClassGenerationAuthoritySystem::Resolve(flat,flatC,ShipClass::Battlecruiser,UniversalSizeClass::L);Check(!ShipClassGenerationAuthoritySystem::IsSafeDraft(fr),"1140 collapsed planar generation can never be surfaced as a draft");
+    auto flatM=Module("flat",1.5f,2.0f,.02f);auto flatF=Module("flat_frame",1.5f,2.0f,.02f,false);std::vector<ShipyardModuleRecord> flatC{flatM,flatF};auto flat=Recipe(flatM,flatF,2,-2,2);auto fr=ShipClassGenerationAuthoritySystem::Resolve(flat,flatC,ShipClass::Battlecruiser,UniversalSizeClass::L);Check(!ShipClassGenerationAuthoritySystem::IsSafeDraft(fr),"1140 collapsed planar generation can never be surfaced as a draft");
     auto huge=tiny;huge.modules.front().scaleX=28.2f;auto hr=ShipClassGenerationAuthoritySystem::Resolve(huge,catalog,ShipClass::Battlecruiser,UniversalSizeClass::L);Check(!ShipClassGenerationAuthoritySystem::IsSafeDraft(hr),"1141 historical 28x scale failure is rejected from draft path");
-    auto sane=Recipe(hull,6,-18,18);auto sr=ShipClassGenerationAuthoritySystem::Resolve(sane,catalog,ShipClass::Frigate,UniversalSizeClass::XS);Check(sr.valid,"1142 class-correct topology still certifies normally");
+    auto sane=Recipe(hull,frame,6,-18,18);auto sr=ShipClassGenerationAuthoritySystem::Resolve(sane,catalog,ShipClass::Frigate,UniversalSizeClass::XS);Check(sr.valid,"1142 class-correct topology still certifies normally");
     Check(ShipClassGenerationAuthoritySystem::MaximumGeneratedInstanceScale<=1.5f,"1143 generated instance scale remains bounded");
     Check(ShipClassGenerationAuthoritySystem::MinimumFinalCorrectionScale>=.85f&&ShipClassGenerationAuthoritySystem::MaximumFinalCorrectionScale<=1.15f,"1144 final class correction remains minor only");
+    const auto frigateHull=ShipClassRoleSystem::HullTopology(ShipClass::Frigate);
+    const auto battleshipHull=ShipClassRoleSystem::HullTopology(ShipClass::Battleship);
+    const auto carrierHull=ShipClassRoleSystem::HullTopology(ShipClass::Carrier);
+    const auto dreadHull=ShipClassRoleSystem::HullTopology(ShipClass::Dreadnought);
+    Check(!frigateHull.capitalMultiHull&&frigateHull.minimumPrimaryHulls==1&&frigateHull.maximumPrimaryHulls==1,"1440 Frigate is exactly one primary hull");
+    Check(!battleshipHull.capitalMultiHull&&battleshipHull.minimumPrimaryHulls==1&&battleshipHull.maximumPrimaryHulls==1,"1440 Battleship remains exactly one primary hull");
+    Check(carrierHull.capitalMultiHull&&carrierHull.minimumPrimaryHulls>=2,"1440 Carrier starts the multi-hull capital tier");
+    Check(dreadHull.capitalMultiHull&&dreadHull.targetPrimaryHulls>carrierHull.minimumPrimaryHulls,"1440 Dreadnought uses a larger multi-hull capital frame");
+    Check(ShipClassRoleSystem::NominalClassJumpRatio(ShipClass::Frigate,ShipClass::Destroyer)>=1.45f&&
+          ShipClassRoleSystem::NominalClassJumpRatio(ShipClass::Destroyer,ShipClass::Cruiser)>=1.45f&&
+          ShipClassRoleSystem::NominalClassJumpRatio(ShipClass::Cruiser,ShipClass::Battlecruiser)>=1.45f&&
+          ShipClassRoleSystem::NominalClassJumpRatio(ShipClass::Battlecruiser,ShipClass::Battleship)>=1.45f,
+          "1440 Frigate through Battleship preserve substantial visual class jumps");
+    Check(ShipClassRoleSystem::NominalClassJumpRatio(ShipClass::Battleship,ShipClass::Carrier)>=1.45f,
+          "1440 first capital tier makes a substantial jump beyond Battleship");
+    auto twoHull=Recipe(hull,frame,6,-18,18);twoHull.modules[1].moduleId=hull.source.moduleId;
+    const auto twoHullReport=ShipClassGenerationAuthoritySystem::Resolve(twoHull,catalog,ShipClass::Frigate,UniversalSizeClass::XS);
+    Check(!twoHullReport.hullTopologyValid&&!twoHullReport.valid,"1440 non-capital multi-root hull is rejected");
+    auto oneHullCapital=Recipe(hull,frame,34,-600,600);
+    const auto oneHullCapitalReport=ShipClassGenerationAuthoritySystem::Resolve(oneHullCapital,catalog,ShipClass::Dreadnought,UniversalSizeClass::XL);
+    Check(oneHullCapitalReport.capitalMultiHull&&!oneHullCapitalReport.hullTopologyValid&&!ShipClassGenerationAuthoritySystem::IsSafeDraft(oneHullCapitalReport),
+          "1440 one-hull capital is rejected even as a safe draft");
 
     const auto tmp=std::filesystem::temp_directory_path()/"subspace_pass1123_1162_forge";std::filesystem::create_directories(tmp);
     const auto control=tmp/"project.control.json";

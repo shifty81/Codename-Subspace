@@ -11,8 +11,9 @@ file(READ "${GATE1336}" GATE_TEXT)
 
 foreach(TOKEN IN ITEMS
   "NativeBattlefieldRenderer.cpp"
-  "OUTLINER / PROPERTIES"
-  "SELECTED MODULE"
+  "OUTLINER"
+  "PROPERTIES"
+  "build_identity::kShipyardUiProfile"
   "duplicate right-panel projection returned"
   "CMake expands")
   string(FIND "${GATE_TEXT}" "${TOKEN}" POS)

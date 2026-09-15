@@ -40,13 +40,13 @@ ShipClassEnvelope ShipClassRoleSystem::Envelope(ShipClass c){
     case ShipClass::Cruiser:return {c,UniversalSizeClass::M,160.0f,280.0f,220.0f,10,22,38};
     case ShipClass::Battlecruiser:return {c,UniversalSizeClass::L,280.0f,450.0f,365.0f,14,30,50};
     case ShipClass::Battleship:return {c,UniversalSizeClass::L,450.0f,750.0f,600.0f,18,38,64};
-    case ShipClass::Carrier:return {c,UniversalSizeClass::L,450.0f,950.0f,680.0f,22,46,78};
+    case ShipClass::Carrier:return {c,UniversalSizeClass::XL,900.0f,1450.0f,1125.0f,28,58,94};
     case ShipClass::Freighter:return {c,UniversalSizeClass::M,120.0f,650.0f,330.0f,12,28,62};
     case ShipClass::Miner:return {c,UniversalSizeClass::M,70.0f,420.0f,240.0f,10,24,52};
     case ShipClass::Explorer:return {c,UniversalSizeClass::S,30.0f,200.0f,105.0f,6,14,28};
-    case ShipClass::Dreadnought:return {c,UniversalSizeClass::XL,650.0f,1250.0f,900.0f,28,58,96};
-    case ShipClass::IndustrialCapital:return {c,UniversalSizeClass::XL,700.0f,1600.0f,1100.0f,30,64,110};
-    case ShipClass::Capital:return {c,UniversalSizeClass::XL,750.0f,1800.0f,1250.0f,32,72,128};
+    case ShipClass::Dreadnought:return {c,UniversalSizeClass::XL,1200.0f,2100.0f,1600.0f,34,72,116};
+    case ShipClass::IndustrialCapital:return {c,UniversalSizeClass::XL,1300.0f,2500.0f,1850.0f,36,78,128};
+    case ShipClass::Capital:return {c,UniversalSizeClass::XL,1600.0f,3200.0f,2400.0f,42,92,152};
     }
     return {ShipClass::Frigate,UniversalSizeClass::S,40.0f,90.0f,65.0f,6,12,22};
 }
@@ -79,7 +79,7 @@ ShipClassComponentProfile ShipClassRoleSystem::ComponentProfile(ShipClass c){
         return Profile(c,U::L,U::M,U::XL,U::S,U::XL,
                        {{0,0,.18f,.52f,.30f}},{{0,.08f,.25f,.43f,.24f}});
     case ShipClass::Carrier:
-        return Profile(c,U::L,U::M,U::XL,U::XS,U::XL,
+        return Profile(c,U::XL,U::L,U::XL,U::S,U::XL,
                        {{0,0,.14f,.51f,.35f}},{{.03f,.08f,.23f,.42f,.24f}});
     case ShipClass::Freighter:
     case ShipClass::Miner:
@@ -98,7 +98,7 @@ ShipClassComponentProfile ShipClassRoleSystem::ComponentProfile(ShipClass c){
                    {{.25f,.55f,.20f,0,0}},{{.42f,.38f,.20f,0,0}});
 }
 
-const char* ShipClassRoleSystem::ClassName(ShipClass c){
+std::string ShipClassRoleSystem::ClassName(ShipClass c){
     switch(c){
     case ShipClass::Fighter:return "FIGHTER";
     case ShipClass::Corvette:return "CORVETTE";
@@ -117,6 +117,39 @@ const char* ShipClassRoleSystem::ClassName(ShipClass c){
     case ShipClass::Capital:return "CAPITAL";
     }
     return "FRIGATE";
+}
+
+bool ShipClassRoleSystem::IsCapitalClass(ShipClass c){
+    switch(c){
+    case ShipClass::Carrier:
+    case ShipClass::Dreadnought:
+    case ShipClass::IndustrialCapital:
+    case ShipClass::Capital:
+        return true;
+    default:
+        return false;
+    }
+}
+
+ShipHullTopologyProfile ShipClassRoleSystem::HullTopology(ShipClass c){
+    switch(c){
+    case ShipClass::Carrier:
+        return {c,true,2,3,4};
+    case ShipClass::Dreadnought:
+        return {c,true,3,4,6};
+    case ShipClass::IndustrialCapital:
+        return {c,true,3,5,7};
+    case ShipClass::Capital:
+        return {c,true,4,6,9};
+    default:
+        return {c,false,1,1,1};
+    }
+}
+
+float ShipClassRoleSystem::NominalClassJumpRatio(ShipClass smaller,ShipClass larger){
+    const float a=Envelope(smaller).nominalLengthMeters;
+    const float b=Envelope(larger).nominalLengthMeters;
+    return a>0.001f?b/a:0.0f;
 }
 
 const char* ShipClassRoleSystem::RoleName(ShipRole r){

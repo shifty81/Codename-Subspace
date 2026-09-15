@@ -1,4 +1,5 @@
 #include "application/NativeBattlefieldRenderer.h"
+#include "application/SubspaceBuildIdentity.h"
 #include "celestial/SystemSpatialScale.h"
 
 #include "core/logging/Logger.h"
@@ -963,10 +964,16 @@ void DrawStandaloneShipyardBackdrop(const NativeBattlefieldFrame& frame) {
     // on the window clear color, celestial scene, or alpha composition.
     FilledRect(0,0,0,w,h,{0.003f,0.008f,0.014f,1.0f});
 
-    // Subtle center-view grid gives scale/orientation without competing with
-    // the authored ship or the dark left/right Shipyard panels.
+    // Pass1340-1439: Blender-DCC grid is a real viewport overlay. It follows
+    // panel visibility/maximize state instead of assuming fixed debug panes.
+    if(frame.shipBuilder && !frame.shipBuilder->dcc.showGrid)return;
     glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
-    const float left=400.0f,right=std::max(left+64.0f,w-360.0f),top=82.0f,bottom=std::max(top+64.0f,h-62.0f);
+    const bool maxView=frame.shipBuilder&&frame.shipBuilder->dcc.maximizeViewport;
+    const bool leftPanel=frame.shipBuilder&&frame.shipBuilder->dcc.showAssetBrowser&&!maxView;
+    const bool rightPanel=frame.shipBuilder&&frame.shipBuilder->dcc.showSidebar&&!maxView;
+    const float left=maxView?8.0f:(leftPanel?std::clamp(w*.17f,280.0f,340.0f)+58.0f:58.0f);
+    const float right=maxView?w-8.0f:(rightPanel?w-std::clamp(w*.22f,340.0f,430.0f)-16.0f:w-8.0f);
+    const float top=88.0f,bottom=std::max(top+64.0f,h-40.0f);
     for(float x=left;x<=right;x+=48.0f)Line(x,top,0,x,bottom,0,{0.08f,0.24f,0.29f,0.11f},1.0f);
     for(float y=top;y<=bottom;y+=48.0f)Line(left,y,0,right,y,0,{0.08f,0.24f,0.29f,0.11f},1.0f);
     Line((left+right)*.5f,top,0,(left+right)*.5f,bottom,0,{0.12f,0.46f,0.52f,0.18f},1.0f);
@@ -3061,6 +3068,12 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
 
     const float w=static_cast<float>(frame.viewportWidth),h=static_cast<float>(frame.viewportHeight);
     const float left=layout.left,top=layout.top,libraryW=layout.leftWidth,rightW=layout.rightWidth,right=layout.right;
+    const bool maximized=m.dcc.maximizeViewport;
+    const bool showAssetBrowser=m.dcc.showAssetBrowser&&!maximized;
+    const bool showToolRail=m.dcc.showToolRail&&!maximized;
+    const bool showSidebar=m.dcc.showSidebar&&!maximized;
+    const bool showOutliner=showSidebar&&m.dcc.showOutliner;
+    const bool showProperties=showSidebar&&m.dcc.showProperties;
     const auto uiTheme=SubspaceUiTheme::Dark();
     const Rgba panel={uiTheme.panel.r,uiTheme.panel.g,uiTheme.panel.b,0.965f};
     const Rgba card={uiTheme.raised.r*.78f,uiTheme.raised.g*.78f,uiTheme.raised.b*.78f,0.94f};
@@ -3087,26 +3100,38 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
         Line(x+112.0f,y+6.0f,0,x+width,y+6.0f,0,{.07f,.25f,.30f,.60f},1.0f);
     };
 
-    // Blender-style shell: global workspace strip, Asset Browser on the left,
-    // uninterrupted viewport in the center, and hierarchy/properties on the
-    // right. The canonical dock model remains the long-term layout authority;
-    // this makes the visible native Shipyard follow that workflow now.
-    FilledRect(8.0f*s,layout.workspaceBarY-4.0f*s,0,w-16.0f*s,layout.workspaceBarHeight+8.0f*s,{.006f,.024f,.031f,.985f});
-    Line(8.0f*s,layout.workspaceBarY+layout.workspaceBarHeight+4.0f*s,0,w-8.0f*s,layout.workspaceBarY+layout.workspaceBarHeight+4.0f*s,0,{.10f,.38f,.44f,.75f},1.0f*s);
-    FilledRect(left,top,0,libraryW,layout.statusY-top-12.0f,panel);
-    FilledRect(right,top,0,rightW,layout.statusY-top-12.0f,panel);
-    Line(left,top,0,left+libraryW,top,0,cyan,1.8f);
-    Line(right,top,0,right+rightW,top,0,cyan,1.8f);
-    FilledRect(layout.toolRailX-3.0f*s,layout.toolRailY-8.0f*s,0,layout.toolRailWidth+6.0f*s,5.0f*(38.0f*s+6.0f*s)+10.0f*s,{.006f,.026f,.034f,.92f});
+    // Pass1338 Blender-derived application hierarchy:
+    // application menu -> workspace strip -> 3D View header -> editor Areas.
+    FilledRect(0,0,0,w,26.0f*s,{.020f,.023f,.027f,1.0f});
+    FilledRect(0,26.0f*s,0,w,36.0f*s,{.028f,.032f,.037f,1.0f});
+    FilledRect(0,62.0f*s,0,w,26.0f*s,{.034f,.039f,.045f,1.0f});
+    Line(0,26.0f*s,0,w,26.0f*s,0,{.10f,.11f,.12f,.92f},1.0f);
+    Line(0,62.0f*s,0,w,62.0f*s,0,{.11f,.12f,.13f,.94f},1.0f);
+    Line(0,88.0f*s,0,w,88.0f*s,0,{.08f,.09f,.10f,.96f},1.0f);
+    ShipyardText("SUBSPACE",10.0f*s,7.0f*s,.62f,{.86f,.88f,.90f,.98f});
+    ShipyardText("File   Edit   View   Ship   Select   Add   Help",92.0f*s,7.0f*s,.52f,{.67f,.70f,.73f,.94f});
+    ShipyardText(frame.standaloneShipyard?"SHIPYARD DEV STUDIO":"SHIPYARD / LIVE REFIT",w-225.0f*s,7.0f*s,.50f,{.52f,.70f,.78f,.92f});
 
-    std::size_t filteredCount=0;
-    for(const auto& r:m.catalog)if(r.moduleClass==m.selectedClass)++filteredCount;
+    const float canvasLeft=maximized?8.0f*s:(showAssetBrowser?left+libraryW+8.0f*s:left+8.0f*s);
+    const float canvasRight=maximized?w-8.0f*s:(showSidebar?right-8.0f*s:w-8.0f*s);
+    const auto activeWorkspace=m.testWorkspaceActive?ShipyardWorkspaceMode::Test:m.workspaceMode;
+    ShipyardText(std::string(ShipyardWorkspaceSystem::WorkspaceName(activeWorkspace))+" MODE",canvasLeft+8.0f*s,69.0f*s,.50f,{.88f,.89f,.90f,.95f});
+    ShipyardText("View   Select   Add Module",canvasLeft+116.0f*s,69.0f*s,.50f,{.64f,.67f,.70f,.92f});
+    ShipyardText(std::string(ShipyardDccUiSystem::ShadingName(m.dcc.shading))+"   Global   Pivot: Median   Snap",std::max(canvasLeft+330.0f*s,canvasRight-278.0f*s),69.0f*s,.47f,{.56f,.61f,.65f,.88f});
 
-    // Left asset browser hierarchy.
-    ShipyardText("ASSET BROWSER",left+12,top+14,1.02f,text);
-    ShipyardText(frame.standaloneShipyard?"SHIP MODULES / BLUEPRINT":"SHIP MODULES / LIVE REFIT",left+12,top+35,.68f,muted);
-    ShipyardText(std::string("PARTS  /  ")+ShipyardModuleSystem::ClassName(m.selectedClass)+"  /  "+std::to_string(filteredCount),
-        left+12,top+52,.62f,{.48f,.70f,.74f,.82f});
+    // Editor areas: Asset Browser | 3D Ship View | Outliner + Properties.
+    if(showAssetBrowser){FilledRect(left,top,0,libraryW,layout.statusY-top-8.0f,panel);Line(left+libraryW,top,0,left+libraryW,layout.statusY-8.0f,0,{.11f,.12f,.13f,.95f},1.0f);}
+    if(showSidebar){FilledRect(right,top,0,rightW,layout.statusY-top-8.0f,panel);Line(right,top,0,right,layout.statusY-8.0f,0,{.11f,.12f,.13f,.95f},1.0f);}
+    if(showToolRail)FilledRect(layout.toolRailX-3.0f*s,layout.toolRailY-5.0f*s,0,layout.toolRailWidth+6.0f*s,5.0f*(36.0f*s+5.0f*s)+4.0f*s,{.026f,.030f,.035f,.96f});
+
+    const auto visibleCatalogIndices=ShipyardBuilderSystem::VisibleCatalogIndices(m);
+    const std::size_t filteredCount=visibleCatalogIndices.size();
+
+    // Left editor area: Asset Browser.
+    ShipyardText("ASSET BROWSER",left+10.0f*s,top+10.0f*s,.68f,text);
+    ShipyardText(frame.standaloneShipyard?"Shipyard Modules / Blueprint":"Shipyard Modules / Live Refit",left+10.0f*s,top+29.0f*s,.52f,muted);
+    ShipyardText(std::string("CATALOG / ")+ShipyardModuleSystem::ClassName(m.selectedClass)+" / "+std::to_string(filteredCount),
+        left+10.0f*s,top+45.0f*s,.48f,{.48f,.70f,.74f,.82f});
 
     // Permanent canonical-forward authority. This marker is screen-space so it
     // remains visible regardless of selected part, depth occlusion or camera
@@ -3176,10 +3201,23 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
         }
     }
 
-    // Right hierarchy + properties.
-    ShipyardText("OUTLINER / PROPERTIES",right+12,top+14,1.02f,text);
-    ShipyardText(m.role+"  /  "+ShipClassRoleSystem::ClassName(m.shipClass)+"  /  "+std::to_string(m.recipe.modules.size())+" MODULES",
-        right+12,top+35,.66f,muted);
+    // Right side follows Blender's familiar Outliner-over-Properties stack.
+    ShipyardText("OUTLINER",right+10.0f*s,top+9.0f*s,.62f,text);
+    ShipyardText("Scene Collection",right+10.0f*s,top+27.0f*s,.49f,muted);
+    const float outlinerBottom=layout.contentTopY-14.0f*s;
+    Line(right,top+46.0f*s,0,right+rightW,top+46.0f*s,0,{.10f,.11f,.12f,.90f},1.0f);
+    ShipyardText("v  SHIP  /  "+ShipClassRoleSystem::ClassName(m.shipClass),right+14.0f*s,top+54.0f*s,.52f,{.82f,.84f,.86f,.96f});
+    std::size_t outlinerShown=0;
+    for(std::size_t i=0;i<m.recipe.modules.size()&&outlinerShown<4;++i,++outlinerShown){
+        const bool selected=i==std::min(m.selectedPlacedModule,m.recipe.modules.empty()?std::size_t{0}:m.recipe.modules.size()-1);
+        if(selected)FilledRect(right+9.0f*s,top+(76.0f+18.0f*outlinerShown)*s,0,rightW-18.0f*s,17.0f*s,{.16f,.24f,.31f,.92f});
+        ShipyardText(std::string("   ")+(selected?"> ":"  ")+shortText(m.recipe.modules[i].moduleId,38),right+14.0f*s,top+(79.0f+18.0f*outlinerShown)*s,.44f,selected?Rgba{.94f,.80f,.48f,.98f}:muted);
+    }
+    if(m.recipe.modules.size()>outlinerShown)ShipyardText("   ... +"+std::to_string(m.recipe.modules.size()-outlinerShown)+" modules",right+14.0f*s,top+(79.0f+18.0f*outlinerShown)*s,.43f,muted);
+    Line(right,outlinerBottom,0,right+rightW,outlinerBottom,0,{.12f,.13f,.14f,.96f},1.0f);
+    ShipyardText("PROPERTIES",right+10.0f*s,outlinerBottom+8.0f*s,.61f,text);
+    ShipyardText(m.role+" / SEED "+std::to_string(m.seed)+" / "+std::to_string(m.recipe.modules.size())+" MODULES",
+        right+98.0f*s,outlinerBottom+9.0f*s,.43f,muted);
 
     if(m.dragPreview.staged){
         const float bannerX=left+libraryW+layout.toolRailWidth+28.0f*s;
@@ -3187,14 +3225,12 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
         FilledRect(bannerX,top+8.0f*s,0,bannerW,56.0f*s,{.018f,.115f,.135f,.94f});
         Line(bannerX,top+8.0f*s,0,bannerX+bannerW,top+8.0f*s,0,cyan,1.4f*s);
         ShipyardText("STAGED PART - NOT ATTACHED",bannerX+12.0f*s,top+17.0f*s,.72f,{.78f,1.0f,1.0f,.99f});
-        ShipyardText("W MOVE   E ROTATE   R SCALE   < > SNAP   CONFIRM ATTACH / CANCEL",bannerX+12.0f*s,top+38.0f*s,.50f,muted);
+        ShipyardText("G MOVE   R ROTATE   S SCALE   < > SNAP   CONFIRM ATTACH / CANCEL",bannerX+12.0f*s,top+38.0f*s,.50f,muted);
     }
 
     const auto* selectedCatalog=[&]()->const ShipyardModuleRecord*{
-        std::vector<std::size_t> f;
-        for(std::size_t i=0;i<m.catalog.size();++i)if(m.catalog[i].moduleClass==m.selectedClass)f.push_back(i);
-        if(f.empty())return nullptr;
-        return &m.catalog[f[std::min(m.selectedFilteredModule,f.size()-1)]];
+        if(visibleCatalogIndices.empty())return nullptr;
+        return &m.catalog[visibleCatalogIndices[std::min(m.selectedFilteredModule,visibleCatalogIndices.size()-1)]];
     }();
     const auto* selectedPlacedRecord=[&]()->const ShipyardModuleRecord*{
         if(m.recipe.modules.empty())return nullptr;
@@ -3205,8 +3241,8 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
     }();
 
     std::vector<const ShipyardModuleRecord*> filteredCatalog;
-    filteredCatalog.reserve(m.catalog.size());
-    for(const auto& record:m.catalog)if(record.moduleClass==m.selectedClass)filteredCatalog.push_back(&record);
+    filteredCatalog.reserve(visibleCatalogIndices.size());
+    for(const auto index:visibleCatalogIndices)if(index<m.catalog.size())filteredCatalog.push_back(&m.catalog[index]);
 
     const auto controls=ShipyardBuilderSystem::BuildControls(m,frame.viewportWidth,frame.viewportHeight);
     const ShipyardBuilderControl* hovered=nullptr;
@@ -3396,10 +3432,25 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
         }
     }
 
+    if(m.dcc.showStatsOverlay){
+        const float sx=canvasRight-250.0f*s,sy=top+10.0f*s;
+        FilledRect(sx,sy,0,238.0f*s,66.0f*s,{.006f,.018f,.025f,.88f});
+        ShipyardText("VIEWPORT STATISTICS",sx+10.0f*s,sy+8.0f*s,.50f,{.62f,.80f,.84f,.94f});
+        ShipyardText(std::to_string(m.recipe.modules.size())+" modules   "+std::to_string(m.recipe.attachments.size())+" links",sx+10.0f*s,sy+28.0f*s,.48f,muted);
+        ShipyardText(std::string("Shading ")+ShipyardDccUiSystem::ShadingName(m.dcc.shading),sx+10.0f*s,sy+46.0f*s,.45f,muted);
+    }
+    if(m.dcc.commandPaletteOpen){
+        const float pw=560.0f*s,ph=300.0f*s,px=(w-pw)*.5f,py=116.0f*s;
+        FilledRect(px,py,0,pw,ph,{.014f,.018f,.023f,.985f});Line(px,py,0,px+pw,py,0,cyan,1.5f*s);
+        ShipyardText("COMMAND SEARCH  [F3]",px+18.0f*s,py+16.0f*s,.72f,text);
+        float cy=py+48.0f*s;std::size_t shown=0;
+        for(const auto& cmd:ShipyardDccUiSystem::CommandPalette()){if(shown++>=9)break;ShipyardText(cmd.group+"  /  "+cmd.label,px+18.0f*s,cy,.54f,muted);ShipyardText(cmd.shortcut,px+pw-116.0f*s,cy,.54f,amber);cy+=25.0f*s;}
+    }
+
     // Full-width status bar with two deliberate text zones; long status text
     // is clipped before it can collide with contextual help.
-    FilledRect(left,layout.statusY-8,0,w-left-14.0f,36,{.004f,.018f,.026f,.98f});
-    std::string help="RMB orbit   MMB truck/pedestal   Wheel dolly   Alt+WASD free cam   Alt+RMB look   Q/E roll   Home frame";
+    if(m.dcc.showStatusBar)FilledRect(0,layout.statusY-8,0,w,36,{.004f,.018f,.026f,.98f});
+    std::string help="G Move   R Rotate   S Scale   T Toolbar   N Sidebar   F3 Search   Ctrl+Space Maximize   [ ] Workspaces";
     if(hovered){
         switch(hovered->command){
             case ShipyardBuilderCommand::SelectModule:{
@@ -3487,9 +3538,12 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
         if(!line2.empty())ShipyardText(shortText(line2,64),tx+12.0f*s,ty+54.0f*s,.50f,{.58f,.73f,.76f,.88f});
     }
 
-    ShipyardText(shortText(m.status,48),left+12.0f*s,layout.statusY+2.0f*s,.62f,
-        m.validation.valid?Rgba{.40f,.84f,.66f,.92f}:Rgba{.92f,.64f,.24f,.92f});
-    ShipyardText(shortText(help,82),std::max(left+370.0f*s,w*.45f),layout.statusY+2.0f*s,.58f,{.50f,.69f,.72f,.80f});
+    if(m.dcc.showStatusBar){
+        ShipyardText(shortText(m.status,42),10.0f*s,layout.statusY+2.0f*s,.58f,m.validation.valid?Rgba{.40f,.84f,.66f,.92f}:Rgba{.92f,.64f,.24f,.92f});
+        ShipyardText(shortText(help,72),std::max(300.0f*s,w*.29f),layout.statusY+2.0f*s,.50f,{.50f,.69f,.72f,.80f});
+        const std::string buildStamp=std::string(build_identity::kShipyardUiProfile)+" | "+build_identity::kShipyardVisualPass;
+        ShipyardText(buildStamp,w-246.0f*s,layout.statusY+2.0f*s,.52f,{.72f,.78f,.82f,.92f});
+    }
 }
 
 
@@ -3927,16 +3981,21 @@ void NativeBattlefieldRenderer::Render(const NativeBattlefieldFrame& frame) {
             const auto& moduleId=frame.shipBuilder->recipe.modules[static_cast<std::size_t>(selected)].moduleId;
             for(const auto& record:frame.shipBuilder->catalog)if(record.source.moduleId==moduleId){selectedRecord=&record;break;}
             if(selectedRecord&&!selectedRecord->sockets.empty())selectedSocket=static_cast<int>(std::min(frame.shipBuilder->selectedSocket,selectedRecord->sockets.size()-1));
-            socketEdit=frame.shipBuilder->inspectorTab==ShipyardInspectorTab::Sockets;
+            socketEdit=frame.shipBuilder->inspectorTab==ShipyardInspectorTab::Sockets && frame.shipBuilder->dcc.showSocketOverlay;
         }
+        // WIREFRAME presentation mode uses the real GL polygon path, not a label-only toggle.
+        const bool wireframe=frame.shipBuilder&&frame.shipBuilder->dcc.shading==ShipyardDccViewportShading::Wireframe;
+        if(wireframe)glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
         DrawModularShip(*_assets,0.0f,0.0f,0.30f,0.0f,0.24f,true,previewRole,{0.34f,0.39f,0.43f,1.0f},1.0f,0.22f,frame.shipBuilderRecipe->seed,false,frame.shipBuilderRecipe,selected,frame.shipBuilderAppearance,selectedRecord,selectedSocket,socketEdit,frame.shipBuilder&&frame.shipBuilder->dragPreview.active?&frame.shipBuilder->dragPreview.ghost:nullptr,frame.shipBuilder&&frame.shipBuilder->dragPreview.mirroredPreviewActive?&frame.shipBuilder->dragPreview.mirroredGhost:nullptr);
+        if(wireframe)glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
         // Pass790R2 SHIPYARD_STANDALONE_SHIELD_PREVIEW: standalone authoring must preview the
         // same one-foot hull-profile shield surface as the live runtime.
         const auto previewAxis=ResolveShipAxisScale(0.24f,previewRole,true,0.22f,frame.shipBuilderRecipe);
         PhysicsComponent previewPhysics{};
         previewPhysics.position={0.0f,0.0f,0.0f};
         previewPhysics.rotation.z=0.0f;
-        DrawShipProfileShield(*_assets,previewPhysics,frame.shipBuilderRecipe,previewAxis,1.0f,frame.elapsedSeconds,frame);
+        if(!frame.shipBuilder||frame.shipBuilder->dcc.showShieldPreview)
+            DrawShipProfileShield(*_assets,previewPhysics,frame.shipBuilderRecipe,previewAxis,1.0f,frame.elapsedSeconds,frame);
     }
 
     if(frame.playerPhysics){

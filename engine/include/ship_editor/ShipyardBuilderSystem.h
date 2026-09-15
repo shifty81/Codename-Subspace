@@ -6,6 +6,7 @@
 #include "ship_editor/ShipyardTransformSystem.h"
 #include "ship_editor/ShipyardDragDropSystem.h"
 #include "ship_editor/ShipyardWorkspaceSystem.h"
+#include "ship_editor/ShipyardDccUiSystem.h"
 #include "content/UniversalKitbashAuthority.h"
 #include "construction/UniversalConstructionSystem.h"
 #include "editor/ConstructionSymmetrySystem.h"
@@ -58,6 +59,33 @@ enum class ShipyardBuilderCommand {
     InspectorSockets,
     InspectorAuthoring,
     InspectorAppearance,
+    DccToggleAssetBrowser,
+    DccToggleToolRail,
+    DccToggleSidebar,
+    DccToggleOutliner,
+    DccToggleProperties,
+    DccToggleStatusBar,
+    DccToggleMaximizeViewport,
+    DccResetLayout,
+    DccToggleGrid,
+    DccToggleGizmos,
+    DccToggleSocketsOverlay,
+    DccToggleStatsOverlay,
+    DccToggleShieldPreview,
+    DccCycleShading,
+    DccCycleOutlinerMode,
+    DccCycleAssetDensity,
+    DccAssetZoomIn,
+    DccAssetZoomOut,
+    DccPreviousAssetPreset,
+    DccNextAssetPreset,
+    DccToggleFavoriteSelected,
+    DccClearAssetFilters,
+    DccToggleCommandPalette,
+    DccWorkspacePrevious,
+    DccWorkspaceNext,
+    DccPropertiesPrevious,
+    DccPropertiesNext,
     SelectClass,
     SelectModule,
     SelectPlaced,
@@ -300,6 +328,7 @@ struct ShipyardBuilderRuntimeModel {
     bool definitionOverridesDirty = false;
     ShipyardInspectorTab inspectorTab = ShipyardInspectorTab::Transform;
     ShipyardWorkspaceMode workspaceMode = ShipyardWorkspaceMode::Build;
+    ShipyardDccUiState dcc = ShipyardDccUiSystem::DefaultState();
     bool developerWorkspacesVisible = false;
     bool testWorkspaceActive = false;
     SubspaceDockWorkspace dockWorkspace{};
@@ -353,6 +382,7 @@ public:
     void SetAppearance(const ShipAppearanceState& appearance);
     bool IsInitialized() const { return model_.initialized; }
 
+    static std::vector<std::size_t> VisibleCatalogIndices(const ShipyardBuilderRuntimeModel& model);
     std::vector<std::size_t> FilteredCatalogIndices() const;
     const ShipyardModuleRecord* SelectedCatalogModule() const;
     const VisualModulePlacement* SelectedPlacedModule() const;

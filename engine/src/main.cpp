@@ -17,8 +17,9 @@ int main(int argc, char* argv[])
     for (int i=1;i<argc;++i) {
         const std::string arg=argv[i] ? argv[i] : "";
         if (arg=="--runtime-smoke") { options.runtimeSmoke=true; options.maxFrames=4; }
-        else if (arg=="--loop") { options.runtimeSmoke=false; options.maxFrames=0; }
-        else if (arg=="--shipyard") { options.runtimeSmoke=false; options.startShipyard=true; options.maxFrames=0; }
+        else if (arg=="--shipyard-smoke") { options.shipyardSmoke=true; options.startShipyard=true; options.maxFrames=8; }
+        else if (arg=="--loop") { options.runtimeSmoke=false; options.shipyardSmoke=false; options.maxFrames=0; }
+        else if (arg=="--shipyard") { options.runtimeSmoke=false; options.shipyardSmoke=false; options.startShipyard=true; options.maxFrames=0; }
     }
 
     subspace::NativeGameApplication app;

@@ -75,6 +75,7 @@ struct HullFamilyRuntimeProfile {
     // Preferred structural tier, never class identity.
     UniversalSizeClass structuralSize = UniversalSizeClass::S;
     ShipClassComponentProfile componentProfile{};
+    ShipHullTopologyProfile hullTopology{};
     std::string chassisStyle;
     float targetLengthMeters = 0.0f;
     float targetWidthMeters = 0.0f;

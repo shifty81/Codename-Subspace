@@ -32,34 +32,40 @@ endforeach()
 # Historical visible-cutover intent remains certified, but Pass1335 promoted
 # right-panel chrome ownership to the renderer so the interaction projection
 # no longer draws duplicate OUTLINER/PROPERTIES header controls.
+# Pass1340-1439 intentionally replaces the former wide GameMaker projection
+# with compact Blender-derived workspace/tool/asset-browser controls. Preserve
+# the historical functional intent while certifying the current visible labels.
 foreach(TOKEN
-    "BUILD"
+    "ASSEMBLY"
     "INTERIOR"
     "SYSTEMS"
-    "APPEARANCE"
+    "PAINT"
     "TEST"
     "DEV"
-    "SEARCH ASSETS"
-    "FAVORITES  |  COMPATIBLE  |  CERTIFIED"
-    "SELECT [Q]"
-    "MOVE [W]"
-    "ROTATE [E]"
-    "SCALE [R]"
-    "NEW SEED + GENERATE"
-    "EXPLAIN")
+    "ShipyardDccUiSystem::AssetPresetName"
+    "DccToggleFavoriteSelected"
+    "ToolSelect"
+    "ToolMove"
+    "ToolRotate"
+    "ToolScale"
+    "DccToggleMaximizeViewport"
+    "DccToggleCommandPalette")
     string(FIND "${CUTOVER}" "${TOKEN}" POS)
     if(POS EQUAL -1)
         message(FATAL_ERROR "PASS1268-1292 visible shell missing ${TOKEN}")
     endif()
 endforeach()
 
+# Pass1338 replaced the composite pre-Blender right-panel title with distinct
+# Blender-derived OUTLINER and PROPERTIES editor regions. Preserve the
+# historical single-owner intent while certifying the newer visible authority.
 foreach(TOKEN
-    "OUTLINER / PROPERTIES"
-    "SELECTED MODULE"
-    "DEFINITION OVERRIDE / PERSISTENCE")
+    "\"OUTLINER\""
+    "\"PROPERTIES\""
+    "build_identity::kShipyardUiProfile")
     string(FIND "${RENDERER}" "${TOKEN}" POS)
     if(POS EQUAL -1)
-        message(FATAL_ERROR "PASS1268-1292/1335 renderer-owned right panel missing ${TOKEN}")
+        message(FATAL_ERROR "PASS1268-1292/1335/1338 renderer-owned right panel missing ${TOKEN}")
     endif()
 endforeach()
 

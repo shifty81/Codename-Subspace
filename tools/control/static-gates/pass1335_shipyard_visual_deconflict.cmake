@@ -6,12 +6,15 @@ if(NOT EXISTS "${VISIBLE}")
 endif()
 file(READ "${VISIBLE}" UI)
 
+# Pass1340-1439 compacts the same single-shell authority further for a
+# viewport-first Blender DCC layout. Certify the modern spacing and retained
+# off-screen legacy compatibility projection instead of the retired literals.
 foreach(TOKEN IN ITEMS
   "l.top=88.0f*s"
-  "l.placedListY=l.contentTopY+64.0f*s"
-  "the old right-side page is no"
+  "l.placedListY=l.contentTopY+42.0f*s"
+  "showSidebar"
   "kCompatibilityStride=100000.0f"
-  "RETURN TO BUILD")
+  "complete historical command surface")
   string(FIND "${UI}" "${TOKEN}" POS)
   if(POS EQUAL -1)
     message(FATAL_ERROR "Pass1335 deconflict authority missing: ${TOKEN}")

@@ -37,7 +37,7 @@ int main(){
     for(const auto dims:std::vector<std::pair<int,int>>{{1852,797},{1653,930},{1600,900},{1280,768}}){
         const auto layout=ShipyardBuilderSystem::Layout(dims.first,dims.second);
         Check(layout.valid,"R5 responsive layout is valid at supported viewport");
-        Check(layout.tabHeight>=34.0f,"inspector tabs use a deliberate click target height");
+        Check(layout.tabHeight>=26.0f,"compact DCC workspace tabs use a deliberate click target height");
         Check(layout.right>layout.left+layout.leftWidth+300.0f,"R5 preserves a useful central 3D viewport");
         Check(layout.statusY>layout.validationY,"validation remains clear of the status bar");
 

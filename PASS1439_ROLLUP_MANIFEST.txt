@@ -1,0 +1,49 @@
+CODENAME SUBSPACE - CUMULATIVE SOURCE ROLLUP
+============================================
+Rollup: PASS1439 / BLENDER-DCC-100
+Pass tranche: PASS1340-PASS1439 (100 sequential passes)
+Included prerequisite cumulative state: PASS1338 Blender DCC shell + PASS1339 PCC legacy root-drop retirement
+Baseline lineage: governed Codename Subspace source snapshot, 2026-09-14 23:56:51
+Purpose: fresh-folder desktop build/test source authority
+
+VISIBLE SHIPYARD PROMOTIONS
+---------------------------
+- Blender-derived application/menu/workspace/3D-view chrome retained and promoted.
+- Dedicated ShipyardDccUiSystem is the authoritative DCC presentation state.
+- Blender-style G/R/S manipulation aliases and T/N panel toggles.
+- Ctrl+Space viewport maximize/restore and F3 command search.
+- Previous/next workspace navigation and asset-filter cycling.
+- Asset Browser presets, compact/dense thumbnail behavior, zoom, favorites, and filtering.
+- Interactive Outliner with hierarchy, functional-role, and module-class modes.
+- Canonical friendly module names in both Asset Browser and Outliner.
+- Blender-like Properties context rail using existing authoritative inspector systems.
+- Grid/gizmo/socket/statistics/shield overlays and viewport shading controls.
+- Actual wireframe polygon presentation mode.
+- Compact viewport-first responsive layout and historical advanced workspaces retained.
+- Build identity visible as BLENDER-DCC-100 | PASS1439.
+
+CERTIFICATION COMPLETED IN HANDOFF ENVIRONMENT
+----------------------------------------------
+- CMake configure: PASS
+- subspace_engine compile/link: PASS
+- subspace_game compile/link: PASS
+- All CMake test targets build: PASS
+- CTest: 96/96 PASS
+- ProjectOps static certification: 31/31 PASS
+- Pass1340-1439 source authority gate: PASS
+- Historical Shipyard GUI/source gates reconciled to intentional Blender DCC authority: PASS
+
+WINDOWS AUTHORITY STILL REQUIRED
+--------------------------------
+The portable build/test lane cannot certify Win32/WGL visual presentation.
+Run the project-owned PCC Full Quality Gate on Windows after extraction.
+The Windows gate must execute both --runtime-smoke and --shipyard-smoke.
+After GREEN, launch Shipyard and verify the visible identity:
+  BLENDER-DCC-100 | PASS1439
+
+SOURCE/PAYLOAD POLICY
+---------------------
+This is a governed SOURCE rollup. Generated build products, debug artifacts,
+third-party/runtime asset payloads, caches, and prior patch handoffs are not
+vendored into this archive. Project tooling remains responsible for hydrating
+managed external content/dependencies where configured.

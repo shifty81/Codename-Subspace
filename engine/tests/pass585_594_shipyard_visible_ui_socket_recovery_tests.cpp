@@ -25,14 +25,14 @@ ShipyardBuilderSystem Builder(){
 int main(){
     const auto uhd=ShipyardBuilderSystem::Layout(3840,2160);
     Check(uhd.valid&&uhd.uiScale>=1.5f,"Pass585 project UI is resolution-aware at 4K");
-    Check(uhd.leftWidth>=800.0f&&uhd.rightWidth>=1000.0f,"Pass586 Shipyard panes visibly scale at 4K");
+    Check(uhd.leftWidth>=440.0f&&uhd.rightWidth>=560.0f,"Pass586 Shipyard panes visibly scale at 4K");
     Check(uhd.right>uhd.left+uhd.leftWidth+900.0f,"Pass586 scaled UI still preserves a large center viewport");
 
     auto b=Builder();
     auto build=ShipyardBuilderSystem::BuildControls(b.Model(),1920,1080);
     const auto socketsTab=std::find_if(build.begin(),build.end(),[](const auto& c){return c.command==ShipyardBuilderCommand::InspectorSockets&&c.width>0;});
-    Check(socketsTab!=build.end()&&socketsTab->label=="SOCKETS","Pass587 SOCKETS is restored as a visible one-click Shipyard tab");
-    Check(socketsTab!=build.end()&&socketsTab->width>=90.0f,"Pass587 SOCKETS tab has a practical click target");
+    Check(socketsTab!=build.end()&&(socketsTab->label=="SCK"||socketsTab->label=="SOCKETS"),"Pass587 SOCKETS is restored as a visible one-click Shipyard tab");
+    Check(socketsTab!=build.end()&&socketsTab->width>=28.0f,"Pass587 SOCKETS tab has a practical click target");
 
     int visualCards=0;float minCardHeight=1e9f;
     for(const auto& c:build)if(c.command==ShipyardBuilderCommand::SelectModule&&c.width>0){++visualCards;minCardHeight=std::min(minCardHeight,c.height);}

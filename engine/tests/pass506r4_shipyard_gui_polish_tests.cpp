@@ -64,7 +64,7 @@ int main(){
         float minEnabledWidth=10000.0f;
         for(const auto& c:controls)if(c.enabled)minEnabledWidth=std::min(minEnabledWidth,c.width);
         for(const auto& c:rotateControls)if(c.enabled)minEnabledWidth=std::min(minEnabledWidth,c.width);
-        Check(minEnabledWidth>=50.0f,"enabled editor buttons retain a practical click target width");
+        Check(minEnabledWidth>=28.0f,"compact DCC editor buttons retain a practical click target width");
     }
 
     const auto controls=ShipyardBuilderSystem::BuildControls(m,1653,930);
@@ -72,8 +72,8 @@ int main(){
     Check(wingClass!=controls.end()&&wingClass->label.find("10")!=std::string::npos,"library class rows expose live module counts");
     const auto qSelect=std::find_if(controls.begin(),controls.end(),[](const auto& c){return c.command==ShipyardBuilderCommand::ToolSelect;});
     const auto frame=std::find_if(controls.begin(),controls.end(),[](const auto& c){return c.command==ShipyardBuilderCommand::FrameSelected;});
-    Check(qSelect!=controls.end()&&qSelect->label.find("[Q]")!=std::string::npos,"selection tool advertises its keyboard shortcut");
-    Check(frame!=controls.end()&&frame->label.find("[F]")!=std::string::npos,"frame-part action advertises its keyboard shortcut");
+    Check(qSelect!=controls.end()&&qSelect->label=="Q","selection tool uses compact Blender-style Q label");
+    Check(frame!=controls.end()&&frame->label=="F","frame-part action uses compact Blender-style F label");
 
     const auto tooShort=ShipyardBuilderSystem::Layout(1653,700);
     Check(!tooShort.valid,"layout fails closed instead of overlapping controls on an undersized viewport");

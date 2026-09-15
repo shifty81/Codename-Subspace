@@ -29,6 +29,12 @@ struct ShipClassGenerationReport {
     float maximumInstanceScale = 1.0f;
     bool topologyRegenerationRequired = false;
     std::size_t moduleCount = 0;
+    std::size_t primaryHullCount = 0;
+    std::size_t minimumPrimaryHulls = 1;
+    std::size_t targetPrimaryHulls = 1;
+    std::size_t maximumPrimaryHulls = 1;
+    bool capitalMultiHull = false;
+    bool hullTopologyValid = false;
     std::vector<std::string> errors;
     std::vector<std::string> warnings;
 };
@@ -46,6 +52,8 @@ public:
     static constexpr float MaximumFinalCorrectionScale = 1.15f;
     static constexpr float MaximumGeneratedInstanceScale = 1.50f;
 
+    static std::size_t CountPrimaryHulls(const ProceduralShipVisualRecipe& recipe,
+                                          const std::vector<ShipyardModuleRecord>& catalog);
     static ShipGenerationBounds MeasureBoundsMeters(const ProceduralShipVisualRecipe& recipe,
                                                      const std::vector<ShipyardModuleRecord>& catalog);
     static float MeasureLengthMeters(const ProceduralShipVisualRecipe& recipe,

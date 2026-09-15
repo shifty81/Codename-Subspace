@@ -176,7 +176,7 @@ int NativeGameApplication::Run(const NativeGameRunOptions& options)
 {
     _runOptions = options;
     _engine.Initialize();
-    if (options.runtimeSmoke) {
+    if (options.runtimeSmoke || options.shipyardSmoke) {
         GoToFrontendScreen(FrontendScreen::InGame);
         BootstrapPlayableSlice();
     } else {
@@ -185,10 +185,10 @@ int NativeGameApplication::Run(const NativeGameRunOptions& options)
 
     const auto& graphics = ConfigurationManager::Instance().GetGraphics();
     NativeWindowConfig windowConfig;
-    windowConfig.width = options.runtimeSmoke ? 640 : graphics.resolutionWidth;
-    windowConfig.height = options.runtimeSmoke ? 360 : graphics.resolutionHeight;
-    windowConfig.vsync = graphics.vsync;
-    windowConfig.title = options.runtimeSmoke ? "Codename: Subspace [native smoke]" : "Codename: Subspace";
+    windowConfig.width = options.shipyardSmoke ? 1280 : (options.runtimeSmoke ? 640 : graphics.resolutionWidth);
+    windowConfig.height = options.shipyardSmoke ? 768 : (options.runtimeSmoke ? 360 : graphics.resolutionHeight);
+    windowConfig.vsync = options.shipyardSmoke ? false : graphics.vsync;
+    windowConfig.title = options.shipyardSmoke ? "Codename: Subspace [shipyard smoke]" : (options.runtimeSmoke ? "Codename: Subspace [native smoke]" : "Codename: Subspace");
 
     if (!_window.Initialize(windowConfig)) {
         Logger::Instance().Error("Application",
@@ -547,6 +547,13 @@ void NativeGameApplication::HandleShipyardTransformHotkeys()
     const auto& input=_engine.GetInputState();
     if(input.WasPressed(InputAction::Undo)){_shipBuilder.Activate(ShipyardBuilderCommand::UndoAuthoring);return;}
     if(input.WasPressed(InputAction::Redo)){_shipBuilder.Activate(ShipyardBuilderCommand::RedoAuthoring);return;}
+    if(input.WasPressed(InputAction::DccToggleToolbar))_shipBuilder.Activate(ShipyardBuilderCommand::DccToggleToolRail);
+    if(input.WasPressed(InputAction::DccToggleSidebar))_shipBuilder.Activate(ShipyardBuilderCommand::DccToggleSidebar);
+    if(input.WasPressed(InputAction::DccMaximizeArea))_shipBuilder.Activate(ShipyardBuilderCommand::DccToggleMaximizeViewport);
+    if(input.WasPressed(InputAction::DccCommandSearch))_shipBuilder.Activate(ShipyardBuilderCommand::DccToggleCommandPalette);
+    if(input.WasPressed(InputAction::DccWorkspacePrevious))_shipBuilder.Activate(ShipyardBuilderCommand::DccWorkspacePrevious);
+    if(input.WasPressed(InputAction::DccWorkspaceNext))_shipBuilder.Activate(ShipyardBuilderCommand::DccWorkspaceNext);
+    if(input.WasPressed(InputAction::DccCycleAssetFilter))_shipBuilder.Activate(ShipyardBuilderCommand::DccNextAssetPreset);
     if(input.WasPressed(InputAction::EditorToolSelect))_shipBuilder.Activate(ShipyardBuilderCommand::ToolSelect);
     if(input.WasPressed(InputAction::EditorToolMove))_shipBuilder.Activate(ShipyardBuilderCommand::ToolMove);
     if(input.WasPressed(InputAction::EditorToolRotate))_shipBuilder.Activate(ShipyardBuilderCommand::ToolRotate);

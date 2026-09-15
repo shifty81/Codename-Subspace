@@ -1,0 +1,12 @@
+CODENAME SUBSPACE PASS1439 - FRESH FOLDER TEST
+================================================
+1. Extract this ZIP into a NEW folder on your Desktop. Do not merge it over the old repository.
+2. Launch SubspaceTools.cmd from the extracted project root.
+3. Run FULL QUALITY GATE / CERTIFY GREEN.
+4. Use Run & play and launch Shipyard.
+5. Confirm the bottom-right Shipyard identity reads: BLENDER-DCC-100 | PASS1439.
+6. Exercise G/R/S, T/N, F3, Ctrl+Space, [ / ], Asset Browser filters, Outliner modes, and viewport shading.
+7. The obsolete Pass891 root ZIP is intentionally not included.
+8. If Windows Full Gate or Shipyard fails, package/upload the PCC debug bundle.
+
+This archive is source-only by design. Managed runtime/third-party assets are hydrated by project tooling.

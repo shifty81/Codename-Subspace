@@ -1,6 +1,7 @@
 # Pass1336 - reconcile the historical Pass1268-1292 visible-shell gate with
-# Pass1335's single-chrome ownership. This prevents a stale historical assertion
-# from requiring the duplicated controls that Pass1335 correctly removed.
+# Pass1335's single-chrome ownership and Pass1338's Blender-derived split
+# OUTLINER/PROPERTIES authority. This prevents stale historical assertions from
+# requiring duplicated or retired composite panel controls.
 get_filename_component(PROJECT_ROOT "${ROOT}/.." ABSOLUTE)
 set(HISTORICAL "${PROJECT_ROOT}/tools/control/static-gates/pass1268_1292_visible_professional_shipyard_cutover.cmake")
 
@@ -16,8 +17,9 @@ file(READ "${HISTORICAL}" GATE)
 # substrings instead so certification checks intent rather than CMake expansion.
 foreach(TOKEN IN ITEMS
   "NativeBattlefieldRenderer.cpp"
-  "OUTLINER / PROPERTIES"
-  "SELECTED MODULE"
+  "OUTLINER"
+  "PROPERTIES"
+  "build_identity::kShipyardUiProfile"
   "duplicate right-panel projection returned")
   string(FIND "${GATE}" "${TOKEN}" POS)
   if(POS EQUAL -1)

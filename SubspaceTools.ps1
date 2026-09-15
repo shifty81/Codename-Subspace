@@ -953,7 +953,7 @@ function Test-IsPatchZipName {
     param([string]$Name)
     if ([string]::IsNullOrWhiteSpace($Name)) { return $false }
     # Generated artifacts are never update transports.
-    if ($Name -match '(?i)FullSource|SourceRollup|DebugBundle|BuildRollup|CompleteSource|Full_Source') { return $false }
+    if ($Name -match '(?i)FullSource|SourceRollup|SourceSnapshot|CumulativeSource|DebugBundle|BuildRollup|CompleteSource|Full_Source') { return $false }
 
     $extension = [System.IO.Path]::GetExtension($Name)
     # forge.patch.v1 discovery is extension-first and manifest-authoritative.
@@ -968,17 +968,49 @@ function Test-IsPatchZipName {
     return $false
 }
 
+function Test-ZipContainsRootPatchManifest {
+    param([string]$Path)
+    if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $false }
+    try {
+        Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
+        $archive = [System.IO.Compression.ZipFile]::OpenRead($Path)
+        try {
+            foreach ($entry in $archive.Entries) {
+                if ([string]::Equals($entry.FullName, 'PATCH_MANIFEST.json', [System.StringComparison]::OrdinalIgnoreCase)) { return $true }
+            }
+            return $false
+        }
+        finally { $archive.Dispose() }
+    }
+    catch {
+        Write-Log ("ZIP handoff probe skipped unreadable archive: {0}" -f $Path) "WARN"
+        return $false
+    }
+}
+
+function Test-IsPatchHandoffFile {
+    param([System.IO.FileInfo]$File)
+    if ($null -eq $File) { return $false }
+    if (-not (Test-IsPatchZipName $File.Name)) { return $false }
+    if ($File.Extension -ieq '.zip') {
+        # Legacy ZIP transport is manifest-authoritative. Filename alone is not
+        # enough because cumulative source rollups may legitimately contain PassNNNN.
+        return (Test-ZipContainsRootPatchManifest -Path $File.FullName)
+    }
+    return $true
+}
+
 function Get-InboxUpdateZips {
     $inbox = Join-Path $Global:SubspaceRoot "updates\inbox"
     if (-not (Test-Path -LiteralPath $inbox)) { return @() }
     return @(Get-ChildItem -LiteralPath $inbox -File -ErrorAction SilentlyContinue |
-        Where-Object { Test-IsPatchZipName $_.Name } |
+        Where-Object { Test-IsPatchHandoffFile -File $_ } |
         Sort-Object Name)
 }
 
 function Get-RootDropUpdateZips {
     return @(Get-ChildItem -LiteralPath $Global:SubspaceRoot -File -ErrorAction SilentlyContinue |
-        Where-Object { Test-IsPatchZipName $_.Name } |
+        Where-Object { Test-IsPatchHandoffFile -File $_ } |
         Sort-Object Name)
 }
 
@@ -2366,6 +2398,10 @@ function Invoke-FullGate {
         Invoke-UtilityStep -Name "Native C++ runtime smoke" -ScriptBlock {
             Invoke-RunSubspaceGame -GameArguments @("--runtime-smoke")
             Write-Log "Native C++ runtime smoke completed." "PASS"
+        }
+        Invoke-UtilityStep -Name "Native Shipyard rendered smoke" -ScriptBlock {
+            Invoke-RunSubspaceGame -GameArguments @("--shipyard-smoke")
+            Write-Log "Native Shipyard smoke opened the real standalone Shipyard render path and completed." "PASS"
         }
     }
     Invoke-UtilityStep -Name "ProjectOps governed-source authority" -ScriptBlock { Invoke-ProjectSourceAuthorityCheck }

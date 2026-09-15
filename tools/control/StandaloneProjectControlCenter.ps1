@@ -82,6 +82,7 @@ function Header {
         }
     }
     $rootPatches=@(Get-ChildItem -LiteralPath $Root -Filter '*.patch' -File -ErrorAction SilentlyContinue|Sort-Object Name)
+    $legacyRootDrops=@(PendingLegacyRootDrops)
     P '========================================================================' DarkGray
     P ' CODENAME SUBSPACE PROJECT CONTROL CENTER' Cyan
     P '========================================================================' DarkGray
@@ -89,7 +90,7 @@ function Header {
     P (" Git        : {0}{1}{2}" -f $branch,$dirty,$(if($head){" @ $head"}else{''}))
     if(-not [string]::IsNullOrWhiteSpace($upstream)){P (" Tracking   : {0}" -f $upstream) DarkGray}
     P (" Gate       : {0}" -f $gate) $gateColor
-    P (" Patches    : {0} root .patch file(s)" -f $rootPatches.Count) $(if($rootPatches.Count -gt 0){'Yellow'}else{'Green'})
+    P (" Patches    : {0} canonical .patch / {1} legacy ZIP handoff(s)" -f $rootPatches.Count,$legacyRootDrops.Count) $(if(($rootPatches.Count+$legacyRootDrops.Count) -gt 0){'Yellow'}else{'Green'})
     P (" PowerShell : {0}" -f $PSVersionTable.PSVersion.ToString()) DarkGray
     P ' Authority  : Project-owned PCC / forge.project.v1 (Forge-compatible provider)' DarkGray
     P ' Intake     : startup scan + explicit approval; Full Gate never auto-applies' DarkGray
@@ -114,20 +115,109 @@ function RunRoot([string[]]$Arguments){
     return [int]$rc
 }
 function PendingPatches {return @(Get-ChildItem -LiteralPath $Root -Filter '*.patch' -File -ErrorAction SilentlyContinue|Sort-Object Name)}
+function Get-HandoffName($Item) {
+    if($null -eq $Item){return ''}
+    $prop=$Item.PSObject.Properties['Name']
+    if($null -ne $prop -and $null -ne $prop.Value){return [string]$prop.Value}
+    return [IO.Path]::GetFileName([string]$Item)
+}
+function Get-HandoffFullName($Item) {
+    if($null -eq $Item){return ''}
+    $prop=$Item.PSObject.Properties['FullName']
+    if($null -ne $prop -and $null -ne $prop.Value){return [string]$prop.Value}
+    $raw=[string]$Item
+    if([IO.Path]::IsPathRooted($raw)){return $raw}
+    return (Join-Path $Root $raw)
+}
+function Test-LegacyZipPatchManifest {
+    param([System.IO.FileInfo]$File)
+    if($null -eq $File -or -not (Test-Path -LiteralPath $File.FullName -PathType Leaf)){return $false}
+    try{
+        Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
+        $archive=[System.IO.Compression.ZipFile]::OpenRead($File.FullName)
+        try{
+            foreach($entry in $archive.Entries){
+                if([string]::Equals($entry.FullName,'PATCH_MANIFEST.json',[System.StringComparison]::OrdinalIgnoreCase)){return $true}
+            }
+            return $false
+        }
+        finally{$archive.Dispose()}
+    }
+    catch{
+        P ("[WARN] Legacy ZIP could not be inspected and will not be treated as an update handoff: {0}" -f $File.Name) Yellow
+        return $false
+    }
+}
+function PendingLegacyRootDrops {
+    return @(Get-ChildItem -LiteralPath $Root -Filter '*.zip' -File -ErrorAction SilentlyContinue|Where-Object {
+        # A legacy ZIP is an update only when BOTH its legacy naming pattern and
+        # its archive contents identify it as a patch. This prevents cumulative
+        # source rollups/snapshots/debug artifacts from blocking certification.
+        if($_.Name -match '(?i)FullSource|BuildRollup|DebugBundle|SourceRollup|SourceSnapshot|CumulativeSource|CompleteSource|Full_Source|sha256'){return $false}
+        if($_.Name -notmatch '(?i)^(Subspace|Codename_Subspace)_(Pass|Patch|Hotfix|Root[_-]?Drop(?:[_-]?Patch)?|Update|Rollup).*\.zip$'){return $false}
+        return (Test-LegacyZipPatchManifest -File $_)
+    }|Sort-Object Name)
+}
+function Get-RepositoryPassNumber {
+    $maxPass=0
+    foreach($dir in @((Join-Path $Root 'tools\control\static-gates'),(Join-Path $Root 'engine\tests'))){
+        if(-not(Test-Path -LiteralPath $dir -PathType Container)){continue}
+        foreach($file in @(Get-ChildItem -LiteralPath $dir -File -ErrorAction SilentlyContinue)){
+            if($file.Name -match '(?i)^pass(?<pass>\d+)'){$n=[int]$Matches.pass;if($n -gt $maxPass){$maxPass=$n}}
+        }
+    }
+    $statusPath=Join-Path $Root 'docs\CURRENT_STATUS.md'
+    if(Test-Path -LiteralPath $statusPath -PathType Leaf){
+        $statusText=Get-Content -LiteralPath $statusPath -Raw -ErrorAction SilentlyContinue
+        foreach($match in [regex]::Matches([string]$statusText,'(?i)Pass(?<pass>\d+)')){$n=[int]$match.Groups['pass'].Value;if($n -gt $maxPass){$maxPass=$n}}
+    }
+    return $maxPass
+}
+function Archive-SupersededLegacyRootDrops {
+    $legacy=@(PendingLegacyRootDrops)
+    if($legacy.Count -eq 0){return}
+    $currentPass=Get-RepositoryPassNumber
+    if($currentPass -le 0){return}
+    $superseded=Join-Path $Root 'updates\superseded'
+    New-Item -ItemType Directory -Force -Path $superseded|Out-Null
+    $stamp=Get-Date -Format 'yyyyMMdd-HHmmss'
+    foreach($patch in $legacy){
+        $patchName=Get-HandoffName $patch
+        $patchFullName=Get-HandoffFullName $patch
+        if([string]::IsNullOrWhiteSpace($patchName) -or [string]::IsNullOrWhiteSpace($patchFullName)){continue}
+        $patchPass=0
+        if($patchName -match '(?i)Pass(?<pass>\d+)'){$patchPass=[int]$Matches.pass}
+        if($patchPass -gt 0 -and $patchPass -lt $currentPass){
+            $dest=Join-Path $superseded ($stamp+'_'+$patchName)
+            Move-Item -LiteralPath $patchFullName -Destination $dest -Force
+            P ("[ARCHIVE] Superseded legacy root-drop moved out of certification path: {0} (Pass{1} < Pass{2})" -f $patchName,$patchPass,$currentPass) DarkGray
+        }
+    }
+}
 function StartupPatchScan {
     [void](Assert-StartupIntakePolicy)
-    $patches=@(PendingPatches);if($patches.Count -eq 0){return}
+    Archive-SupersededLegacyRootDrops
+    $patches=@(PendingPatches)
+    $legacy=@(PendingLegacyRootDrops)
+    if($patches.Count -eq 0 -and $legacy.Count -eq 0){return}
     Header
     P ' PATCH FOUND AT PROJECT STARTUP' Yellow
     P ''
+    if($legacy.Count -gt 0){
+        P ' Legacy ZIP handoff(s) remain and cannot be silently consumed by the standalone PCC:' Yellow
+        foreach($item in $legacy){P ("  - {0}" -f (Get-HandoffName $item)) Yellow}
+        P ' Move/quarantine these legacy handoffs or use the Advanced PCC only after review. Full Gate remains blocked.' Yellow
+        P ''
+    }
     foreach($patch in $patches){
-        P (" Patch: {0}" -f $patch.Name) Yellow
+        $patchName=Get-HandoffName $patch;$patchFullName=Get-HandoffFullName $patch
+        P (" Patch: {0}" -f $patchName) Yellow
         $answer=Read-Host ' Apply this patch now? [Y/N]'
         if($answer -notmatch '^(?i)y(?:es)?$'){P ' [SKIP] Patch left in project root for a later PCC launch.' Yellow;continue}
         $wrapper=$PSCommandPath;$before=(Get-FileHash -Algorithm SHA256 -LiteralPath $wrapper).Hash
-        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $PatchEngine -Root $Root -Package $patch.FullName
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $PatchEngine -Root $Root -Package $patchFullName
         if($LASTEXITCODE -ne 0){
-            P ("[FAIL] Patch apply failed and was archived: {0}" -f $patch.Name) Red
+            P ("[FAIL] Patch apply failed and was archived: {0}" -f $patchName) Red
             $latestPatchLog=Get-ChildItem -LiteralPath (Join-Path $Root 'updates\logs') -Filter 'standalone-patch-*.log' -File -ErrorAction SilentlyContinue|Sort-Object LastWriteTime -Descending|Select-Object -First 1
             if($latestPatchLog){
                 P ("[ERROR LOG] {0}" -f $latestPatchLog.FullName) Yellow
@@ -144,8 +234,16 @@ function StartupPatchScan {
     }
 }
 function RequireNoPendingPatch {
+    Archive-SupersededLegacyRootDrops
     $pending=@(PendingPatches)
-    if($pending.Count -gt 0){throw "Root .patch file(s) are still pending. Restart the PCC and apply/clear them before certifying GREEN. Pending: $($pending.Name -join ', ')"}
+    $legacy=@(PendingLegacyRootDrops)
+    if($pending.Count -gt 0 -or $legacy.Count -gt 0){
+        $names=@()
+        foreach($item in $pending){$name=Get-HandoffName $item;if(-not [string]::IsNullOrWhiteSpace($name)){$names+=$name}}
+        foreach($item in $legacy){$name=Get-HandoffName $item;if(-not [string]::IsNullOrWhiteSpace($name)){$names+=$name}}
+        if($names.Count -eq 0){$names=@('<unresolved update handoff>')}
+        throw "Root update handoff(s) are still pending. Restart/apply canonical .patch files and review/quarantine legacy ZIPs before certifying GREEN. Pending: $($names -join ', ')"
+    }
 }
 function RequireBranchGateFresh {
     $branchState=Get-BranchSwitchState
@@ -181,7 +279,8 @@ function CommitPushGreen {
     P '[PASS] REMOTE VERIFY: certified GREEN source is committed and present on origin.' Green
 }
 function PatchStatus {
-    Header;$p=@(PendingPatches);if($p.Count -eq 0){P 'No root .patch files pending.' Green}else{P 'Pending root patches:' Yellow;foreach($x in $p){P ('  - '+$x.Name) Yellow}}
+    Archive-SupersededLegacyRootDrops
+    Header;$p=@(PendingPatches);$legacy=@(PendingLegacyRootDrops);if($p.Count -eq 0 -and $legacy.Count -eq 0){P 'No root update handoffs pending.' Green}else{if($p.Count -gt 0){P 'Pending canonical root patches:' Yellow;foreach($x in $p){P ('  - '+(Get-HandoffName $x)) Yellow}};if($legacy.Count -gt 0){P 'Pending legacy ZIP handoffs requiring review:' Yellow;foreach($x in $legacy){P ('  - '+(Get-HandoffName $x)) Yellow}}}
     $tx=Join-Path $Root 'updates\transactions';if(Test-Path -LiteralPath $tx){$latest=Get-ChildItem -LiteralPath $tx -Filter '*.json' -File -ErrorAction SilentlyContinue|Sort-Object LastWriteTime -Descending|Select-Object -First 1;if($latest){P '';P ('Latest patch receipt: '+$latest.FullName) Cyan;Get-Content -LiteralPath $latest.FullName|ForEach-Object{Write-Host $_}}}
     $failed=Join-Path $Root 'updates\failed';if(Test-Path -LiteralPath $failed){$latestFailed=Get-ChildItem -LiteralPath $failed -Filter '*.patch' -File -ErrorAction SilentlyContinue|Sort-Object LastWriteTime -Descending|Select-Object -First 1;if($latestFailed){P '';P ('Latest failed patch evidence: '+$latestFailed.FullName) Yellow}}
 }
