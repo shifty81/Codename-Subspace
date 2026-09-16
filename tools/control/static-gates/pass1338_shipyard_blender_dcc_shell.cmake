@@ -20,7 +20,10 @@ p1338_require_text("engine/include/application/SubspaceBuildIdentity.h" "BLENDER
 p1338_require_text("engine/include/application/SubspaceBuildIdentity.h" "PASS")
 p1338_require_text("engine/src/main.cpp" "--shipyard-smoke")
 p1338_require_text("engine/src/application/NativeGameApplication.cpp" "options.shipyardSmoke ? 1280")
-p1338_require_text("engine/src/application/NativeBattlefieldRenderer.cpp" "File   Edit   View   Ship   Select   Add   Help")
+# PASS1466-1505 keeps only application-global File/Edit/View/Help fixed; the
+# Ship/Select/Add vocabulary moved into viewport-local contextual chrome.
+p1338_require_text("engine/src/application/NativeBattlefieldRenderer.cpp" "File   Edit   View   Help")
+p1338_require_text("engine/src/application/NativeBattlefieldRenderer.cpp" "View   Select   Add   Object")
 p1338_require_text("engine/src/application/NativeBattlefieldRenderer.cpp" "\"OUTLINER\"")
 p1338_require_text("engine/src/application/NativeBattlefieldRenderer.cpp" "\"PROPERTIES\"")
 p1338_require_text("engine/src/application/NativeBattlefieldRenderer.cpp" "build_identity::kShipyardUiProfile")

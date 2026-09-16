@@ -34,11 +34,36 @@ struct ShipEquipmentSlot {
     bool required = false;
 };
 
+enum class ShipPaintFinish {
+    MatteCeramic,
+    SatinAlloy,
+    PolishedTitanium,
+    BrushedSteel,
+    BlackChrome,
+    Pearlescent,
+    Iridescent,
+    FactoryPaint,
+    Weathered
+};
+
 struct ShipPaintLayer {
     std::string id;
     float r = 0.34f, g = 0.39f, b = 0.43f, a = 1.0f;
     float metallic = 0.65f;
     float roughness = 0.34f;
+    // PASS1486+: glTF-compatible advanced finish parameters. The current
+    // renderer may approximate some layers, but the authoring data survives
+    // export and is ready for KHR_materials_* fidelity.
+    ShipPaintFinish finish = ShipPaintFinish::SatinAlloy;
+    float clearcoat = 0.0f;
+    float clearcoatRoughness = 0.2f;
+    float specular = 0.5f;
+    float anisotropy = 0.0f;
+    float anisotropyRotation = 0.0f;
+    float iridescence = 0.0f;
+    float iridescenceIor = 1.3f;
+    float iridescenceThicknessNm = 400.0f;
+    float detailNormalScale = 1.0f;
 };
 
 struct ShipDecalLayer {

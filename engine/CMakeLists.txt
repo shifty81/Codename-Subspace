@@ -802,3 +802,12 @@ if(SUBSPACE_BUILD_TESTS)
         -DROOT=${CMAKE_CURRENT_SOURCE_DIR}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/tests/pass1123_1162_core_authority_convergence_source_gate.cmake)
 endif()
+
+# Pass1466-1505: Shipyard Foundry. Viewport navigation continuity, modular DCC
+# panels, material-health certification, articulated equipment, interior
+# structure authoring, advanced paint finishes and model-authoring primitives.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_pass1466_1505_tests tests/pass1466_1505_shipyard_foundry_tests.cpp)
+    target_link_libraries(subspace_pass1466_1505_tests PRIVATE subspace_engine)
+    add_test(NAME SubspacePass1466To1505ShipyardFoundryTests COMMAND subspace_pass1466_1505_tests)
+endif()

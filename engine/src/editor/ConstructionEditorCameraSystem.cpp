@@ -21,8 +21,28 @@ void FreeBasis(const ConstructionEditorCameraState&s,Vector3&right,Vector3&up){
 }
 void ConstructionEditorCameraSystem::Reset(ConstructionEditorCameraState&s,const Vector3&center,float radius){s={};s.assemblyCenter=center;s.orbitDistance=std::clamp(radius*2.8f,4.0f,160.0f);s.moveSpeed=std::clamp(radius*1.5f,2.0f,120.0f);RebuildOrbitEye(s);}
 void ConstructionEditorCameraSystem::SetAssemblyCenter(ConstructionEditorCameraState&s,const Vector3&center,bool preserveEye){const Vector3 delta=center-s.assemblyCenter;s.assemblyCenter=center;if(!preserveEye)s.eye=s.eye+delta;if(s.mode==ConstructionCameraMode::CenteredInspect&&s.centerLock)s.forward=Normalize(center-s.eye,s.forward);}
-void ConstructionEditorCameraSystem::Orbit(ConstructionEditorCameraState&s,float dyaw,float dpitch){s.mode=ConstructionCameraMode::CenteredInspect;s.yawDegrees+=dyaw;s.pitchDegrees=std::clamp(s.pitchDegrees+dpitch,-89.0f,89.0f);RebuildOrbitEye(s);}
-void ConstructionEditorCameraSystem::TruckPedestal(ConstructionEditorCameraState&s,float dr,float du){s.mode=ConstructionCameraMode::CenteredInspect;Vector3 right,up;FreeBasis(s,right,up);s.eye=s.eye+right*dr+up*du;s.orbitDistance=std::max(.25f,(s.eye-s.assemblyCenter).length());s.forward=Normalize(s.assemblyCenter-s.eye,s.forward);}
+void ConstructionEditorCameraSystem::Orbit(ConstructionEditorCameraState&s,float dyaw,float dpitch){
+    s.mode=ConstructionCameraMode::CenteredInspect;
+    s.yawDegrees+=dyaw;
+    while(s.yawDegrees>180.0f)s.yawDegrees-=360.0f;
+    while(s.yawDegrees<-180.0f)s.yawDegrees+=360.0f;
+    s.pitchDegrees=std::clamp(s.pitchDegrees+dpitch,-89.0f,89.0f);
+    RebuildOrbitEye(s);
+}
+void ConstructionEditorCameraSystem::TruckPedestal(ConstructionEditorCameraState&s,float dr,float du){
+    // PASS1466: a viewport pan translates camera AND orbit target together.
+    // The previous implementation moved only the eye, then re-aimed it at the
+    // old target. That made MMB feel like RMB/orbit and left yaw/pitch stale,
+    // so the next RMB drag could snap toward a pole/top-bottom view.
+    s.mode=ConstructionCameraMode::CenteredInspect;
+    Vector3 right,up;FreeBasis(s,right,up);
+    const Vector3 delta=right*dr+up*du;
+    s.eye=s.eye+delta;
+    s.assemblyCenter=s.assemblyCenter+delta;
+    s.forward=Normalize(s.assemblyCenter-s.eye,s.forward);
+    // orbitDistance/yaw/pitch intentionally remain unchanged: panning is a
+    // pure translation of the current inspection frame.
+}
 void ConstructionEditorCameraSystem::BeginFreeFly(ConstructionEditorCameraState&s){if(s.mode==ConstructionCameraMode::FreeFly)return;s.mode=ConstructionCameraMode::FreeFly;s.forward=Normalize(s.assemblyCenter-s.eye,s.forward);}
 void ConstructionEditorCameraSystem::EndFreeFly(ConstructionEditorCameraState&s){if(s.mode!=ConstructionCameraMode::FreeFly)return;s.mode=ConstructionCameraMode::CenteredInspect;s.orbitDistance=std::max(.25f,(s.eye-s.assemblyCenter).length());s.forward=Normalize(s.assemblyCenter-s.eye,s.forward);const Vector3 d=(s.eye-s.assemblyCenter)*(1.0f/s.orbitDistance);s.pitchDegrees=std::asin(std::clamp(d.z,-1.0f,1.0f))*180.0f/kPi;s.yawDegrees=std::atan2(d.x,-d.y)*180.0f/kPi;}
 void ConstructionEditorCameraSystem::Look(ConstructionEditorCameraState&s,float dyaw,float dpitch){BeginFreeFly(s);const float yaw=std::atan2(s.forward.x,s.forward.y)+Rad(dyaw);const float pitch=std::asin(std::clamp(s.forward.z,-1.0f,1.0f))+Rad(dpitch);const float p=std::clamp(pitch,Rad(-89.0f),Rad(89.0f));const float cp=std::cos(p);s.forward=Normalize({std::sin(yaw)*cp,std::cos(yaw)*cp,std::sin(p)},s.forward);}

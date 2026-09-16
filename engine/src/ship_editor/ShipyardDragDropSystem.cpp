@@ -119,4 +119,15 @@ bool ShipyardDragDropSystem::ScaleStaged(ShipyardDragPreview& p,float delta,floa
     return true;
 }
 
+bool ShipyardDragDropSystem::ScaleStaged(ShipyardDragPreview& p,const Vector3& delta,float minimum,float maximum){
+    if(!p.active||!p.staged)return false;
+    p.ghost.scaleX=std::clamp(p.ghost.scaleX+delta.x,minimum,maximum);
+    p.ghost.scaleY=std::clamp(p.ghost.scaleY+delta.y,minimum,maximum);
+    p.ghost.scaleZ=std::clamp(p.ghost.scaleZ+delta.z,minimum,maximum);
+    p.resolvedUniformScale=(p.ghost.scaleX+p.ghost.scaleY+p.ghost.scaleZ)/3.0f;
+    p.selectedCandidate=-1;p.snapped=false;p.freePlacement=true;p.valid=true;
+    p.status="STAGED FREE / AXIS RESIZED / CONFIRM OR PICK SNAP";
+    return true;
+}
+
 } // namespace subspace

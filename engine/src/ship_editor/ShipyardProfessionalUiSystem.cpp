@@ -16,9 +16,14 @@ std::vector<ShipyardPanelDescriptor> ShipyardProfessionalUiSystem::Panels() {
         {"validation", "Validation", D::Bottom, 320, 160, false, false, {W::Build, W::Interior, W::Systems, W::Appearance, W::Test}},
         {"console", "Console", D::Hidden, 420, 180, false, true, {}},
         {"generator", "Generator", D::Hidden, 340, 250, false, false, {W::Build, W::Systems, W::Pcg}},
+        {"modeling", "Modeling", D::Hidden, 340, 300, false, false, {W::Model}},
+        {"articulation", "Attachments & Pivots", D::Hidden, 340, 260, false, false, {W::Build, W::Model, W::Systems}},
         {"interior-program", "Interior Program", D::Hidden, 320, 240, false, true, {W::Interior}},
         {"apertures-hangars", "Apertures & Hangars", D::Hidden, 320, 240, false, true, {W::Interior}},
         {"systems", "Systems", D::Hidden, 320, 240, false, false, {W::Systems}},
+        {"materials", "Materials & Paint", D::Hidden, 360, 280, false, false, {W::Appearance}},
+        {"material-audit", "Material Health", D::Hidden, 420, 220, false, true, {W::Build, W::Model, W::Appearance}},
+        {"kitbash-intake", "Kitbash Intake", D::Hidden, 440, 280, false, true, {W::Build, W::Model, W::Pcg}},
         {"play-test", "Play / Test", D::Hidden, 320, 220, false, false, {W::Test}},
         {"project-tools", "Forge / Project Tools", D::Hidden, 420, 240, false, true, {W::ProjectTools}},
         {"raw-authoring", "Raw Authoring", D::Hidden, 420, 300, false, true, {W::Authoring}},
@@ -53,11 +58,13 @@ std::vector<ShipyardToolDescriptor> ShipyardProfessionalUiSystem::PrimaryTools()
 
 
 std::vector<ShipyardMenuDescriptor> ShipyardProfessionalUiSystem::Menus() {
+    // PASS1466+: application-global chrome is intentionally fixed and minimal.
+    // Ship/Select/Add are contextual viewport/workspace menus, not peers of File.
     return {
-        {"shipyard", "Shipyard", {"validation.run", "layout.reset-current"}},
-        {"edit", "Edit", {"edit.undo", "edit.redo"}},
-        {"view", "View", {"search.open", "view.toggle-aux-docks", "view.maximize-hovered", "view.toggle-advanced"}},
-        {"add", "Add", {"panel.asset-browser", "panel.generator"}}
+        {"file", "File", {"document.new", "document.open", "document.save", "document.save-as", "blueprint.save"}},
+        {"edit", "Edit", {"edit.undo", "edit.redo", "edit.cut", "edit.copy", "edit.paste", "edit.duplicate", "edit.delete"}},
+        {"view", "View", {"search.open", "view.toggle-aux-docks", "view.maximize-hovered", "layout.reset-current", "view.toggle-guided-workflow"}},
+        {"help", "Help", {"help.shipyard-workflow", "help.controls", "help.asset-provenance"}}
     };
 }
 
@@ -73,6 +80,7 @@ std::vector<ShipyardQuickActionDescriptor> ShipyardProfessionalUiSystem::QuickAc
 
 std::vector<ShipyardWorkspaceMode> ShipyardProfessionalUiSystem::PrimaryWorkspaceStrip() {
     return {ShipyardWorkspaceMode::Build,
+            ShipyardWorkspaceMode::Model,
             ShipyardWorkspaceMode::Interior,
             ShipyardWorkspaceMode::Systems,
             ShipyardWorkspaceMode::Appearance,

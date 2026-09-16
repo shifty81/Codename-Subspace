@@ -2,9 +2,9 @@
 
 `docs/STATUS.md` is the current status authority. This compatibility entry exists so historical links do not point at stale Pass746-era promotion instructions.
 
-Current line: **Pass1444–1453 universal DCC asset-workbench normalization**, based on certified commit `cf3c620` / `QG-20260915-194324-full-28b90446`.
+Current line: **Pass1466–1505 Shipyard Foundry cumulative authoring normalization**, layered on the PASS1454–1465 first-class DCC work and certified repository baseline `751474f` / `QG-20260915-212247-full-f8b89ec5`.
 
-Certification state: the Pass1443 baseline is Windows PCC-certified GREEN and pushed to `origin/main`. Pass1444–1453 passes portable C++ build/link, CTest, and ProjectOps static certification in the handoff environment and requires the next Windows PCC Full Gate + rendered Shipyard visual review before promotion.
+Certification state: repository baseline `751474f` is Windows PCC-certified GREEN and pushed to `origin/main`. PASS1454–1505 is the current cumulative working line and requires the next Windows PCC Full Gate + rendered Shipyard workflow review before promotion.
 
 
 Active visible corrective tranche: **Pass1338 / BLENDER-DCC-001** rebases the standalone Shipyard onto a Blender-derived DCC shell and adds a real `--shipyard-smoke` Full-Gate stage. State: **CERTIFIED** in baseline `cf3c620`.
@@ -44,3 +44,12 @@ cannot surface as safe drafts. Pass1440 also carries forward the PASS1439R1 MSVC
 Implemented pending Windows PCC certification. The standalone Shipyard is now the first live consumer of the reusable `EditorDccShellLayoutSystem` / `EditorAssetWorkbenchSystem` shell. The visible composition is viewport-first: neutral gray 3D canvas and perspective floor grid, compact left tool rail, bottom Asset Browser shelf, Outliner over Properties at right, contextual diagnostics, compact XYZ gizmo, and tighter authored-asset framing. Standalone authoring no longer paints the gameplay starfield by default; socket and shield overlays default off but remain toggleable. Current visible identity: **DCC-ASSET-SHELL | PASS1453**.
 
 The shell defines future domains for stations, interiors, characters, props, materials, celestial/world assets, VFX, and UI. Only Ship Modules / Shipyard claims a live adapter in this tranche; other domains remain explicit adapter work rather than being reported as complete.
+
+First-class editor polish tranche: **PASS1454-1465 / FIRST-CLASS-DCC** normalizes Shipyard against the latest certified ForgeGUI_Core Creator Studio contracts (`532f7e1`) without embedding its Rust/egui runtime. It fixes PASS1453 panel/header overlap, introduces a contextual Shipyard Inspector, projects ForgeGUI-derived compact metrics and semantic surfaces into native C++, improves asset-card hierarchy/truncation, and requests dark rounded Windows non-client chrome. State: **IMPLEMENTED_UNCERTIFIED** until Windows PCC Full Gate and visual inspection pass.
+
+
+## Pass1466-1505 — Shipyard Foundry
+
+Cumulative first-class authoring tranche built on PASS1454-1465. The visible target is **SHIPYARD-FOUNDRY | PASS1505**. The tranche fixes camera pan/orbit continuity, introduces X/Y/Z transform constraints, native dock/float/pin/collapse/auto-hide/layout persistence contracts, guided workflow authority, detachable/articulated module pivots, class-scaled generated interiors, removable/modelable doors/airlocks/floors and related interior structures, expanded native primitive modeling, advanced metal/pearlescent/iridescent paint finishes, faction-aware markings, source-material suppression/fallback, and hydrated-corpus material-health auditing. State: **IMPLEMENTED_UNCERTIFIED** until the next Windows PCC Full Quality Gate and rendered workflow review.
+
+Production Boolean execution and automatic UV unwrap remain explicitly pending backend integrations; their contracts are present but this status does not advertise them as complete. External kitbash/material packs remain governed intake sources and are not blindly vendored.

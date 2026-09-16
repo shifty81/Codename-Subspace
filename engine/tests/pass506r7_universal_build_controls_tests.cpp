@@ -18,7 +18,7 @@ bool NoOverlap(const std::vector<ShipyardBuilderControl>& c){
     for(std::size_t i=0;i<c.size();++i)for(std::size_t j=i+1;j<c.size();++j){
         const auto&a=c[i],&b=c[j];
         const bool overlap=a.x<b.x+b.width&&a.x+a.width>b.x&&a.y<b.y+b.height&&a.y+a.height>b.y;
-        if(overlap)return false;
+        if(overlap){std::cerr<<"OVERLAP: "<<a.label<<" ["<<a.x<<","<<a.y<<","<<a.width<<","<<a.height<<"] vs "<<b.label<<" ["<<b.x<<","<<b.y<<","<<b.width<<","<<b.height<<"]\n";return false;}
     }
     return true;
 }

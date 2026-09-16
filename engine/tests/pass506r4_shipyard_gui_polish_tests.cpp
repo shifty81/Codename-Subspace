@@ -64,16 +64,17 @@ int main(){
         float minEnabledWidth=10000.0f;
         for(const auto& c:controls)if(c.enabled&&c.x>=0.0f&&c.y>=0.0f)minEnabledWidth=std::min(minEnabledWidth,c.width);
         for(const auto& c:rotateControls)if(c.enabled&&c.x>=0.0f&&c.y>=0.0f)minEnabledWidth=std::min(minEnabledWidth,c.width);
+        if(minEnabledWidth<24.0f){std::cerr<<"MIN CLICK WIDTH "<<dims.first<<"x"<<dims.second<<": "<<minEnabledWidth<<"\n";for(const auto& c:controls)if(c.enabled&&c.width<24.0f)std::cerr<<" SMALL "<<c.label<<" w="<<c.width<<" x="<<c.x<<" y="<<c.y<<"\n";}
         Check(minEnabledWidth>=24.0f,"compact DCC editor buttons retain a practical click target width");
     }
 
     const auto controls=ShipyardBuilderSystem::BuildControls(m,1653,930);
     const auto wingClass=std::find_if(controls.begin(),controls.end(),[](const auto& c){return c.command==ShipyardBuilderCommand::SelectClass&&c.value==static_cast<int>(ShipyardModuleClass::Wing);});
     Check(wingClass!=controls.end()&&wingClass->label.find("10")!=std::string::npos,"library class rows expose live module counts");
-    const auto qSelect=std::find_if(controls.begin(),controls.end(),[](const auto& c){return c.command==ShipyardBuilderCommand::ToolSelect;});
-    const auto frame=std::find_if(controls.begin(),controls.end(),[](const auto& c){return c.command==ShipyardBuilderCommand::FrameSelected;});
-    Check(qSelect!=controls.end()&&qSelect->label=="Q","selection tool uses compact Blender-style Q label");
-    Check(frame!=controls.end()&&frame->label=="F","frame-part action uses compact Blender-style F label");
+    const bool hasQSelect=std::any_of(controls.begin(),controls.end(),[](const auto& c){return c.command==ShipyardBuilderCommand::ToolSelect&&c.label=="Q";});
+    const bool hasFFrame=std::any_of(controls.begin(),controls.end(),[](const auto& c){return c.command==ShipyardBuilderCommand::FrameSelected&&c.label=="F";});
+    Check(hasQSelect,"tool rail retains compact Q select shortcut alongside contextual inspector actions");
+    Check(hasFFrame,"tool rail retains compact F frame shortcut alongside contextual inspector actions");
 
     const auto tooShort=ShipyardBuilderSystem::Layout(1653,700);
     Check(!tooShort.valid,"layout fails closed instead of overlapping controls on an undersized viewport");

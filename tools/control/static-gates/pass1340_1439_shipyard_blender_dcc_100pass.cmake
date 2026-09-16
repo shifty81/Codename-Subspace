@@ -25,11 +25,20 @@ foreach(TOKEN "DccToggleMaximizeViewport" "DccCycleAssetDensity" "DccToggleFavor
         message(FATAL_ERROR "Pass1340-1439 missing visible cutover token: ${TOKEN}")
     endif()
 endforeach()
-foreach(TOKEN "ASSET BROWSER" "OUTLINER" "PROPERTIES" "COMMAND SEARCH" "Scene Collection" "WIREFRAME" "showShieldPreview" "build_identity::kShipyardUiProfile")
+# PASS1454+ first-class DCC keeps the PASS1439 functionality while normalizing
+# visible labels/chrome. Accept either the historical Asset Browser/Scene Collection
+# wording or the successor compact ASSETS + hierarchy presentation.
+foreach(TOKEN "OUTLINER" "PROPERTIES" "COMMAND SEARCH" "WIREFRAME" "showShieldPreview" "build_identity::kShipyardUiProfile")
     if(NOT RENDERER MATCHES "${TOKEN}")
         message(FATAL_ERROR "Pass1340-1439 missing renderer token: ${TOKEN}")
     endif()
 endforeach()
+if(NOT RENDERER MATCHES "ASSET BROWSER" AND NOT RENDERER MATCHES "ASSETS")
+    message(FATAL_ERROR "Pass1340-1439 missing historical/successor asset browser authority")
+endif()
+if(NOT DCC_H MATCHES "ShipyardDccOutlinerMode" AND NOT DCC_CPP MATCHES "HIERARCHY")
+    message(FATAL_ERROR "Pass1340-1439 missing historical/successor outliner hierarchy authority")
+endif()
 foreach(TOKEN "DccToggleToolbar" "DccToggleSidebar" "DccMaximizeArea" "DccCommandSearch" "DccWorkspacePrevious" "DccWorkspaceNext" "DccCycleAssetFilter")
     if(NOT INPUT MATCHES "${TOKEN}" OR NOT APP MATCHES "${TOKEN}" OR NOT WINDOW MATCHES "${TOKEN}")
         message(FATAL_ERROR "Pass1340-1439 missing input/application token: ${TOKEN}")

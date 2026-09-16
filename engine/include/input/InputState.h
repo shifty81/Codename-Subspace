@@ -80,6 +80,10 @@ enum class InputAction : std::size_t {
     DccWorkspacePrevious,
     DccWorkspaceNext,
     DccCycleAssetFilter,
+    DccConstraintX,
+    DccConstraintY,
+    DccConstraintZ,
+    DccConstraintClear,
     Count
 };
 

@@ -1,0 +1,77 @@
+{
+  "schema": "subspace.shipyard-foundry.v1",
+  "authority": "SHIPYARD_FOUNDRY",
+  "passRange": "PASS1466-1505",
+  "buildIdentity": "SHIPYARD-FOUNDRY | PASS1505",
+  "workflow": [
+    "ASSEMBLY",
+    "MODEL",
+    "INTERIOR",
+    "SYSTEMS",
+    "PAINT",
+    "TEST"
+  ],
+  "navigation": {
+    "middleMouseDrag": "pan-eye-and-target-together",
+    "rightMouseDrag": "orbit-continuously-around-current-target",
+    "rightMouseClick": "context-action",
+    "wheel": "dolly",
+    "shift": "precision-modifier",
+    "snapAfterPan": false
+  },
+  "transformConstraints": {
+    "axes": ["X", "Y", "Z"],
+    "planes": ["XY", "XZ", "YZ"],
+    "orientationModes": ["GLOBAL_SHIP", "LOCAL"],
+    "repeatAxisKey": "global-then-local-then-clear",
+    "appliesTo": ["assembly", "modeled-primitives", "staged-placement", "articulation-pivots"]
+  },
+  "panels": {
+    "fixedGlobalChrome": ["File", "Edit", "View", "Help"],
+    "movable": [
+      "tool_rail", "asset_browser", "outliner", "properties", "modeling",
+      "articulation", "interior_program", "apertures_hangars", "systems",
+      "material_library", "material_audit", "kitbash_intake", "history",
+      "validation", "console", "playtest"
+    ],
+    "capabilities": ["dock", "float", "collapse", "pin", "auto-hide", "hover-reveal", "resize", "persist-layout"]
+  },
+  "articulation": {
+    "separateAttachmentAndPivot": true,
+    "modes": ["Fixed", "Manual", "ScanSweep", "TrackTarget"],
+    "runtimePreview": true,
+    "examples": ["scanner-dish", "antenna", "turret", "mining-head", "docking-mechanism"]
+  },
+  "interior": {
+    "moduleBounded": true,
+    "elements": ["floor", "wall", "ceiling", "door", "hatch", "airlock", "window", "ramp", "stair", "ladder", "elevator", "corridor", "bulkhead", "custom"],
+    "airlocksRemovable": true,
+    "pressureBoundaryValidation": true,
+    "classScaledDeckPrograms": true
+  },
+  "modeling": {
+    "primitives": ["box", "wedge", "cylinder", "cone", "sphere", "tube", "ring", "beam", "plate", "hull-segment", "wing", "engine-housing", "nozzle", "turret-ring", "barrel", "pipe"],
+    "operations": ["add", "duplicate", "remove", "move", "rotate", "scale", "stretch", "taper", "bend", "twist", "bevel", "inset", "extrude", "mirror", "linear-array", "radial-array"],
+    "booleanContract": ["union", "subtract", "intersect"],
+    "booleanBackendStatus": "CONTRACT_READY_BACKEND_PENDING",
+    "uvBackendStatus": "XATLAS_CANDIDATE_NOT_VENDORED"
+  },
+  "appearance": {
+    "sourceMaterialRemoval": true,
+    "semanticFallback": true,
+    "finishes": ["Matte Ceramic", "Satin Alloy", "Polished Titanium", "Brushed Steel", "Black Chrome", "Pearlescent", "Iridescent", "Factory Paint", "Weathered Metal"],
+    "markings": ["stripes", "hazard-chevrons", "survey-marks", "fleet-hashes", "faction-crest", "faction-wing-mark", "faction-ident", "hull-number", "warning-stencil"],
+    "factionAware": true
+  },
+  "materialAudit": {
+    "hydratedCorpusRequired": true,
+    "checks": ["mtl-resolution", "material-slot-resolution", "base-color", "normal", "metallic", "roughness", "uvs", "normals"],
+    "sourceOnlyBehavior": "SKIP_WITHOUT_FALSE_PASS"
+  },
+  "kitbash": {
+    "singleAuthority": "existing UniversalKitbashAuthority / KitbashIntakeSystem / KitbashReviewCatalogSystem",
+    "provenanceRequired": true,
+    "licenseCapturedPerIntake": true,
+    "noBlindVendoring": true
+  }
+}

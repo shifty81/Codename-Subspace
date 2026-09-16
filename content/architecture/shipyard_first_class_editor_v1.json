@@ -1,0 +1,51 @@
+{
+  "schema": "subspace.shipyard.first_class_editor.v1",
+  "pass": "PASS1454-1465",
+  "authority": "FIRST_CLASS_DCC",
+  "donor": {
+    "source": "FORGEGUI_DONOR",
+    "repository": "shifty81/ForgeGUI_Core",
+    "commit": "532f7e1a0dfe4d7eefc46680a1567242059640a7",
+    "profile": "ForgeGUI_Core 0.4.8 / Creator Studio",
+    "policy": "PORT_CONTRACTS_NOT_RUST_RUNTIME"
+  },
+  "layout": {
+    "center": "AUTHORITATIVE_3D_VIEWPORT",
+    "left": "SLIM_CONTEXT_TOOL_RAIL",
+    "right": ["OUTLINER", "CONTEXTUAL_PROPERTIES"],
+    "bottom": "ASSET_BROWSER_SHELF",
+    "status": "COMPACT_STATUS_BAR"
+  },
+  "metrics": {
+    "panelHeader": 27,
+    "propertyRow": 27,
+    "assetRow": 26,
+    "statusBar": 27,
+    "splitter": 3,
+    "compactDensity": 0.90
+  },
+  "inspector": {
+    "objectHeaderSeparatedFromControls": true,
+    "contexts": ["TRANSFORM", "ASSEMBLY", "SOCKETS", "AUTHORING", "APPEARANCE"],
+    "rule": "ONLY_ACTIVE_CONTEXT_ACTIONS_VISIBLE"
+  },
+  "shipyardTools": {
+    "transform": ["FRAME_PART", "FRAME_SHIP", "SNAP", "SYMMETRY", "SOCKET_OVERLAY", "SHIELD_PREVIEW"],
+    "assembly": ["VALIDATE", "SAVE_BLUEPRINT", "APPLY_ASSEMBLY"],
+    "sockets": ["PREVIOUS", "NEXT", "ADD", "REMOVE", "OVERLAY", "SAVE_OVERRIDES"],
+    "authoring": ["SEMANTIC", "GENERATOR_ELIGIBILITY", "PAIRING", "SAVE_DEFINITION"],
+    "appearance": ["LIVERY", "PRIMARY", "SECONDARY", "ACCENT", "DECAL"]
+  },
+  "windows": {
+    "darkNonClientChrome": true,
+    "roundedCornersWhenSupported": true
+  },
+  "acceptance": [
+    "NO_PROPERTIES_OVERLAP",
+    "NO_ASSET_HEADER_OVERLAP",
+    "NO_DUPLICATE_VIEWPORT_STATUS_TEXT",
+    "CONTEXTUAL_TOOLING",
+    "DARK_WINDOWS_CHROME",
+    "VIEWPORT_FIRST"
+  ]
+}

@@ -58,10 +58,15 @@ struct SubspaceDockPanel {
     bool floatable=true;
     bool resizable=true;
     bool pinned=false;
+    bool collapsed=false;
+    bool autoHide=false;
+    bool hoverReveal=false;
     bool acceptsPointer=true;
     float opacity=.92f;
     float minWidth=150;
     float minHeight=90;
+    float preferredWidth=360;
+    float preferredHeight=260;
     float maxWidth=4096;
     float maxHeight=4096;
 };
@@ -111,7 +116,15 @@ public:
     static bool SetPanelOpacity(SubspaceDockWorkspace&,const std::string& panelId,float opacity,const SubspaceUiTheme& theme=SubspaceUiTheme::Dark());
     static bool ResizeSplit(SubspaceDockWorkspace&,const std::string& nodeId,float ratio);
     static bool ResizeFloating(SubspaceDockWorkspace&,const std::string& panelId,SubspaceUiRect rect);
+    static bool ToggleCollapsed(SubspaceDockWorkspace&,const std::string& panelId);
+    static bool TogglePinned(SubspaceDockWorkspace&,const std::string& panelId);
+    static bool SetAutoHide(SubspaceDockWorkspace&,const std::string& panelId,bool autoHide);
+    static bool SetHoverReveal(SubspaceDockWorkspace&,const std::string& panelId,bool reveal);
     static std::vector<SubspaceDockLayout> Materialize(const SubspaceDockWorkspace&,int width,int height,float topInset=34.0f);
+    // Persist user-customized editor layouts without coupling the dock model to
+    // a specific renderer. File/IO ownership stays with the host application.
+    static std::string Serialize(const SubspaceDockWorkspace&);
+    static bool Deserialize(const std::string& text,SubspaceDockWorkspace&,std::string* error=nullptr);
     static bool Validate(const SubspaceDockWorkspace&,std::string* error=nullptr);
 };
 

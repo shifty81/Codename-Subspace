@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <unordered_set>
+#include <sstream>
 
 namespace subspace {
 
@@ -55,7 +56,16 @@ void RemovePanelHosts(SubspaceDockWorkspace& w,const std::string& panelId){
 void LayoutNode(const SubspaceDockWorkspace& w,const std::string& id,const SubspaceUiRect& rect,std::vector<SubspaceDockLayout>& out){
     const auto* n=SubspaceDockSystem::FindNode(w,id);if(!n||n->collapsed)return;
     if(n->split){const float ratio=std::clamp(n->ratio,.08f,.92f);SubspaceUiRect a=rect,b=rect;if(n->axis==SubspaceDockSplitAxis::Horizontal){a.width=rect.width*ratio;b.x=rect.x+a.width;b.width=std::max(0.0f,rect.width-a.width);}else{a.height=rect.height*ratio;b.y=rect.y+a.height;b.height=std::max(0.0f,rect.height-a.height);}LayoutNode(w,n->firstChildId,a,out);LayoutNode(w,n->secondChildId,b,out);return;}
-    for(const auto& panelId:n->tabs){const auto* p=SubspaceDockSystem::FindPanel(w,panelId);if(!p||!p->visible)continue;out.push_back({panelId,n->id,rect,p->opacity,true,n->activeTabId==panelId,false});}
+    for(const auto& panelId:n->tabs){
+        const auto* p=SubspaceDockSystem::FindPanel(w,panelId);
+        if(!p||!p->visible||(p->autoHide&&!p->pinned&&!p->hoverReveal))continue;
+        SubspaceUiRect panelRect=rect;
+        if(p->collapsed){
+            if(n->id=="left"||n->id=="right"||n->id=="tool_left")panelRect.width=std::min(rect.width,34.0f);
+            else panelRect.height=std::min(rect.height,28.0f);
+        }
+        out.push_back({panelId,n->id,panelRect,p->opacity,true,n->activeTabId==panelId,false});
+    }
 }
 }
 
@@ -90,10 +100,35 @@ bool SubspaceDockSystem::DockPanel(SubspaceDockWorkspace& w,const std::string& i
 bool SubspaceDockSystem::SetPanelOpacity(SubspaceDockWorkspace& w,const std::string& id,float opacity,const SubspaceUiTheme& theme){auto* p=FindPanel(w,id);if(!p)return false;p->opacity=std::clamp(opacity,theme.panelOpacityMinimum,theme.panelOpacityMaximum);return true;}
 bool SubspaceDockSystem::ResizeSplit(SubspaceDockWorkspace& w,const std::string& id,float ratio){auto* n=FindNode(w,id);if(!n||!n->split)return false;n->ratio=std::clamp(ratio,.08f,.92f);return true;}
 bool SubspaceDockSystem::ResizeFloating(SubspaceDockWorkspace& w,const std::string& id,SubspaceUiRect r){auto* p=FindPanel(w,id);if(!p||!p->resizable)return false;for(auto& f:w.floatingPanels)if(f.panelId==id){r.width=std::clamp(r.width,p->minWidth,p->maxWidth);r.height=std::clamp(r.height,p->minHeight,p->maxHeight);f.rect=r;return true;}return false;}
+bool SubspaceDockSystem::ToggleCollapsed(SubspaceDockWorkspace& w,const std::string& id){auto* p=FindPanel(w,id);if(!p)return false;p->collapsed=!p->collapsed;return true;}
+bool SubspaceDockSystem::TogglePinned(SubspaceDockWorkspace& w,const std::string& id){auto* p=FindPanel(w,id);if(!p)return false;p->pinned=!p->pinned;if(p->pinned)p->hoverReveal=true;return true;}
+bool SubspaceDockSystem::SetAutoHide(SubspaceDockWorkspace& w,const std::string& id,bool autoHide){auto* p=FindPanel(w,id);if(!p)return false;p->autoHide=autoHide;if(!autoHide)p->hoverReveal=true;return true;}
+bool SubspaceDockSystem::SetHoverReveal(SubspaceDockWorkspace& w,const std::string& id,bool reveal){auto* p=FindPanel(w,id);if(!p)return false;p->hoverReveal=reveal||p->pinned;return true;}
 std::vector<SubspaceDockLayout> SubspaceDockSystem::Materialize(const SubspaceDockWorkspace& w,int width,int height,float topInset){std::vector<SubspaceDockLayout> out;if(width<=0||height<=0||topInset<0||topInset>=height)return out;LayoutNode(w,w.rootNodeId,{0,topInset,static_cast<float>(width),static_cast<float>(height)-topInset},out);for(const auto& f:w.floatingPanels){const auto* p=FindPanel(w,f.panelId);if(!p||!p->visible)continue;SubspaceUiRect r=f.rect;r.width=std::clamp(r.width,p->minWidth,std::min(p->maxWidth,static_cast<float>(width)));r.height=std::clamp(r.height,p->minHeight,std::min(p->maxHeight,static_cast<float>(height)-topInset));r.x=std::clamp(r.x,0.0f,std::max(0.0f,static_cast<float>(width)-r.width));r.y=std::clamp(r.y,topInset,std::max(topInset,static_cast<float>(height)-r.height));out.push_back({p->id,{},r,p->opacity,true,true,true});}return out;}
+
+std::string SubspaceDockSystem::Serialize(const SubspaceDockWorkspace& w){
+    std::ostringstream o;o<<"SUBSPACE_DOCK_V1\n"<<"W|"<<w.id<<"|"<<w.rootNodeId<<"\n";
+    for(const auto& p:w.panels)o<<"P|"<<p.id<<"|"<<p.title<<"|"<<p.defaultLeafId<<"|"<<(p.visible?1:0)<<"|"<<(p.closable?1:0)<<"|"<<(p.floatable?1:0)<<"|"<<(p.resizable?1:0)<<"|"<<(p.pinned?1:0)<<"|"<<(p.collapsed?1:0)<<"|"<<(p.autoHide?1:0)<<"|"<<(p.hoverReveal?1:0)<<"|"<<p.opacity<<"|"<<p.minWidth<<"|"<<p.minHeight<<"|"<<p.preferredWidth<<"|"<<p.preferredHeight<<"\n";
+    for(const auto& n:w.nodes){o<<"N|"<<n.id<<"|"<<(n.split?1:0)<<"|"<<(n.axis==SubspaceDockSplitAxis::Horizontal?0:1)<<"|"<<n.ratio<<"|"<<n.firstChildId<<"|"<<n.secondChildId<<"|"<<n.activeTabId<<"|"<<(n.collapsed?1:0)<<"|";for(std::size_t i=0;i<n.tabs.size();++i){if(i)o<<",";o<<n.tabs[i];}o<<"\n";}
+    for(const auto& f:w.floatingPanels)o<<"F|"<<f.panelId<<"|"<<f.rect.x<<"|"<<f.rect.y<<"|"<<f.rect.width<<"|"<<f.rect.height<<"\n";
+    return o.str();
+}
+
+bool SubspaceDockSystem::Deserialize(const std::string& text,SubspaceDockWorkspace& out,std::string* error){
+    auto fail=[&](const std::string&m){if(error)*error=m;return false;};std::istringstream in(text);std::string line;if(!std::getline(in,line)||line!="SUBSPACE_DOCK_V1")return fail("Unsupported dock-layout format");
+    SubspaceDockWorkspace w;w.panels.clear();w.nodes.clear();w.floatingPanels.clear();
+    auto split=[](const std::string& v,char delim){std::vector<std::string> r;std::string x;std::istringstream s(v);while(std::getline(s,x,delim))r.push_back(x);if(!v.empty()&&v.back()==delim)r.push_back({});return r;};
+    try{while(std::getline(in,line)){if(line.empty())continue;const auto f=split(line,'|');if(f.empty())continue;if(f[0]=="W"){if(f.size()<3)return fail("Malformed workspace record");w.id=f[1];w.rootNodeId=f[2];}
+        else if(f[0]=="P"){if(f.size()<17)return fail("Malformed panel record");SubspaceDockPanel p;p.id=f[1];p.title=f[2];p.defaultLeafId=f[3];p.visible=std::stoi(f[4])!=0;p.closable=std::stoi(f[5])!=0;p.floatable=std::stoi(f[6])!=0;p.resizable=std::stoi(f[7])!=0;p.pinned=std::stoi(f[8])!=0;p.collapsed=std::stoi(f[9])!=0;p.autoHide=std::stoi(f[10])!=0;p.hoverReveal=std::stoi(f[11])!=0;p.opacity=std::stof(f[12]);p.minWidth=std::stof(f[13]);p.minHeight=std::stof(f[14]);p.preferredWidth=std::stof(f[15]);p.preferredHeight=std::stof(f[16]);w.panels.push_back(std::move(p));}
+        else if(f[0]=="N"){if(f.size()<10)return fail("Malformed node record");SubspaceDockNode n;n.id=f[1];n.split=std::stoi(f[2])!=0;n.axis=std::stoi(f[3])==0?SubspaceDockSplitAxis::Horizontal:SubspaceDockSplitAxis::Vertical;n.ratio=std::stof(f[4]);n.firstChildId=f[5];n.secondChildId=f[6];n.activeTabId=f[7];n.collapsed=std::stoi(f[8])!=0;if(!f[9].empty())n.tabs=split(f[9],',');w.nodes.push_back(std::move(n));}
+        else if(f[0]=="F"){if(f.size()<6)return fail("Malformed floating-panel record");SubspaceFloatingPanel p;p.panelId=f[1];p.rect={std::stof(f[2]),std::stof(f[3]),std::stof(f[4]),std::stof(f[5])};w.floatingPanels.push_back(std::move(p));}}}
+    catch(...){return fail("Invalid numeric value in dock-layout data");}
+    std::string validation;if(!Validate(w,&validation))return fail(validation);out=std::move(w);return true;
+}
+
 bool SubspaceDockSystem::Validate(const SubspaceDockWorkspace& w,std::string* error){
     if(w.rootNodeId.empty()||!FindNode(w,w.rootNodeId)){if(error)*error="dock workspace missing root";return false;}
-    std::unordered_set<std::string> ids,owned;for(const auto& p:w.panels){if(p.id.empty()||!ids.insert(p.id).second){if(error)*error="duplicate/empty panel id";return false;}if(p.opacity<.0f||p.opacity>1.0f||p.minWidth<=0||p.minHeight<=0){if(error)*error="invalid panel geometry/style";return false;}}
+    std::unordered_set<std::string> ids,owned;for(const auto& p:w.panels){if(p.id.empty()||!ids.insert(p.id).second){if(error)*error="duplicate/empty panel id";return false;}if(p.opacity<.0f||p.opacity>1.0f||p.minWidth<=0||p.minHeight<=0||p.preferredWidth<p.minWidth||p.preferredHeight<p.minHeight){if(error)*error="invalid panel geometry/style";return false;}}
     std::unordered_set<std::string> nodeIds;for(const auto& n:w.nodes){if(n.id.empty()||!nodeIds.insert(n.id).second){if(error)*error="duplicate/empty dock node id";return false;}if(n.split){if(n.firstChildId.empty()||n.secondChildId.empty()||n.ratio<=0||n.ratio>=1){if(error)*error="invalid dock split";return false;}}else for(const auto& id:n.tabs){if(!FindPanel(w,id)||!owned.insert(id).second){if(error)*error="panel is unknown or hosted twice";return false;}}}
     for(const auto& n:w.nodes)if(n.split&&(!FindNode(w,n.firstChildId)||!FindNode(w,n.secondChildId))){if(error)*error="split references missing child";return false;}
     for(const auto& f:w.floatingPanels){const auto* p=FindPanel(w,f.panelId);if(!p||!p->floatable||!owned.insert(f.panelId).second){if(error)*error="invalid floating panel";return false;}}

@@ -92,6 +92,10 @@ struct VisualModulePlacement {
     // Pass655-674: universal construction symmetry supports all three ship-local planes.
     bool mirrorY = false;
     bool mirrorZ = false;
+    // PASS1486+: source material suppression is an authoring operation, not a
+    // destructive mesh edit. When disabled, the module renders through its
+    // semantic/fallback material and can be reassigned later.
+    bool sourceMaterialsEnabled = true;
 };
 
 
@@ -121,6 +125,30 @@ struct ShipVisualHardpoint {
     float yawDegrees = 0.0f;
     FittingHardpointSize size = FittingHardpointSize::Small;
     bool turret = true;
+};
+
+
+
+enum class ShipArticulationMode {
+    Fixed,
+    Manual,
+    ScanSweep,
+    TrackTarget
+};
+
+struct ShipVisualArticulation {
+    std::size_t moduleIndex = 0;
+    Vector3 pivotLocal{};
+    Vector3 axisLocal{0.0f,0.0f,1.0f};
+    float minDegrees = -180.0f;
+    float maxDegrees = 180.0f;
+    float restDegrees = 0.0f;
+    float currentDegrees = 0.0f;
+    float speedDegreesPerSecond = 24.0f;
+    ShipArticulationMode mode = ShipArticulationMode::Fixed;
+    bool enabled = false;
+    std::string purpose = "GENERIC";
+    std::string pivotSocket;
 };
 
 struct ProceduralShipVisualRecipe {
@@ -168,6 +196,9 @@ struct ProceduralShipVisualRecipe {
     std::vector<VisualDetailPlacement> details;
     std::vector<ShipVisualAnchor> anchors;
     std::vector<ShipVisualHardpoint> hardpoints;
+    // PASS1478+: per-module pivot/articulation metadata. Append-only so older
+    // aggregate initializers and serialized recipes remain source-compatible.
+    std::vector<ShipVisualArticulation> articulations;
 };
 
 struct ProceduralVisualCatalog {

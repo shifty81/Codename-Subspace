@@ -1,4 +1,5 @@
 #include "application/NativeBattlefieldRenderer.h"
+#include "ships/ShipArticulationSystem.h"
 #include "application/SubspaceBuildIdentity.h"
 #include "celestial/SystemSpatialScale.h"
 
@@ -35,6 +36,7 @@
 #include "effects/PropulsionVisualSystem.h"
 #include "editor/EditorGizmoSystem.h"
 #include "editor/EditorAssetWorkbenchSystem.h"
+#include "editor/EditorForgeGuiStyleSystem.h"
 #include "editor/EditorAssetThumbnailSystem.h"
 #include "station/StationNavigationLightSystem.h"
 #include "station/StationHangarPresentationSystem.h"
@@ -970,8 +972,8 @@ void DrawStandaloneShipyardBackdrop(const NativeBattlefieldFrame& frame) {
     // flight scene second; accent color belongs to selection, not the canvas.
     FilledRect(0,0,0,w,h,{.055f,.058f,.062f,1.0f});
     const bool maxView=frame.shipBuilder&&frame.shipBuilder->dcc.maximizeViewport;
-    const bool shelfVisible=frame.shipBuilder&&frame.shipBuilder->dcc.showAssetBrowser&&!maxView;
-    const bool sidebarVisible=frame.shipBuilder&&frame.shipBuilder->dcc.showSidebar&&!maxView;
+    const bool shelfVisible=layout.assetShelfHeight>1.0f&&!maxView;
+    const bool sidebarVisible=(layout.outlinerWidth>1.0f||layout.propertiesWidth>1.0f)&&!maxView;
     const float left=maxView?4.0f:layout.viewportLeft;
     const float right=maxView?w-4.0f:(sidebarVisible?layout.viewportRight:w-4.0f);
     const float top=maxView?layout.viewportTop:layout.viewportTop;
@@ -1341,7 +1343,7 @@ ObjMaterialPresentation ShipyardSourceMaterial(const std::string& name,const Rgb
     }
     return {zonePaint,0.0f,48.0f,fallbackKind};
 }
-void DrawObjMesh(const NativeBattlefieldRenderer::VisualAssets& assets,const ObjMeshData& mesh,const Rgba& color,float alpha=1.0f,float emission=0.0f,SpaceMaterialKind kind=SpaceMaterialKind::ShipHull,const ShipAppearanceState* appearance=nullptr) {
+void DrawObjMesh(const NativeBattlefieldRenderer::VisualAssets& assets,const ObjMeshData& mesh,const Rgba& color,float alpha=1.0f,float emission=0.0f,SpaceMaterialKind kind=SpaceMaterialKind::ShipHull,const ShipAppearanceState* appearance=nullptr,bool sourceMaterialsEnabled=true) {
     auto drawTriangle=[&](const ObjTriangle& tri){
         const Vector3 a=RemapObjVertex(mesh.positions[tri.position[0]]);
         const Vector3 b=RemapObjVertex(mesh.positions[tri.position[1]]);
@@ -1364,7 +1366,7 @@ void DrawObjMesh(const NativeBattlefieldRenderer::VisualAssets& assets,const Obj
         const auto it=assets.shipTextures.find(material->baseColorTexturePath);return it==assets.shipTextures.end()?0:static_cast<GLuint>(it->second);
     };
     auto applySource=[&](const ObjMaterialData* material,ObjMaterialPresentation style,bool paintableZone){
-        if(!material||!material->resolvedFromMtl)return style;
+        if(!sourceMaterialsEnabled||!material||!material->resolvedFromMtl)return style;
         if(material->hasDiffuseColor){
             // Paintable zones are livery-authoritative. Preserve just enough
             // authored Kd variation for panel character instead of allowing
@@ -1389,7 +1391,7 @@ void DrawObjMesh(const NativeBattlefieldRenderer::VisualAssets& assets,const Obj
         const auto zone=ShipyardPaintZoneSystem::ForMaterial(mesh.materialNames[mi]);
         auto style=applySource(sourceMaterial,ShipyardSourceMaterial(mesh.materialNames[mi],color,alpha,kind,appearance),ShipyardPaintZoneSystem::IsPaintable(zone));
         SetMaterial(style.color,style.shininess,std::max(emission,style.emission),style.kind,style.metallic,style.roughness);
-        GLuint sourceTexture=textureFor(sourceMaterial);
+        GLuint sourceTexture=sourceMaterialsEnabled?textureFor(sourceMaterial):0;
         if(!sourceTexture)sourceTexture=ProceduralShipTextureFor(assets,style.kind);
         SetShipBaseTexture(sourceTexture);
         const bool transparent=style.color.a<.99f;if(transparent){glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);}
@@ -1425,7 +1427,14 @@ bool DrawModulePlacement(const NativeBattlefieldRenderer::VisualAssets& assets,
     glScalef(placement.mirrorX?-placement.scaleX:placement.scaleX,
              placement.mirrorY?-placement.scaleY:placement.scaleY,
              placement.mirrorZ?-placement.scaleZ:placement.scaleZ);
-    DrawObjMesh(assets,it->second,color,alpha,placement.material==SpaceMaterialKind::ThrusterCore?0.18f:0.0f,placement.material,appearance);
+    auto moduleLower=placement.moduleId;
+    std::transform(moduleLower.begin(),moduleLower.end(),moduleLower.begin(),[](unsigned char c){
+        return static_cast<char>((c>='A'&&c<='Z')?c+('a'-'A'):c);
+    });
+    const bool sensorLike=moduleLower.find("antenna")!=std::string::npos||moduleLower.find("sensor")!=std::string::npos||moduleLower.find("dish")!=std::string::npos||moduleLower.find("telescope")!=std::string::npos;
+    const auto semanticKind=(sensorLike&&placement.material==SpaceMaterialKind::ShipHull)?SpaceMaterialKind::StructuralMetal:placement.material;
+    Rgba semanticColor=color;if(sensorLike){semanticColor.r=std::min(semanticColor.r,.24f);semanticColor.g=std::min(semanticColor.g,.28f);semanticColor.b=std::min(semanticColor.b,.31f);}
+    DrawObjMesh(assets,it->second,semanticColor,alpha,semanticKind==SpaceMaterialKind::ThrusterCore?0.18f:0.0f,semanticKind,appearance,placement.sourceMaterialsEnabled);
     glPopMatrix();
     return true;
 }
@@ -1709,7 +1718,8 @@ void DrawModularShip(const NativeBattlefieldRenderer::VisualAssets& assets,float
                      const ProceduralShipVisualRecipe* overrideRecipe=nullptr,int selectedModuleIndex=-1,
                      const ShipAppearanceState* appearance=nullptr,
                      const ShipyardModuleRecord* selectedAuthoringRecord=nullptr,int selectedSocketIndex=-1,bool socketEdit=false,
-                     const VisualModulePlacement* dragGhost=nullptr,const VisualModulePlacement* dragMirrorGhost=nullptr) {
+                     const VisualModulePlacement* dragGhost=nullptr,const VisualModulePlacement* dragMirrorGhost=nullptr,
+                     double articulationSeconds=0.0) {
     if(!assets.shipyardReady){
         // Fail closed visually. Never resurrect synthetic pre-Shipyard hulls,
         // engines or the old rectangle-mounted thruster presentation.
@@ -1742,7 +1752,10 @@ void DrawModularShip(const NativeBattlefieldRenderer::VisualAssets& assets,float
 
     if(recipe && !recipe->modules.empty()) {
         for(std::size_t placementIndex=0;placementIndex<recipe->modules.size();++placementIndex){
-            const auto& placement=recipe->modules[placementIndex];
+            const auto& authoredPlacement=recipe->modules[placementIndex];
+            VisualModulePlacement placement=authoredPlacement;
+            if(const auto* articulation=ShipArticulationSystem::Find(*recipe,placementIndex))
+                placement=ShipArticulationSystem::Apply(authoredPlacement,*articulation,articulationSeconds);
             Rgba color=hull;
             if(placement.material==SpaceMaterialKind::IndustrialHull) color=dark;
             else if(placement.material==SpaceMaterialKind::Canopy) color=canopy;
@@ -3088,16 +3101,16 @@ void DrawShipyardModuleThumbnail(const ObjMeshData& mesh,float x,float y,float w
 void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBattlefieldRenderer::VisualAssets* assets){
     if(!frame.shipBuilder)return;
     const auto& m=*frame.shipBuilder;
-    const auto layout=ShipyardBuilderSystem::Layout(frame.viewportWidth,frame.viewportHeight);
+    const auto layout=ShipyardBuilderSystem::Layout(m,frame.viewportWidth,frame.viewportHeight);
     if(!layout.valid)return;
 
     const float w=static_cast<float>(frame.viewportWidth),h=static_cast<float>(frame.viewportHeight);
     const bool maximized=m.dcc.maximizeViewport;
-    const bool showAssetBrowser=m.dcc.showAssetBrowser&&!maximized;
-    const bool showToolRail=m.dcc.showToolRail&&!maximized;
-    const bool showSidebar=m.dcc.showSidebar&&!maximized;
-    const bool showOutliner=showSidebar&&m.dcc.showOutliner;
-    const bool showProperties=showSidebar&&m.dcc.showProperties;
+    const bool showAssetBrowser=layout.assetShelfHeight>1.0f&&!maximized;
+    const bool showToolRail=layout.toolRailWidth>1.0f&&!maximized;
+    const bool showOutliner=layout.outlinerWidth>1.0f&&!maximized;
+    const bool showProperties=layout.propertiesWidth>1.0f&&!maximized;
+    const bool showSidebar=showOutliner||showProperties;
     const float top=layout.viewportTop;
     const float right=layout.outlinerX,rightW=layout.outlinerWidth;
     const float assetX=layout.assetShelfX,assetY=layout.assetShelfY,assetW=layout.assetShelfWidth,assetH=layout.assetShelfHeight;
@@ -3107,14 +3120,16 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
 
     // Blender-inspired neutral editor palette: charcoal areas, soft separators,
     // and blue reserved for active/selected state instead of cyan everywhere.
-    const Rgba panel={.075f,.078f,.082f,.995f};
-    const Rgba panelRaised={.095f,.098f,.103f,.995f};
-    const Rgba card={.090f,.093f,.098f,.98f};
-    const Rgba cardSoft={.112f,.115f,.120f,.97f};
-    const Rgba cyan={.24f,.48f,.70f,.98f};
-    const Rgba text={.82f,.83f,.85f,.99f};
-    const Rgba muted={.56f,.58f,.61f,.90f};
-    const Rgba amber={.92f,.66f,.26f,.96f};
+    const auto forgePalette=EditorForgeGuiStyleSystem::Palette();
+    auto R=[](SubspaceUiColor c){return Rgba{c.r,c.g,c.b,c.a};};
+    const Rgba panel=R(forgePalette.panel);
+    const Rgba panelRaised=R(forgePalette.panelRaised);
+    const Rgba card=R(forgePalette.panel);
+    const Rgba cardSoft=R(forgePalette.panelRaised);
+    const Rgba cyan=R(forgePalette.accent);
+    const Rgba text=R(forgePalette.text);
+    const Rgba muted=R(forgePalette.textMuted);
+    const Rgba amber=R(forgePalette.warning);
     const float s=layout.uiScale;
     auto ShipyardText=[&](const std::string& value,float x,float y,float scale,const Rgba& color){DrawText5x7(value,x,y,scale*s,color);};
 
@@ -3122,6 +3137,11 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
         if(value.size()<=maxChars)return value;
         if(maxChars<4)return value.substr(0,maxChars);
         return value.substr(0,maxChars-3)+"...";
+    };
+    auto fitText=[&](std::string value,float width,float fontScale){
+        const float glyph=std::max(1.0f,6.0f*fontScale*s);
+        const std::size_t chars=static_cast<std::size_t>(std::max(4.0f,(width-12.0f*s)/glyph));
+        return shortText(std::move(value),chars);
     };
     auto cardBox=[&](float x,float y,float cw,float ch){
         FilledRect(x,y,0,cw,ch,card);
@@ -3135,14 +3155,13 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
 
     // PASS1444-1453: true DCC hierarchy. Application menu, workspace tabs,
     // editor header, and editor areas now read as one coherent desktop tool.
-    FilledRect(0,0,0,w,layout.workspaceBarY,{.070f,.072f,.076f,1.0f});
-    FilledRect(0,layout.workspaceBarY,0,w,layout.workspaceBarHeight,{.095f,.098f,.102f,1.0f});
-    FilledRect(0,layout.viewportTop-26.0f*s,0,w,26.0f*s,{.082f,.085f,.090f,1.0f});
+    FilledRect(0,0,0,w,layout.workspaceBarY,R(forgePalette.menu));
+    FilledRect(0,layout.workspaceBarY,0,w,layout.workspaceBarHeight,R(forgePalette.workspace));
+    FilledRect(0,layout.viewportTop-26.0f*s,0,w,26.0f*s,R(forgePalette.action));
     Line(0,layout.workspaceBarY,0,w,layout.workspaceBarY,0,{.035f,.037f,.040f,1.0f},1.0f);
     Line(0,layout.viewportTop-26.0f*s,0,w,layout.viewportTop-26.0f*s,0,{.035f,.037f,.040f,1.0f},1.0f);
     Line(0,layout.viewportTop,0,w,layout.viewportTop,0,{.035f,.037f,.040f,1.0f},1.0f);
-    ShipyardText("SUBSPACE",9.0f*s,6.0f*s,.54f,{.88f,.89f,.91f,.98f});
-    ShipyardText("File   Edit   View   Ship   Select   Add   Help",70.0f*s,6.0f*s,.47f,{.70f,.71f,.73f,.96f});
+    ShipyardText("File   Edit   View   Help",9.0f*s,6.0f*s,.47f,{.70f,.71f,.73f,.96f});
     const auto& assetDomain=EditorAssetWorkbenchSystem::Describe(EditorAssetDomain::ShipModules);
     ShipyardText(frame.standaloneShipyard?(std::string("ASSET WORKBENCH / ")+assetDomain.label):"SHIPYARD / LIVE REFIT",w-255.0f*s,6.0f*s,.45f,{.66f,.68f,.71f,.94f});
 
@@ -3151,8 +3170,6 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
     const auto activeWorkspace=m.testWorkspaceActive?ShipyardWorkspaceMode::Test:m.workspaceMode;
     ShipyardText("3D VIEW",canvasLeft+7.0f*s,layout.viewportTop-19.0f*s,.48f,text);
     ShipyardText("View   Select   Add   Object",canvasLeft+72.0f*s,layout.viewportTop-19.0f*s,.46f,muted);
-    ShipyardText(std::string(ShipyardDccUiSystem::ShadingName(m.dcc.shading))+"   Global   Median   Snap",
-        std::max(canvasLeft+310.0f*s,canvasRight-230.0f*s),layout.viewportTop-19.0f*s,.43f,muted);
 
     // Editor areas: Tool Rail | dominant 3D View | bottom Asset Browser |
     // Outliner over Properties. Area backgrounds use subtle one-pixel splits.
@@ -3178,9 +3195,9 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
     // secondary to the viewport and can be toggled with the existing T/N-style
     // DCC commands without changing the construction document.
     if(showAssetBrowser){
-        ShipyardText("ASSET BROWSER",assetX+58.0f*s,assetY+8.0f*s,.46f,text);
-        ShipyardText(std::string("/ ")+ShipyardModuleSystem::ClassName(m.selectedClass)+"  "+std::to_string(filteredCount),
-            assetX+360.0f*s,assetY+8.0f*s,.43f,muted);
+        const auto metrics=EditorForgeGuiStyleSystem::Metrics(layout.compact);
+        FilledRect(assetX,assetY,0,assetW,metrics.panelHeaderHeight*s,R(forgePalette.panelHeader));
+        ShipyardText("ASSETS",assetX+10.0f*s,assetY+8.0f*s,.46f,text);
     }
 
     // Compact viewport axis gizmo replaces the giant center-screen forward
@@ -3241,18 +3258,19 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
     // Right editor stack: Outliner over Properties. Only one hierarchy is
     // drawn; the interactive rows come from BuildControls below so friendly
     // names, selection and hit testing share one authority.
+    const auto forgeMetrics=EditorForgeGuiStyleSystem::Metrics(layout.compact);
+    const float panelHeaderH=forgeMetrics.panelHeaderHeight*s;
     if(showOutliner){
-        ShipyardText("OUTLINER",layout.outlinerX+8.0f*s,layout.outlinerY+8.0f*s,.52f,text);
-        ShipyardText("Scene Collection",layout.outlinerX+96.0f*s,layout.outlinerY+9.0f*s,.42f,muted);
-        Line(layout.outlinerX,layout.outlinerY+31.0f*s,0,w,layout.outlinerY+31.0f*s,0,{.035f,.037f,.040f,1.0f},1.0f);
-        ShipyardText(std::string("v  ")+ShipClassRoleSystem::ClassName(m.shipClass)+" / "+m.role,
-            layout.outlinerX+10.0f*s,layout.outlinerY+34.0f*s,.46f,{.73f,.75f,.78f,.96f});
+        FilledRect(layout.outlinerX,layout.outlinerY,0,layout.outlinerWidth,panelHeaderH,R(forgePalette.panelHeader));
+        ShipyardText("OUTLINER",layout.outlinerX+8.0f*s,layout.outlinerY+8.0f*s,.50f,text);
+        ShipyardText(std::to_string(m.recipe.modules.size())+" objects",layout.outlinerX+layout.outlinerWidth-76.0f*s,layout.outlinerY+9.0f*s,.40f,muted);
+        Line(layout.outlinerX,layout.outlinerY+panelHeaderH,0,w,layout.outlinerY+panelHeaderH,0,R(forgePalette.separator),1.0f);
     }
     if(showProperties){
-        ShipyardText("PROPERTIES",layout.propertiesX+8.0f*s,layout.propertiesY+8.0f*s,.52f,text);
-        ShipyardText(std::to_string(m.recipe.modules.size())+" modules  /  seed "+std::to_string(m.seed),
-            layout.propertiesX+90.0f*s,layout.propertiesY+9.0f*s,.40f,muted);
-        Line(layout.propertiesX,layout.propertiesY+31.0f*s,0,w,layout.propertiesY+31.0f*s,0,{.035f,.037f,.040f,1.0f},1.0f);
+        FilledRect(layout.propertiesX,layout.propertiesY,0,layout.propertiesWidth,panelHeaderH,R(forgePalette.panelHeader));
+        ShipyardText("PROPERTIES",layout.propertiesX+8.0f*s,layout.propertiesY+8.0f*s,.50f,text);
+        ShipyardText(ShipClassRoleSystem::ClassName(m.shipClass),layout.propertiesX+layout.propertiesWidth-92.0f*s,layout.propertiesY+9.0f*s,.40f,muted);
+        Line(layout.propertiesX,layout.propertiesY+panelHeaderH,0,w,layout.propertiesY+panelHeaderH,0,R(forgePalette.separator),1.0f);
     }
 
     if(m.dragPreview.staged){
@@ -3304,8 +3322,8 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
                 if(assets){const auto mi=assets->shipModules.find(record->source.moduleId);
                 if(mi!=assets->shipModules.end())DrawShipyardModuleThumbnail(mi->second,c.x+6.0f*s,c.y+6.0f*s,previewW-12.0f*s,c.height-12.0f*s,c.active?Rgba{.72f,.92f,.95f,.98f}:Rgba{.58f,.70f,.73f,.96f},thumb.viewPreset);}
                 const float tx=c.x+previewW+8.0f*s;
-                ShipyardText(shortText(ShipyardModuleSystem::SemanticName(record->semantic),30),tx,c.y+10.0f*s,.70f,c.active?Rgba{1.0f,.86f,.48f,.99f}:text);
-                ShipyardText(shortText((record->placementRole.empty()?std::string(ShipyardModuleSystem::ClassName(record->moduleClass)):record->placementRole)+"  /  "+ShipyardModuleSystem::ClassName(record->moduleClass),34),tx,c.y+31.0f*s,.53f,record->placementRole=="REVIEW_REQUIRED"?Rgba{.98f,.50f,.26f,.96f}:muted);
+                ShipyardText(fitText(ShipyardPartTaxonomySystem::DisplayName(*record),c.width-previewW-18.0f*s,.66f),tx,c.y+10.0f*s,.66f,c.active?amber:text);
+                ShipyardText(fitText((record->placementRole.empty()?std::string(ShipyardModuleSystem::ClassName(record->moduleClass)):record->placementRole)+" / "+ShipyardModuleSystem::ClassName(record->moduleClass),c.width-previewW-18.0f*s,.49f),tx,c.y+31.0f*s,.49f,record->placementRole=="REVIEW_REQUIRED"?R(forgePalette.danger):muted);
                 const Rgba cert=thumb.reviewState==EditorThumbnailReviewState::Certified?Rgba{.36f,.88f,.60f,.92f}:(thumb.reviewState==EditorThumbnailReviewState::ManualOnly?Rgba{.78f,.63f,.34f,.92f}:Rgba{.96f,.52f,.30f,.94f});
                 const std::string detail=thumb.propulsion?("COMPAT "+thumb.sizeBadge+"   T "+thumb.thrustLabel+"  E "+thumb.exhaustLabel+"   "+thumb.certificationBadge):("COMPAT "+thumb.sizeBadge+"   SOCKETS "+std::to_string(record->sockets.size())+"   "+thumb.certificationBadge);
                 ShipyardText(detail,tx,c.y+49.0f*s,.48f,cert);
@@ -3380,87 +3398,76 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
         Line(c.x,c.y,0,c.x+c.width,c.y,0,border,1.0f);
         Line(c.x,c.y+c.height,0,c.x+c.width,c.y+c.height,0,{border.r*.62f,border.g*.62f,border.b*.62f,border.a*.78f},1.0f);
         if(tab&&c.active)FilledRect(c.x,c.y+c.height-3.0f,0,c.width,3.0f,cyan);
-        ShipyardText(c.label,c.x+8,c.y+10,.68f,fg);
+        ShipyardText(fitText(c.label,c.width-12.0f*s,.60f),c.x+6.0f*s,c.y+8.0f*s,.60f,fg);
     }
 
-    // Selection metadata belongs in the compact Asset Browser header rather
-    // than a second oversized diagnostics card.
-    if(showAssetBrowser&&selectedCatalog){
-        const std::string info=ShipyardPartTaxonomySystem::DisplayName(*selectedCatalog)+"  /  "+
-            ShipyardModuleSystem::SizeName(selectedCatalog->size)+"  /  "+
-            std::to_string(selectedCatalog->sockets.size())+" sockets";
-        ShipyardText(shortText(info,56),assetX+430.0f*s,assetY+8.0f*s,.42f,muted);
-    }
-
-    // Persistent selected-module summary directly beneath the inspector tabs.
+    // ForgeGUI-style selected-object header. This surface is isolated from the
+    // property controls below so text and buttons never compete for the same rows.
     const float summaryY=layout.selectedSummaryY;
-    cardBox(right+10,summaryY-6,rightW-20,54.0f);
+    const float objectHeaderH=forgeMetrics.inspectorObjectHeaderHeight*s;
+    FilledRect(right+6.0f*s,summaryY,0,rightW-12.0f*s,objectHeaderH,R(forgePalette.panelRecessed));
+    Line(right+6.0f*s,summaryY,0,right+rightW-6.0f*s,summaryY,0,R(forgePalette.separator),1.0f);
     if(!m.recipe.modules.empty()){
         const auto index=std::min(m.selectedPlacedModule,m.recipe.modules.size()-1);
-        const auto& p=m.recipe.modules[index];
-        const std::string partName=selectedPlacedRecord?ShipyardModuleSystem::SemanticName(selectedPlacedRecord->semantic):"MODULE";
-        ShipyardText("SELECTED MODULE  "+std::to_string(index+1)+" / "+std::to_string(m.recipe.modules.size())+"   "+partName,
-            right+18,summaryY+5,.70f,amber);
-        std::ostringstream xform;xform.setf(std::ios::fixed);xform.precision(1);
-        xform<<"P "<<p.pitchDegrees<<"   Y "<<p.yawDegrees<<"   R "<<p.rollDegrees
-             <<"      POS "<<p.x<<", "<<p.y<<", "<<p.z
-             <<"      S "<<p.scaleX<<"/"<<p.scaleY<<"/"<<p.scaleZ;
-        ShipyardText(xform.str(),right+18,summaryY+27,.60f,{.54f,.72f,.75f,.86f});
+        const auto& placed=m.recipe.modules[index];
+        const std::string partName=selectedPlacedRecord?ShipyardPartTaxonomySystem::DisplayName(*selectedPlacedRecord):"Module";
+        ShipyardText(fitText(partName,rightW-54.0f*s,.64f),right+18.0f*s,summaryY+10.0f*s,.64f,text);
+        ShipyardText("Object "+std::to_string(index+1)+" of "+std::to_string(m.recipe.modules.size())+
+                     "  |  "+ShipyardModuleSystem::ClassName(selectedPlacedRecord?selectedPlacedRecord->moduleClass:ShipyardModuleClass::Hull),
+                     right+18.0f*s,summaryY+31.0f*s,.46f,muted);
+        if(m.inspectorTab==ShipyardInspectorTab::Transform){
+            std::ostringstream pose;pose.setf(std::ios::fixed);pose.precision(1);
+            pose<<"P "<<placed.pitchDegrees<<"  Y "<<placed.yawDegrees<<"  R "<<placed.rollDegrees;
+            ShipyardText(fitText(pose.str(),rightW-54.0f*s,.42f),right+18.0f*s,summaryY+46.0f*s,.42f,R(forgePalette.accent));
+        }
     }else{
-        ShipyardText("NO MODULE SELECTED",right+18,summaryY+14,.68f,muted);
+        ShipyardText("No object selected",right+18.0f*s,summaryY+18.0f*s,.58f,muted);
     }
 
-    // Page-specific visual hierarchy.  Only the active workflow is shown,
-    // eliminating the wall-of-controls look from R4.
+    // Contextual Properties presentation. Tool actions are supplied by
+    // BuildControls; this layer adds only one workflow heading plus compact
+    // read-only context, following ForgeGUI's inspector/object-header pattern.
+    const float propertyTextX=right+54.0f*s;
+    const float propertyWidth=rightW-64.0f*s;
     if(m.inspectorTab==ShipyardInspectorTab::Transform){
-        section("BUILD TOOL",right+14,layout.editLabelY,rightW-28);
-        section("FOCUS",right+14,layout.focusLabelY,rightW-28);
-        if(m.transformTool==ShipyardTransformTool::Move)section("MOVE  /  ARROWS FOLLOW ACTIVE SPACE  /  SHIFT = PRECISION",right+14,layout.moveLabelY,rightW-28);
-        else if(m.transformTool==ShipyardTransformTool::Rotate)section("ROTATE  /  SHIFT = PRECISION",right+14,layout.moveLabelY,rightW-28);
-        else if(m.transformTool==ShipyardTransformTool::Scale)section("SCALE  /  PART OR WHOLE ASSEMBLY",right+14,layout.moveLabelY,rightW-28);
-        else section("SELECT A MODULE OR CHOOSE A BUILD TOOL",right+14,layout.moveLabelY,rightW-28);
+        section("TRANSFORM",propertyTextX,layout.editLabelY,propertyWidth);
+        ShipyardText("G move  |  R rotate  |  S scale  |  Shift precision",
+            propertyTextX,layout.moveRowY+34.0f*s,.45f,muted);
     }else if(m.inspectorTab==ShipyardInspectorTab::Sockets){
-        section("SOCKET AUTHORING  /  EDITS REUSABLE MODULE DEFINITION",right+14,layout.editLabelY,rightW-28);
-        section("SOCKET TRANSFORM",right+14,layout.focusLabelY,rightW-28);
+        section("SOCKETS",propertyTextX,layout.editLabelY,propertyWidth);
+        ShipyardText("MOUNT FACE  /  CONNECTION AUTHORITY",propertyTextX,layout.moveRowY+18.0f*s,.42f,muted);
         if(selectedPlacedRecord&&!selectedPlacedRecord->sockets.empty()){
             const auto si=std::min(m.selectedSocket,selectedPlacedRecord->sockets.size()-1);
             const auto& socket=selectedPlacedRecord->sockets[si];
-            std::ostringstream ss;ss.setf(std::ios::fixed);ss.precision(2);
-            ss<<"ACTIVE  "<<socket.name<<"  /  "<<socket.type<<"   POS "<<socket.x<<", "<<socket.y<<", "<<socket.z
-              <<"   DIR "<<socket.dirX<<", "<<socket.dirY<<", "<<socket.dirZ;
-            ShipyardText(shortText(ss.str(),74),right+18,layout.editLabelY-17.0f,.52f,{.92f,.78f,.32f,.92f});
-        }else ShipyardText("SELECT A PLACED MODULE; ADD SOCKET IF NONE EXIST",right+18,layout.editLabelY-17.0f,.52f,muted);
-        section(m.transformTool==ShipyardTransformTool::Rotate?"ROTATE SOCKET FRAME / DIRECTION":"MOVE SOCKET ORIGIN",right+14,layout.moveLabelY,rightW-28);
-        section("SOCKET DEFINITION / HISTORY",right+14,layout.rotateLabelY,rightW-28);
+            ShipyardText(fitText(socket.name+" / "+socket.type,propertyWidth,.47f),
+                propertyTextX,layout.moveRowY+34.0f*s,.47f,amber);
+        }else{
+            ShipyardText("Select a placed module to author sockets.",
+                propertyTextX,layout.moveRowY+34.0f*s,.45f,muted);
+        }
     }else if(m.inspectorTab==ShipyardInspectorTab::Authoring){
-        section("TEACH PCG / REUSABLE MODULE DEFINITION",right+14.0f*s,layout.editLabelY,rightW-28.0f*s);
+        section("AUTHORING",propertyTextX,layout.editLabelY,propertyWidth);
+        ShipyardText("TEACH PCG / REUSABLE MODULE DEFINITION",propertyTextX,layout.moveRowY+18.0f*s,.42f,muted);
         if(selectedPlacedRecord){
-            ShipyardText(std::string("SEMANTIC  ")+ShipyardModuleSystem::SemanticName(selectedPlacedRecord->semantic),right+18.0f*s,layout.focusLabelY-16.0f*s,.58f,amber);
-            ShipyardText(std::string("GENERATOR  ")+(selectedPlacedRecord->generatorEligible?"ENABLED":"QUARANTINED")+"    PAIRING  "+(selectedPlacedRecord->pairedPlacement?"PAIRED":"SINGLE"),right+18.0f*s,layout.moveLabelY-16.0f*s,.52f,muted);
-            ShipyardText("MOUNT FACE  "+(selectedPlacedRecord->preferredMountFace.empty()?std::string("AUTO"):selectedPlacedRecord->preferredMountFace),right+18.0f*s,layout.moveLabelY+4.0f*s,.52f,{.62f,.76f,.78f,.88f});
-        }else ShipyardText("SELECT A PLACED MODULE TO TEACH PCG",right+18.0f*s,layout.focusLabelY-16.0f*s,.54f,muted);
-        section("DEFINITION OVERRIDE / PERSISTENCE",right+14.0f*s,layout.rotateLabelY,rightW-28.0f*s);
-        ShipyardText("Socket geometry is edited from the dedicated SOCKETS tab.",right+18.0f*s,layout.rotateLabelY+24.0f*s,.48f,{.52f,.70f,.73f,.84f});
+            ShipyardText(fitText(std::string("Semantic: ")+ShipyardModuleSystem::SemanticName(selectedPlacedRecord->semantic),
+                                propertyWidth,.46f),
+                propertyTextX,layout.moveRowY+34.0f*s,.46f,muted);
+        }
     }else if(m.inspectorTab==ShipyardInspectorTab::Assembly){
-        section("ASSEMBLED MODULES / SYSTEMS",right+14.0f*s,layout.placedListY-20.0f*s,rightW-28.0f*s);
-        section("BLUEPRINT / GENERATOR",right+14.0f*s,layout.blueprintLabelY,rightW-28.0f*s);
+        section("ASSEMBLY",propertyTextX,layout.editLabelY,propertyWidth);
+        ShipyardText(m.validation.valid?"Assembly is generator-ready.":"Draft remains editable; validate before apply.",
+            propertyTextX,layout.generateRowY+8.0f*s,.44f,m.validation.valid?R(forgePalette.success):amber);
     }else if(m.inspectorTab==ShipyardInspectorTab::Appearance){
-        section("PAINT & LIVERY",right+14.0f*s,layout.liveryLabelY,rightW-28.0f*s);
-        ShipyardText("PRESET  "+m.liveryName,right+18,layout.liveryLabelY+20,.60f,amber);
+        section("APPEARANCE",propertyTextX,layout.editLabelY,propertyWidth);
         const auto& paint=m.appearance;
-        const float swY=layout.decalRowY+48.0f;
-        cardBox(right+12,swY,rightW-24,84.0f);
-        const float swW=(rightW-52.0f)/3.0f;
-        FilledRect(right+20,swY+34,0,swW-8,30,{paint.primary.r,paint.primary.g,paint.primary.b,1.0f});
-        FilledRect(right+20+swW,swY+34,0,swW-8,30,{paint.secondary.r,paint.secondary.g,paint.secondary.b,1.0f});
-        FilledRect(right+20+swW*2,swY+34,0,swW-8,30,{paint.trim.r,paint.trim.g,paint.trim.b,1.0f});
-        ShipyardText("PRIMARY  "+m.primaryPaintName,right+20,swY+10,.56f,text);
-        ShipyardText("SECONDARY  "+m.secondaryPaintName,right+20+swW,swY+10,.53f,text);
-        ShipyardText("ACCENT  "+m.trimPaintName,right+20+swW*2,swY+10,.56f,text);
-        ShipyardText("Changes preview immediately on Flat / Flat.001 paint zones.",right+20,swY+69,.51f,muted);
-    }else{
-        section("SHIPYARD",right+14.0f*s,layout.editLabelY,rightW-28.0f*s);
-        ShipyardText("No inspector workflow is active.",right+18.0f*s,layout.editLabelY+24.0f*s,.54f,muted);
+        const float swY=layout.generateRowY+10.0f*s;
+        const float swW=(propertyWidth-16.0f*s)/3.0f;
+        ShipyardText("Primary",propertyTextX,swY,.42f,muted);
+        ShipyardText("Secondary",propertyTextX+swW,swY,.42f,muted);
+        ShipyardText("Accent",propertyTextX+2*swW,swY,.42f,muted);
+        FilledRect(propertyTextX,swY+16.0f*s,0,swW-6.0f*s,20.0f*s,{paint.primary.r,paint.primary.g,paint.primary.b,1.0f});
+        FilledRect(propertyTextX+swW,swY+16.0f*s,0,swW-6.0f*s,20.0f*s,{paint.secondary.r,paint.secondary.g,paint.secondary.b,1.0f});
+        FilledRect(propertyTextX+2*swW,swY+16.0f*s,0,swW-6.0f*s,20.0f*s,{paint.trim.r,paint.trim.g,paint.trim.b,1.0f});
     }
 
     // Validation card is intentionally compact and calm when valid.  It only
@@ -3505,7 +3512,7 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
 
     // Full-width status bar with two deliberate text zones; long status text
     // is clipped before it can collide with contextual help.
-    if(m.dcc.showStatusBar)FilledRect(0,layout.statusY-8,0,w,36,{.004f,.018f,.026f,.98f});
+    if(m.dcc.showStatusBar)FilledRect(0,layout.statusY,0,w,h-layout.statusY,R(forgePalette.status));
     std::string help="G Move   R Rotate   S Scale   T Toolbar   N Sidebar   F3 Search   Ctrl+Space Maximize   [ ] Workspaces";
     if(hovered){
         switch(hovered->command){
@@ -3942,7 +3949,7 @@ void NativeBattlefieldRenderer::Render(const NativeBattlefieldFrame& frame) {
             const auto&p=*frame.playerPhysics;
             const auto* dockRecipe=frame.workspaceMode==SandboxWorkspaceMode::ShipBuilder&&frame.shipBuilderRecipe?frame.shipBuilderRecipe:frame.playerShipRecipe;
             const int selected=frame.workspaceMode==SandboxWorkspaceMode::ShipBuilder&&frame.shipBuilder&&!frame.shipBuilder->recipe.modules.empty()?static_cast<int>(frame.shipBuilder->selectedPlacedModule):-1;
-            DrawModularShip(*_assets,p.position.x,p.position.y,0.30f,p.rotation.z,0.24f,true,"INDUSTRIAL",{0.34f,0.39f,0.43f,1.0f},1.0f,0.30f,1u,frame.shipInspection,dockRecipe,selected,frame.workspaceMode==SandboxWorkspaceMode::ShipBuilder?frame.shipBuilderAppearance:frame.playerShipAppearance);
+            DrawModularShip(*_assets,p.position.x,p.position.y,0.30f,p.rotation.z,0.24f,true,"INDUSTRIAL",{0.34f,0.39f,0.43f,1.0f},1.0f,0.30f,1u,frame.shipInspection,dockRecipe,selected,frame.workspaceMode==SandboxWorkspaceMode::ShipBuilder?frame.shipBuilderAppearance:frame.playerShipAppearance,nullptr,-1,false,nullptr,nullptr,frame.elapsedSeconds);
         }
         glDisable(GL_BLEND);
         DrawHud(frame,_assets.get());
@@ -4045,7 +4052,7 @@ void NativeBattlefieldRenderer::Render(const NativeBattlefieldFrame& frame) {
         // WIREFRAME presentation mode uses the real GL polygon path, not a label-only toggle.
         const bool wireframe=frame.shipBuilder&&frame.shipBuilder->dcc.shading==ShipyardDccViewportShading::Wireframe;
         if(wireframe)glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
-        DrawModularShip(*_assets,0.0f,0.0f,0.30f,0.0f,0.24f,true,previewRole,{0.34f,0.39f,0.43f,1.0f},1.0f,0.22f,frame.shipBuilderRecipe->seed,false,frame.shipBuilderRecipe,selected,frame.shipBuilderAppearance,selectedRecord,selectedSocket,socketEdit,frame.shipBuilder&&frame.shipBuilder->dragPreview.active?&frame.shipBuilder->dragPreview.ghost:nullptr,frame.shipBuilder&&frame.shipBuilder->dragPreview.mirroredPreviewActive?&frame.shipBuilder->dragPreview.mirroredGhost:nullptr);
+        DrawModularShip(*_assets,0.0f,0.0f,0.30f,0.0f,0.24f,true,previewRole,{0.34f,0.39f,0.43f,1.0f},1.0f,0.22f,frame.shipBuilderRecipe->seed,false,frame.shipBuilderRecipe,selected,frame.shipBuilderAppearance,selectedRecord,selectedSocket,socketEdit,frame.shipBuilder&&frame.shipBuilder->dragPreview.active?&frame.shipBuilder->dragPreview.ghost:nullptr,frame.shipBuilder&&frame.shipBuilder->dragPreview.mirroredPreviewActive?&frame.shipBuilder->dragPreview.mirroredGhost:nullptr,frame.elapsedSeconds);
         if(wireframe)glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
         // Pass790R2 SHIPYARD_STANDALONE_SHIELD_PREVIEW: standalone authoring must preview the
         // same one-foot hull-profile shield surface as the live runtime.
@@ -4071,7 +4078,7 @@ void NativeBattlefieldRenderer::Render(const NativeBattlefieldFrame& frame) {
             if(frame.cutaway.visible)glDepthMask(GL_TRUE);
             DrawPlayableInterior(frame);
         }else{
-            DrawModularShip(*_assets,p.position.x,p.position.y,0.30f,p.rotation.z,0.24f,true,playerRole,{0.34f,0.39f,0.43f,1.0f},alpha,0.22f,1u,frame.shipInspection,playerRecipe,selected,frame.playerShipAppearance,nullptr,-1,false,frame.workspaceMode==SandboxWorkspaceMode::ShipBuilder&&frame.shipBuilder&&frame.shipBuilder->dragPreview.active?&frame.shipBuilder->dragPreview.ghost:nullptr,frame.shipBuilder&&frame.shipBuilder->dragPreview.mirroredPreviewActive?&frame.shipBuilder->dragPreview.mirroredGhost:nullptr);
+            DrawModularShip(*_assets,p.position.x,p.position.y,0.30f,p.rotation.z,0.24f,true,playerRole,{0.34f,0.39f,0.43f,1.0f},alpha,0.22f,1u,frame.shipInspection,playerRecipe,selected,frame.playerShipAppearance,nullptr,-1,false,frame.workspaceMode==SandboxWorkspaceMode::ShipBuilder&&frame.shipBuilder&&frame.shipBuilder->dragPreview.active?&frame.shipBuilder->dragPreview.ghost:nullptr,frame.shipBuilder&&frame.shipBuilder->dragPreview.mirroredPreviewActive?&frame.shipBuilder->dragPreview.mirroredGhost:nullptr,frame.elapsedSeconds);
             if(frame.commandHud.shieldOnline)DrawShipProfileShield(*_assets,p,playerRecipe,playerAxis,frame.commandHud.shield,frame.elapsedSeconds,frame);
             // Shipyard propulsion geometry is authoritative; only exhaust effects
             // are emitted from authored propulsion sockets.

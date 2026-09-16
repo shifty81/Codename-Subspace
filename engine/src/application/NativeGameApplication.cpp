@@ -188,7 +188,9 @@ int NativeGameApplication::Run(const NativeGameRunOptions& options)
     windowConfig.width = options.shipyardSmoke ? 1280 : (options.runtimeSmoke ? 640 : graphics.resolutionWidth);
     windowConfig.height = options.shipyardSmoke ? 768 : (options.runtimeSmoke ? 360 : graphics.resolutionHeight);
     windowConfig.vsync = options.shipyardSmoke ? false : graphics.vsync;
-    windowConfig.title = options.shipyardSmoke ? "Codename: Subspace [shipyard smoke]" : (options.runtimeSmoke ? "Codename: Subspace [native smoke]" : "Codename: Subspace");
+    windowConfig.title = options.shipyardSmoke ? "Codename: Subspace - Shipyard Editor [smoke]" :
+                         (options.startShipyard ? "Codename: Subspace - Shipyard Editor" :
+                         (options.runtimeSmoke ? "Codename: Subspace [native smoke]" : "Codename: Subspace"));
 
     if (!_window.Initialize(windowConfig)) {
         Logger::Instance().Error("Application",
@@ -579,6 +581,10 @@ void NativeGameApplication::HandleShipyardTransformHotkeys()
     if(input.WasPressed(InputAction::DccWorkspacePrevious))_shipBuilder.Activate(ShipyardBuilderCommand::DccWorkspacePrevious);
     if(input.WasPressed(InputAction::DccWorkspaceNext))_shipBuilder.Activate(ShipyardBuilderCommand::DccWorkspaceNext);
     if(input.WasPressed(InputAction::DccCycleAssetFilter))_shipBuilder.Activate(ShipyardBuilderCommand::DccNextAssetPreset);
+    if(input.WasPressed(InputAction::DccConstraintX))_shipBuilder.Activate(ShipyardBuilderCommand::TransformConstraintX);
+    if(input.WasPressed(InputAction::DccConstraintY))_shipBuilder.Activate(ShipyardBuilderCommand::TransformConstraintY);
+    if(input.WasPressed(InputAction::DccConstraintZ))_shipBuilder.Activate(ShipyardBuilderCommand::TransformConstraintZ);
+    if(input.WasPressed(InputAction::DccConstraintClear))_shipBuilder.Activate(ShipyardBuilderCommand::TransformConstraintClear);
     if(input.WasPressed(InputAction::EditorToolSelect))_shipBuilder.Activate(ShipyardBuilderCommand::ToolSelect);
     if(input.WasPressed(InputAction::EditorToolMove))_shipBuilder.Activate(ShipyardBuilderCommand::ToolMove);
     if(input.WasPressed(InputAction::EditorToolRotate))_shipBuilder.Activate(ShipyardBuilderCommand::ToolRotate);

@@ -33,12 +33,13 @@ endforeach()
 # right-panel chrome ownership to the renderer so the interaction projection
 # no longer draws duplicate OUTLINER/PROPERTIES header controls.
 # Pass1340-1439 moved to a Blender-derived workspace projection and Pass1444-1453
-# normalizes that projection into the reusable DCC asset shell. LAYOUT is the
-# successor label for the former ASSEMBLY workspace; the functional command is
-# still WorkspaceBuild. Preserve historical capability intent while certifying
-# the current visible labels.
+# normalizes that projection into the reusable DCC asset shell. PASS1466-1505
+# restores ASSEMBLY as the user-facing first workflow and makes MODEL primary;
+# WorkspaceBuild remains the functional command. Preserve historical capability
+# intent while certifying the current successor labels.
 foreach(TOKEN
-    "LAYOUT"
+    "ASSEMBLY"
+    "MODEL"
     "INTERIOR"
     "SYSTEMS"
     "PAINT"

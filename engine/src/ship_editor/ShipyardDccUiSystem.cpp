@@ -162,14 +162,16 @@ std::vector<ShipyardDccCommandPaletteItem> ShipyardDccUiSystem::CommandPalette()
         {"Frame Selected","F","View"},{"Frame Ship","Home","View"},{"Toggle Toolbar","T","View"},
         {"Toggle Properties Sidebar","N","View"},{"Maximize 3D View","Ctrl+Space","View"},{"Command Search","F3","View"},
         {"Undo","Ctrl+Z","Edit"},{"Redo","Ctrl+Shift+Z","Edit"},{"Delete Module","Delete","Edit"},
-        {"Build Workspace","1","Workspace"},{"Systems Workspace","2","Workspace"},{"Appearance Workspace","3","Workspace"},
-        {"Interior Workspace","4","Workspace"},{"Test Workspace","5","Workspace"},{"Cycle Asset Filter","Shift+F","Asset Browser"}
+        {"Constrain X","X","Transform"},{"Constrain Y","Y","Transform"},{"Constrain Z","Z","Transform"},
+        {"Assembly Workspace","1","Workspace"},{"Model Workspace","2","Workspace"},{"Interior Workspace","3","Workspace"},
+        {"Systems Workspace","4","Workspace"},{"Paint Workspace","5","Workspace"},{"Test Workspace","6","Workspace"},
+        {"Cycle Asset Filter","Shift+F","Asset Browser"}
     };
 }
 
 std::vector<ShipyardWorkspaceMode> ShipyardDccUiSystem::WorkspaceCycle(){
-    return {ShipyardWorkspaceMode::Build,ShipyardWorkspaceMode::Systems,ShipyardWorkspaceMode::Appearance,
-            ShipyardWorkspaceMode::Interior,ShipyardWorkspaceMode::Test,ShipyardWorkspaceMode::Model,
+    return {ShipyardWorkspaceMode::Build,ShipyardWorkspaceMode::Model,ShipyardWorkspaceMode::Interior,
+            ShipyardWorkspaceMode::Systems,ShipyardWorkspaceMode::Appearance,ShipyardWorkspaceMode::Test,
             ShipyardWorkspaceMode::Authoring,ShipyardWorkspaceMode::Pcg,ShipyardWorkspaceMode::ProjectTools};
 }
 

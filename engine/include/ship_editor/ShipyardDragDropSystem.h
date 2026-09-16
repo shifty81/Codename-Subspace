@@ -61,6 +61,7 @@ public:
     static bool TranslateStaged(ShipyardDragPreview& preview, const Vector3& delta, bool snap = true, float snapStep = 0.25f);
     static bool RotateStaged(ShipyardDragPreview& preview, const Vector3& deltaDegrees, bool snap = true, float rotationStepDegrees = 15.0f);
     static bool ScaleStaged(ShipyardDragPreview& preview, float delta, float minimum = 0.20f, float maximum = 4.0f);
+    static bool ScaleStaged(ShipyardDragPreview& preview, const Vector3& delta, float minimum = 0.20f, float maximum = 4.0f);
 };
 
 } // namespace subspace

@@ -81,6 +81,27 @@ bool NativeWindow::Initialize(const NativeWindowConfig& config)
     if (!hwnd) return false;
 
     _window = hwnd;
+
+    // PASS1454-1465 / ForgeGUI convergence: keep the standard Win32 window
+    // behavior but opt into dark non-client chrome and rounded desktop corners
+    // when the host OS supports those DWM attributes. Dynamic loading keeps the
+    // executable compatible with older Windows SDK/runtime combinations.
+    if (HMODULE dwm = LoadLibraryW(L"dwmapi.dll")) {
+        using DwmSetWindowAttributeFn = HRESULT (WINAPI*)(HWND, DWORD, LPCVOID, DWORD);
+        if (auto setAttribute = reinterpret_cast<DwmSetWindowAttributeFn>(
+                GetProcAddress(dwm, "DwmSetWindowAttribute"))) {
+            const BOOL dark = TRUE;
+            // DWMWA_USE_IMMERSIVE_DARK_MODE is 20 on current Windows and 19 on
+            // older Windows 10 builds where the attribute was first exposed.
+            if (FAILED(setAttribute(hwnd, 20u, &dark, sizeof(dark)))) {
+                setAttribute(hwnd, 19u, &dark, sizeof(dark));
+            }
+            const DWORD rounded = 2u; // DWMWCP_ROUND
+            setAttribute(hwnd, 33u, &rounded, sizeof(rounded)); // DWMWA_WINDOW_CORNER_PREFERENCE
+        }
+        FreeLibrary(dwm);
+    }
+
     _deviceContext = GetDC(hwnd);
     if (!_deviceContext || !CreateOpenGLContext()) {
         Shutdown();
@@ -283,19 +304,30 @@ void NativeWindow::ApplyKey(unsigned long long virtualKey, bool down)
         case 'D': _inputState.SetAction(InputAction::StrafeRight, down); break;
         case 'Q': _inputState.SetAction(InputAction::TurnLeft, down); _inputState.SetAction(InputAction::EditorToolSelect, down); break;
         case 'E': _inputState.SetAction(InputAction::TurnRight, down); _inputState.SetAction(InputAction::EditorToolRotate, down); break;
-        case 'X': _inputState.SetAction(InputAction::EmergencyBrake, down); break;
+        case 'X':
+            _inputState.SetAction(InputAction::EmergencyBrake, down);
+            if(!_controlDown)_inputState.SetAction(InputAction::DccConstraintX, down);
+            else if(!down)_inputState.SetAction(InputAction::DccConstraintX,false);
+            break;
         case 'Z':
             if(down&&_controlDown){
                 if(_shiftDown)_inputState.SetAction(InputAction::Redo,true);
                 else _inputState.SetAction(InputAction::Undo,true);
-            } else if(!down){
+            } else if(down){
+                _inputState.SetAction(InputAction::DccConstraintZ,true);
+            } else {
                 _inputState.SetAction(InputAction::Undo,false);
                 _inputState.SetAction(InputAction::Redo,false);
+                _inputState.SetAction(InputAction::DccConstraintZ,false);
             }
             break;
         case 'Y':
             if(down&&_controlDown)_inputState.SetAction(InputAction::Redo,true);
-            else if(!down)_inputState.SetAction(InputAction::Redo,false);
+            else if(down)_inputState.SetAction(InputAction::DccConstraintY,true);
+            else {
+                _inputState.SetAction(InputAction::Redo,false);
+                _inputState.SetAction(InputAction::DccConstraintY,false);
+            }
             break;
         case 'V': _inputState.SetAction(InputAction::ToggleDampening, down); break;
         case VK_SPACE:
@@ -341,6 +373,7 @@ void NativeWindow::ApplyKey(unsigned long long virtualKey, bool down)
         case VK_ESCAPE:
             _inputState.SetAction(InputAction::Pause, down);
             _inputState.SetAction(InputAction::MenuBack, down);
+            _inputState.SetAction(InputAction::DccConstraintClear, down);
             break;
         default: break;
     }

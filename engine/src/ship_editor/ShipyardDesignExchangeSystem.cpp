@@ -1,4 +1,5 @@
 #include "ship_editor/ShipyardDesignExchangeSystem.h"
+#include "ships/ShipArticulationSystem.h"
 
 #include <algorithm>
 #include <cctype>
@@ -84,6 +85,14 @@ std::string ShipyardDesignExchangeSystem::Serialize(const ShipBlueprintDocument&
     for(std::size_t i=0;i<b.appearance.decals.size();++i){const auto& d=b.appearance.decals[i];
         o<<"    {\"id\": "<<JsonString(d.id)<<", \"asset\": "<<JsonString(d.decalAsset)<<", \"moduleIndex\": "<<d.moduleIndex
          <<", \"uv\": ["<<d.u<<','<<d.v<<"], \"scale\": "<<d.scale<<", \"rotationDeg\": "<<d.rotationDegrees<<", \"opacity\": "<<d.opacity<<", \"mirror\": "<<(d.mirror?"true":"false")<<"}"<<(i+1<b.appearance.decals.size()?",":"")<<"\n";}
+    o<<"  ],\n";
+    o<<"  \"articulations\": [\n";
+    for(std::size_t i=0;i<b.recipe.articulations.size();++i){const auto& a=b.recipe.articulations[i];
+        o<<"    {\"moduleIndex\": "<<a.moduleIndex<<", \"mode\": "<<JsonString(ShipArticulationSystem::ModeName(a.mode))
+         <<", \"enabled\": "<<(a.enabled?"true":"false")<<", \"pivot\": ";Vec3(o,a.pivotLocal.x,a.pivotLocal.y,a.pivotLocal.z);
+        o<<", \"axis\": ";Vec3(o,a.axisLocal.x,a.axisLocal.y,a.axisLocal.z);
+        o<<", \"rangeDeg\": ["<<a.minDegrees<<','<<a.maxDegrees<<"], \"restDeg\": "<<a.restDegrees<<", \"speedDegPerSec\": "<<a.speedDegreesPerSecond
+         <<", \"purpose\": "<<JsonString(a.purpose)<<", \"pivotSocket\": "<<JsonString(a.pivotSocket)<<"}"<<(i+1<b.recipe.articulations.size()?",":"")<<"\n";}
     o<<"  ],\n";
     o<<"  \"modules\": [\n";
     for(std::size_t i=0;i<b.recipe.modules.size();++i){

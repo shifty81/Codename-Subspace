@@ -47,8 +47,9 @@ int main(){
     Check(NearV(ConstructionEditorCameraSystem::Target(camera),{10,20,5}),"666 centered inspection target is stable assembly center");
     const Vector3 orbitEye=camera.eye;ConstructionEditorCameraSystem::Orbit(camera,25,-10);
     Check((camera.eye-orbitEye).length()>.1f&&NearV(ConstructionEditorCameraSystem::Target(camera),{10,20,5}),"667 RMB-style orbit moves camera but keeps assembly centered");
-    const Vector3 panEye=camera.eye;ConstructionEditorCameraSystem::TruckPedestal(camera,1.5f,-.75f);
-    Check((camera.eye-panEye).length()>.1f&&NearV(ConstructionEditorCameraSystem::Target(camera),{10,20,5}),"668 MMB truck/pedestal moves camera while preserving target");
+    const Vector3 panEye=camera.eye;const Vector3 panTarget=ConstructionEditorCameraSystem::Target(camera);ConstructionEditorCameraSystem::TruckPedestal(camera,1.5f,-.75f);
+    const Vector3 panDelta=camera.eye-panEye;
+    Check(panDelta.length()>.1f&&NearV(ConstructionEditorCameraSystem::Target(camera),panTarget+panDelta),"668 MMB truck/pedestal pans eye and orbit target together without snap");
     ConstructionEditorCameraSystem::BeginFreeFly(camera);const Vector3 freeEye=camera.eye;ConstructionEditorCameraSystem::MoveFree(camera,1,1,.5f,.5f);
     Check(camera.mode==ConstructionCameraMode::FreeFly&&(camera.eye-freeEye).length()>.1f,"669 Alt+WASD free-fly translation authority");
     const Vector3 forwardBefore=camera.forward;ConstructionEditorCameraSystem::Look(camera,12,-7);ConstructionEditorCameraSystem::Roll(camera,15);

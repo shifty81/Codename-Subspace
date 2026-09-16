@@ -18,6 +18,8 @@
 #include "character/CharacterAnimationLibrarySystem.h"
 #include "developer/ShipyardDevWorldSystem.h"
 #include "interior/ShipModuleInteriorLinkSystem.h"
+#include "interior/ShipInteriorAuthoringSystem.h"
+#include "interior/ShipInteriorStructureAuthoringSystem.h"
 #include "ships/ShipClassRoleSystem.h"
 #include "generator/GeneratorParitySystem.h"
 #include "editor/ForgeWorkspaceSystem.h"
@@ -37,6 +39,16 @@ enum class ShipyardInspectorTab {
     Sockets,
     Authoring,
     Appearance
+};
+
+enum class ShipyardTransformConstraint {
+    Free,
+    X,
+    Y,
+    Z,
+    XY,
+    XZ,
+    YZ
 };
 
 enum class ShipyardBuilderCommand {
@@ -86,6 +98,17 @@ enum class ShipyardBuilderCommand {
     DccWorkspaceNext,
     DccPropertiesPrevious,
     DccPropertiesNext,
+    DccPanelToggleCollapse,
+    DccPanelToggleFloat,
+    DccPanelTogglePin,
+    DccPanelToggleAutoHide,
+    DccPanelToggleVisible,
+    DccPanelResetWorkspace,
+    DccToggleGuidedWorkflow,
+    TransformConstraintX,
+    TransformConstraintY,
+    TransformConstraintZ,
+    TransformConstraintClear,
     SelectClass,
     SelectModule,
     SelectPlaced,
@@ -96,6 +119,8 @@ enum class ShipyardBuilderCommand {
     AddModule,
     ReplaceModule,
     RemoveModule,
+    DetachModule,
+    ReattachNearest,
     PreviousSnapCandidate,
     NextSnapCandidate,
     ConfirmPlacement,
@@ -110,6 +135,11 @@ enum class ShipyardBuilderCommand {
     UndoSocketEdit,
     RedoSocketEdit,
     SaveSocketOverrides,
+    ArticulationToggle,
+    ArticulationUseSelectedSocketPivot,
+    ArticulationCycleMode,
+    ArticulationSpeedDown,
+    ArticulationSpeedUp,
     PreviousSemantic,
     NextSemantic,
     ToggleGeneratorEligible,
@@ -126,6 +156,14 @@ enum class ShipyardBuilderCommand {
     NextSecondaryPaint,
     PreviousTrimPaint,
     NextTrimPaint,
+    PreviousPrimaryFinish,
+    NextPrimaryFinish,
+    PreviousSecondaryFinish,
+    NextSecondaryFinish,
+    PreviousTrimFinish,
+    NextTrimFinish,
+    MaterialRemoveSelected,
+    MaterialRestoreSelected,
     PreviousDecalPreset,
     NextDecalPreset,
     AddDecal,
@@ -137,6 +175,20 @@ enum class ShipyardBuilderCommand {
     ModelPreviousPrimitive,
     ModelNextPrimitive,
     ModelAddShape,
+    ModelAddBox,
+    ModelAddWedge,
+    ModelAddCylinder,
+    ModelAddSphere,
+    ModelAddPlate,
+    ModelAddBeam,
+    ModelAddDoor,
+    ModelAddAirlock,
+    ModelAddFloor,
+    ModelDuplicatePrimitive,
+    ModelRemovePrimitive,
+    ModelAddMirrorModifier,
+    ModelAddLinearArrayModifier,
+    ModelAddBevelModifier,
     ModelPreviousPurpose,
     ModelNextPurpose,
     ModelAssignPurpose,
@@ -216,6 +268,15 @@ enum class ShipyardBuilderCommand {
     NextTargetSize,
     CycleConstructionMode,
     GenerateVariant,
+    GenerateInteriorProgram,
+    InteriorAddFloor,
+    InteriorAddWall,
+    InteriorAddDoor,
+    InteriorAddAirlock,
+    InteriorAddHatch,
+    InteriorRemoveElement,
+    InteriorPreviousElement,
+    InteriorNextElement,
     RunProjectTool,
     Validate,
     SaveBlueprint,
@@ -339,6 +400,11 @@ struct ShipyardBuilderRuntimeModel {
     DevAnimationPreviewState animationPreview{};
     ShipyardDevWorldState devWorld{};
     ShipInteriorConnectionPlan interiorPlan{};
+    GeneratedShipInteriorProgram interiorProgram{};
+    ShipInteriorStructuralModel interiorStructure{};
+    std::string interiorProgramStatus = "Interior program not generated";
+    std::size_t generatedInteriorRoomCount = 0;
+    std::size_t generatedInteriorPortalCount = 0;
     ShipyardModuleClass selectedClass = ShipyardModuleClass::Hull;
     std::size_t selectedFilteredModule = 0;
     std::size_t selectedPlacedModule = 0;
@@ -352,6 +418,7 @@ struct ShipyardBuilderRuntimeModel {
     ShipyardDccUiState dcc = ShipyardDccUiSystem::DefaultState();
     bool developerWorkspacesVisible = false;
     bool testWorkspaceActive = false;
+    bool guidedWorkflow = true;
     SubspaceDockWorkspace dockWorkspace{};
     std::string role = "INDUSTRIAL";
     GeneratorDomain authoringDomain = GeneratorDomain::Ship;
@@ -372,6 +439,8 @@ struct ShipyardBuilderRuntimeModel {
     ShipAppearanceState appearance{};
     ShipyardTransformTool transformTool = ShipyardTransformTool::Select;
     ShipyardTransformSpace transformSpace = ShipyardTransformSpace::View;
+    ShipyardTransformConstraint transformConstraint = ShipyardTransformConstraint::Free;
+    bool transformConstraintLocal = false;
     bool transformSnap = true;
     float rotationStepDegrees = 15.0f;
     ShipyardTransformTransaction transform{};
@@ -429,6 +498,13 @@ public:
     bool RotateSelected(const Vector3& deltaDegrees,bool fine=false);
     bool RotateSelectedSocket(const Vector3& deltaDegrees,bool fine=false);
     bool ScaleSelected(const Vector3& deltaScale,bool fine=false);
+    bool SetTransformConstraint(ShipyardTransformConstraint constraint, bool toggleLocalOnRepeat = true);
+    void ClearTransformConstraint();
+    static const char* TransformConstraintName(ShipyardTransformConstraint constraint);
+    static Vector3 ApplyTransformConstraint(const Vector3& value, ShipyardTransformConstraint constraint);
+    bool BeginDockPanelDrag(int panelValue, int viewportWidth, int viewportHeight, float pointerX, float pointerY);
+    bool DragDockPanel(float deltaX, float deltaY);
+    void EndDockPanelDrag();
     bool ScaleAssembly(float factor);
     bool CommitTransform();
     bool CancelTransform();
@@ -464,6 +540,7 @@ public:
     void MarkDefinitionOverridesSaved(const std::string& path);
 
     static ShipyardBuilderLayout Layout(int viewportWidth, int viewportHeight);
+    static ShipyardBuilderLayout Layout(const ShipyardBuilderRuntimeModel& model, int viewportWidth, int viewportHeight);
     static ShipyardBuilderLayout LegacyLayout(int viewportWidth, int viewportHeight);
     static std::vector<ShipyardBuilderControl> BuildControls(const ShipyardBuilderRuntimeModel& model,
                                                              int viewportWidth,
@@ -508,6 +585,13 @@ private:
     void SyncSocketSelection();
     void ReflowRecipeAttachments();
     bool RemoveSelectedModule();
+    bool DetachSelectedModule();
+    bool ReattachSelectedModuleToNearest();
+    bool ToggleSelectedArticulation();
+    bool UseSelectedSocketAsArticulationPivot();
+    bool CycleSelectedArticulationMode();
+    bool AdjustSelectedArticulationSpeed(float delta);
+    bool GenerateInteriorProgram();
     bool MirrorSelectedSubtreeX();
     bool MirrorSelectedAcrossActiveSymmetry();
     bool BreakSelectedSymmetryPair();
@@ -557,6 +641,9 @@ private:
     bool socketOverridesSaveRequested_ = false;
     bool definitionOverridesSaveRequested_ = false;
     int pendingProjectToolIndex_ = -1;
+    std::string dockDragPanelId_;
+    SubspaceUiRect dockDragStartRect_{};
+    bool dockDragFloating_ = false;
     std::vector<std::string> availableModuleIds_;
 };
 

@@ -76,6 +76,26 @@ assets::CanonicalMesh MakeCylinder(const ModelingPrimitiveDefinition& d,bool con
     mesh.primitives.push_back(std::move(p));return mesh;
 }
 
+assets::CanonicalMesh MakeSphere(const ModelingPrimitiveDefinition& d){
+    assets::CanonicalMesh mesh;assets::MeshPrimitive p;p.hasNormals=true;p.hasUv0=true;
+    const std::uint32_t slices=std::max<std::uint32_t>(8,d.radialSegments);
+    const std::uint32_t stacks=std::max<std::uint32_t>(4,slices/2);
+    const float rx=d.size.x*.5f,ry=d.size.y*.5f,rz=d.size.z*.5f;
+    for(std::uint32_t j=0;j<=stacks;++j){
+        const float v=float(j)/float(stacks);const float lat=-kPi*.5f+v*kPi;const float cl=std::cos(lat),sl=std::sin(lat);
+        for(std::uint32_t i=0;i<=slices;++i){
+            const float u=float(i)/float(slices);const float lon=u*2*kPi;const float x=std::cos(lon)*cl,y=std::sin(lon)*cl,z=sl;
+            p.vertices.push_back(MakeVertex(x*rx,y*ry,z*rz,x,y,z,u,1.0f-v));
+        }
+    }
+    const std::uint32_t row=slices+1;
+    for(std::uint32_t j=0;j<stacks;++j)for(std::uint32_t i=0;i<slices;++i){
+        const auto a=j*row+i,b=a+1,c=a+row+1,dv=a+row;
+        p.indices.insert(p.indices.end(),{a,b,c,a,c,dv});
+    }
+    mesh.primitives.push_back(std::move(p));return mesh;
+}
+
 assets::CanonicalMesh MeshFor(const ModelingPrimitiveDefinition& d){
     switch(d.type){
         case ModelingPrimitiveType::Wedge: return MakeWedge(d);
@@ -84,6 +104,7 @@ assets::CanonicalMesh MeshFor(const ModelingPrimitiveDefinition& d){
         case ModelingPrimitiveType::Nozzle:
         case ModelingPrimitiveType::Pipe: return MakeCylinder(d,false,d.type==ModelingPrimitiveType::Pipe);
         case ModelingPrimitiveType::Cone: return MakeCylinder(d,true,false);
+        case ModelingPrimitiveType::Sphere: return MakeSphere(d);
         case ModelingPrimitiveType::Tube:
         case ModelingPrimitiveType::Ring:
         case ModelingPrimitiveType::TurretRing: return MakeCylinder(d,false,true);
@@ -91,7 +112,16 @@ assets::CanonicalMesh MeshFor(const ModelingPrimitiveDefinition& d){
     }
 }
 
-assets::Matrix4 TranslationMatrix(const Vector3& p){auto m=assets::Matrix4::Identity();m.value[12]=p.x;m.value[13]=p.y;m.value[14]=p.z;return m;}
+assets::Matrix4 TransformMatrix(const Vector3& p,const Vector3& degrees){
+    const float x=degrees.x*kPi/180.0f,y=degrees.y*kPi/180.0f,z=degrees.z*kPi/180.0f;
+    const float cx=std::cos(x),sx=std::sin(x),cy=std::cos(y),sy=std::sin(y),cz=std::cos(z),sz=std::sin(z);
+    // Column-major Rz * Ry * Rx, matching glTF/OpenGL node transforms.
+    assets::Matrix4 m=assets::Matrix4::Identity();
+    m.value[0]=cz*cy; m.value[1]=sz*cy; m.value[2]=-sy;
+    m.value[4]=cz*sy*sx-sz*cx; m.value[5]=sz*sy*sx+cz*cx; m.value[6]=cy*sx;
+    m.value[8]=cz*sy*cx+sz*sx; m.value[9]=sz*sy*cx-cz*sx; m.value[10]=cy*cx;
+    m.value[12]=p.x;m.value[13]=p.y;m.value[14]=p.z;return m;
+}
 }
 
 const char* ShipyardModelingSystem::PrimitiveName(ModelingPrimitiveType t){
@@ -105,6 +135,11 @@ ModelingPrimitiveDefinition ShipyardModelingSystem::DefaultPrimitive(ModelingPri
     switch(t){case ModelingPrimitiveType::Plate:d.size={1.5f,1.5f,.12f};break;case ModelingPrimitiveType::Beam:d.size={.35f,2.0f,.35f};break;case ModelingPrimitiveType::HullSegment:d.size={3.0f,5.0f,1.8f};break;case ModelingPrimitiveType::Wing:d.size={4.0f,2.5f,.3f};break;case ModelingPrimitiveType::EngineHousing:d.size={1.8f,3.2f,1.8f};d.surfaceSemantic="EngineHousing";break;case ModelingPrimitiveType::Nozzle:d.size={1.2f,1.3f,1.2f};d.surfaceSemantic="Nozzle";break;case ModelingPrimitiveType::TurretRing:d.size={1.6f,.35f,1.6f};d.surfaceSemantic="WeaponMetal";break;case ModelingPrimitiveType::Barrel:d.size={.28f,2.5f,.28f};d.surfaceSemantic="WeaponMetal";break;case ModelingPrimitiveType::Pipe:d.size={.22f,2.0f,.22f};d.wallThickness=.03f;d.surfaceSemantic="StructuralMetal";break;default:break;}return d;
 }
 std::size_t ShipyardModelingSystem::AddPrimitive(ShipyardModelRecipe& recipe,ModelingPrimitiveType t){recipe.primitives.push_back(DefaultPrimitive(t,recipe.primitives.size()));recipe.revision++;recipe.draft=true;recipe.collisionDirty=true;return recipe.primitives.size()-1;}
+bool ShipyardModelingSystem::DuplicatePrimitive(ShipyardModelRecipe& r,std::size_t i){if(i>=r.primitives.size())return false;auto copy=r.primitives[i];copy.id="shape."+std::to_string(r.primitives.size()+1);copy.position.x+=std::max(.1f,copy.size.x*.15f);copy.position.y+=std::max(.1f,copy.size.y*.10f);r.primitives.push_back(std::move(copy));r.revision++;r.draft=true;r.collisionDirty=true;r.socketsDirty=true;return true;}
+bool ShipyardModelingSystem::RemovePrimitive(ShipyardModelRecipe& r,std::size_t i){if(i>=r.primitives.size())return false;r.primitives.erase(r.primitives.begin()+static_cast<std::ptrdiff_t>(i));r.revision++;r.draft=true;r.collisionDirty=true;r.socketsDirty=true;r.surfacesDirty=true;return true;}
+bool ShipyardModelingSystem::TranslatePrimitive(ShipyardModelRecipe& r,std::size_t i,const Vector3& d){if(i>=r.primitives.size())return false;auto& p=r.primitives[i];p.position=p.position+d;r.revision++;r.draft=true;r.collisionDirty=true;r.socketsDirty=true;return true;}
+bool ShipyardModelingSystem::RotatePrimitive(ShipyardModelRecipe& r,std::size_t i,const Vector3& d){if(i>=r.primitives.size())return false;auto& p=r.primitives[i];p.rotationDegrees=p.rotationDegrees+d;auto wrap=[](float v){while(v>180)v-=360;while(v<-180)v+=360;return v;};p.rotationDegrees.x=wrap(p.rotationDegrees.x);p.rotationDegrees.y=wrap(p.rotationDegrees.y);p.rotationDegrees.z=wrap(p.rotationDegrees.z);r.revision++;r.draft=true;r.collisionDirty=true;r.socketsDirty=true;return true;}
+bool ShipyardModelingSystem::ScalePrimitive(ShipyardModelRecipe& r,std::size_t i,const Vector3& d){if(i>=r.primitives.size())return false;auto& p=r.primitives[i];p.size.x=std::max(.01f,p.size.x*(1.0f+d.x));p.size.y=std::max(.01f,p.size.y*(1.0f+d.y));p.size.z=std::max(.01f,p.size.z*(1.0f+d.z));r.revision++;r.draft=true;r.collisionDirty=true;r.socketsDirty=true;r.surfacesDirty=true;return true;}
 bool ShipyardModelingSystem::StretchPrimitive(ShipyardModelRecipe& r,std::size_t i,const Vector3& d,bool symmetric){if(i>=r.primitives.size())return false;auto& p=r.primitives[i];const Vector3 old=p.size;p.size.x=std::max(.01f,p.size.x+d.x);p.size.y=std::max(.01f,p.size.y+d.y);p.size.z=std::max(.01f,p.size.z+d.z);if(!symmetric){p.position.x+=d.x*.5f;p.position.y+=d.y*.5f;p.position.z+=d.z*.5f;}if(old.x==p.size.x&&old.y==p.size.y&&old.z==p.size.z)return false;r.revision++;r.collisionDirty=true;return true;}
 bool ShipyardModelingSystem::AddModifier(ShipyardModelRecipe& r,ModelingModifier m){if(m.id.empty())m.id="modifier."+std::to_string(r.modifiers.size()+1);r.modifiers.push_back(std::move(m));r.revision++;r.draft=true;r.collisionDirty=true;return true;}
 bool ShipyardModelingSystem::AssignSemanticPurpose(ShipyardModelRecipe& r,SemanticObjectPurpose purpose,const WorldScaleProfile& scale){
@@ -119,6 +154,6 @@ bool ShipyardModelingSystem::AssignSemanticPurpose(ShipyardModelRecipe& r,Semant
 }
 ShipyardModelingValidation ShipyardModelingSystem::Validate(const ShipyardModelRecipe& r){ShipyardModelingValidation v;if(r.primitives.empty()&&r.sourceAssetId.empty())v.errors.push_back("Model has no source geometry or authored shapes");for(const auto&p:r.primitives){if(p.id.empty())v.errors.push_back("Shape is missing an id");if(p.size.x<=0||p.size.y<=0||p.size.z<=0)v.errors.push_back("Shape has non-positive dimensions: "+p.id);if((p.type==ModelingPrimitiveType::Cylinder||p.type==ModelingPrimitiveType::Cone||p.type==ModelingPrimitiveType::Pipe)&&p.radialSegments<6)v.errors.push_back("Radial shape has too few segments: "+p.id);}if(r.semanticPurposeAssigned){const auto semantic=AuthoringStandardsSystem::ValidateObject(r.semanticObject);v.errors.insert(v.errors.end(),semantic.errors.begin(),semantic.errors.end());v.warnings.insert(v.warnings.end(),semantic.warnings.begin(),semantic.warnings.end());}else v.warnings.push_back("Modeled object has no semantic gameplay purpose; assign seat/table/storage/console/door/etc. before production certification");if(r.collisionDirty)v.warnings.push_back("Collision needs regeneration before certification");if(r.socketsDirty)v.warnings.push_back("Socket frames need review after modeling changes");if(r.surfacesDirty)v.warnings.push_back("Surface semantics need review after topology changes");v.valid=v.errors.empty();return v;}
 std::string ShipyardModelingSystem::DerivedAssetId(const ShipyardModelRecipe&r,const std::string& requested){if(!requested.empty())return requested;std::ostringstream o;o<<"subspace.modeled."<<(r.recipeId.empty()?"module":r.recipeId)<<".r"<<r.revision;std::string s=o.str();for(char&c:s)if(!(std::isalnum(static_cast<unsigned char>(c))||c=='.'||c=='_'||c=='-'))c='_';return s;}
-assets::CanonicalAsset ShipyardModelingSystem::BakeCanonicalAsset(const ShipyardModelRecipe&r,const std::string& id){assets::CanonicalAsset a;a.assetId=DerivedAssetId(r,id);a.provenance.sourcePath="shipyard://model/"+r.recipeId;a.provenance.sourceFormat="SUBSPACE_MODEL_RECIPE";a.provenance.importer="Subspace Shipyard Model Workspace";a.provenance.importerVersion="2";a.provenance.importPolicy=r.semanticPurposeAssigned?std::string("NON_DESTRUCTIVE_RECIPE_BAKE;PURPOSE=")+AuthoringStandardsSystem::PurposeName(r.semanticObject.purpose):"NON_DESTRUCTIVE_RECIPE_BAKE;PURPOSE=UNASSIGNED";for(const auto&p:r.primitives){const auto mi=static_cast<assets::AssetIndex>(a.meshes.size());a.meshes.push_back(MeshFor(p));assets::CanonicalNode n;n.name=p.id;n.meshIndex=mi;n.localTransform=TranslationMatrix(p.position);if(r.semanticPurposeAssigned&&a.nodes.empty())n.extras["subspace.semanticPurpose"]=AuthoringStandardsSystem::PurposeName(r.semanticObject.purpose);a.nodes.push_back(std::move(n));}assets::ModuleDefinition m;m.moduleId=a.assetId;m.role=assets::ModuleRole::Unknown;m.size=assets::SocketSize::M;m.rootNodeIndex=a.nodes.empty()?assets::kInvalidAssetIndex:0;a.modules.push_back(std::move(m));return a;}
+assets::CanonicalAsset ShipyardModelingSystem::BakeCanonicalAsset(const ShipyardModelRecipe&r,const std::string& id){assets::CanonicalAsset a;a.assetId=DerivedAssetId(r,id);a.provenance.sourcePath="shipyard://model/"+r.recipeId;a.provenance.sourceFormat="SUBSPACE_MODEL_RECIPE";a.provenance.importer="Subspace Shipyard Model Workspace";a.provenance.importerVersion="2";a.provenance.importPolicy=r.semanticPurposeAssigned?std::string("NON_DESTRUCTIVE_RECIPE_BAKE;PURPOSE=")+AuthoringStandardsSystem::PurposeName(r.semanticObject.purpose):"NON_DESTRUCTIVE_RECIPE_BAKE;PURPOSE=UNASSIGNED";for(const auto&p:r.primitives){const auto mi=static_cast<assets::AssetIndex>(a.meshes.size());a.meshes.push_back(MeshFor(p));assets::CanonicalNode n;n.name=p.id;n.meshIndex=mi;n.localTransform=TransformMatrix(p.position,p.rotationDegrees);if(r.semanticPurposeAssigned&&a.nodes.empty())n.extras["subspace.semanticPurpose"]=AuthoringStandardsSystem::PurposeName(r.semanticObject.purpose);a.nodes.push_back(std::move(n));}assets::ModuleDefinition m;m.moduleId=a.assetId;m.role=assets::ModuleRole::Unknown;m.size=assets::SocketSize::M;m.rootNodeIndex=a.nodes.empty()?assets::kInvalidAssetIndex:0;a.modules.push_back(std::move(m));return a;}
 
 } // namespace subspace

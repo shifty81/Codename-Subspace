@@ -33,7 +33,10 @@ int main() {
     const Vector3 eyeBeforePan=camera.eye;
     ConstructionEditorCameraSystem::TruckPedestal(camera,3.25f,-1.5f);
     Test("truck moves editor eye", (camera.eye-eyeBeforePan).length()>0.1f);
-    Test("truck preserves authored target", NearVec(ConstructionEditorCameraSystem::Target(camera),targetBeforePan));
+    const Vector3 targetAfterPan=ConstructionEditorCameraSystem::Target(camera);
+    const Vector3 panDelta=camera.eye-eyeBeforePan;
+    Test("truck pans editor target with eye", NearVec(targetAfterPan,targetBeforePan+panDelta));
+    Test("truck preserves eye-target ray", NearVec(camera.eye-targetAfterPan,eyeBeforePan-targetBeforePan));
 
     const Vector3 targetBeforeZoom=ConstructionEditorCameraSystem::Target(camera);
     const Vector3 rayBeforeZoom=Normalize(camera.eye-targetBeforeZoom);

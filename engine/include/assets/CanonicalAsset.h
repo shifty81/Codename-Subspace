@@ -191,6 +191,19 @@ struct PbrMaterial {
     Float4 emissiveFactor{0.0f, 0.0f, 0.0f, 1.0f};
     float emissiveStrength = 1.0f;
 
+    // Advanced PBR finish terms mirror ratified glTF material extensions so
+    // Shipyard-authored materials can round-trip without collapsing rich
+    // finishes into only metallic/roughness.
+    float clearcoatFactor = 0.0f;
+    float clearcoatRoughnessFactor = 0.2f;
+    float specularFactor = 1.0f;
+    float anisotropyStrength = 0.0f;
+    float anisotropyRotation = 0.0f;
+    float iridescenceFactor = 0.0f;
+    float iridescenceIor = 1.3f;
+    float iridescenceThicknessMinimum = 100.0f;
+    float iridescenceThicknessMaximum = 400.0f;
+
     AssetIndex baseColorTexture = kInvalidAssetIndex;
     AssetIndex metallicRoughnessTexture = kInvalidAssetIndex;
     AssetIndex normalTexture = kInvalidAssetIndex;

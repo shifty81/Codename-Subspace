@@ -36,17 +36,24 @@ bool ShipBlueprintLibrarySystem::Save(const ShipBlueprintDocument& b,const std::
     for(const auto&t:b.tags)f<<"TAG "<<std::quoted(t)<<"\n";
     for(const auto&m:b.recipe.modules){
         f<<"MODULE "<<std::quoted(m.moduleId)<<' '<<m.x<<' '<<m.y<<' '<<m.z<<' '<<m.scaleX<<' '<<m.scaleY<<' '<<m.scaleZ<<' '
-         <<m.yawDegrees<<' '<<m.pitchDegrees<<' '<<m.rollDegrees<<' '<<static_cast<int>(m.material)<<' '<<(m.mirrorX?1:0)<<' '<<(m.mirrorY?1:0)<<' '<<(m.mirrorZ?1:0)<<"\n";
+         <<m.yawDegrees<<' '<<m.pitchDegrees<<' '<<m.rollDegrees<<' '<<static_cast<int>(m.material)<<' '<<(m.mirrorX?1:0)<<' '<<(m.mirrorY?1:0)<<' '<<(m.mirrorZ?1:0)<<' '<<(m.sourceMaterialsEnabled?1:0)<<"\n";
     }
     for(const auto&a:b.recipe.attachments){
         f<<"ATTACH "<<a.parentModuleIndex<<' '<<a.childModuleIndex<<' '<<std::quoted(a.parentSocket)<<' '<<std::quoted(a.childSocket)<<' '
          <<a.measuredGap<<' '<<(a.certified?1:0)<<"\n";
     }
+    for(const auto&a:b.recipe.articulations){
+        f<<"ARTIC "<<a.moduleIndex<<' '<<static_cast<int>(a.mode)<<' '<<(a.enabled?1:0)<<' '
+         <<a.pivotLocal.x<<' '<<a.pivotLocal.y<<' '<<a.pivotLocal.z<<' '
+         <<a.axisLocal.x<<' '<<a.axisLocal.y<<' '<<a.axisLocal.z<<' '
+         <<a.minDegrees<<' '<<a.maxDegrees<<' '<<a.restDegrees<<' '<<a.currentDegrees<<' '<<a.speedDegreesPerSecond<<' '
+         <<std::quoted(a.purpose)<<' '<<std::quoted(a.pivotSocket)<<"\n";
+    }
     for(const auto&s:b.equipmentSlots){
         f<<"EQUIP "<<std::quoted(s.slotId)<<' '<<s.moduleIndex<<' '<<static_cast<int>(s.type)<<' '<<static_cast<int>(s.size)<<' '
          <<std::quoted(s.installedItemInstanceId)<<' '<<std::quoted(s.installedDefinitionId)<<' '<<(s.required?1:0)<<"\n";
     }
-    const auto paint=[&](const char* name,const ShipPaintLayer&p){f<<"PAINT "<<name<<' '<<p.r<<' '<<p.g<<' '<<p.b<<' '<<p.a<<' '<<p.metallic<<' '<<p.roughness<<"\n";};
+    const auto paint=[&](const char* name,const ShipPaintLayer&p){f<<"PAINT "<<name<<' '<<p.r<<' '<<p.g<<' '<<p.b<<' '<<p.a<<' '<<p.metallic<<' '<<p.roughness<<' '<<static_cast<int>(p.finish)<<' '<<p.clearcoat<<' '<<p.clearcoatRoughness<<' '<<p.specular<<' '<<p.anisotropy<<' '<<p.anisotropyRotation<<' '<<p.iridescence<<' '<<p.iridescenceIor<<' '<<p.iridescenceThicknessNm<<' '<<p.detailNormalScale<<"\n";};
     paint("PRIMARY",b.appearance.primary);paint("SECONDARY",b.appearance.secondary);paint("TRIM",b.appearance.trim);
     f<<"WEAR "<<b.appearance.factoryWear<<"\n";
     for(const auto&d:b.appearance.decals){
@@ -75,14 +82,22 @@ bool ShipBlueprintLibrarySystem::Load(const std::string& path,ShipBlueprintDocum
         }else if(kind=="TAG"){
             std::string t;if(!ReadQuoted(in,t)){if(error)*error="invalid TAG row";return false;}b.tags.push_back(t);
         }else if(kind=="MODULE"){
-            VisualModulePlacement m;int material=0,mirrorX=0,mirrorY=0,mirrorZ=0;
+            VisualModulePlacement m;int material=0,mirrorX=0,mirrorY=0,mirrorZ=0,sourceMaterialsEnabled=1;
             if(!ReadQuoted(in,m.moduleId)||!ReadValue(in,m.x)||!ReadValue(in,m.y)||!ReadValue(in,m.z)||!ReadValue(in,m.scaleX)||!ReadValue(in,m.scaleY)||!ReadValue(in,m.scaleZ)||!ReadValue(in,m.yawDegrees)||!ReadValue(in,m.pitchDegrees)||!ReadValue(in,m.rollDegrees)||!ReadValue(in,material)){if(error)*error="invalid MODULE row";return false;}
-            if(in>>mirrorX)m.mirrorX=mirrorX!=0;if(in>>mirrorY)m.mirrorY=mirrorY!=0;if(in>>mirrorZ)m.mirrorZ=mirrorZ!=0;
+            if(in>>mirrorX)m.mirrorX=mirrorX!=0;if(in>>mirrorY)m.mirrorY=mirrorY!=0;if(in>>mirrorZ)m.mirrorZ=mirrorZ!=0;if(in>>sourceMaterialsEnabled)m.sourceMaterialsEnabled=sourceMaterialsEnabled!=0;
             m.material=static_cast<SpaceMaterialKind>(material);b.recipe.modules.push_back(m);
         }else if(kind=="ATTACH"){
             ShipVisualAttachment a;int certified=0;
             if(!ReadValue(in,a.parentModuleIndex)||!ReadValue(in,a.childModuleIndex)||!ReadQuoted(in,a.parentSocket)||!ReadQuoted(in,a.childSocket)||!ReadValue(in,a.measuredGap)||!ReadValue(in,certified)){if(error)*error="invalid ATTACH row";return false;}
             a.certified=certified!=0;b.recipe.attachments.push_back(a);
+        }else if(kind=="ARTIC"){
+            ShipVisualArticulation a;int mode=0,enabled=0;
+            if(!ReadValue(in,a.moduleIndex)||!ReadValue(in,mode)||!ReadValue(in,enabled)||
+               !ReadValue(in,a.pivotLocal.x)||!ReadValue(in,a.pivotLocal.y)||!ReadValue(in,a.pivotLocal.z)||
+               !ReadValue(in,a.axisLocal.x)||!ReadValue(in,a.axisLocal.y)||!ReadValue(in,a.axisLocal.z)||
+               !ReadValue(in,a.minDegrees)||!ReadValue(in,a.maxDegrees)||!ReadValue(in,a.restDegrees)||!ReadValue(in,a.currentDegrees)||!ReadValue(in,a.speedDegreesPerSecond)||
+               !ReadQuoted(in,a.purpose)||!ReadQuoted(in,a.pivotSocket)){if(error)*error="invalid ARTIC row";return false;}
+            a.mode=static_cast<ShipArticulationMode>(mode);a.enabled=enabled!=0;b.recipe.articulations.push_back(a);
         }else if(kind=="EQUIP"){
             ShipEquipmentSlot s;int type=0,size=0,required=0;
             if(!ReadQuoted(in,s.slotId)||!ReadValue(in,s.moduleIndex)||!ReadValue(in,type)||!ReadValue(in,size)||!ReadQuoted(in,s.installedItemInstanceId)||!ReadQuoted(in,s.installedDefinitionId)||!ReadValue(in,required)){if(error)*error="invalid EQUIP row";return false;}
@@ -90,6 +105,7 @@ bool ShipBlueprintLibrarySystem::Load(const std::string& path,ShipBlueprintDocum
         }else if(kind=="PAINT"){
             std::string name;ShipPaintLayer* p=nullptr;in>>name;if(name=="PRIMARY")p=&b.appearance.primary;else if(name=="SECONDARY")p=&b.appearance.secondary;else if(name=="TRIM")p=&b.appearance.trim;
             if(!p||!ReadValue(in,p->r)||!ReadValue(in,p->g)||!ReadValue(in,p->b)||!ReadValue(in,p->a)||!ReadValue(in,p->metallic)||!ReadValue(in,p->roughness)){if(error)*error="invalid PAINT row";return false;}
+            int finish=static_cast<int>(p->finish);if(in>>finish){p->finish=static_cast<ShipPaintFinish>(finish);in>>p->clearcoat>>p->clearcoatRoughness>>p->specular>>p->anisotropy>>p->anisotropyRotation>>p->iridescence>>p->iridescenceIor>>p->iridescenceThicknessNm>>p->detailNormalScale;}
         }else if(kind=="WEAR"){
             if(!ReadValue(in,b.appearance.factoryWear)){if(error)*error="invalid WEAR row";return false;}
         }else if(kind=="DECAL"){

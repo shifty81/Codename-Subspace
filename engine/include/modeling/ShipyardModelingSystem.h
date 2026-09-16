@@ -117,6 +117,11 @@ public:
                                                         std::size_t ordinal = 0);
     static std::size_t AddPrimitive(ShipyardModelRecipe& recipe,
                                     ModelingPrimitiveType type);
+    static bool DuplicatePrimitive(ShipyardModelRecipe& recipe, std::size_t index);
+    static bool RemovePrimitive(ShipyardModelRecipe& recipe, std::size_t index);
+    static bool TranslatePrimitive(ShipyardModelRecipe& recipe, std::size_t index, const Vector3& delta);
+    static bool RotatePrimitive(ShipyardModelRecipe& recipe, std::size_t index, const Vector3& deltaDegrees);
+    static bool ScalePrimitive(ShipyardModelRecipe& recipe, std::size_t index, const Vector3& deltaScale);
     static bool StretchPrimitive(ShipyardModelRecipe& recipe,
                                  std::size_t index,
                                  const Vector3& delta,
