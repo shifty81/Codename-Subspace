@@ -21,19 +21,17 @@ foreach(t WorkspaceBuild WorkspaceAppearance WorkspaceSystems WorkspaceAuthoring
   endif()
 endforeach()
 file(READ "${ROOT}/src/application/NativeBattlefieldRenderer.cpp" r)
-foreach(t "SubspaceUiTheme::Dark" "DRAG INTO VIEWPORT TO PREVIEW")
+foreach(t "a neutral DCC canvas replaces the black in-game-space" "STAGED PART - NOT ATTACHED")
   string(FIND "${r}" "${t}" pos)
   if(pos EQUAL -1)
-    message(FATAL_ERROR "Renderer integration missing ${t}")
+    message(FATAL_ERROR "Renderer integration missing modern DCC authority: ${t}")
   endif()
 endforeach()
-# Pass655 semantic successor: the previous planar gizmo helper could only
-# represent part of the camera orbit. The permanent +Y indicator now projects
-# through the actual camera basis, retaining the Pass535 editor-gizmo contract
-# while fixing full-360-degree readability.
-string(FIND "${r}" "StrategicViewProjection::Build" basis_pos)
-string(FIND "${r}" "SHIP FORWARD +Y" forward_pos)
-if(basis_pos EQUAL -1 OR forward_pos EQUAL -1)
-  message(FATAL_ERROR "Renderer integration missing 360-degree editor direction projection authority")
+# Pass1444-1453 successor: orientation stays visible through the compact XYZ
+# viewport gizmo while the large center-screen debug arrow is retired.
+string(FIND "${r}" "Compact viewport axis gizmo" axis_pos)
+string(FIND "${r}" "ShipyardText(\"Y\"" forward_pos)
+if(axis_pos EQUAL -1 OR forward_pos EQUAL -1)
+  message(FATAL_ERROR "Renderer integration missing compact DCC direction authority")
 endif()
 message(STATUS "Pass535-554 editor/Shipyard source gate PASS")

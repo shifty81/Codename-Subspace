@@ -1,5 +1,6 @@
 #include "ship_editor/ShipyardBuilderSystem.h"
 #include "content/ShipyardPartTaxonomySystem.h"
+#include "editor/EditorDccShellLayoutSystem.h"
 
 #include <algorithm>
 #include <tuple>
@@ -129,47 +130,70 @@ bool ShipyardBuilderSystem::Activate(ShipyardBuilderCommand command,int value){
 
 ShipyardBuilderLayout ShipyardBuilderSystem::Layout(int w,int h){
     ShipyardBuilderLayout l;
-    if(w<1120||h<740)return l;
+    const auto dcc=EditorDccShellLayoutSystem::Compute(w,h);
+    if(!dcc.valid)return l;
     l.valid=true;
-    l.uiScale=std::clamp(std::min(static_cast<float>(w)/1920.0f,static_cast<float>(h)/1080.0f),1.0f,1.60f);
+    l.compact=dcc.compact;
+    l.uiScale=dcc.uiScale;
     const float s=l.uiScale;
-    l.compact=h<static_cast<int>(860.0f*s);
 
-    l.workspaceBarY=29.0f*s;
-    l.workspaceBarHeight=28.0f*s;
+    // PASS1444-1453: visible Shipyard composition is now driven by the shared
+    // DCC shell rather than a bespoke left-library/right-inspector dashboard.
+    l.workspaceBarY=dcc.workspaceStrip.y;
+    l.workspaceBarHeight=dcc.workspaceStrip.height;
     l.left=8.0f*s;
-    l.top=88.0f*s;
-    l.leftWidth=std::clamp(static_cast<float>(w)*.17f,280.0f*s,340.0f*s);
-    l.rightWidth=std::clamp(static_cast<float>(w)*.22f,340.0f*s,430.0f*s);
-    l.right=static_cast<float>(w)-l.rightWidth-8.0f*s;
-    l.toolRailWidth=42.0f*s;
-    l.toolRailX=l.left+l.leftWidth+8.0f*s;
-    l.toolRailY=l.top+10.0f*s;
+    l.top=dcc.viewport.y;
+    l.leftWidth=std::clamp(static_cast<float>(w)*.155f,260.0f*s,330.0f*s); // legacy compatibility metric
+    l.right=dcc.outliner.x;
+    l.rightWidth=dcc.outliner.width;
     l.rowHeight=(l.compact?27.0f:30.0f)*s;
-    l.rowGap=5.0f*s;
-
-    l.libraryListY=l.top+70.0f*s;
-    l.moduleCardsY=l.libraryListY+2.0f*(l.rowHeight+l.rowGap)+34.0f*s;
-    l.moduleCardHeight=(l.compact?54.0f:62.0f)*s;
-    l.leftActionsY=l.moduleCardsY+5.0f*(l.moduleCardHeight+l.rowGap)+10.0f*s;
-    l.leftInfoY=l.leftActionsY+76.0f*s;
-
+    l.rowGap=4.0f*s;
     l.tabRowY=l.workspaceBarY;
     l.tabHeight=l.workspaceBarHeight;
-    l.contentTopY=l.top+(l.compact?132.0f:164.0f)*s;
-    l.selectedSummaryY=l.contentTopY;
-    l.placedListY=l.contentTopY+42.0f*s;
-    l.placedPageSize=l.compact?4u:5u;
 
-    const float outlinerBottom=l.placedListY+static_cast<float>(l.placedPageSize)*(l.rowHeight+l.rowGap)+14.0f*s;
-    l.editLabelY=outlinerBottom+18.0f*s;l.editRowY=l.editLabelY+20.0f*s;
-    l.focusLabelY=l.editRowY+38.0f*s;l.focusRowY=l.focusLabelY+20.0f*s;
-    l.moveLabelY=l.focusRowY+38.0f*s;l.moveRowY=l.moveLabelY+20.0f*s;l.moveRow2Y=l.moveRowY+38.0f*s;
-    l.rotateLabelY=l.moveRow2Y+40.0f*s;l.rotateRowY=l.rotateLabelY+20.0f*s;l.yawRowY=l.rotateRowY+38.0f*s;l.rollRowY=l.yawRowY+38.0f*s;l.flipRowY=l.rollRowY+38.0f*s;
-    l.blueprintLabelY=outlinerBottom+20.0f*s;l.classRowY=l.blueprintLabelY+20.0f*s;l.sizeModeRowY=l.classRowY+40.0f*s;l.generateRowY=l.sizeModeRowY+40.0f*s;l.saveRowY=l.generateRowY+40.0f*s;
-    l.liveryLabelY=outlinerBottom+20.0f*s;l.liveryRowY=l.liveryLabelY+22.0f*s;l.liverySecondaryRowY=l.liveryRowY+40.0f*s;l.paintSecondaryRowY=l.liverySecondaryRowY+40.0f*s;l.paintTrimRowY=l.paintSecondaryRowY+40.0f*s;l.decalRowY=l.paintTrimRowY+40.0f*s;
-    l.statusY=static_cast<float>(h)-32.0f*s;
-    l.validationY=l.statusY-102.0f*s;
+    l.viewportLeft=dcc.viewport.x;
+    l.viewportTop=dcc.viewport.y;
+    l.viewportRight=dcc.viewport.x+dcc.viewport.width;
+    l.viewportBottom=dcc.viewport.y+dcc.viewport.height;
+    l.assetShelfX=dcc.assetShelf.x;
+    l.assetShelfY=dcc.assetShelf.y;
+    l.assetShelfWidth=dcc.assetShelf.width;
+    l.assetShelfHeight=dcc.assetShelf.height;
+    l.outlinerX=dcc.outliner.x;
+    l.outlinerY=dcc.outliner.y;
+    l.outlinerWidth=dcc.outliner.width;
+    l.outlinerHeight=dcc.outliner.height;
+    l.propertiesX=dcc.properties.x;
+    l.propertiesY=dcc.properties.y;
+    l.propertiesWidth=dcc.properties.width;
+    l.propertiesHeight=dcc.properties.height;
+
+    l.toolRailX=dcc.toolRail.x;
+    l.toolRailY=dcc.toolRail.y;
+    l.toolRailWidth=dcc.toolRail.width;
+
+    // Asset Browser is a bottom shelf. Legacy y-fields are intentionally
+    // projected into that shelf for test/automation compatibility.
+    l.libraryListY=l.assetShelfY+34.0f*s;
+    l.moduleCardsY=l.assetShelfY+67.0f*s;
+    l.moduleCardHeight=(l.compact?62.0f:78.0f)*s;
+    l.leftActionsY=l.assetShelfY+8.0f*s;
+    l.leftInfoY=l.assetShelfY+8.0f*s;
+
+    // Outliner owns the upper-right area; Properties owns the lower-right.
+    l.contentTopY=l.propertiesY;
+    l.selectedSummaryY=l.propertiesY+42.0f*s;
+    l.placedListY=l.outlinerY+36.0f*s;
+    l.placedPageSize=l.compact?4u:6u;
+
+    l.editLabelY=l.selectedSummaryY+70.0f*s;l.editRowY=l.editLabelY+22.0f*s;
+    l.focusLabelY=l.editRowY+38.0f*s;l.focusRowY=l.focusLabelY+22.0f*s;
+    l.moveLabelY=l.focusRowY+38.0f*s;l.moveRowY=l.moveLabelY+22.0f*s;l.moveRow2Y=l.moveRowY+38.0f*s;
+    l.rotateLabelY=l.moveRow2Y+40.0f*s;l.rotateRowY=l.rotateLabelY+22.0f*s;l.yawRowY=l.rotateRowY+38.0f*s;l.rollRowY=l.yawRowY+38.0f*s;l.flipRowY=l.rollRowY+38.0f*s;
+    l.blueprintLabelY=l.selectedSummaryY+70.0f*s;l.classRowY=l.blueprintLabelY+22.0f*s;l.sizeModeRowY=l.classRowY+38.0f*s;l.generateRowY=l.sizeModeRowY+38.0f*s;l.saveRowY=l.generateRowY+38.0f*s;
+    l.liveryLabelY=l.selectedSummaryY+70.0f*s;l.liveryRowY=l.liveryLabelY+22.0f*s;l.liverySecondaryRowY=l.liveryRowY+38.0f*s;l.paintSecondaryRowY=l.liverySecondaryRowY+38.0f*s;l.paintTrimRowY=l.paintSecondaryRowY+38.0f*s;l.decalRowY=l.paintTrimRowY+38.0f*s;
+    l.statusY=dcc.statusBar.y;
+    l.validationY=l.statusY-72.0f*s;
     return l;
 }
 
@@ -186,9 +210,9 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
 
     // Blender-like global workspace strip. Four daily workspaces remain visible;
     // DEV exposes advanced authoring workspaces without crowding the viewport.
-    float bx=8.0f*s;const float tabW=102.0f*s,tabGap=3.0f*s;
+    float bx=42.0f*s;const float tabW=88.0f*s,tabGap=2.0f*s;
     auto tab=[&](ShipyardBuilderCommand c,const char* label,bool active,bool enabled=true){add(c,0,bx,l.workspaceBarY,tabW,l.workspaceBarHeight,label,active,enabled);bx+=tabW+tabGap;};
-    tab(ShipyardBuilderCommand::WorkspaceBuild,"ASSEMBLY",!model.testWorkspaceActive&&model.workspaceMode==ShipyardWorkspaceMode::Build);
+    tab(ShipyardBuilderCommand::WorkspaceBuild,"LAYOUT",!model.testWorkspaceActive&&model.workspaceMode==ShipyardWorkspaceMode::Build);
     tab(ShipyardBuilderCommand::WorkspaceSystems,"SYSTEMS",!model.testWorkspaceActive&&model.workspaceMode==ShipyardWorkspaceMode::Systems);
     tab(ShipyardBuilderCommand::WorkspaceAppearance,"PAINT",!model.testWorkspaceActive&&model.workspaceMode==ShipyardWorkspaceMode::Appearance);
     tab(ShipyardBuilderCommand::WorkspaceInterior,"INTERIOR",!model.testWorkspaceActive&&model.workspaceMode==ShipyardWorkspaceMode::Interior,model.capabilities.interior);
@@ -212,7 +236,7 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         add(ShipyardBuilderCommand::DccToggleMaximizeViewport,0,w-92.0f*s,l.top+4.0f*s,82.0f*s,26.0f*s,"RESTORE",true,true);
     }else{
         // 3D-view header and viewport display controls.
-        const float vx=l.toolRailX+l.toolRailWidth+8.0f*s;const float vy=l.top-31.0f*s;
+        const float vx=l.viewportLeft+8.0f*s;const float vy=l.viewportTop-25.0f*s;
         add(ShipyardBuilderCommand::DccToggleGrid,0,vx,vy,50*s,25*s,"GRID",model.dcc.showGrid,true);
         add(ShipyardBuilderCommand::DccToggleGizmos,0,vx+54*s,vy,58*s,25*s,"GIZMO",model.dcc.showGizmos,true);
         add(ShipyardBuilderCommand::DccCycleShading,0,vx+116*s,vy,86*s,25*s,ShipyardDccUiSystem::ShadingName(model.dcc.shading),true,true);
@@ -221,22 +245,46 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
     }
 
     if(showAssetBrowser){
-        const float left=l.left,libraryW=l.leftWidth,rowH=l.rowHeight;
-        add(ShipyardBuilderCommand::DccPreviousAssetPreset,0,left+7*s,l.top+7*s,28*s,25*s,"<",false,true);
-        add(ShipyardBuilderCommand::DccNextAssetPreset,0,left+39*s,l.top+7*s,libraryW-105*s,25*s,ShipyardDccUiSystem::AssetPresetName(model.dcc.assetPreset),true,true);
-        add(ShipyardBuilderCommand::DccCycleAssetDensity,0,left+libraryW-62*s,l.top+7*s,55*s,25*s,ShipyardDccUiSystem::AssetDensityName(model.dcc.assetBrowser.density),false,true);
-        const float categoryW=(libraryW-14.0f*s-3*3.0f*s)/4.0f;
-        for(int ci=0;ci<8;++ci){const auto cls=static_cast<ShipyardModuleClass>(ci);const int col=ci%4,row=ci/4;std::size_t classCount=0;for(const auto& rec:model.catalog)if(rec.moduleClass==cls)++classCount;add(ShipyardBuilderCommand::SelectClass,ci,left+7*s+col*(categoryW+3*s),l.libraryListY+row*(rowH+gap),categoryW,rowH,std::string(ShipyardModuleSystem::ClassName(cls))+" ("+std::to_string(classCount)+")",static_cast<int>(model.selectedClass)==ci,true);}
+        const float ax=l.assetShelfX,ay=l.assetShelfY,aw=l.assetShelfWidth,ah=l.assetShelfHeight;
+        const float headerH=30.0f*s;
+        // Bottom Asset Browser shelf: the central viewport keeps its width while
+        // all ship/module assets remain one click away, matching a modern DCC.
+        add(ShipyardBuilderCommand::DccPreviousAssetPreset,0,ax+96*s,ay+3*s,24*s,24*s,"<",false,true);
+        add(ShipyardBuilderCommand::DccNextAssetPreset,0,ax+123*s,ay+3*s,152*s,24*s,ShipyardDccUiSystem::AssetPresetName(model.dcc.assetPreset),true,true);
+        add(ShipyardBuilderCommand::DccCycleAssetDensity,0,ax+279*s,ay+3*s,74*s,24*s,ShipyardDccUiSystem::AssetDensityName(model.dcc.assetBrowser.density),false,true);
+        add(ShipyardBuilderCommand::DccToggleFavoriteSelected,0,ax+aw-322*s,ay+3*s,64*s,24*s,"FAV",false,!model.catalog.empty());
+        add(ShipyardBuilderCommand::DccClearAssetFilters,0,ax+aw-254*s,ay+3*s,64*s,24*s,"CLEAR",false,true);
+        add(ShipyardBuilderCommand::AddModule,0,ax+aw-186*s,ay+3*s,82*s,24*s,"PLACE",false,!model.catalog.empty());
+        add(ShipyardBuilderCommand::Validate,0,ax+aw-100*s,ay+3*s,92*s,24*s,"VALIDATE",false,true);
+
+        const float categoryY=ay+headerH+2.0f*s;
+        const float categoryW=(aw-14.0f*s-7*3.0f*s)/8.0f;
+        for(int ci=0;ci<8;++ci){
+            const auto cls=static_cast<ShipyardModuleClass>(ci);std::size_t classCount=0;
+            for(const auto& rec:model.catalog)if(rec.moduleClass==cls)++classCount;
+            add(ShipyardBuilderCommand::SelectClass,ci,ax+7*s+ci*(categoryW+3*s),categoryY,categoryW,25.0f*s,
+                std::string(ShipyardModuleSystem::ClassName(cls))+" "+std::to_string(classCount),static_cast<int>(model.selectedClass)==ci,true);
+        }
+
         const auto filtered=ShipyardBuilderSystem::VisibleCatalogIndices(model);
-        float densityScale=1.0f;if(model.dcc.assetBrowser.density==ShipyardAssetBrowserDensity::Compact)densityScale=.78f;else if(model.dcc.assetBrowser.density==ShipyardAssetBrowserDensity::Large)densityScale=1.18f;densityScale*=std::clamp(model.dcc.assetBrowser.thumbnailScale,.70f,1.35f);
-        const float assetCardHeight=std::clamp(l.moduleCardHeight*densityScale,42.0f*s,90.0f*s);
-        const float cardSpace=std::max(150.0f*s,l.leftActionsY-l.moduleCardsY-10.0f*s);
-        const std::size_t pageSize=std::clamp<std::size_t>(static_cast<std::size_t>(cardSpace/(assetCardHeight+gap)),3u,8u);
-        const std::size_t selected=filtered.empty()?0:std::min(model.selectedFilteredModule,filtered.size()-1);const std::size_t maxStart=filtered.size()>pageSize?filtered.size()-pageSize:0;const std::size_t start=filtered.empty()?0:std::min(model.catalogScrollStart,maxStart);
-        for(std::size_t i=0;i<pageSize&&start+i<filtered.size();++i){const auto fi=start+i;const auto& rec=model.catalog[filtered[fi]];add(ShipyardBuilderCommand::SelectModule,static_cast<int>(fi),left+7*s,l.moduleCardsY+i*(assetCardHeight+gap),libraryW-14*s,assetCardHeight,FriendlyModuleLabel(rec),fi==selected,true);}
-        const float actionY=l.leftActionsY,inner=libraryW-14*s;
-        add(ShipyardBuilderCommand::PreviousModule,0,left+7*s,actionY,32*s,28*s,"<");add(ShipyardBuilderCommand::NextModule,0,left+43*s,actionY,32*s,28*s,">");add(ShipyardBuilderCommand::AddModule,0,left+79*s,actionY,72*s,28*s,"PLACE",false,!filtered.empty());add(ShipyardBuilderCommand::ReplaceModule,0,left+155*s,actionY,inner-148*s,28*s,"REPLACE",false,!filtered.empty()&&HasPlaced(model));
-        add(ShipyardBuilderCommand::DccToggleFavoriteSelected,0,left+7*s,actionY+32*s,68*s,27*s,"FAVORITE",false,!filtered.empty());add(ShipyardBuilderCommand::DccClearAssetFilters,0,left+79*s,actionY+32*s,72*s,27*s,"CLEAR",false,true);add(ShipyardBuilderCommand::Validate,0,left+155*s,actionY+32*s,inner-148*s,27*s,"VALIDATE",false,true);
+        float densityScale=1.0f;
+        if(model.dcc.assetBrowser.density==ShipyardAssetBrowserDensity::Compact)densityScale=.82f;
+        else if(model.dcc.assetBrowser.density==ShipyardAssetBrowserDensity::Large)densityScale=1.18f;
+        densityScale*=std::clamp(model.dcc.assetBrowser.thumbnailScale,.70f,1.35f);
+        const float cardY=categoryY+29.0f*s;
+        const float cardH=std::max(54.0f*s,ah-(cardY-ay)-7.0f*s);
+        const float desiredW=std::clamp(205.0f*s*densityScale,156.0f*s,270.0f*s);
+        const std::size_t pageSize=std::clamp<std::size_t>(static_cast<std::size_t>((aw-14.0f*s)/(desiredW+gap)),4u,8u);
+        const float cardW=(aw-14.0f*s-gap*static_cast<float>(pageSize-1))/static_cast<float>(pageSize);
+        const std::size_t selected=filtered.empty()?0:std::min(model.selectedFilteredModule,filtered.size()-1);
+        const std::size_t maxStart=filtered.size()>pageSize?filtered.size()-pageSize:0;
+        const std::size_t start=filtered.empty()?0:std::min(model.catalogScrollStart,maxStart);
+        for(std::size_t i=0;i<pageSize&&start+i<filtered.size();++i){
+            const auto fi=start+i;const auto& rec=model.catalog[filtered[fi]];
+            add(ShipyardBuilderCommand::SelectModule,static_cast<int>(fi),ax+7*s+i*(cardW+gap),cardY,cardW,cardH,FriendlyModuleLabel(rec),fi==selected,true);
+        }
+        add(ShipyardBuilderCommand::PreviousModule,0,ax+4*s,ay+3*s,24*s,24*s,"<");
+        add(ShipyardBuilderCommand::NextModule,0,ax+31*s,ay+3*s,24*s,24*s,">");
     }
 
     if(showToolRail){
@@ -250,15 +298,15 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
     }
 
     if(showSidebar){
-        const float rx=l.right+7*s,rw=l.rightWidth-14*s;
+        const float rx=l.outlinerX+7*s,rw=l.outlinerWidth-14*s;
         if(model.dcc.showOutliner){
-            add(ShipyardBuilderCommand::DccCycleOutlinerMode,0,rx,l.top+7*s,rw,25*s,ShipyardDccUiSystem::OutlinerModeName(model.dcc.outlinerMode),true,true);
+            add(ShipyardBuilderCommand::DccCycleOutlinerMode,0,rx,l.outlinerY+5*s,rw,24*s,ShipyardDccUiSystem::OutlinerModeName(model.dcc.outlinerMode),true,true);
             const auto rows=ShipyardDccUiSystem::BuildOutlinerRows(model.catalog,model.recipe,model.selectedPlacedModule,model.dcc.outlinerMode);
             const std::size_t page=l.compact?4u:5u;const std::size_t start=rows.empty()?0:std::min(model.placedScrollStart,rows.size()>page?rows.size()-page:0u);
             for(std::size_t i=0;i<page&&start+i<rows.size();++i){const auto& item=rows[start+i];std::string displayLabel=item.label;if(item.moduleIndex<model.recipe.modules.size()){const auto& placedId=model.recipe.modules[item.moduleIndex].moduleId;const auto found=std::find_if(model.catalog.begin(),model.catalog.end(),[&](const auto& record){return record.source.moduleId==placedId;});if(found!=model.catalog.end())displayLabel=FriendlyModuleLabel(*found);}std::string label=model.dcc.outlinerMode==ShipyardDccOutlinerMode::Hierarchy?std::string(item.depth*2,' '):std::string{};if(model.dcc.outlinerMode!=ShipyardDccOutlinerMode::Hierarchy)label=item.group+" | ";label+=(item.attached?"|_ ":"o  ")+displayLabel;add(ShipyardBuilderCommand::SelectPlaced,static_cast<int>(item.moduleIndex),rx,l.placedListY+i*(l.rowHeight+gap),rw,l.rowHeight,label,item.selected,true);}
         }
         if(model.dcc.showProperties){
-            const float py=l.editRowY;const float rail=32*s;
+            const float py=l.propertiesY+34.0f*s;const float rail=30*s;
             add(ShipyardBuilderCommand::InspectorTransform,0,rx,py,rail,30*s,"T",model.inspectorTab==ShipyardInspectorTab::Transform,true);
             add(ShipyardBuilderCommand::InspectorAssembly,0,rx,py+34*s,rail,30*s,"SYS",model.inspectorTab==ShipyardInspectorTab::Assembly,true);
             add(ShipyardBuilderCommand::InspectorSockets,0,rx,py+68*s,rail,30*s,"SCK",model.inspectorTab==ShipyardInspectorTab::Sockets,model.capabilities.sockets);

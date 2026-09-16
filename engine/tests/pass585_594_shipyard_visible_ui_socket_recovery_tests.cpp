@@ -36,7 +36,7 @@ int main(){
 
     int visualCards=0;float minCardHeight=1e9f;
     for(const auto& c:build)if(c.command==ShipyardBuilderCommand::SelectModule&&c.width>0){++visualCards;minCardHeight=std::min(minCardHeight,c.height);}
-    Check(visualCards>0&&visualCards<=5,"Pass588 module library is paged as visual inventory cards instead of ten text rows");
+    Check(visualCards>0&&visualCards<=8,"Pass588 module library is paged as horizontal DCC asset cards instead of text rows");
     Check(minCardHeight>=58.0f,"Pass588 module cards reserve thumbnail-scale vertical space");
 
     Check(b.Activate(ShipyardBuilderCommand::InspectorSockets)&&b.Model().inspectorTab==ShipyardInspectorTab::Sockets,"Pass589 visible SOCKETS tab opens reusable socket authoring");

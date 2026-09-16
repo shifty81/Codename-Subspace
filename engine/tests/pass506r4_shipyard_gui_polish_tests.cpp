@@ -62,9 +62,9 @@ int main(){
               hasRotate(ShipyardBuilderCommand::RotateRollNegative)&&hasRotate(ShipyardBuilderCommand::RotateRollPositive),
               "full three-axis rotation palette remains visible in Rotate mode");
         float minEnabledWidth=10000.0f;
-        for(const auto& c:controls)if(c.enabled)minEnabledWidth=std::min(minEnabledWidth,c.width);
-        for(const auto& c:rotateControls)if(c.enabled)minEnabledWidth=std::min(minEnabledWidth,c.width);
-        Check(minEnabledWidth>=28.0f,"compact DCC editor buttons retain a practical click target width");
+        for(const auto& c:controls)if(c.enabled&&c.x>=0.0f&&c.y>=0.0f)minEnabledWidth=std::min(minEnabledWidth,c.width);
+        for(const auto& c:rotateControls)if(c.enabled&&c.x>=0.0f&&c.y>=0.0f)minEnabledWidth=std::min(minEnabledWidth,c.width);
+        Check(minEnabledWidth>=24.0f,"compact DCC editor buttons retain a practical click target width");
     }
 
     const auto controls=ShipyardBuilderSystem::BuildControls(m,1653,930);

@@ -1,0 +1,41 @@
+{
+  "schema": "subspace.editor.dcc-asset-workspace.v1",
+  "authority": "UNIVERSAL_DCC_ASSET_WORKBENCH",
+  "passRange": "PASS1444-1453",
+  "buildIdentity": "DCC-ASSET-SHELL | PASS1453",
+  "composition": {
+    "top": ["application-menu", "workspace-tabs", "viewport-header"],
+    "left": ["compact-tool-rail"],
+    "center": ["dominant-3d-viewport"],
+    "right": ["outliner", "properties"],
+    "bottom": ["asset-browser-shelf", "status-bar"]
+  },
+  "viewportDefaults": {
+    "background": "neutral-charcoal",
+    "grid": "perspective-floor-grid",
+    "gameplayStarfield": false,
+    "socketOverlay": false,
+    "shieldPreview": false,
+    "constructionFrame": "contextual-only",
+    "orientation": "compact-xyz-gizmo"
+  },
+  "domains": [
+    {"id":"ship-modules","shell":true,"liveAdapter":true,"status":"FIRST_WORKING_CONSUMER"},
+    {"id":"station-modules","shell":true,"liveAdapter":false,"status":"ADAPTER_PENDING"},
+    {"id":"interiors","shell":true,"liveAdapter":false,"status":"ADAPTER_PENDING"},
+    {"id":"characters","shell":true,"liveAdapter":false,"status":"ADAPTER_PENDING"},
+    {"id":"props","shell":true,"liveAdapter":false,"status":"ADAPTER_PENDING"},
+    {"id":"materials","shell":true,"liveAdapter":false,"status":"ADAPTER_PENDING"},
+    {"id":"celestial","shell":true,"liveAdapter":false,"status":"ADAPTER_PENDING"},
+    {"id":"vfx","shell":true,"liveAdapter":false,"status":"ADAPTER_PENDING"},
+    {"id":"ui","shell":true,"liveAdapter":false,"status":"ADAPTER_PENDING"}
+  ],
+  "rules": [
+    "The viewport is the dominant authoring area.",
+    "Editor chrome uses neutral hierarchy; accent color indicates state or selection rather than panel boundaries.",
+    "Gameplay space presentation is not the default background of standalone asset authoring.",
+    "Asset Browser, Outliner and Properties are editor areas with single ownership rather than duplicated dashboards.",
+    "The shell is reusable across asset domains; each domain requires an explicit data/action adapter before it may claim live editing support.",
+    "Shipyard is the first live domain adapter and remains backed by the existing authoritative ship/module systems."
+  ]
+}

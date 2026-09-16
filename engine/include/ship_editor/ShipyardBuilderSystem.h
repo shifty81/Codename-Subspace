@@ -292,6 +292,27 @@ struct ShipyardBuilderLayout {
     float decalRowY = 0.0f;
     float validationY = 0.0f;
     float statusY = 0.0f;
+
+    // PASS1444-1453: normalized DCC-area geometry. These fields are the
+    // visible-shell authority; legacy fields above remain for compatibility
+    // with older automation/tests while the authoring UI migrates to the
+    // universal DCC shell.
+    float viewportLeft = 0.0f;
+    float viewportTop = 0.0f;
+    float viewportRight = 0.0f;
+    float viewportBottom = 0.0f;
+    float assetShelfX = 0.0f;
+    float assetShelfY = 0.0f;
+    float assetShelfWidth = 0.0f;
+    float assetShelfHeight = 0.0f;
+    float outlinerX = 0.0f;
+    float outlinerY = 0.0f;
+    float outlinerWidth = 0.0f;
+    float outlinerHeight = 0.0f;
+    float propertiesX = 0.0f;
+    float propertiesY = 0.0f;
+    float propertiesWidth = 0.0f;
+    float propertiesHeight = 0.0f;
 };
 
 struct ShipyardBuilderValidation {

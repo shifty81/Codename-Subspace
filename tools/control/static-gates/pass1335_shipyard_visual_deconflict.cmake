@@ -6,12 +6,15 @@ if(NOT EXISTS "${VISIBLE}")
 endif()
 file(READ "${VISIBLE}" UI)
 
-# Pass1340-1439 compacts the same single-shell authority further for a
-# viewport-first Blender DCC layout. Certify the modern spacing and retained
-# off-screen legacy compatibility projection instead of the retired literals.
+# Pass1444-1453 promotes the same single-shell authority into the shared DCC
+# asset-workbench layout. Certify area ownership and the retained off-screen
+# legacy compatibility projection instead of retired dashboard coordinates.
 foreach(TOKEN IN ITEMS
-  "l.top=88.0f*s"
-  "l.placedListY=l.contentTopY+42.0f*s"
+  "EditorDccShellLayoutSystem::Compute"
+  "l.viewportLeft=dcc.viewport.x"
+  "l.assetShelfY=dcc.assetShelf.y"
+  "l.outlinerX=dcc.outliner.x"
+  "l.propertiesY=dcc.properties.y"
   "showSidebar"
   "kCompatibilityStride=100000.0f"
   "complete historical command surface")

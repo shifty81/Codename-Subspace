@@ -483,23 +483,48 @@ void NativeGameApplication::FrameShipyardView(bool selectedModule)
 
     const auto& modules=_shipBuilder.Recipe().modules;
     Vector3 localCenter{};
-    if(selectedModule){
-        if(const auto* placed=_shipBuilder.SelectedPlacedModule())localCenter={placed->x,placed->y,placed->z};
-    }else if(!modules.empty()){
-        for(const auto& placed:modules){localCenter.x+=placed.x;localCenter.y+=placed.y;localCenter.z+=placed.z;}
-        const float inv=1.0f/static_cast<float>(modules.size());
-        localCenter=localCenter*inv;
-    }
-    const Vector3 worldCenter=shipOrigin+ShipLocalToWorld(localCenter,shipYaw);
+    float radius=1.0f;
+    constexpr float kPreviewScale=0.30f; // renderer uses ~0.24 with class/role axis shaping
 
-    float radius=selectedModule?1.5f:1.0f;
-    if(!selectedModule){
-        for(const auto& placed:modules){
-            const float dx=placed.x-localCenter.x,dy=placed.y-localCenter.y,dz=placed.z-localCenter.z;
-            radius=std::max(radius,std::sqrt(dx*dx+dy*dy+dz*dz));
+    if(selectedModule){
+        if(const auto* placed=_shipBuilder.SelectedPlacedModule()){
+            localCenter={placed->x,placed->y,placed->z};
+            radius=.70f;
+            for(const auto& record:_shipBuilder.Model().catalog){
+                if(record.source.moduleId!=placed->moduleId)continue;
+                const float authored=std::sqrt(record.source.halfWidth*record.source.halfWidth+
+                                               record.source.halfLength*record.source.halfLength+
+                                               record.source.halfHeight*record.source.halfHeight);
+                radius=std::max(radius,authored*kPreviewScale*1.20f);break;
+            }
         }
+    }else if(!modules.empty()){
+        Vector3 mn{modules.front().x,modules.front().y,modules.front().z};
+        Vector3 mx=mn;
+        for(const auto& placed:modules){
+            mn.x=std::min(mn.x,placed.x);mn.y=std::min(mn.y,placed.y);mn.z=std::min(mn.z,placed.z);
+            mx.x=std::max(mx.x,placed.x);mx.y=std::max(mx.y,placed.y);mx.z=std::max(mx.z,placed.z);
+        }
+        localCenter=(mn+mx)*.5f;
+        for(const auto& placed:modules){
+            float authored=1.0f;
+            for(const auto& record:_shipBuilder.Model().catalog){
+                if(record.source.moduleId!=placed.moduleId)continue;
+                authored=std::sqrt(record.source.halfWidth*record.source.halfWidth+
+                                   record.source.halfLength*record.source.halfLength+
+                                   record.source.halfHeight*record.source.halfHeight);break;
+            }
+            const float dx=(placed.x-localCenter.x)*kPreviewScale;
+            const float dy=(placed.y-localCenter.y)*kPreviewScale;
+            const float dz=(placed.z-localCenter.z)*kPreviewScale;
+            radius=std::max(radius,std::sqrt(dx*dx+dy*dy+dz*dz)+authored*kPreviewScale);
+        }
+        // Keep the default frame intentionally tighter than gameplay framing:
+        // the asset should occupy the DCC viewport, not look like a radar contact.
+        radius=std::max(.85f,radius*.86f);
     }
-    ConstructionEditorCameraSystem::Reset(_constructionCamera,worldCenter,std::max(1.5f,radius));
+    const Vector3 worldCenter=shipOrigin+ShipLocalToWorld(localCenter*kPreviewScale,shipYaw);
+    ConstructionEditorCameraSystem::Reset(_constructionCamera,worldCenter,std::max(.70f,radius));
     ApplyConstructionCameraView();
 }
 

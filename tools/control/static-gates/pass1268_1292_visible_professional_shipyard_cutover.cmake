@@ -32,11 +32,13 @@ endforeach()
 # Historical visible-cutover intent remains certified, but Pass1335 promoted
 # right-panel chrome ownership to the renderer so the interaction projection
 # no longer draws duplicate OUTLINER/PROPERTIES header controls.
-# Pass1340-1439 intentionally replaces the former wide GameMaker projection
-# with compact Blender-derived workspace/tool/asset-browser controls. Preserve
-# the historical functional intent while certifying the current visible labels.
+# Pass1340-1439 moved to a Blender-derived workspace projection and Pass1444-1453
+# normalizes that projection into the reusable DCC asset shell. LAYOUT is the
+# successor label for the former ASSEMBLY workspace; the functional command is
+# still WorkspaceBuild. Preserve historical capability intent while certifying
+# the current visible labels.
 foreach(TOKEN
-    "ASSEMBLY"
+    "LAYOUT"
     "INTERIOR"
     "SYSTEMS"
     "PAINT"

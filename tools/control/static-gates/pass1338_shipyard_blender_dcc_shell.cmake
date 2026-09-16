@@ -1,5 +1,7 @@
 # Pass1338: historical Blender-derived Shipyard DCC shell and rendered smoke authority.
-# Later DCC tranches may supersede the exact profile/pass identity while retaining this foundation.
+# Later DCC tranches may supersede exact coordinates/profile identity while retaining this foundation.
+# Pass1444-1453 promotes the shell into EditorDccShellLayoutSystem, so certify
+# structural DCC ownership rather than the retired fixed top-coordinate literal.
 get_filename_component(P1338_ROOT "${CMAKE_CURRENT_LIST_DIR}/../../.." ABSOLUTE)
 
 function(p1338_require_text rel token)
@@ -22,7 +24,8 @@ p1338_require_text("engine/src/application/NativeBattlefieldRenderer.cpp" "File 
 p1338_require_text("engine/src/application/NativeBattlefieldRenderer.cpp" "\"OUTLINER\"")
 p1338_require_text("engine/src/application/NativeBattlefieldRenderer.cpp" "\"PROPERTIES\"")
 p1338_require_text("engine/src/application/NativeBattlefieldRenderer.cpp" "build_identity::kShipyardUiProfile")
-p1338_require_text("engine/src/ship_editor/ShipyardBuilderSystem.cpp" "l.top=88.0f*s")
+p1338_require_text("engine/src/ship_editor/ShipyardProfessionalVisibleCutover.cpp" "EditorDccShellLayoutSystem::Compute")
+p1338_require_text("engine/src/editor/EditorDccShellLayoutSystem.cpp" "out.assetShelf")
 p1338_require_text("SubspaceTools.ps1" "Native Shipyard rendered smoke")
 p1338_require_text("docs/design/SHIPYARD_BLENDER_UI_CONTRACT.md" "Pass1338 acceptance")
 

@@ -33,9 +33,9 @@ struct ShipyardDccUiState {
     bool maximizeViewport = false;
     bool showGrid = true;
     bool showGizmos = true;
-    bool showSocketOverlay = true;
+    bool showSocketOverlay = false;
     bool showStatsOverlay = false;
-    bool showShieldPreview = true;
+    bool showShieldPreview = false;
     bool showHelpOverlay = false;
     bool commandPaletteOpen = false;
     bool pinProperties = false;
