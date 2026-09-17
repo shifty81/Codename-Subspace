@@ -56,7 +56,19 @@ void RemovePanelHosts(SubspaceDockWorkspace& w,const std::string& panelId){
 void LayoutNode(const SubspaceDockWorkspace& w,const std::string& id,const SubspaceUiRect& rect,std::vector<SubspaceDockLayout>& out){
     const auto* n=SubspaceDockSystem::FindNode(w,id);if(!n||n->collapsed)return;
     if(n->split){const float ratio=std::clamp(n->ratio,.08f,.92f);SubspaceUiRect a=rect,b=rect;if(n->axis==SubspaceDockSplitAxis::Horizontal){a.width=rect.width*ratio;b.x=rect.x+a.width;b.width=std::max(0.0f,rect.width-a.width);}else{a.height=rect.height*ratio;b.y=rect.y+a.height;b.height=std::max(0.0f,rect.height-a.height);}LayoutNode(w,n->firstChildId,a,out);LayoutNode(w,n->secondChildId,b,out);return;}
+    // PASS1507: a leaf is a tab stack, not a pile of simultaneous panels.
+    // A closed/auto-hidden active tab yields to the first available sibling.
+    auto usable=[&](const std::string& id){
+        const auto* panel=SubspaceDockSystem::FindPanel(w,id);
+        return panel&&panel->visible&&(!panel->autoHide||panel->pinned||panel->hoverReveal);
+    };
+    std::string active=Contains(n->tabs,n->activeTabId)&&usable(n->activeTabId)
+        ?n->activeTabId:std::string{};
+    if(active.empty())for(const auto& candidate:n->tabs){
+        if(usable(candidate)){active=candidate;break;}
+    }
     for(const auto& panelId:n->tabs){
+        if(panelId!=active)continue;
         const auto* p=SubspaceDockSystem::FindPanel(w,panelId);
         if(!p||!p->visible||(p->autoHide&&!p->pinned&&!p->hoverReveal))continue;
         SubspaceUiRect panelRect=rect;
@@ -92,7 +104,24 @@ bool SubspaceDockSystem::RegisterPanel(SubspaceDockWorkspace& w,SubspaceDockPane
     p.opacity=std::clamp(p.opacity,.28f,1.0f);w.panels.push_back(p);leaf=FindNode(w,p.defaultLeafId);leaf->tabs.push_back(p.id);if(leaf->activeTabId.empty()&&p.visible)leaf->activeTabId=p.id;return true;
 }
 bool SubspaceDockSystem::OpenPanel(SubspaceDockWorkspace& w,const std::string& id){auto* p=FindPanel(w,id);if(!p)return false;p->visible=true;for(const auto& f:w.floatingPanels)if(f.panelId==id)return true;for(auto& n:w.nodes)if(!n.split&&Contains(n.tabs,id)){n.collapsed=false;n.activeTabId=id;return true;}auto* leaf=FindNode(w,p->defaultLeafId);if(!leaf||leaf->split)return false;leaf->tabs.push_back(id);leaf->activeTabId=id;leaf->collapsed=false;return true;}
-bool SubspaceDockSystem::ClosePanel(SubspaceDockWorkspace& w,const std::string& id){auto* p=FindPanel(w,id);if(!p||!p->closable)return false;p->visible=false;return true;}
+bool SubspaceDockSystem::ClosePanel(SubspaceDockWorkspace& w,const std::string& id){
+    auto* p=FindPanel(w,id);
+    if(!p||!p->closable)return false;
+    p->visible=false;
+    // Do not leave the dock stack pointing at a hidden tab after a close.
+    for(auto& node:w.nodes){
+        if(node.split||node.activeTabId!=id)continue;
+        node.activeTabId.clear();
+        for(const auto& candidate:node.tabs){
+            const auto* next=FindPanel(w,candidate);
+            if(next&&next->visible&&(!next->autoHide||next->pinned||next->hoverReveal)){
+                node.activeTabId=candidate;
+                break;
+            }
+        }
+    }
+    return true;
+}
 bool SubspaceDockSystem::ActivatePanel(SubspaceDockWorkspace& w,const std::string& id){auto* p=FindPanel(w,id);if(!p)return false;if(!p->visible&&!OpenPanel(w,id))return false;for(auto& n:w.nodes)if(!n.split&&Contains(n.tabs,id)){n.activeTabId=id;n.collapsed=false;return true;}for(const auto& f:w.floatingPanels)if(f.panelId==id)return true;return false;}
 bool SubspaceDockSystem::MovePanel(SubspaceDockWorkspace& w,const std::string& id,const std::string& leafId,bool activate){auto* p=FindPanel(w,id);auto* leaf=FindNode(w,leafId);if(!p||!leaf||leaf->split)return false;RemovePanelHosts(w,id);leaf=FindNode(w,leafId);leaf->tabs.push_back(id);leaf->collapsed=false;p=FindPanel(w,id);p->visible=true;if(activate)leaf->activeTabId=id;return true;}
 bool SubspaceDockSystem::FloatPanel(SubspaceDockWorkspace& w,const std::string& id,SubspaceUiRect r){auto* p=FindPanel(w,id);if(!p||!p->floatable)return false;RemovePanelHosts(w,id);p=FindPanel(w,id);p->visible=true;r.width=std::clamp(r.width,p->minWidth,p->maxWidth);r.height=std::clamp(r.height,p->minHeight,p->maxHeight);w.floatingPanels.push_back({id,r});return true;}

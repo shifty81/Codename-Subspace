@@ -811,3 +811,14 @@ if(SUBSPACE_BUILD_TESTS)
     target_link_libraries(subspace_pass1466_1505_tests PRIVATE subspace_engine)
     add_test(NAME SubspacePass1466To1505ShipyardFoundryTests COMMAND subspace_pass1466_1505_tests)
 endif()
+
+# PASS1507: execute the production dock implementation's active-tab regression
+# directly, independently of the full game link graph. CTest/Full Gate owns it.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_pass1507_dock_tests
+        src/ui/SubspaceUiFramework.cpp
+        tests/pass1507_dock_active_tab_tests.cpp)
+    target_include_directories(subspace_pass1507_dock_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_compile_features(subspace_pass1507_dock_tests PRIVATE cxx_std_17)
+    add_test(NAME SubspacePass1507DockActiveTabTests COMMAND subspace_pass1507_dock_tests)
+endif()
