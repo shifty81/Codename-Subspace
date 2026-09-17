@@ -916,3 +916,21 @@ if(SUBSPACE_BUILD_TESTS)
     target_compile_features(subspace_shipyard_gui_recovery_tests PRIVATE cxx_std_17)
     add_test(NAME SubspaceShipyardGuiRecoveryTests COMMAND subspace_shipyard_gui_recovery_tests)
 endif()
+
+# Shipyard UI regression: Assets can always be reopened from global chrome,
+# including persisted closed/collapsed tabs, floating windows, and maximized view.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_asset_visibility_recovery_tests
+        tests/shipyard_asset_visibility_recovery_tests.cpp)
+    target_link_libraries(subspace_asset_visibility_recovery_tests PRIVATE subspace_engine)
+    add_test(NAME SubspaceAssetVisibilityRecoveryTests COMMAND subspace_asset_visibility_recovery_tests)
+endif()
+
+# G1: shared selected-module XYZ manipulation, including projected-pick agreement.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_unified_gizmo_g1_tests tests/shipyard_unified_gizmo_g1_tests.cpp)
+    target_link_libraries(subspace_unified_gizmo_g1_tests PRIVATE subspace_engine)
+    add_test(NAME SubspaceUnifiedGizmoG1Tests COMMAND subspace_unified_gizmo_g1_tests)
+    add_test(NAME SubspaceUnifiedGizmoG1SourceGate COMMAND ${CMAKE_COMMAND}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/../tools/control/static-gates/shipyard_unified_gizmo_g1_authority.cmake)
+endif()

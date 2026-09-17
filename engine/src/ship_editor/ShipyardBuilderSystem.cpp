@@ -1399,12 +1399,12 @@ bool ShipyardBuilderSystem::ActivateInternal(ShipyardBuilderCommand command,int 
         case ShipyardBuilderCommand::NextDecalPreset:{const auto n=DecalPresets().size();if(n){model_.decalPreset=(model_.decalPreset+1)%n;model_.status="Decal preset: "+DecalPresets()[model_.decalPreset];changed=true;}}break;
         case ShipyardBuilderCommand::AddDecal:changed=AddSelectedDecal();break;
         case ShipyardBuilderCommand::RemoveDecal:changed=RemoveSelectedDecal();break;
-        case ShipyardBuilderCommand::ToolSelect:if(model_.inspectorTab!=ShipyardInspectorTab::Sockets){model_.workspaceMode=ShipyardWorkspaceMode::Build;model_.inspectorTab=ShipyardInspectorTab::Transform;}model_.transformTool=ShipyardTransformTool::Select;CancelTransform();CancelSocketTransform();model_.status="Select tool";return true;
+        case ShipyardBuilderCommand::ToolSelect:if(model_.inspectorTab!=ShipyardInspectorTab::Sockets&&model_.workspaceMode!=ShipyardWorkspaceMode::Model){model_.workspaceMode=ShipyardWorkspaceMode::Build;model_.inspectorTab=ShipyardInspectorTab::Transform;}model_.transformTool=ShipyardTransformTool::Select;CancelTransform();CancelSocketTransform();model_.status="Select tool";return true;
         case ShipyardBuilderCommand::ToolMove:if(model_.inspectorTab!=ShipyardInspectorTab::Sockets&&model_.workspaceMode!=ShipyardWorkspaceMode::Model){model_.workspaceMode=ShipyardWorkspaceMode::Build;model_.inspectorTab=ShipyardInspectorTab::Transform;}model_.transformTool=ShipyardTransformTool::Move;CancelTransform();CancelSocketTransform();model_.status=model_.inspectorTab==ShipyardInspectorTab::Sockets?"Socket MOVE tool":"Move tool";return true;
         case ShipyardBuilderCommand::ToolRotate:if(model_.inspectorTab!=ShipyardInspectorTab::Sockets&&model_.workspaceMode!=ShipyardWorkspaceMode::Model){model_.workspaceMode=ShipyardWorkspaceMode::Build;model_.inspectorTab=ShipyardInspectorTab::Transform;}model_.transformTool=ShipyardTransformTool::Rotate;CancelTransform();CancelSocketTransform();model_.status=model_.inspectorTab==ShipyardInspectorTab::Sockets?"Socket ROTATE tool":"Rotate tool";return true;
         case ShipyardBuilderCommand::ToolScale:if(model_.workspaceMode!=ShipyardWorkspaceMode::Model){model_.workspaceMode=ShipyardWorkspaceMode::Build;model_.inspectorTab=ShipyardInspectorTab::Transform;}model_.transformTool=ShipyardTransformTool::Scale;CancelTransform();model_.status="Scale tool";return true;
         case ShipyardBuilderCommand::ModelPreviousPrimitive:
-        case ShipyardBuilderCommand::ModelNextPrimitive:{if(!model_.capabilities.model)return false;constexpr int count=17;int i=static_cast<int>(model_.modeling.selectedPrimitive)+(command==ShipyardBuilderCommand::ModelNextPrimitive?1:-1);if(i<0)i=count-1;if(i>=count)i=0;model_.modeling.selectedPrimitive=static_cast<ModelingPrimitiveType>(i);model_.status=std::string("Add Shape: ")+ShipyardModelingSystem::PrimitiveName(model_.modeling.selectedPrimitive);return true;}
+        case ShipyardBuilderCommand::ModelNextPrimitive:{if(!model_.capabilities.model)return false;constexpr int count=static_cast<int>(ModelingPrimitiveType::Pipe)+1;int i=static_cast<int>(model_.modeling.selectedPrimitive)+(command==ShipyardBuilderCommand::ModelNextPrimitive?1:-1);if(i<0)i=count-1;if(i>=count)i=0;model_.modeling.selectedPrimitive=static_cast<ModelingPrimitiveType>(i);model_.status=std::string("Add Shape: ")+ShipyardModelingSystem::PrimitiveName(model_.modeling.selectedPrimitive);return true;}
         case ShipyardBuilderCommand::ModelAddShape:{if(!model_.capabilities.model)return false;const auto i=ShipyardModelingSystem::AddPrimitive(model_.modeling.recipe,model_.modeling.selectedPrimitive);model_.modeling.selectedPrimitiveIndex=i;model_.dirty=true;model_.status=std::string("Added modeled ")+ShipyardModelingSystem::PrimitiveName(model_.modeling.selectedPrimitive)+" shape";return true;}
         case ShipyardBuilderCommand::ModelAddBox:case ShipyardBuilderCommand::ModelAddWedge:case ShipyardBuilderCommand::ModelAddCylinder:case ShipyardBuilderCommand::ModelAddSphere:case ShipyardBuilderCommand::ModelAddPlate:case ShipyardBuilderCommand::ModelAddBeam:{
             ModelingPrimitiveType t=ModelingPrimitiveType::Box;
@@ -1623,6 +1623,13 @@ bool ShipyardBuilderSystem::BeginSelectedTransform(){
     if(model_.transformTool==ShipyardTransformTool::Move)model_.status="MOVE / arrows follow camera; SHIFT = 0.1x precision";
     else if(model_.transformTool==ShipyardTransformTool::Rotate)model_.status="ROTATE / drag yaw+pitch; CTRL-drag roll; SHIFT = 0.1x";
     else model_.status="SCALE / drag for uniform scale; SHIFT = 0.1x precision";
+    return true;
+}
+
+bool ShipyardBuilderSystem::ResetSelectedTransformPreview(){
+    if(!model_.transform.active||model_.transform.moduleIndex>=model_.recipe.modules.size())return false;
+    model_.transform.working=model_.transform.before;
+    model_.recipe.modules[model_.transform.moduleIndex]=model_.transform.before;
     return true;
 }
 

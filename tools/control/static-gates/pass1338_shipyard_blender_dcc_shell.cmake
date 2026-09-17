@@ -20,10 +20,19 @@ p1338_require_text("engine/include/application/SubspaceBuildIdentity.h" "BLENDER
 p1338_require_text("engine/include/application/SubspaceBuildIdentity.h" "PASS")
 p1338_require_text("engine/src/main.cpp" "--shipyard-smoke")
 p1338_require_text("engine/src/application/NativeGameApplication.cpp" "options.shipyardSmoke ? 1280")
-# PASS1466-1505 keeps only application-global File/Edit/View/Help fixed; the
-# Ship/Select/Add vocabulary moved into viewport-local contextual chrome.
+# PASS1466-1505 keeps application-global File/Edit/View/Help in fixed chrome.
+# The old "View Select Add Object" renderer string was NONINTERACTIVE and was
+# removed in the Asset Browser recovery: it painted over real ASSETS / RESET UI
+# hit rectangles. Certify the current viewport label and reachable command
+# controls/handlers instead of requiring a misleading, obsolete text overlay.
+# This historical test does NOT certify functional application menus.
 p1338_require_text("engine/src/application/NativeBattlefieldRenderer.cpp" "File   Edit   View   Help")
-p1338_require_text("engine/src/application/NativeBattlefieldRenderer.cpp" "View   Select   Add   Object")
+p1338_require_text("engine/src/application/NativeBattlefieldRenderer.cpp" "ShipyardText(\"3D VIEW\"")
+p1338_require_text("engine/src/ship_editor/ShipyardProfessionalVisibleCutover.cpp" "DccRevealAssetBrowser,0,8.0f*s")
+p1338_require_text("engine/src/ship_editor/ShipyardProfessionalVisibleCutover.cpp" "DccResetLayout,0,95.0f*s")
+p1338_require_text("engine/src/ship_editor/ShipyardProfessionalVisibleCutover.cpp" "case ShipyardBuilderCommand::DccRevealAssetBrowser:")
+p1338_require_text("engine/src/ship_editor/ShipyardProfessionalVisibleCutover.cpp" "SubspaceDockSystem::OpenPanel(model_.dockWorkspace,panel->id)")
+p1338_require_text("engine/src/ship_editor/ShipyardProfessionalVisibleCutover.cpp" "case ShipyardBuilderCommand::DccResetLayout:")
 p1338_require_text("engine/src/application/NativeBattlefieldRenderer.cpp" "\"OUTLINER\"")
 p1338_require_text("engine/src/application/NativeBattlefieldRenderer.cpp" "\"PROPERTIES\"")
 p1338_require_text("engine/src/application/NativeBattlefieldRenderer.cpp" "build_identity::kShipyardUiProfile")

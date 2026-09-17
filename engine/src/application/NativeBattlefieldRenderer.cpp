@@ -3242,8 +3242,47 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
     const float canvasLeft=viewportLeft;
     const float canvasRight=viewportRight;
     const auto activeWorkspace=m.testWorkspaceActive?ShipyardWorkspaceMode::Test:m.workspaceMode;
-    ShipyardText("3D VIEW",canvasLeft+7.0f*s,layout.viewportTop-19.0f*s,.48f,text);
-    ShipyardText("View   Select   Add   Object",canvasLeft+72.0f*s,layout.viewportTop-19.0f*s,.46f,muted);
+    // The same header strip contains permanent ASSETS and RESET UI controls.
+    // Do not paint non-interactive menu text over their hit rectangles.
+    if(!maximized)ShipyardText("3D VIEW",canvasLeft+190.0f*s,layout.viewportTop-19.0f*s,.48f,text);
+
+    // Selected-module tool gizmo. Shared EditorGizmoSystem layout is used by
+    // both native mouse branches for picking and dragging. Draw BEFORE panel
+    // backgrounds and floating windows: dock chrome must occlude the gizmo.
+    if(frame.camera&&m.dcc.showGizmos&&!m.recipe.modules.empty()&&
+       m.workspaceMode!=ShipyardWorkspaceMode::Model&&!m.dragPreview.staged&&
+       m.inspectorTab!=ShipyardInspectorTab::Sockets&&
+       m.transformTool!=ShipyardTransformTool::Select){
+        const auto& placement=m.recipe.modules[std::min(m.selectedPlacedModule,m.recipe.modules.size()-1)];
+        const Vector3 shipPosition=(!frame.standaloneShipyard&&frame.playerPhysics)?
+            Vector3{frame.playerPhysics->position.x,frame.playerPhysics->position.y,.30f}:Vector3{0,0,.30f};
+        const float shipYaw=(!frame.standaloneShipyard&&frame.playerPhysics)?frame.playerPhysics->rotation.z:0.0f;
+        const auto gizmo=EditorGizmoSystem::BuildModule(placement,m.recipe,*frame.camera,w,h,
+             shipPosition,shipYaw,m.transformSpace,m.transformTool);
+        const auto hoverAxis=EditorGizmoSystem::Pick(gizmo,frame.pointerX,frame.pointerY);
+        const Rgba axisColors[3]={{.94f,.32f,.29f,1.0f},{.30f,.89f,.42f,1.0f},{.30f,.59f,1.0f,1.0f}};
+        for(const auto& handle:gizmo.handles){
+            if(!handle.valid)continue;
+            const int i=static_cast<int>(handle.axis);if(i<0||i>2)continue;
+            const bool hovered=hoverAxis==handle.axis;
+            const auto color=axisColors[i];
+            Line(handle.centerX,handle.centerY,0,handle.tipX,handle.tipY,0,color,hovered?4.5f:2.8f);
+            if(m.transformTool==ShipyardTransformTool::Rotate){
+                Ring(handle.tipX,handle.tipY,0,hovered?9.0f:7.0f,color,hovered?3.2f:2.0f,20);
+            }else if(m.transformTool==ShipyardTransformTool::Scale){
+                FilledRect(handle.tipX-5.0f,handle.tipY-5.0f,0,10.0f,10.0f,color);
+            }else{
+                FilledCircle(handle.tipX,handle.tipY,0,hovered?7.0f:5.5f,color,16);
+            }
+            ShipyardText(i==0?"X":(i==1?"Y":"Z"),handle.tipX+7.0f,handle.tipY-6.0f,.54f,color);
+        }
+        if(gizmo.visible){
+            const auto& h0=gizmo.handles[0];
+            ShipyardText(m.transformTool==ShipyardTransformTool::Move?"DRAG AXIS / MOVE":
+                         (m.transformTool==ShipyardTransformTool::Scale?"DRAG AXIS / SCALE":"DRAG AXIS / ROTATE"),
+                         h0.centerX+12.0f,h0.centerY+19.0f,.43f,muted);
+        }
+    }
 
     // Editor areas: Tool Rail | dominant 3D View | bottom Asset Browser |
     // Outliner over Properties. Area backgrounds use subtle one-pixel splits.
@@ -3689,6 +3728,8 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
         (m.guidedWorkflow?"START: 1 Select asset  2 Drag into ship  3 Snap  4 Confirm  5 Save; use mouse wheel over Assets to browse":"G Move  R Rotate  S Scale  Mouse wheel over Assets to browse");
     if(hovered){
         switch(hovered->command){
+            case ShipyardBuilderCommand::DccRevealAssetBrowser:help="Show Assets: reopen, expand and foreground the asset catalog without hiding it again.";break;
+            case ShipyardBuilderCommand::DccResetLayout:help="Reset UI: restore the Shipyard's default panel positions and visibility; the ship stays intact.";break;
             case ShipyardBuilderCommand::SelectModule:{
                 if(hovered->value>=0&&static_cast<std::size_t>(hovered->value)<filteredCatalog.size()){
                     const auto* hoveredRecord=filteredCatalog[static_cast<std::size_t>(hovered->value)];

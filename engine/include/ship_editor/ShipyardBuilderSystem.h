@@ -287,7 +287,10 @@ enum class ShipyardBuilderCommand {
     Validate,
     SaveBlueprint,
     Apply,
-    Reset
+    Reset,
+    // Recovery action: does not toggle a hidden/inactive Assets tab closed.
+    // Appended to preserve existing command identifiers.
+    DccRevealAssetBrowser
 };
 
 struct ShipyardBuilderControl {
@@ -506,6 +509,9 @@ public:
     ShipyardBuilderValidation Validate() const;
 
     bool BeginSelectedTransform();
+    // Rewind to the drag start before applying total pointer displacement.
+    // This prevents incremental snapping from swallowing sub-step motion.
+    bool ResetSelectedTransformPreview();
     bool BeginSelectedSocketTransform();
     bool TranslateSelected(const Vector3& delta,bool fine=false);
     bool TranslateSelectedSocket(const Vector3& delta,bool fine=false);

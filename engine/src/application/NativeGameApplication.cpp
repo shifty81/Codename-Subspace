@@ -1,5 +1,6 @@
 #include "application/NativeGameApplication.h"
 #include "editor/EditorTransformSpaceSystem.h"
+#include "ship_editor/ShipyardPanelCompositorSystem.h"
 #include "ships/ShipyardAuthoredShipSystem.h"
 
 #include "core/config/ConfigurationManager.h"
@@ -574,7 +575,8 @@ bool NativeGameApplication::ActivateShipyardControl(ShipyardBuilderCommand comma
     if(!handled)return false;
     if(command==ShipyardBuilderCommand::FrameSelected)FrameShipyardView(true);
     else if(command==ShipyardBuilderCommand::FrameShip)FrameShipyardView(false);
-    if(command==ShipyardBuilderCommand::DccToggleToolRail||
+    if(command==ShipyardBuilderCommand::DccRevealAssetBrowser||
+       command==ShipyardBuilderCommand::DccToggleToolRail||
        command==ShipyardBuilderCommand::DccToggleAssetBrowser||
        command==ShipyardBuilderCommand::DccToggleOutliner||
        command==ShipyardBuilderCommand::DccToggleProperties||
@@ -592,6 +594,66 @@ bool NativeGameApplication::ActivateShipyardControl(ShipyardBuilderCommand comma
             Logger::Instance().Warning("ShipyardOverlay",layoutError);
     }
     return true;
+}
+
+bool NativeGameApplication::TryBeginShipyardGizmo(const StrategicCamera& camera,float x,float y,float shipX,float shipY,float shipYaw){
+    _shipyardGizmoHandle={};
+    _shipyardGizmoTotalPixels=0.0f;
+    const auto& m=_shipBuilder.Model();
+    if(m.recipe.modules.empty()||m.workspaceMode==ShipyardWorkspaceMode::Model||
+       m.inspectorTab==ShipyardInspectorTab::Sockets||m.dragPreview.staged||!m.dcc.showGizmos||
+       m.transformTool==ShipyardTransformTool::Select)return false;
+    const int w=_window.GetWidth(),h=_window.GetHeight();
+    const auto layout=ShipyardBuilderSystem::Layout(m,w,h);
+    if(x<layout.viewportLeft||x>layout.viewportRight||y<layout.viewportTop||y>layout.statusY)return false;
+    // A panel's empty background is also UI, even when it has no button there.
+    const auto layers=ShipyardPanelCompositorSystem::Snapshot(m.dockWorkspace,w,
+        std::max(1,static_cast<int>(layout.statusY)),layout.viewportTop);
+    for(const auto& panel:layers)
+        if(panel.visible&&panel.panelId!="viewport"&&
+           ShipyardPanelCompositorSystem::Contains(panel.rect,x,y))return false;
+    const auto& selected=m.recipe.modules[std::min(m.selectedPlacedModule,m.recipe.modules.size()-1)];
+    const auto gizmo=EditorGizmoSystem::BuildModule(selected,m.recipe,camera,
+        static_cast<float>(w),static_cast<float>(h),{shipX,shipY,.30f},shipYaw,
+        m.transformSpace,m.transformTool);
+    const auto axis=EditorGizmoSystem::Pick(gizmo,x,y);
+    const auto* handle=EditorGizmoSystem::Handle(gizmo,axis);
+    if(!handle||!_shipBuilder.BeginSelectedTransform())return false;
+    // The gizmo locks its own axis for this drag; keyboard constraints are not
+    // allowed to silently redirect an axis handle to another coordinate.
+    _shipBuilder.SetTransformConstraint(ShipyardTransformConstraint::Free,false);
+    _shipyardGizmoHandle=*handle;
+    _shipyardPointerTransform=true;
+    return true;
+}
+
+void NativeGameApplication::ApplyShipyardGizmoDrag(float dx,float dy,bool fine,const StrategicCamera& camera){
+    if(!_shipyardGizmoHandle.valid)return;
+    const auto& m=_shipBuilder.Model();
+    if(!m.transform.active||m.transform.tool!=m.transformTool)return;
+    const float pixels=EditorGizmoSystem::DragPixels(_shipyardGizmoHandle,dx,dy);
+    if(std::fabs(pixels)<.00001f)return;
+    _shipyardGizmoTotalPixels+=pixels;
+    if(!_shipBuilder.ResetSelectedTransformPreview())return;
+    const float totalPixels=_shipyardGizmoTotalPixels;
+    if(m.transformTool==ShipyardTransformTool::Move){
+        const float amount=totalPixels*.012f/std::max(.35f,camera.GetZoom());
+        _shipBuilder.TranslateSelected(_shipyardGizmoHandle.assemblyDirection*amount,fine);
+    }else if(m.transformTool==ShipyardTransformTool::Scale){
+        const float amount=totalPixels*.003f;
+        Vector3 delta{};
+        switch(_shipyardGizmoHandle.axis){case EditorGizmoAxis::X:delta.x=amount;break;
+            case EditorGizmoAxis::Y:delta.y=amount;break;
+            case EditorGizmoAxis::Z:delta.z=amount;break;default:return;}
+        _shipBuilder.ScaleSelected(delta,fine);
+    }else if(m.transformTool==ShipyardTransformTool::Rotate){
+        const float amount=totalPixels*.35f;
+        Vector3 delta{};
+        switch(_shipyardGizmoHandle.axis){case EditorGizmoAxis::X:delta.x=amount;break;
+            case EditorGizmoAxis::Y:delta.y=amount;break;
+            case EditorGizmoAxis::Z:delta.z=amount;break;default:return;}
+        _shipBuilder.RotateSelected(delta,fine);
+    }
 }
 
 void NativeGameApplication::HandleShipyardTransformHotkeys()
@@ -1599,6 +1661,13 @@ void NativeGameApplication::HandleGlobalActions()
 
     if(_standaloneShipyard){
         if(input.WasPressed(InputAction::MenuBack)){
+            // Escape cancels a live axis manipulation before leaving the Shipyard.
+            // An incomplete drag must not silently become a committed edit.
+            if(_shipyardGizmoHandle.valid){
+                _shipBuilder.CancelTransform();_shipyardGizmoHandle={};
+                _shipyardGizmoTotalPixels=0.0f;_shipyardPointerTransform=false;
+                _shipyardDockSuppressClick=true;return;
+            }
             if(_shipBuilder.IsInitialized()&&_shipBuilder.Model().dragPreview.staged){_shipBuilder.CancelCatalogDrag();return;}
             _workspace.Close();_standaloneShipyard=false;RestoreGameplayCameraLimits();GoToFrontendScreen(FrontendScreen::MainMenu);return;
         }
@@ -1652,7 +1721,9 @@ void NativeGameApplication::HandleGlobalActions()
                     !ShipyardDockPointerSystem::CoversFloatingPanel(_shipBuilder.Model().dockWorkspace,
                     _window.GetWidth(),std::max(1,static_cast<int>(dockLayout.statusY)),
                     dockLayout.viewportTop,pressX,pressY)){
-                if(_shipBuilder.Model().dragPreview.staged&&_shipBuilder.Model().transformTool!=ShipyardTransformTool::Select){
+                if(TryBeginShipyardGizmo(_engine.GetStrategicCamera(),pressX,pressY,0.0f,0.0f,0.0f)){
+                    // Axis handle owns this press; do not re-pick the module.
+                }else if(_shipBuilder.Model().dragPreview.staged&&_shipBuilder.Model().transformTool!=ShipyardTransformTool::Select){
                     _shipyardPointerTransform=true;
                 }else{
                     const int picked=NativeBattlefieldRenderer::PickShipyardModule(_shipBuilder.Model().catalog,_shipBuilder.Recipe(),_engine.GetStrategicCamera(),_window.GetWidth(),_window.GetHeight(),pressX,pressY,0,0,0,.24f,.22f,true);
@@ -1681,6 +1752,8 @@ void NativeGameApplication::HandleGlobalActions()
                 _shipBuilder.UpdateCatalogDrag(EditorTransformSpaceSystem::WorldToAssemblyDelta(world,rootYaw));
             }else if(_shipyardPointerTransform){
                 const bool fine=_window.IsShiftDown();auto& camera=_engine.GetStrategicCamera();
+                if(_shipyardGizmoHandle.valid){ApplyShipyardGizmoDrag(dragX,dragY,fine,camera);}
+                else {
                 const bool socketEdit=_shipBuilder.Model().inspectorTab==ShipyardInspectorTab::Sockets;
                 if(_shipBuilder.Model().transformTool==ShipyardTransformTool::Move){const float scale=.012f/std::max(.35f,camera.GetZoom());const Vector3 worldDelta=camera.ViewRightPlanar()*(dragX*scale)+camera.ViewUpPlanar()*(-dragY*scale);const float rootYaw=EditorTransformSpaceSystem::RenderedRootYawRadians(0.0f,_shipBuilder.Recipe().forwardVisualYawDegrees);Vector3 delta=EditorTransformSpaceSystem::WorldToAssemblyDelta(worldDelta,rootYaw);if(socketEdit)if(const auto* placed=_shipBuilder.SelectedPlacedModule())delta=EditorTransformSpaceSystem::AssemblyToModuleLocalDelta(delta,*placed);if(_shipBuilder.Model().dragPreview.staged)_shipBuilder.TranslateStagedPlacement(delta,fine);else if(socketEdit)_shipBuilder.TranslateSelectedSocket(delta,fine);else _shipBuilder.TranslateSelected(delta,fine);}
                 else if(_shipBuilder.Model().transformTool==ShipyardTransformTool::Rotate){
@@ -1688,6 +1761,7 @@ void NativeGameApplication::HandleGlobalActions()
                     if(_shipBuilder.Model().dragPreview.staged)_shipBuilder.RotateStagedPlacement(delta,fine);else if(socketEdit)_shipBuilder.RotateSelectedSocket(delta,fine);else _shipBuilder.RotateSelected(delta,fine);
                 }
                 else if(!socketEdit&&_shipBuilder.Model().transformTool==ShipyardTransformTool::Scale){const float amount=(dragX-dragY)*.0030f;if(_shipBuilder.Model().dragPreview.staged)_shipBuilder.ScaleStagedPlacement(amount,fine);else _shipBuilder.ScaleSelected({amount,amount,amount},fine);}
+                }
             }
             }
         }
@@ -1705,7 +1779,17 @@ void NativeGameApplication::HandleGlobalActions()
             }
             if(_shipyardCatalogPointerDrag){_shipBuilder.StageCatalogDrag();_shipyardCatalogPointerDrag=false;}
             _shipyardCatalogPointerCandidate=false;_shipyardCatalogPointerCandidateIndex=-1;
-            if(_shipyardPointerTransform){if(!_shipBuilder.Model().dragPreview.staged){if(_shipBuilder.Model().inspectorTab==ShipyardInspectorTab::Sockets)_shipBuilder.CommitSocketTransform();else _shipBuilder.CommitTransform();}_shipyardPointerTransform=false;}
+            if(_shipyardPointerTransform){
+                const bool gizmoClick=_shipyardGizmoHandle.valid;
+                if(gizmoClick){_shipyardDockSuppressClick=true;_shipyardGizmoHandle={};}
+                if(gizmoClick&&std::fabs(_shipyardGizmoTotalPixels)<.001f)_shipBuilder.CancelTransform();
+                else if(!_shipBuilder.Model().dragPreview.staged){
+                    if(_shipBuilder.Model().inspectorTab==ShipyardInspectorTab::Sockets)_shipBuilder.CommitSocketTransform();
+                    else _shipBuilder.CommitTransform();
+                }
+                _shipyardGizmoTotalPixels=0.0f;
+                _shipyardPointerTransform=false;
+            }
         }
         float sx=0.0f,sy=0.0f;if(_window.ConsumePrimaryClick(sx,sy)){if(!_shipyardDockSuppressClick){const auto c=ShipyardBuilderSystem::HitTest(_shipBuilder.Model(),_window.GetWidth(),_window.GetHeight(),sx,sy);if(c.command!=ShipyardBuilderCommand::None)ActivateShipyardControl(c.command,c.value);else if(!_shipBuilder.Model().dragPreview.staged &&
                 !ShipyardDockPointerSystem::CoversFloatingPanel(_shipBuilder.Model().dockWorkspace,
@@ -1719,6 +1803,11 @@ void NativeGameApplication::HandleGlobalActions()
     bool closedWorkspace = false;
     if (inGame && _workspace.IsOverlayOpen() && input.WasPressed(InputAction::MenuBack)) {
         const bool closingShipyard=_workspace.Mode()==SandboxWorkspaceMode::ShipBuilder;
+        if(closingShipyard&&_shipyardGizmoHandle.valid){
+            _shipBuilder.CancelTransform();_shipyardGizmoHandle={};
+            _shipyardGizmoTotalPixels=0.0f;_shipyardPointerTransform=false;
+            _shipyardDockSuppressClick=true;return;
+        }
         if(closingShipyard&&_shipBuilder.IsInitialized()&&_shipBuilder.Model().dragPreview.staged){
             _shipBuilder.CancelCatalogDrag();
         }else{
@@ -2090,7 +2179,12 @@ void NativeGameApplication::HandleGlobalActions()
                     !ShipyardDockPointerSystem::CoversFloatingPanel(_shipBuilder.Model().dockWorkspace,
                         _window.GetWidth(),std::max(1,static_cast<int>(dockLayout.statusY)),
                         dockLayout.viewportTop,px,py)){
-                if(_shipBuilder.Model().dragPreview.staged&&_shipBuilder.Model().transformTool!=ShipyardTransformTool::Select){
+                if(TryBeginShipyardGizmo(activeCamera,px,py,
+                    (!_standaloneShipyard&&player)?player->position.x:0.0f,
+                    (!_standaloneShipyard&&player)?player->position.y:0.0f,
+                    (!_standaloneShipyard&&player)?player->rotation.z:0.0f)){
+                    // The handle takes priority over generic module picking.
+                }else if(_shipBuilder.Model().dragPreview.staged&&_shipBuilder.Model().transformTool!=ShipyardTransformTool::Select){
                     _shipyardPointerTransform=true;
                 }else{
                     float shipX=0,shipY=0,shipYaw=0;if(!_standaloneShipyard&&player){shipX=player->position.x;shipY=player->position.y;shipYaw=player->rotation.z;}
@@ -2114,6 +2208,8 @@ void NativeGameApplication::HandleGlobalActions()
                 const auto world=NativeBattlefieldRenderer::ScreenToWorld(_window.GetPointerX(),_window.GetPointerY(),_window.GetWidth(),_window.GetHeight(),activeCamera);float shipX=0,shipY=0,runtimeYaw=0;if(!_standaloneShipyard&&player){shipX=player->position.x;shipY=player->position.y;runtimeYaw=player->rotation.z;}const float rootYaw=EditorTransformSpaceSystem::RenderedRootYawRadians(runtimeYaw,_shipBuilder.Recipe().forwardVisualYawDegrees);const Vector3 local=EditorTransformSpaceSystem::WorldToAssemblyDelta(world-Vector3{shipX,shipY,0},rootYaw);_shipBuilder.UpdateCatalogDrag(local);
             }else if(_shipyardPointerTransform){
                 const bool fine=_window.IsShiftDown();
+                if(_shipyardGizmoHandle.valid){ApplyShipyardGizmoDrag(dx,dy,fine,activeCamera);}
+                else {
                 const bool socketEdit=_shipBuilder.Model().inspectorTab==ShipyardInspectorTab::Sockets;
                 if(_shipBuilder.Model().transformTool==ShipyardTransformTool::Move){const float scale=.012f/std::max(.35f,activeCamera.GetZoom());const Vector3 worldDelta=activeCamera.ViewRightPlanar()*(dx*scale)+activeCamera.ViewUpPlanar()*(-dy*scale);const float rootYaw=EditorTransformSpaceSystem::RenderedRootYawRadians(player?player->rotation.z:0.0f,_shipBuilder.Recipe().forwardVisualYawDegrees);Vector3 delta=EditorTransformSpaceSystem::WorldToAssemblyDelta(worldDelta,rootYaw);if(socketEdit)if(const auto* placed=_shipBuilder.SelectedPlacedModule())delta=EditorTransformSpaceSystem::AssemblyToModuleLocalDelta(delta,*placed);if(_shipBuilder.Model().dragPreview.staged)_shipBuilder.TranslateStagedPlacement(delta,fine);else if(socketEdit)_shipBuilder.TranslateSelectedSocket(delta,fine);else _shipBuilder.TranslateSelected(delta,fine);}
                 else if(_shipBuilder.Model().transformTool==ShipyardTransformTool::Rotate){
@@ -2121,6 +2217,7 @@ void NativeGameApplication::HandleGlobalActions()
                     if(_shipBuilder.Model().dragPreview.staged)_shipBuilder.RotateStagedPlacement(delta,fine);else if(socketEdit)_shipBuilder.RotateSelectedSocket(delta,fine);else _shipBuilder.RotateSelected(delta,fine);
                 }
                 else if(!socketEdit&&_shipBuilder.Model().transformTool==ShipyardTransformTool::Scale){const float amount=(dx-dy)*.0030f;if(_shipBuilder.Model().dragPreview.staged)_shipBuilder.ScaleStagedPlacement(amount,fine);else _shipBuilder.ScaleSelected({amount,amount,amount},fine);}
+                }
             }
             }
         }
@@ -2134,7 +2231,17 @@ void NativeGameApplication::HandleGlobalActions()
                          ShipyardOverlayLayoutStore::DefaultPath(),&layoutError))
                       Logger::Instance().Warning("ShipyardOverlay",layoutError); }
                 _shipyardDockSuppressClick=true;
-            }if(_shipyardCatalogPointerDrag){_shipBuilder.StageCatalogDrag();_shipyardCatalogPointerDrag=false;}_shipyardCatalogPointerCandidate=false;_shipyardCatalogPointerCandidateIndex=-1;if(_shipyardPointerTransform){if(!_shipBuilder.Model().dragPreview.staged){if(_shipBuilder.Model().inspectorTab==ShipyardInspectorTab::Sockets)_shipBuilder.CommitSocketTransform();else _shipBuilder.CommitTransform();}_shipyardPointerTransform=false;}ProcessShipyardRequests();}
+            }if(_shipyardCatalogPointerDrag){_shipBuilder.StageCatalogDrag();_shipyardCatalogPointerDrag=false;}_shipyardCatalogPointerCandidate=false;_shipyardCatalogPointerCandidateIndex=-1;if(_shipyardPointerTransform){
+                const bool gizmoClick=_shipyardGizmoHandle.valid;
+                if(gizmoClick){_shipyardDockSuppressClick=true;_shipyardGizmoHandle={};}
+                if(gizmoClick&&std::fabs(_shipyardGizmoTotalPixels)<.001f)_shipBuilder.CancelTransform();
+                else if(!_shipBuilder.Model().dragPreview.staged){
+                    if(_shipBuilder.Model().inspectorTab==ShipyardInspectorTab::Sockets)_shipBuilder.CommitSocketTransform();
+                    else _shipBuilder.CommitTransform();
+                }
+                _shipyardGizmoTotalPixels=0.0f;
+                _shipyardPointerTransform=false;
+            }ProcessShipyardRequests();}
     }
 
     float sx=0.0f,sy=0.0f;

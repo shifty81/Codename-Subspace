@@ -115,6 +115,22 @@ bool ShipyardBuilderSystem::Activate(ShipyardBuilderCommand command,int value){
        command!=ShipyardBuilderCommand::DccAssetClearSearch)
         model_.assetSearchFocused=false;
     switch(command){
+    case ShipyardBuilderCommand::DccRevealAssetBrowser:{
+        auto* panel=SubspaceDockSystem::FindPanel(model_.dockWorkspace,"asset_browser");
+        if(!panel)return false;
+        // The global Assets recovery control must work even if the user closed
+        // the panel, collapsed it, selected a different bottom tab, floated it,
+        // or maximized the viewport. Never depend on the old visibility flag.
+        model_.dcc.maximizeViewport=false;
+        panel->collapsed=false;
+        panel->autoHide=false;
+        panel->hoverReveal=true;
+        if(!SubspaceDockSystem::OpenPanel(model_.dockWorkspace,panel->id))return false;
+        SubspaceDockSystem::RaiseFloatingPanel(model_.dockWorkspace,panel->id);
+        model_.dcc.showAssetBrowser=true;
+        model_.status="Asset Browser restored (RESET UI restores all default panels)";
+        return true;
+    }
     case ShipyardBuilderCommand::DccToggleAssetBrowser:{auto* p=SubspaceDockSystem::FindPanel(model_.dockWorkspace,"asset_browser");if(!p)return false;const bool show=!p->visible;const bool ok=show?SubspaceDockSystem::OpenPanel(model_.dockWorkspace,p->id):SubspaceDockSystem::ClosePanel(model_.dockWorkspace,p->id);model_.dcc.showAssetBrowser=show;if(ok)model_.status=show?"Asset Browser shown":"Asset Browser hidden";return ok;}
     case ShipyardBuilderCommand::DccToggleToolRail:{auto* p=SubspaceDockSystem::FindPanel(model_.dockWorkspace,"tool_rail");if(!p)return false;const bool show=!p->visible;const bool ok=show?SubspaceDockSystem::OpenPanel(model_.dockWorkspace,p->id):SubspaceDockSystem::ClosePanel(model_.dockWorkspace,p->id);model_.dcc.showToolRail=show;if(ok)model_.status=show?"Tool rail shown":"Tool rail hidden";return ok;}
     case ShipyardBuilderCommand::DccToggleSidebar:{const bool show=!(DockPanelVisible(model_,"outliner")||DockPanelVisible(model_,"properties"));for(const char* id:{"outliner","properties"}){if(show)SubspaceDockSystem::OpenPanel(model_.dockWorkspace,id);else SubspaceDockSystem::ClosePanel(model_.dockWorkspace,id);}model_.dcc.showSidebar=show;model_.dcc.showOutliner=show;model_.dcc.showProperties=show;model_.status=show?"Context panels shown":"Context panels hidden";return true;}
@@ -420,6 +436,10 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
     }
 
     if(maximized){
+        // Global recovery is available even if the viewport was maximized
+        // while Assets was closed. No invisible-panel dependency.
+        add(ShipyardBuilderCommand::DccRevealAssetBrowser,0,8.0f*s,l.top+4.0f*s,83.0f*s,26.0f*s,"ASSETS",false,true);
+        add(ShipyardBuilderCommand::DccResetLayout,0,95.0f*s,l.top+4.0f*s,89.0f*s,26.0f*s,"RESET UI",false,true);
         add(ShipyardBuilderCommand::DccToggleMaximizeViewport,0,w-92.0f*s,l.top+4.0f*s,82.0f*s,26.0f*s,"RESTORE",true,true);
     }else{
         // 3D-view header: reserve the left side for View/Select/Add/Object
@@ -431,6 +451,10 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         const float buttonH=std::min(25.0f*s,std::max(1.0f,l.viewportTop-vy));
         const float controlsW=(48+54+84+54+46)*s+4*3.0f*s;
         const float vx=std::max(l.viewportLeft+300.0f*s,l.viewportRight-controlsW-8.0f*s);
+        // These are global chrome, not controls inside the Asset Browser.
+        // They remain clickable after Close, collapse, tab switches or reload.
+        add(ShipyardBuilderCommand::DccRevealAssetBrowser,0,8.0f*s,vy,83.0f*s,buttonH,"ASSETS",false,true);
+        add(ShipyardBuilderCommand::DccResetLayout,0,95.0f*s,vy,89.0f*s,buttonH,"RESET UI",false,true);
         add(ShipyardBuilderCommand::DccToggleGrid,0,vx,vy,48*s,buttonH,"GRID",model.dcc.showGrid,true);
         add(ShipyardBuilderCommand::DccToggleGizmos,0,vx+51*s,vy,54*s,buttonH,"GIZMO",model.dcc.showGizmos,true);
         add(ShipyardBuilderCommand::DccCycleShading,0,vx+108*s,vy,84*s,buttonH,ShipyardDccUiSystem::ShadingName(model.dcc.shading),true,true);

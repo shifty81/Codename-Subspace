@@ -38,6 +38,7 @@
 #include "ui/RuntimeWindowLayoutSystem.h"
 #include "combat/TacticalTargetingSystem.h"
 #include "editor/ConstructionEditorCameraSystem.h"
+#include "editor/EditorGizmoSystem.h"
 
 #include <cstdint>
 #include <unordered_map>
@@ -67,6 +68,8 @@ private:
     void FrameShipyardView(bool selectedModule);
     void ApplyConstructionCameraView();
     void UpdateConstructionCameraKeyboard();
+    bool TryBeginShipyardGizmo(const StrategicCamera& camera,float x,float y,float shipX,float shipY,float shipYaw);
+    void ApplyShipyardGizmoDrag(float deltaX,float deltaY,bool fine,const StrategicCamera& camera);
     bool ActivateShipyardControl(ShipyardBuilderCommand command, int value = 0);
     void HandleShipyardTransformHotkeys();
     void RestoreGameplayCameraLimits();
@@ -189,6 +192,8 @@ private:
     ShipyardDockPointerSystem _shipyardDockPointer{};
     bool _shipyardDockSuppressClick = false;
     bool _shipyardPointerTransform = false;
+    EditorGizmoHandle _shipyardGizmoHandle{};
+    float _shipyardGizmoTotalPixels = 0.0f;
     bool _shipyardCatalogPointerDrag = false;
     bool _shipyardCatalogPointerCandidate = false;
     int _shipyardCatalogPointerCandidateIndex = -1;
