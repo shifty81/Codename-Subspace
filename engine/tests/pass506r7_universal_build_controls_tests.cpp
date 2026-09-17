@@ -71,12 +71,33 @@ int main(){
     Check(Has(moveControls,ShipyardBuilderCommand::ToolScale),"sleek transform toolbar exposes scale next to select/move/rotate");
     Check(Has(moveControls,ShipyardBuilderCommand::NudgePort)&&!Has(moveControls,ShipyardBuilderCommand::RotatePitchPositive)&&!Has(moveControls,ShipyardBuilderCommand::ScaleUniformPositive),"move tool shows only movement-specific controls");
     Check(NoOverlap(moveControls),"1852x797 move-mode control rectangles do not overlap");
+    const auto chromeGap=[&](const std::vector<ShipyardBuilderControl>& controls){
+        const auto dev=std::find_if(controls.begin(),controls.end(),[](const auto& c){return c.label=="DEV";});
+        const auto stats=std::find_if(controls.begin(),controls.end(),[](const auto& c){return c.label=="STATS";});
+        return dev!=controls.end()&&stats!=controls.end()&&stats->y>=dev->y+dev->height&&
+               stats->height>0.0f;
+    };
+    Check(chromeGap(moveControls),"workspace tabs end before viewport-toolbar controls at 1852px");
 
     model.transformTool=ShipyardTransformTool::Scale;
     auto scaleControls=ShipyardBuilderSystem::BuildControls(model,1280,768);
     Check(Has(scaleControls,ShipyardBuilderCommand::ScaleUniformPositive)&&Has(scaleControls,ShipyardBuilderCommand::ScaleAssemblyUp),"scale mode exposes part and whole-assembly scaling");
     Check(!Has(scaleControls,ShipyardBuilderCommand::NudgePort)&&!Has(scaleControls,ShipyardBuilderCommand::RotatePitchPositive),"scale mode removes unrelated move/rotate button matrices");
     Check(NoOverlap(scaleControls),"1280x768 scale-mode control rectangles do not overlap");
+    // The overlay shelf must not occlude the default Properties inspector.
+    // This was missed by R1's top-toolbar regression; both panels had valid
+    // individual bounds, but their clickable rectangles intersected.
+    const auto shelf=std::find_if(scaleControls.begin(),scaleControls.end(),
+        [](const auto& c){return c.panelId=="asset_browser"&&c.label=="-";});
+    const auto shield=std::find_if(scaleControls.begin(),scaleControls.end(),
+        [](const auto& c){return c.panelId=="properties"&&c.label=="SHIELD";});
+    Check(shelf!=scaleControls.end()&&shield!=scaleControls.end()&&
+          (shelf->x>=shield->x+shield->width ||
+           shelf->x+shelf->width<=shield->x ||
+           shelf->y>=shield->y+shield->height ||
+           shelf->y+shelf->height<=shield->y),
+          "bottom shelf chrome does not overlap Properties actions at 1280px");
+    Check(chromeGap(scaleControls),"workspace tabs end before viewport-toolbar controls at 1280px");
 
     std::cout<<"Pass506R7 assertions: "<<assertions-failures<<" / "<<assertions<<" passed\n";
     return failures?1:0;

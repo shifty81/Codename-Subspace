@@ -3199,9 +3199,13 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
     // editor header, and editor areas now read as one coherent desktop tool.
     FilledRect(0,0,0,w,layout.workspaceBarY,R(forgePalette.menu));
     FilledRect(0,layout.workspaceBarY,0,w,layout.workspaceBarHeight,R(forgePalette.workspace));
-    FilledRect(0,layout.viewportTop-26.0f*s,0,w,26.0f*s,R(forgePalette.action));
+    // Paint the viewport toolbar in the same real header strip used by
+    // BuildControls. The prior fixed 26px subtraction painted over workspace tabs.
+    const float viewHeaderY=layout.workspaceBarY+layout.workspaceBarHeight;
+    const float viewHeaderHeight=std::max(0.0f,layout.viewportTop-viewHeaderY);
+    FilledRect(0,viewHeaderY,0,w,viewHeaderHeight,R(forgePalette.action));
     Line(0,layout.workspaceBarY,0,w,layout.workspaceBarY,0,{.035f,.037f,.040f,1.0f},1.0f);
-    Line(0,layout.viewportTop-26.0f*s,0,w,layout.viewportTop-26.0f*s,0,{.035f,.037f,.040f,1.0f},1.0f);
+    Line(0,viewHeaderY,0,w,viewHeaderY,0,{.035f,.037f,.040f,1.0f},1.0f);
     Line(0,layout.viewportTop,0,w,layout.viewportTop,0,{.035f,.037f,.040f,1.0f},1.0f);
     ShipyardText("File   Edit   View   Help",9.0f*s,6.0f*s,.47f,{.70f,.71f,.73f,.96f});
     const auto& assetDomain=EditorAssetWorkbenchSystem::Describe(EditorAssetDomain::ShipModules);
@@ -3231,10 +3235,12 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
         Line(layout.propertiesX,layout.propertiesY,0,layout.propertiesX,layout.propertiesY+layout.propertiesHeight,0,R(forgePalette.separator),1.0f);
         Line(layout.propertiesX,layout.propertiesY+layout.propertiesHeight,0,layout.propertiesX+layout.propertiesWidth,layout.propertiesY+layout.propertiesHeight,0,R(forgePalette.separator),1.0f);
     }
-    if(showToolRail){
+    if(showToolRail&&!ShipyardPanelCompositorSystem::IsFloating(m.dockWorkspace,"tool_rail")){
         // Rail paints to its own root-column extent; a moving Asset Browser
         // must never shorten the rail or draw its divider at the shelf Y.
-        FilledRect(layout.toolRailX,layout.toolRailY,0,layout.toolRailWidth,layout.toolRailHeight,{.075f,.078f,.082f,.98f});
+        FilledRect(layout.toolRailX,layout.toolRailY,0,layout.toolRailWidth,layout.toolRailHeight,{.075f,.078f,.082f,1.0f});
+        FilledRect(layout.toolRailX,layout.toolRailY,0,layout.toolRailWidth,22.0f*s,R(forgePalette.panelHeader));
+        ShipyardText("::",layout.toolRailX+15.0f*s,layout.toolRailY+6.0f*s,.51f,text);
         Line(layout.toolRailX+layout.toolRailWidth,layout.toolRailY,0,layout.toolRailX+layout.toolRailWidth,layout.toolRailY+layout.toolRailHeight,0,{.035f,.037f,.040f,.95f},1.0f);
     }
 
@@ -3397,7 +3403,7 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
                                    c.command==ShipyardBuilderCommand::ToolScale||
                                    c.command==ShipyardBuilderCommand::ToggleTransformSnap||
                                    c.command==ShipyardBuilderCommand::FrameSelected;
-        if(toolRailControl&&c.x<layout.viewportLeft){
+        if(toolRailControl&&c.panelId=="tool_rail"){
             Rgba bg=c.active?Rgba{.20f,.36f,.52f,.99f}:Rgba{.085f,.088f,.093f,.98f};
             if(hover&&c.enabled)bg={.135f,.140f,.148f,.99f};
             if(!c.enabled)bg={.070f,.072f,.076f,.72f};
@@ -3596,7 +3602,9 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
         opaquePanel.a=1.0f;
         FilledRect(d.rect.x,d.rect.y,0,d.rect.width,d.rect.height,opaquePanel);
         FilledRect(d.rect.x,d.rect.y,0,d.rect.width,panelHeaderH,R(forgePalette.panelHeader));
-        if(d.panelId=="asset_browser"){
+        if(d.panelId=="tool_rail"){
+            ShipyardText("::",d.rect.x+15.0f*s,d.rect.y+7.0f*s,.51f,text);
+        }else if(d.panelId=="asset_browser"){
             ShipyardText("ASSETS",d.rect.x+10.0f*s,d.rect.y+8.0f*s,.46f,text);
         }else if(d.panelId=="outliner"){
             ShipyardText("OUTLINER",d.rect.x+8.0f*s,d.rect.y+8.0f*s,.50f,text);

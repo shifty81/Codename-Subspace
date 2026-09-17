@@ -40,7 +40,7 @@ SubspaceDockWorkspace ShipyardWorkspaceSystem::BuildDefaultDockWorkspace(){
         p.hoverReveal=true;
         SubspaceDockSystem::RegisterPanel(w,p);
     };
-    add("tool_rail","Tools","tool_left",true,.98f,48,420,false,false,true);
+    add("tool_rail","Tools","tool_left",true,1.0f,48,420,true,true,true);
     add("viewport","3D Viewport","center",true,.18f,900,620,false,false,false);
     add("outliner","Outliner","right_top",true,.94f,340,240);
     add("properties","Properties","right_bottom",true,.96f,380,460);

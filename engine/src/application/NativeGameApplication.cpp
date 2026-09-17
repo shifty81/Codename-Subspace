@@ -12,6 +12,7 @@
 #include "ship_editor/ShipyardDesignExchangeSystem.h"
 #include "ship_editor/ShipyardAuthoringSampleSystem.h"
 #include "ship_editor/ShipyardEquipmentSystem.h"
+#include "ship_editor/ShipyardOverlayLayoutStore.h"
 #include "ship_editor/ShipyardBuildSafetySystem.h"
 #include "combat/FireControlSystem.h"
 #include "combat/CombatSystem.h"
@@ -215,6 +216,9 @@ int NativeGameApplication::Run(const NativeGameRunOptions& options)
     // The C++ conversion previously left only a painted placeholder workspace.
     const auto starterShipyardRecipe = _renderer.DefaultShipyardRecipe("INDUSTRIAL", 1u);
     _shipBuilder.Initialize(_renderer.ShipyardCatalog(), starterShipyardRecipe);
+    { std::string layoutError;
+      ShipyardOverlayLayoutStore::Load(_shipBuilder.MutableDockWorkspace(),
+          ShipyardOverlayLayoutStore::DefaultPath(),&layoutError); }
     LoadCurrentShipyardSocketOverrides();
     LoadCurrentShipyardDefinitionOverrides();
     _shipBuilder.SetAppearance(_playerShipAppearance);
@@ -414,6 +418,9 @@ void NativeGameApplication::OpenShipyardWorkspace(bool standalone)
         for(const auto& rec:_renderer.ShipyardCatalog())stationParts.push_back({rec.source.moduleId,99,1.0f,ShipyardRefitPartSource::StationMarket});
         _shipyardRefit=ShipyardRefitSystem::Begin(starter,std::move(stationParts));
         _shipBuilder.Initialize(_renderer.ShipyardCatalog(),starter);
+    { std::string layoutError;
+      ShipyardOverlayLayoutStore::Load(_shipBuilder.MutableDockWorkspace(),
+          ShipyardOverlayLayoutStore::DefaultPath(),&layoutError); }
         LoadCurrentShipyardSocketOverrides();
         LoadCurrentShipyardDefinitionOverrides();
         _shipBuilder.SetAppearance(_playerShipAppearance);
@@ -422,6 +429,9 @@ void NativeGameApplication::OpenShipyardWorkspace(bool standalone)
     }else{
         _shipyardRefit={};
         _shipBuilder.Initialize(_renderer.ShipyardCatalog(),starter);
+    { std::string layoutError;
+      ShipyardOverlayLayoutStore::Load(_shipBuilder.MutableDockWorkspace(),
+          ShipyardOverlayLayoutStore::DefaultPath(),&layoutError); }
         LoadCurrentShipyardSocketOverrides();
         LoadCurrentShipyardDefinitionOverrides();
         _shipBuilder.SetAppearance(_playerShipAppearance);
@@ -564,6 +574,23 @@ bool NativeGameApplication::ActivateShipyardControl(ShipyardBuilderCommand comma
     if(!handled)return false;
     if(command==ShipyardBuilderCommand::FrameSelected)FrameShipyardView(true);
     else if(command==ShipyardBuilderCommand::FrameShip)FrameShipyardView(false);
+    if(command==ShipyardBuilderCommand::DccToggleToolRail||
+       command==ShipyardBuilderCommand::DccToggleAssetBrowser||
+       command==ShipyardBuilderCommand::DccToggleOutliner||
+       command==ShipyardBuilderCommand::DccToggleProperties||
+       command==ShipyardBuilderCommand::DccToggleSidebar||
+       command==ShipyardBuilderCommand::DccPanelToggleVisible||
+       command==ShipyardBuilderCommand::DccPanelToggleFloat||
+       command==ShipyardBuilderCommand::DccPanelToggleCollapse||
+       command==ShipyardBuilderCommand::DccPanelTogglePin||
+       command==ShipyardBuilderCommand::DccPanelToggleAutoHide||
+       command==ShipyardBuilderCommand::DccPanelResetWorkspace||
+       command==ShipyardBuilderCommand::DccResetLayout){
+        std::string layoutError;
+        if(!ShipyardOverlayLayoutStore::Save(_shipBuilder.Model().dockWorkspace,
+             ShipyardOverlayLayoutStore::DefaultPath(),&layoutError))
+            Logger::Instance().Warning("ShipyardOverlay",layoutError);
+    }
     return true;
 }
 
@@ -1635,6 +1662,10 @@ void NativeGameApplication::HandleGlobalActions()
                 const auto dockLayout=ShipyardBuilderSystem::Layout(_window.GetWidth(),_window.GetHeight());
                 _shipyardDockPointer.End(_shipBuilder.MutableDockWorkspace(),releaseX,releaseY,
                     _window.GetWidth(),std::max(1,static_cast<int>(dockLayout.statusY)),dockLayout.viewportTop);
+                { std::string layoutError;
+                  if(!ShipyardOverlayLayoutStore::Save(_shipBuilder.Model().dockWorkspace,
+                         ShipyardOverlayLayoutStore::DefaultPath(),&layoutError))
+                      Logger::Instance().Warning("ShipyardOverlay",layoutError); }
                 _shipyardDockSuppressClick=true;
             }
             if(_shipyardCatalogPointerDrag){_shipBuilder.StageCatalogDrag();_shipyardCatalogPointerDrag=false;}
@@ -2063,6 +2094,10 @@ void NativeGameApplication::HandleGlobalActions()
                 const auto dockLayout=ShipyardBuilderSystem::Layout(_window.GetWidth(),_window.GetHeight());
                 _shipyardDockPointer.End(_shipBuilder.MutableDockWorkspace(),rx,ry,
                     _window.GetWidth(),std::max(1,static_cast<int>(dockLayout.statusY)),dockLayout.viewportTop);
+                { std::string layoutError;
+                  if(!ShipyardOverlayLayoutStore::Save(_shipBuilder.Model().dockWorkspace,
+                         ShipyardOverlayLayoutStore::DefaultPath(),&layoutError))
+                      Logger::Instance().Warning("ShipyardOverlay",layoutError); }
                 _shipyardDockSuppressClick=true;
             }if(_shipyardCatalogPointerDrag){_shipBuilder.StageCatalogDrag();_shipyardCatalogPointerDrag=false;}_shipyardCatalogPointerCandidate=false;_shipyardCatalogPointerCandidateIndex=-1;if(_shipyardPointerTransform){if(!_shipBuilder.Model().dragPreview.staged){if(_shipBuilder.Model().inspectorTab==ShipyardInspectorTab::Sockets)_shipBuilder.CommitSocketTransform();else _shipBuilder.CommitTransform();}_shipyardPointerTransform=false;}ProcessShipyardRequests();}
     }

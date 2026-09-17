@@ -21,7 +21,13 @@ public:
     static bool CoversFloatingPanel(const SubspaceDockWorkspace& w,int width,int height,
                                     float topInset,float x,float y){
         const auto layers=ShipyardPanelCompositorSystem::Snapshot(w,width,height,topInset);
-        return ShipyardPanelCompositorSystem::TopFloatingAt(layers,x,y)!=nullptr;
+        if(ShipyardPanelCompositorSystem::TopFloatingAt(layers,x,y))return true;
+        // Overlay-first Shipyard: docked tools cover the full canvas too.
+        // Their empty bodies must never permit selecting the ship through UI.
+        if(w.id=="shipyard")for(const auto& layer:layers)
+            if(layer.visible&&layer.panelId!="viewport"&&
+               ShipyardPanelCompositorSystem::Contains(layer.rect,x,y))return true;
+        return false;
     }
     void Cancel() { panel_.clear(); leaf_.clear(); dragged_=false; resizing_=false; accumulatedX_=accumulatedY_=0; }
 
@@ -38,13 +44,14 @@ public:
             const auto& d=*it;
             if(d.floating!=(pass==0)||!d.visible)continue;
             if(pass==0&&topFloating&&d.panelId!=topFloating->panelId)continue;
-            if(d.panelId=="viewport"||d.panelId=="tool_rail")continue;
+            if(d.panelId=="viewport")continue;
             const auto* p=SubspaceDockSystem::FindPanel(w,d.panelId);
             if(!p||!p->visible||!p->floatable)continue;
             const auto& r=d.rect;
             if(x<r.x||y<r.y||x>=r.x+r.width||y>=r.y+r.height)continue;
             const bool resize=d.floating&&p->resizable&&x>=r.x+r.width-18&&y>=r.y+r.height-18;
-            const bool title=y<r.y+std::min(27.0f,r.height)&&x>=r.x+5&&x<r.x+r.width-103;
+            const bool title=y<r.y+std::min(d.panelId=="tool_rail"?24.0f:27.0f,r.height)&&x>=r.x+5&&
+                x<r.x+r.width-(d.panelId=="tool_rail"?5.0f:103.0f);
             if(!resize&&!title)continue;
             panel_=d.panelId;leaf_=d.leafId.empty()?p->defaultLeafId:d.leafId;
             start_=r;startX_=x;startY_=y;
@@ -105,30 +112,32 @@ public:
         const std::string panel=panel_,originLeaf=leaf_;
         Cancel();
         if(!moved||resize)return moved;
-        const std::string target=LeafAt(w,w.rootNodeId,
-            {0,topInset,static_cast<float>(width),static_cast<float>(height)-topInset},x,y);
-        // A fixed shell rail and permanent 3D View are never drop targets.
-        // The bottom shelf is a sibling inside the content subtree (not a
-        // child of the tool rail), and same-leaf undocking stays floating.
-        if(target.empty()||target=="center"||target=="tool_left"||(!wasFloating&&target==originLeaf))return true;
+        // Hit-test the same materialized overlays used for painting and input.
+        // A drop over another docked tool joins its tab group. Empty canvas
+        // stays floating; four explicit narrow edge targets restore anchors.
+        const auto layers=ShipyardPanelCompositorSystem::Snapshot(w,width,height,topInset);
+        std::string target;
+        for(auto it=layers.rbegin();it!=layers.rend();++it){
+            if(it->floating||it->panelId==panel||it->panelId=="viewport")continue;
+            if(ShipyardPanelCompositorSystem::Contains(it->rect,x,y)){
+                target=it->leafId;break;
+            }
+        }
+        if(target.empty()&&x>=0&&x<width&&y>=topInset&&y<height){
+            const float right=static_cast<float>(width),bottom=static_cast<float>(height);
+            if(x<36.0f)target="tool_left";
+            else if(y>bottom-32.0f)target="bottom";
+            else if(x>right-36.0f)target=y<topInset+250.0f?"right_top":"right_bottom";
+        }
+        if(target.empty()||target=="center"||
+           (panel!="tool_rail"&&target=="tool_left")||
+           (panel=="tool_rail"&&target!="tool_left")||
+           (!wasFloating&&target==originLeaf))return true;
         SubspaceDockSystem::DockPanel(w,panel,target,true);
         return true;
     }
 
 private:
-    static std::string LeafAt(const SubspaceDockWorkspace& w,const std::string& id,
-                              SubspaceUiRect r,float x,float y){
-        if(x<r.x||y<r.y||x>=r.x+r.width||y>=r.y+r.height)return {};
-        const auto* n=SubspaceDockSystem::FindNode(w,id);
-        if(!n||n->collapsed)return {};
-        if(!n->split)return id;
-        const float ratio=std::clamp(n->ratio,.08f,.92f);
-        auto a=r,b=r;
-        if(n->axis==SubspaceDockSplitAxis::Horizontal){a.width=r.width*ratio;b.x=r.x+a.width;b.width=r.width-a.width;}
-        else {a.height=r.height*ratio;b.y=r.y+a.height;b.height=r.height-a.height;}
-        auto hit=LeafAt(w,n->firstChildId,a,x,y);
-        return hit.empty()?LeafAt(w,n->secondChildId,b,x,y):hit;
-    }
     std::string panel_,leaf_;
     SubspaceUiRect start_{};
     float startX_=0,startY_=0,accumulatedX_=0,accumulatedY_=0;

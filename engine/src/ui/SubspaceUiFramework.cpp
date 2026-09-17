@@ -81,6 +81,68 @@ void LayoutNode(const SubspaceDockWorkspace& w,const std::string& id,const Subsp
 }
 }
 
+// A Shipyard dock leaf is a tool anchor. It never partitions the 3D canvas.
+// All callers (renderer, controls and pointer) receive these same materialized
+// rectangles. The previous permanent split tree remains only as tab ownership
+// metadata for the serialized workspace; no renderer may use its ratios.
+void LayoutShipyardOverlays(const SubspaceDockWorkspace& w,int width,int height,
+                           float topInset,std::vector<SubspaceDockLayout>& out){
+    const float x=static_cast<float>(width), bottom=static_cast<float>(height);
+    const float available=std::max(1.0f,bottom-topInset);
+    const auto rectFor=[&](const std::string& id)->SubspaceUiRect{
+        if(id=="center")return {0,topInset,x,available};
+        if(id=="tool_left")return {4,topInset+4,48.0f,std::min(available-8.0f,420.0f)};
+        if(id=="right_top")return {std::max(0.0f,x-346.0f),topInset+12.0f,
+            std::min(x,340.0f),std::min(available-20.0f,240.0f)};
+        if(id=="right_bottom")return {std::max(0.0f,x-386.0f),topInset+262.0f,
+            std::min(x,380.0f),std::max(36.0f,available-274.0f)};
+        if(id=="bottom"){
+            // Dock anchors are non-partitioning overlays, but their *default*
+            // placements must not cover another docked tool's hit targets.
+            // The former full-width asset shelf covered the Properties header
+            // and SHIELD control at 1280x768. Reserve the right column only
+            // when its dock leaf actually has an eligible active panel; a
+            // floating/hidden Properties panel releases the width immediately.
+            const auto* right=SubspaceDockSystem::FindNode(w,"right_bottom");
+            bool rightOccupied=false;
+            if(right&&!right->split&&!right->collapsed){
+                for(const auto& panelId:right->tabs){
+                    const auto* panel=SubspaceDockSystem::FindPanel(w,panelId);
+                    if(panel&&panel->visible&&(!panel->autoHide||panel->pinned||panel->hoverReveal)){
+                        rightOccupied=true;
+                        break;
+                    }
+                }
+            }
+            const float reserved=rightOccupied?386.0f:0.0f;
+            return {56.0f,std::max(topInset,bottom-222.0f),
+                std::max(1.0f,x-62.0f-reserved),std::min(available,216.0f)};
+        }
+        return {0,topInset,x,available};
+    };
+    // The viewport is always first and full-size. It is the canvas, not a tool.
+    if(const auto* panel=SubspaceDockSystem::FindPanel(w,"viewport"))
+        if(panel->visible)out.push_back({"viewport","center",rectFor("center"),1.0f,true,true,false});
+    for(const char* id:{"tool_left","bottom","right_top","right_bottom"}){
+        const auto* node=SubspaceDockSystem::FindNode(w,id);
+        if(!node||node->split||node->collapsed)continue;
+        const auto eligible=[&](const std::string& panelId){
+            const auto* p=SubspaceDockSystem::FindPanel(w,panelId);
+            return p&&p->visible&&(!p->autoHide||p->pinned||p->hoverReveal);
+        };
+        std::string active=Contains(node->tabs,node->activeTabId)&&eligible(node->activeTabId)
+            ?node->activeTabId:std::string{};
+        if(active.empty())for(const auto& candidate:node->tabs)
+            if(eligible(candidate)){active=candidate;break;}
+        if(active.empty())continue; // empty anchor does not leave a viewport hole
+        const auto* panel=SubspaceDockSystem::FindPanel(w,active);
+        auto r=rectFor(id);
+        if(panel->collapsed){if(id==std::string("tool_left"))r.width=34.0f;
+            else r.height=28.0f;}
+        if(r.width>0&&r.height>0)
+            out.push_back({active,id,r,panel->opacity,true,node->activeTabId==active,false});
+    }
+}
 SubspaceDockWorkspace SubspaceDockSystem::CreateMinimalWorkspace(std::string id){
     SubspaceDockWorkspace w;w.id=std::move(id);w.rootNodeId="root";
     w.nodes.push_back({"root",true,SubspaceDockSplitAxis::Vertical,.80f,"main","bottom",{},{},false});
@@ -140,7 +202,7 @@ bool SubspaceDockSystem::ToggleCollapsed(SubspaceDockWorkspace& w,const std::str
 bool SubspaceDockSystem::TogglePinned(SubspaceDockWorkspace& w,const std::string& id){auto* p=FindPanel(w,id);if(!p)return false;p->pinned=!p->pinned;if(p->pinned)p->hoverReveal=true;return true;}
 bool SubspaceDockSystem::SetAutoHide(SubspaceDockWorkspace& w,const std::string& id,bool autoHide){auto* p=FindPanel(w,id);if(!p)return false;p->autoHide=autoHide;if(!autoHide)p->hoverReveal=true;return true;}
 bool SubspaceDockSystem::SetHoverReveal(SubspaceDockWorkspace& w,const std::string& id,bool reveal){auto* p=FindPanel(w,id);if(!p)return false;p->hoverReveal=reveal||p->pinned;return true;}
-std::vector<SubspaceDockLayout> SubspaceDockSystem::Materialize(const SubspaceDockWorkspace& w,int width,int height,float topInset){std::vector<SubspaceDockLayout> out;if(width<=0||height<=0||topInset<0||topInset>=height)return out;LayoutNode(w,w.rootNodeId,{0,topInset,static_cast<float>(width),static_cast<float>(height)-topInset},out);for(const auto& f:w.floatingPanels){const auto* p=FindPanel(w,f.panelId);if(!p||!p->visible)continue;SubspaceUiRect r=f.rect;r.width=std::clamp(r.width,p->minWidth,std::min(p->maxWidth,static_cast<float>(width)));r.height=std::clamp(r.height,p->minHeight,std::min(p->maxHeight,static_cast<float>(height)-topInset));r.x=std::clamp(r.x,0.0f,std::max(0.0f,static_cast<float>(width)-r.width));r.y=std::clamp(r.y,topInset,std::max(topInset,static_cast<float>(height)-r.height));out.push_back({p->id,{},r,p->opacity,true,true,true});}return out;}
+std::vector<SubspaceDockLayout> SubspaceDockSystem::Materialize(const SubspaceDockWorkspace& w,int width,int height,float topInset){std::vector<SubspaceDockLayout> out;if(width<=0||height<=0||topInset<0||topInset>=height)return out;if(w.id=="shipyard")LayoutShipyardOverlays(w,width,height,topInset,out);else LayoutNode(w,w.rootNodeId,{0,topInset,static_cast<float>(width),static_cast<float>(height)-topInset},out);for(const auto& f:w.floatingPanels){const auto* p=FindPanel(w,f.panelId);if(!p||!p->visible)continue;SubspaceUiRect r=f.rect;r.width=std::clamp(r.width,p->minWidth,std::min(p->maxWidth,static_cast<float>(width)));r.height=std::clamp(r.height,p->minHeight,std::min(p->maxHeight,static_cast<float>(height)-topInset));r.x=std::clamp(r.x,0.0f,std::max(0.0f,static_cast<float>(width)-r.width));r.y=std::clamp(r.y,topInset,std::max(topInset,static_cast<float>(height)-r.height));out.push_back({p->id,{},r,p->opacity,true,true,true});}return out;}
 
 std::string SubspaceDockSystem::Serialize(const SubspaceDockWorkspace& w){
     std::ostringstream o;o<<"SUBSPACE_DOCK_V1\n"<<"W|"<<w.id<<"|"<<w.rootNodeId<<"\n";

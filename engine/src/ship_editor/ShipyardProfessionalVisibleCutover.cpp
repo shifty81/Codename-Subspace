@@ -302,7 +302,7 @@ ShipyardBuilderLayout ShipyardBuilderSystem::Layout(const ShipyardBuilderRuntime
     if(const auto* d=find("viewport")){
         l.viewportLeft=d->rect.x;l.viewportTop=d->rect.y;
         l.viewportRight=d->rect.x+d->rect.width;l.viewportBottom=d->rect.y+d->rect.height;
-    }
+    } // Full-size canvas is independent of every docked or floating overlay.
     if(const auto* d=find("tool_rail")){
         l.toolRailX=d->rect.x;l.toolRailY=d->rect.y;
         l.toolRailWidth=d->rect.width;l.toolRailHeight=d->rect.height;
@@ -396,14 +396,18 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
     }else{
         // 3D-view header: reserve the left side for View/Select/Add/Object
         // menus and keep display toggles aligned to the right like a DCC.
-        const float vy=l.viewportTop-25.0f*s;
+        // The toolbar belongs to the viewport-header strip, immediately below
+        // the workspace tabs. Do not subtract an assumed 25px from canvas Y:
+        // the shared GUI metrics can make that overlap the DEV tab at 1280/1852.
+        const float vy=l.workspaceBarY+l.workspaceBarHeight;
+        const float buttonH=std::min(25.0f*s,std::max(1.0f,l.viewportTop-vy));
         const float controlsW=(48+54+84+54+46)*s+4*3.0f*s;
         const float vx=std::max(l.viewportLeft+300.0f*s,l.viewportRight-controlsW-8.0f*s);
-        add(ShipyardBuilderCommand::DccToggleGrid,0,vx,vy,48*s,25*s,"GRID",model.dcc.showGrid,true);
-        add(ShipyardBuilderCommand::DccToggleGizmos,0,vx+51*s,vy,54*s,25*s,"GIZMO",model.dcc.showGizmos,true);
-        add(ShipyardBuilderCommand::DccCycleShading,0,vx+108*s,vy,84*s,25*s,ShipyardDccUiSystem::ShadingName(model.dcc.shading),true,true);
-        add(ShipyardBuilderCommand::DccToggleStatsOverlay,0,vx+195*s,vy,54*s,25*s,"STATS",model.dcc.showStatsOverlay,true);
-        add(ShipyardBuilderCommand::DccToggleMaximizeViewport,0,vx+252*s,vy,46*s,25*s,"MAX",false,true);
+        add(ShipyardBuilderCommand::DccToggleGrid,0,vx,vy,48*s,buttonH,"GRID",model.dcc.showGrid,true);
+        add(ShipyardBuilderCommand::DccToggleGizmos,0,vx+51*s,vy,54*s,buttonH,"GIZMO",model.dcc.showGizmos,true);
+        add(ShipyardBuilderCommand::DccCycleShading,0,vx+108*s,vy,84*s,buttonH,ShipyardDccUiSystem::ShadingName(model.dcc.shading),true,true);
+        add(ShipyardBuilderCommand::DccToggleStatsOverlay,0,vx+195*s,vy,54*s,buttonH,"STATS",model.dcc.showStatsOverlay,true);
+        add(ShipyardBuilderCommand::DccToggleMaximizeViewport,0,vx+252*s,vy,46*s,buttonH,"MAX",false,true);
     }
 
     currentPanelId="asset_browser";
@@ -464,12 +468,13 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
     currentPanelId="tool_rail";
     if(showToolRail&&toolRailContent){
         const float tx=l.toolRailX,tw=l.toolRailWidth,th=36.0f*s;
-        add(ShipyardBuilderCommand::ToolSelect,0,tx,l.toolRailY,tw,th,"Q",model.transformTool==ShipyardTransformTool::Select,true);
-        add(ShipyardBuilderCommand::ToolMove,0,tx,l.toolRailY+(th+gap),tw,th,"G",model.transformTool==ShipyardTransformTool::Move,HasPlaced(model));
-        add(ShipyardBuilderCommand::ToolRotate,0,tx,l.toolRailY+2*(th+gap),tw,th,"R",model.transformTool==ShipyardTransformTool::Rotate,HasPlaced(model));
-        add(ShipyardBuilderCommand::ToolScale,0,tx,l.toolRailY+3*(th+gap),tw,th,"S",model.transformTool==ShipyardTransformTool::Scale,HasPlaced(model));
-        add(ShipyardBuilderCommand::ToggleTransformSnap,0,tx,l.toolRailY+4*(th+gap),tw,th,"SNAP",model.transformSnap,HasPlaced(model));
-        add(ShipyardBuilderCommand::FrameSelected,0,tx,l.toolRailY+5*(th+gap),tw,th,"F",false,HasPlaced(model));
+        const float railButtonsY=l.toolRailY+24.0f*s;
+        add(ShipyardBuilderCommand::ToolSelect,0,tx,railButtonsY,tw,th,"Q",model.transformTool==ShipyardTransformTool::Select,true);
+        add(ShipyardBuilderCommand::ToolMove,0,tx,railButtonsY+(th+gap),tw,th,"G",model.transformTool==ShipyardTransformTool::Move,HasPlaced(model));
+        add(ShipyardBuilderCommand::ToolRotate,0,tx,railButtonsY+2*(th+gap),tw,th,"R",model.transformTool==ShipyardTransformTool::Rotate,HasPlaced(model));
+        add(ShipyardBuilderCommand::ToolScale,0,tx,railButtonsY+3*(th+gap),tw,th,"S",model.transformTool==ShipyardTransformTool::Scale,HasPlaced(model));
+        add(ShipyardBuilderCommand::ToggleTransformSnap,0,tx,railButtonsY+4*(th+gap),tw,th,"SNAP",model.transformSnap,HasPlaced(model));
+        add(ShipyardBuilderCommand::FrameSelected,0,tx,railButtonsY+5*(th+gap),tw,th,"F",false,HasPlaced(model));
     }
 
     currentPanelId="outliner";

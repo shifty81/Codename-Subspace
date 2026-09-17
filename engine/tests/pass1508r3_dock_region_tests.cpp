@@ -29,28 +29,29 @@ int main(){
     const auto* content=SubspaceDockSystem::FindNode(w,"content");
     Check(root&&root->split&&root->axis==SubspaceDockSplitAxis::Horizontal&&
           root->firstChildId=="tool_left"&&root->secondChildId=="content",
-          "tool rail is a dedicated fixed root column");
+          "legacy root topology retained as metadata, not canvas geometry");
     Check(content&&content->split&&content->axis==SubspaceDockSplitAxis::Vertical&&
           content->firstChildId=="upper"&&content->secondChildId=="bottom",
-          "asset shelf is a content sibling, not attached to the rail");
+          "anchor topology remains serializable");
     auto layouts=SubspaceDockSystem::Materialize(w,width,height,top);
     const auto* rail=Find(layouts,"tool_rail");
     const auto* asset=Find(layouts,"asset_browser");
     const auto* view=Find(layouts,"viewport");
     Check(rail&&asset&&view,"three independent regions materialized");
     const auto railRect=rail->rect,viewRect=view->rect,assetRect=asset->rect;
+    const auto* properties=Find(layouts,"properties");
+    Check(properties&&assetRect.x+assetRect.width+4.0f<=properties->rect.x,
+          "default bottom overlay does not obscure the Properties inspector");
     Check(assetRect.x>=railRect.x+railRect.width-.1f,
-          "bottom shelf begins after reserved tool column");
-    Check(Near(railRect.height,static_cast<float>(height)-top),
-          "tool rail extends full usable editor height");
-    Check(Near(assetRect.y+assetRect.height,railRect.y+railRect.height),
-          "bottom shelf ends at the status boundary independently");
-    Check(Near(assetRect.x,viewRect.x),"shelf and viewport share the content left edge");
-    Check(Near(viewRect.y+viewRect.height,assetRect.y),"viewport ends at docked shelf");
+          "default asset overlay starts to right of rail");
+    Check(railRect.height>300.0f,"rail defaults to accessible compact height");
+    Check(Near(assetRect.y+assetRect.height,static_cast<float>(height)-6.0f),
+          "asset overlay anchors above the status boundary");
+    Check(viewRect.x==0.0f,"canvas begins at window left behind overlays");
+    Check(Near(viewRect.y+viewRect.height,static_cast<float>(height)),
+          "canvas extends behind docked asset shelf");
     const auto* tool=SubspaceDockSystem::FindPanel(w,"tool_rail");
-    Check(tool&&!tool->floatable&&!tool->closable,"rail cannot be floated or closed");
-    Check(!SubspaceDockSystem::FloatPanel(w,"tool_rail",{100,100,200,300}),
-          "model rejects floating fixed tool rail");
+    Check(tool&&tool->floatable&&tool->closable,"rail is an independent dockable tool");
     Check(SubspaceDockSystem::FloatPanel(w,"asset_browser",{430,320,600,280}),
           "asset shelf can float independently");
     layouts=SubspaceDockSystem::Materialize(w,width,height,top);
@@ -67,7 +68,7 @@ int main(){
           "floating asset header can be captured");
     Check(pointer.Drag(w,-48,-24,width,height,top),"asset is moved by pointer");
     Check(pointer.End(w,12,height-24,width,height,top),
-          "releasing asset over fixed rail completes without docking");
+          "releasing asset over rail completes without nesting tools");
     Check(Find(SubspaceDockSystem::Materialize(w,width,height,top),"asset_browser")->floating,
           "tool rail cannot receive asset browser drop");
     Check(pointer.Begin(w,width,height,top,asset->rect.x+12-48,asset->rect.y+9-24),
@@ -77,8 +78,24 @@ int main(){
     layouts=SubspaceDockSystem::Materialize(w,width,height,top);
     rail=Find(layouts,"tool_rail");asset=Find(layouts,"asset_browser");
     Check(asset&&!asset->floating&&asset->leafId=="bottom"&&
-          Near(asset->rect.x,rail->rect.x+rail->rect.width),
-          "asset redocks under content but never underneath tool rail");
+          asset->rect.x>=rail->rect.x+rail->rect.width,
+          "asset returns to independent bottom overlay anchor");
     Check(SubspaceDockSystem::Validate(w),"no duplicate owners after asset redock");
+    const float reservedWidth=asset->rect.width;
+    Check(SubspaceDockSystem::FloatPanel(w,"properties",{630,155,380,400}),
+          "Properties can float and release its dock anchor");
+    layouts=SubspaceDockSystem::Materialize(w,width,height,top);
+    asset=Find(layouts,"asset_browser");view=Find(layouts,"viewport");
+    Check(asset&&asset->rect.width>reservedWidth+300.0f,
+          "asset shelf expands only when docked Properties no longer occupies the right anchor");
+    Check(view&&Near(view->rect.width,viewRect.width),
+          "Properties float changes no canvas width");
+    Check(SubspaceDockSystem::DockPanel(w,"properties","right_bottom"),
+          "Properties can return to original dock");
+    layouts=SubspaceDockSystem::Materialize(w,width,height,top);
+    asset=Find(layouts,"asset_browser");properties=Find(layouts,"properties");
+    Check(asset&&properties&&Near(asset->rect.width,reservedWidth)&&
+          asset->rect.x+asset->rect.width+4.0f<=properties->rect.x,
+          "redock reestablishes non-overlapping default anchors");
     std::cout<<"PASS1508R3: "<<assertions<<" independent-region assertions passed\n";
 }

@@ -873,3 +873,13 @@ if(SUBSPACE_BUILD_TESTS)
     add_test(NAME SubspacePass1508R5CompositorCameraSourceGate COMMAND ${CMAKE_COMMAND}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/../tools/control/static-gates/pass1508r5_compositor_camera_authority.cmake)
 endif()
+
+# SHIPYARD-OVERLAY-SLICE1: active overlay canvas/input/layout persistence contract.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_shipyard_overlay_foundation_tests
+        src/ui/SubspaceUiFramework.cpp
+        tests/shipyard_overlay_foundation_tests.cpp)
+    target_include_directories(subspace_shipyard_overlay_foundation_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_compile_features(subspace_shipyard_overlay_foundation_tests PRIVATE cxx_std_17)
+    add_test(NAME SubspaceShipyardOverlayFoundationTests COMMAND subspace_shipyard_overlay_foundation_tests)
+endif()
