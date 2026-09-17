@@ -1,4 +1,5 @@
 #include "ship_editor/ShipyardBuilderSystem.h"
+#include "ship_editor/ShipyardCatalogViewport.h"
 #include "content/ShipyardPartTaxonomySystem.h"
 #include "editor/EditorDccShellLayoutSystem.h"
 #include "editor/EditorForgeGuiStyleSystem.h"
@@ -110,6 +111,9 @@ bool DockPanelPinned(const ShipyardBuilderRuntimeModel& model,const char* id){
 } // namespace
 
 bool ShipyardBuilderSystem::Activate(ShipyardBuilderCommand command,int value){
+    if(model_.assetSearchFocused&&command!=ShipyardBuilderCommand::DccAssetFocusSearch&&
+       command!=ShipyardBuilderCommand::DccAssetClearSearch)
+        model_.assetSearchFocused=false;
     switch(command){
     case ShipyardBuilderCommand::DccToggleAssetBrowser:{auto* p=SubspaceDockSystem::FindPanel(model_.dockWorkspace,"asset_browser");if(!p)return false;const bool show=!p->visible;const bool ok=show?SubspaceDockSystem::OpenPanel(model_.dockWorkspace,p->id):SubspaceDockSystem::ClosePanel(model_.dockWorkspace,p->id);model_.dcc.showAssetBrowser=show;if(ok)model_.status=show?"Asset Browser shown":"Asset Browser hidden";return ok;}
     case ShipyardBuilderCommand::DccToggleToolRail:{auto* p=SubspaceDockSystem::FindPanel(model_.dockWorkspace,"tool_rail");if(!p)return false;const bool show=!p->visible;const bool ok=show?SubspaceDockSystem::OpenPanel(model_.dockWorkspace,p->id):SubspaceDockSystem::ClosePanel(model_.dockWorkspace,p->id);model_.dcc.showToolRail=show;if(ok)model_.status=show?"Tool rail shown":"Tool rail hidden";return ok;}
@@ -135,6 +139,30 @@ bool ShipyardBuilderSystem::Activate(ShipyardBuilderCommand command,int value){
     case ShipyardBuilderCommand::DccAssetZoomOut:model_.dcc.assetBrowser.thumbnailScale=ShipyardAssetBrowserSystem::ClampThumbnailScale(model_.dcc.assetBrowser.thumbnailScale-.15f);return true;
     case ShipyardBuilderCommand::DccPreviousAssetPreset:{const auto n=ShipyardDccUiSystem::AssetPresetCount();model_.dcc.assetPreset=(model_.dcc.assetPreset+n-1)%n;ShipyardDccUiSystem::ApplyAssetPreset(model_.dcc,model_.dcc.assetPreset);model_.selectedFilteredModule=0;model_.catalogScrollStart=0;model_.status=std::string("Asset filter: ")+ShipyardDccUiSystem::AssetPresetName(model_.dcc.assetPreset);return true;}
     case ShipyardBuilderCommand::DccNextAssetPreset:{model_.dcc.assetPreset=(model_.dcc.assetPreset+1)%ShipyardDccUiSystem::AssetPresetCount();ShipyardDccUiSystem::ApplyAssetPreset(model_.dcc,model_.dcc.assetPreset);model_.selectedFilteredModule=0;model_.catalogScrollStart=0;model_.status=std::string("Asset filter: ")+ShipyardDccUiSystem::AssetPresetName(model_.dcc.assetPreset);return true;}
+    case ShipyardBuilderCommand::DccAssetFocusSearch:
+        model_.assetSearchFocused=!model_.assetSearchFocused;
+        model_.status=model_.assetSearchFocused?"Search assets: type text, Backspace deletes, Enter closes":"Asset search closed";
+        return true;
+    case ShipyardBuilderCommand::DccAssetClearSearch:
+        model_.dcc.assetBrowser.search.clear();model_.selectedFilteredModule=0;model_.catalogScrollStart=0;
+        model_.status="Asset search cleared";return true;
+    case ShipyardBuilderCommand::DccAssetPrevious:
+    case ShipyardBuilderCommand::DccAssetNext:{
+        const auto count=FilteredCatalogIndices().size();
+        if(!count){model_.catalogScrollStart=0;return true;}
+        if(command==ShipyardBuilderCommand::DccAssetPrevious){if(model_.catalogScrollStart) --model_.catalogScrollStart;}
+        else model_.catalogScrollStart=std::min(count-1,model_.catalogScrollStart+1);
+        model_.selectedFilteredModule=model_.catalogScrollStart;
+        model_.status="Asset Browser: "+std::to_string(model_.catalogScrollStart+1)+" / "+std::to_string(count);
+        return true;}
+    case ShipyardBuilderCommand::DccOutlinerPrevious:
+    case ShipyardBuilderCommand::DccOutlinerNext:{
+        const auto count=model_.recipe.modules.size();
+        if(!count){model_.placedScrollStart=0;return true;}
+        if(command==ShipyardBuilderCommand::DccOutlinerPrevious){if(model_.placedScrollStart)--model_.placedScrollStart;}
+        else model_.placedScrollStart=std::min(count-1,model_.placedScrollStart+1);
+        model_.status="Outliner: "+std::to_string(model_.placedScrollStart+1)+" / "+std::to_string(count);
+        return true;}
     case ShipyardBuilderCommand::DccToggleFavoriteSelected:{const auto* selected=SelectedCatalogModule();if(!selected)return false;const bool favorite=ShipyardAssetBrowserSystem::ToggleFavorite(model_.dcc.assetBrowser,selected->source.moduleId);model_.status=favorite?"Module added to favorites":"Module removed from favorites";return true;}
     case ShipyardBuilderCommand::DccClearAssetFilters:ShipyardDccUiSystem::ApplyAssetPreset(model_.dcc,0);model_.selectedFilteredModule=0;model_.catalogScrollStart=0;model_.status="Asset Browser filters cleared";return true;
     case ShipyardBuilderCommand::DccToggleCommandPalette:model_.dcc.commandPaletteOpen=!model_.dcc.commandPaletteOpen;model_.status=model_.dcc.commandPaletteOpen?"Command Search open":"Command Search closed";return true;
@@ -411,6 +439,7 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
     }
 
     currentPanelId="asset_browser";
+    const std::size_t assetControlStart=out.size();
     if(showAssetBrowser){
         const float ax=l.assetShelfX,ay=l.assetShelfY,aw=l.assetShelfWidth,ah=l.assetShelfHeight;
         // Two-row panel chrome keeps panel-management controls separate from
@@ -426,6 +455,17 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         add(ShipyardBuilderCommand::DccPanelTogglePin,0,ax+aw-(hb*2+hgap)-5*s,ay+4*s,hb,hb,"P",DockPanelPinned(model,"asset_browser"),true);
         add(ShipyardBuilderCommand::DccPanelToggleVisible,0,ax+aw-hb-5*s,ay+4*s,hb,hb,"X",false,true);
         if(assetBrowserContent){
+        // The search field is clickable and keeps native keyboard focus until
+        // Enter/Escape or clicking the canvas. It filters the existing catalog.
+        if(aw>350*s){
+            const float searchW=std::min(230*s,std::max(90*s,aw-205*s));
+            add(ShipyardBuilderCommand::DccAssetFocusSearch,0,ax+75*s,ay+4*s,searchW,24*s,
+                std::string(model.assetSearchFocused?"SEARCH> ":"SEARCH: ")+
+                (model.dcc.assetBrowser.search.empty()?"type to filter":model.dcc.assetBrowser.search),
+                model.assetSearchFocused,true);
+            if(!model.dcc.assetBrowser.search.empty())
+                add(ShipyardBuilderCommand::DccAssetClearSearch,0,ax+75*s+searchW+3*s,ay+4*s,24*s,24*s,"x",false,true);
+        }
         // Bottom Asset Browser shelf: the central viewport keeps its width while
         // all ship/module assets remain one click away, matching a modern DCC.
         add(ShipyardBuilderCommand::DccPreviousAssetPreset,0,ax+72*s,actionY,24*s,24*s,"<",false,true);
@@ -440,41 +480,49 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         const float categoryW=(aw-14.0f*s-7*3.0f*s)/8.0f;
         for(int ci=0;ci<8;++ci){
             const auto cls=static_cast<ShipyardModuleClass>(ci);std::size_t classCount=0;
-            for(const auto& rec:model.catalog)if(rec.moduleClass==cls)++classCount;
+            for(const auto& rec:model.catalog)if(rec.moduleClass==cls&&
+                (model.standaloneDesign||model.availableModuleIds.empty()||
+                std::find(model.availableModuleIds.begin(),model.availableModuleIds.end(),rec.source.moduleId)!=model.availableModuleIds.end()))++classCount;
             add(ShipyardBuilderCommand::SelectClass,ci,ax+7*s+ci*(categoryW+3*s),categoryY,categoryW,25.0f*s,
                 std::string(ShipyardModuleSystem::ClassName(cls))+" "+std::to_string(classCount),static_cast<int>(model.selectedClass)==ci,true);
         }
 
         const auto filtered=ShipyardBuilderSystem::VisibleCatalogIndices(model);
-        float densityScale=1.0f;
-        if(model.dcc.assetBrowser.density==ShipyardAssetBrowserDensity::Compact)densityScale=.82f;
-        else if(model.dcc.assetBrowser.density==ShipyardAssetBrowserDensity::Large)densityScale=1.18f;
-        densityScale*=std::clamp(model.dcc.assetBrowser.thumbnailScale,.70f,1.35f);
-        const float cardY=categoryY+29.0f*s;
-        const float cardH=std::max(54.0f*s,ah-(cardY-ay)-7.0f*s);
-        const float desiredW=std::clamp(205.0f*s*densityScale,156.0f*s,270.0f*s);
-        const std::size_t pageSize=std::clamp<std::size_t>(static_cast<std::size_t>((aw-14.0f*s)/(desiredW+gap)),4u,8u);
-        const float cardW=(aw-14.0f*s-gap*static_cast<float>(pageSize-1))/static_cast<float>(pageSize);
+        const auto v=ShipyardCatalogViewport::Compute(ax,ay,aw,ah,s,
+            model.dcc.assetBrowser.density,model.dcc.assetBrowser.thumbnailScale,
+            filtered.size(),model.catalogScrollStart);
         const std::size_t selected=filtered.empty()?0:std::min(model.selectedFilteredModule,filtered.size()-1);
-        const std::size_t maxStart=filtered.size()>pageSize?filtered.size()-pageSize:0;
-        const std::size_t start=filtered.empty()?0:std::min(model.catalogScrollStart,maxStart);
-        for(std::size_t i=0;i<pageSize&&start+i<filtered.size();++i){
-            const auto fi=start+i;const auto& rec=model.catalog[filtered[fi]];
-            add(ShipyardBuilderCommand::SelectModule,static_cast<int>(fi),ax+7*s+i*(cardW+gap),cardY,cardW,cardH,FriendlyModuleLabel(rec),fi==selected,true);
+        add(ShipyardBuilderCommand::DccAssetPrevious,0,v.prevX,v.navY,v.navW,v.navH,"<",false,v.start>0);
+        add(ShipyardBuilderCommand::DccAssetNext,0,v.nextX,v.navY,v.navW,v.navH,">",false,v.start<v.maxStart);
+        for(std::size_t i=0;i<v.pageSize&&v.start+i<filtered.size();++i){
+            const auto fi=v.start+i;const auto& rec=model.catalog[filtered[fi]];
+            add(ShipyardBuilderCommand::SelectModule,static_cast<int>(fi),v.cardX+i*(v.cardW+v.gap),v.cardY,v.cardW,v.cardH,FriendlyModuleLabel(rec),fi==selected,true);
         }
         }
+        // A clipped card must never retain a phantom hit target outside its
+        // panel. Shrinking a floating shelf keeps the viewport interactive.
+        clipControls(assetControlStart,ax,ay,aw,ah);
     }
 
     currentPanelId="tool_rail";
     if(showToolRail&&toolRailContent){
         const float tx=l.toolRailX,tw=l.toolRailWidth,th=36.0f*s;
         const float railButtonsY=l.toolRailY+24.0f*s;
-        add(ShipyardBuilderCommand::ToolSelect,0,tx,railButtonsY,tw,th,"Q",model.transformTool==ShipyardTransformTool::Select,true);
-        add(ShipyardBuilderCommand::ToolMove,0,tx,railButtonsY+(th+gap),tw,th,"G",model.transformTool==ShipyardTransformTool::Move,HasPlaced(model));
-        add(ShipyardBuilderCommand::ToolRotate,0,tx,railButtonsY+2*(th+gap),tw,th,"R",model.transformTool==ShipyardTransformTool::Rotate,HasPlaced(model));
-        add(ShipyardBuilderCommand::ToolScale,0,tx,railButtonsY+3*(th+gap),tw,th,"S",model.transformTool==ShipyardTransformTool::Scale,HasPlaced(model));
-        add(ShipyardBuilderCommand::ToggleTransformSnap,0,tx,railButtonsY+4*(th+gap),tw,th,"SNAP",model.transformSnap,HasPlaced(model));
-        add(ShipyardBuilderCommand::FrameSelected,0,tx,railButtonsY+5*(th+gap),tw,th,"F",false,HasPlaced(model));
+        if(model.workspaceMode==ShipyardWorkspaceMode::Model&&!model.testWorkspaceActive){
+            add(ShipyardBuilderCommand::ModelAddBox,0,tx,railButtonsY,tw,th,"BOX",false,model.capabilities.model);
+            add(ShipyardBuilderCommand::ModelAddWedge,0,tx,railButtonsY+(th+gap),tw,th,"WEDGE",false,model.capabilities.model);
+            add(ShipyardBuilderCommand::ModelAddCylinder,0,tx,railButtonsY+2*(th+gap),tw,th,"CYL",false,model.capabilities.model);
+            add(ShipyardBuilderCommand::ModelAddDoor,0,tx,railButtonsY+3*(th+gap),tw,th,"DOOR",false,model.capabilities.model);
+            add(ShipyardBuilderCommand::ModelDuplicatePrimitive,0,tx,railButtonsY+4*(th+gap),tw,th,"COPY",false,!model.modeling.recipe.primitives.empty());
+            add(ShipyardBuilderCommand::ModelRemovePrimitive,0,tx,railButtonsY+5*(th+gap),tw,th,"DEL",false,!model.modeling.recipe.primitives.empty());
+        }else{
+            add(ShipyardBuilderCommand::ToolSelect,0,tx,railButtonsY,tw,th,"Q",model.transformTool==ShipyardTransformTool::Select,true);
+            add(ShipyardBuilderCommand::ToolMove,0,tx,railButtonsY+(th+gap),tw,th,"G",model.transformTool==ShipyardTransformTool::Move,HasPlaced(model));
+            add(ShipyardBuilderCommand::ToolRotate,0,tx,railButtonsY+2*(th+gap),tw,th,"R",model.transformTool==ShipyardTransformTool::Rotate,HasPlaced(model));
+            add(ShipyardBuilderCommand::ToolScale,0,tx,railButtonsY+3*(th+gap),tw,th,"S",model.transformTool==ShipyardTransformTool::Scale,HasPlaced(model));
+            add(ShipyardBuilderCommand::ToggleTransformSnap,0,tx,railButtonsY+4*(th+gap),tw,th,"SNAP",model.transformSnap,HasPlaced(model));
+            add(ShipyardBuilderCommand::FrameSelected,0,tx,railButtonsY+5*(th+gap),tw,th,"F",false,HasPlaced(model));
+        }
     }
 
     currentPanelId="outliner";
@@ -490,7 +538,10 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         }
         if(outlinerContent){
             const auto metrics=EditorForgeGuiStyleSystem::Metrics(l.compact);
-            add(ShipyardBuilderCommand::DccCycleOutlinerMode,0,rx,l.outlinerY+metrics.panelHeaderHeight*s+3*s,rw,24*s,ShipyardDccUiSystem::OutlinerModeName(model.dcc.outlinerMode),true,true);
+            const auto navY=l.outlinerY+metrics.panelHeaderHeight*s+3*s;
+            add(ShipyardBuilderCommand::DccCycleOutlinerMode,0,rx,navY,std::max(24*s,rw-55*s),24*s,ShipyardDccUiSystem::OutlinerModeName(model.dcc.outlinerMode),true,true);
+            add(ShipyardBuilderCommand::DccOutlinerPrevious,0,rx+rw-51*s,navY,24*s,24*s,"<",false,model.placedScrollStart>0);
+            add(ShipyardBuilderCommand::DccOutlinerNext,0,rx+rw-25*s,navY,24*s,24*s,">",false,model.placedScrollStart+1<model.recipe.modules.size());
             const auto rows=ShipyardDccUiSystem::BuildOutlinerRows(model.catalog,model.recipe,model.selectedPlacedModule,model.dcc.outlinerMode);
             const std::size_t page=l.compact?4u:5u;const std::size_t start=rows.empty()?0:std::min(model.placedScrollStart,rows.size()>page?rows.size()-page:0u);
             const float rowsY=l.outlinerY+metrics.panelHeaderHeight*s+31.0f*s;
@@ -536,7 +587,26 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
             };
 
             float ay=l.editRowY;
-            switch(model.inspectorTab){
+            if(model.workspaceMode==ShipyardWorkspaceMode::Model&&!model.testWorkspaceActive){
+                const bool hasShape=!model.modeling.recipe.primitives.empty();
+                two(ShipyardBuilderCommand::ModelPreviousPrimitive,"PREV SHAPE",false,model.capabilities.model,
+                    ShipyardBuilderCommand::ModelNextPrimitive,"NEXT SHAPE",false,model.capabilities.model,ay);
+                ay+=rowH+rowGap;
+                two(ShipyardBuilderCommand::ModelAddShape,"CREATE SHAPE",false,model.capabilities.model,
+                    ShipyardBuilderCommand::ModelCycleSelectionMode,"SELECT MODE",false,hasShape,ay);
+                ay+=rowH+rowGap;
+                two(ShipyardBuilderCommand::ModelStretchXNegative,"WIDTH -",false,hasShape,
+                    ShipyardBuilderCommand::ModelStretchXPositive,"WIDTH +",false,hasShape,ay);
+                ay+=rowH+rowGap;
+                two(ShipyardBuilderCommand::ModelStretchYNegative,"LENGTH -",false,hasShape,
+                    ShipyardBuilderCommand::ModelStretchYPositive,"LENGTH +",false,hasShape,ay);
+                ay+=rowH+rowGap;
+                two(ShipyardBuilderCommand::ModelStretchZNegative,"HEIGHT -",false,hasShape,
+                    ShipyardBuilderCommand::ModelStretchZPositive,"HEIGHT +",false,hasShape,ay);
+                ay+=rowH+rowGap;
+                two(ShipyardBuilderCommand::ModelValidate,"VALIDATE DRAFT",false,model.capabilities.model,
+                    ShipyardBuilderCommand::ModelPublishCanonical,"PUBLISH UNWIRED",false,false,ay);
+            }else switch(model.inspectorTab){
             case ShipyardInspectorTab::Transform:
                 two(ShipyardBuilderCommand::FrameSelected,"FRAME PART",false,HasPlaced(model),
                     ShipyardBuilderCommand::FrameShip,"FRAME SHIP",false,HasPlaced(model),ay);

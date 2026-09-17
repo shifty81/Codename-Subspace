@@ -63,6 +63,7 @@ public:
 
     /// Consume accumulated mouse-wheel notches since the previous query.
     float ConsumeWheelDelta();
+    std::string ConsumeTextInput();
 
     /// Consume right-mouse drag deltas used for 360-degree camera orbit.
     bool ConsumeCameraOrbitDelta(float& deltaX, float& deltaY);
@@ -104,6 +105,7 @@ private:
     float _pendingClickX = 0.0f;
     float _pendingClickY = 0.0f;
     float _wheelDelta = 0.0f;
+    std::string _pendingTextInput;
     bool _primaryClickPending = false;
     bool _primaryPressPending = false;
     bool _primaryReleasePending = false;

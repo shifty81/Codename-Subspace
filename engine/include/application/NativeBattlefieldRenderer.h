@@ -16,6 +16,7 @@
 #include "rendering/ForwardSpacePresentationSystem.h"
 #include "interior/ShipEmbodimentSystem.h"
 #include "interior/ShipInteriorCarvingSystem.h"
+#include "interior/ShipInteriorDerivedShellSystem.h"
 #include "hangar/DockingExperienceSystem.h"
 #include "ui/ProductionInterfaceSystem.h"
 #include "integration/PlayerFacingIntegrationSystem.h"
@@ -126,6 +127,7 @@ struct NativeBattlefieldFrame {
     const ShipAppearanceState* shipBuilderAppearance = nullptr;
     const ProceduralShipVisualRecipe* playerShipRecipe = nullptr;
     const ShipInteriorCarvePlan* playerInteriorCarve = nullptr;
+    const InteriorDerivedShell* playerInteriorShell = nullptr;
     const ShipAppearanceState* playerShipAppearance = nullptr;
     Vector3 systemMapPan{};
     int viewportWidth = 1600;

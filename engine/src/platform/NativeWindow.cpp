@@ -191,6 +191,8 @@ bool NativeWindow::ConsumeSecondaryClick(float& x, float& y)
     return true;
 }
 
+std::string NativeWindow::ConsumeTextInput(){std::string result;result.swap(_pendingTextInput);return result;}
+
 float NativeWindow::ConsumeWheelDelta()
 {
     const float delta = _wheelDelta;
@@ -526,6 +528,15 @@ long long NativeWindow::WindowProc(void* hwndRaw, unsigned int message,
             _wheelDelta += static_cast<float>(GET_WHEEL_DELTA_WPARAM(static_cast<WPARAM>(wParam))) / static_cast<float>(WHEEL_DELTA);
             return 0;
 
+        case WM_CHAR:
+            // The Asset Browser search owns text only after explicit focus.
+            // Queue printable ASCII (matching the present bitmap font), Delete,
+            // Return and Escape; application routing owns focus/shortcuts.
+            if(wParam==8||wParam==13||wParam==27||
+               (wParam>=32&&wParam<127)){
+                if(_pendingTextInput.size()<128)_pendingTextInput.push_back(static_cast<char>(wParam));
+            }
+            return 0;
         case WM_KEYDOWN:
         case WM_SYSKEYDOWN:
             ApplyKey(wParam, true);

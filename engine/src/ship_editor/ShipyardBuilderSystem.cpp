@@ -1,4 +1,6 @@
 #include "ship_editor/ShipyardBuilderSystem.h"
+#include "ship_editor/ShipyardCatalogViewport.h"
+#include "ship_editor/ShipyardPanelCompositorSystem.h"
 #include "ship_editor/ShipyardOrientationConstraintSystem.h"
 #include "ship_editor/ShipyardSocketOverrideSystem.h"
 #include "ship_editor/ShipyardDefinitionOverrideSystem.h"
@@ -294,7 +296,11 @@ void ShipyardBuilderSystem::Initialize(std::vector<ShipyardModuleRecord> catalog
     model_.validation = Validate();
 }
 
-void ShipyardBuilderSystem::SetAvailableModuleIds(std::vector<std::string> moduleIds){availableModuleIds_=std::move(moduleIds);NormalizeSelections();}
+void ShipyardBuilderSystem::SetAvailableModuleIds(std::vector<std::string> moduleIds){
+    availableModuleIds_=std::move(moduleIds);
+    model_.availableModuleIds=availableModuleIds_;
+    NormalizeSelections();
+}
 
 void ShipyardBuilderSystem::SetAppearance(const ShipAppearanceState& appearance){
     model_.appearance=appearance;initialAppearance_=appearance;
@@ -367,6 +373,8 @@ std::vector<std::size_t> ShipyardBuilderSystem::VisibleCatalogIndices(const Ship
     for(std::size_t i=0;i<model.catalog.size();++i){
         const auto& record=model.catalog[i];
         if(record.moduleClass!=model.selectedClass)continue;
+        if(!model.standaloneDesign&&!model.availableModuleIds.empty()&&
+           std::find(model.availableModuleIds.begin(),model.availableModuleIds.end(),record.source.moduleId)==model.availableModuleIds.end())continue;
         const auto profile=UniversalKitbashAuthority::BuildProfile(record,KitbashMaterialCertification::NormalizedFallback);
         const bool domainMatch=std::any_of(profile.domainRoles.begin(),profile.domainRoles.end(),[&](const auto& role){return role.domain==wantedDomain;});
         if(!domainMatch)continue;
@@ -391,10 +399,8 @@ std::vector<std::size_t> ShipyardBuilderSystem::VisibleCatalogIndices(const Ship
 
 std::vector<std::size_t> ShipyardBuilderSystem::FilteredCatalogIndices() const {
     auto out=VisibleCatalogIndices(model_);
-    if(availableModuleIds_.empty())return out;
-    out.erase(std::remove_if(out.begin(),out.end(),[&](std::size_t i){
-        return i>=model_.catalog.size()||std::find(availableModuleIds_.begin(),availableModuleIds_.end(),model_.catalog[i].source.moduleId)==availableModuleIds_.end();
-    }),out.end());
+    // The visible cards, placement, selection and scroll now consume this
+    // same eligibility-filtered ordered index vector, never parallel lists.
     return out;
 }
 
@@ -1772,28 +1778,60 @@ void ShipyardBuilderSystem::RefreshDragSymmetryPreview(){
 
 bool ShipyardBuilderSystem::HandleWheel(float pointerX,float pointerY,float wheelDelta,int viewportWidth,int viewportHeight){
     if(std::fabs(wheelDelta)<0.0001f)return false;
-    const auto l=Layout(viewportWidth,viewportHeight);if(!l.valid)return false;
-    const int steps=wheelDelta>0.0f?-1:1;
-    if(pointerX>=l.left&&pointerX<=l.left+l.leftWidth&&pointerY>=l.moduleCardsY&&pointerY<=l.leftInfoY){
+#undef Layout
+    const auto l=ShipyardBuilderSystem::Layout(model_,viewportWidth,viewportHeight);
+#define Layout LegacyLayout
+    if(!l.valid)return false;
+    const auto layers=ShipyardPanelCompositorSystem::Snapshot(model_.dockWorkspace,
+        viewportWidth,viewportHeight,l.viewportTop);
+    // Foreground floating panels own their entire rectangle, even if an inner
+    // browser or list is too short to scroll. Do not zoom the camera behind UI.
+    const auto* topFloat=ShipyardPanelCompositorSystem::TopFloatingAt(layers,pointerX,pointerY);
+    const int direction=wheelDelta>0?-1:1;
+    auto inside=[&](const char* id,float x,float y,float w,float h){
+        if(topFloat&&topFloat->panelId!=id)return false;
+        const auto* panel=SubspaceDockSystem::FindPanel(model_.dockWorkspace,id);
+        return panel&&panel->visible&&!panel->collapsed&&w>1&&h>1&&
+               pointerX>=x&&pointerX<x+w&&pointerY>=y&&pointerY<y+h;
+    };
+    if(inside("asset_browser",l.assetShelfX,l.assetShelfY,l.assetShelfWidth,l.assetShelfHeight)){
         const auto filtered=FilteredCatalogIndices();
-        const std::size_t pageSize=5;
-        if(filtered.size()<=pageSize){model_.catalogScrollStart=0;return true;}
-        const std::size_t maxStart=filtered.size()-pageSize;
-        if(steps<0)model_.catalogScrollStart=model_.catalogScrollStart==0?0:model_.catalogScrollStart-1;
-        else model_.catalogScrollStart=std::min(maxStart,model_.catalogScrollStart+1);
-        if(model_.selectedFilteredModule<model_.catalogScrollStart)model_.selectedFilteredModule=model_.catalogScrollStart;
-        if(model_.selectedFilteredModule>=model_.catalogScrollStart+pageSize)model_.selectedFilteredModule=std::min(filtered.size()-1,model_.catalogScrollStart+pageSize-1);
-        model_.status="Parts inventory scrolled";return true;
+        const auto viewport=ShipyardCatalogViewport::Compute(l.assetShelfX,l.assetShelfY,
+            l.assetShelfWidth,l.assetShelfHeight,l.uiScale,model_.dcc.assetBrowser.density,
+            model_.dcc.assetBrowser.thumbnailScale,filtered.size(),model_.catalogScrollStart);
+        model_.catalogScrollStart=viewport.Step(direction);
+        if(filtered.empty())model_.selectedFilteredModule=0;
+        else model_.selectedFilteredModule=std::min(filtered.size()-1,model_.catalogScrollStart);
+        model_.status="Asset Browser "+std::to_string(filtered.size()?model_.catalogScrollStart+1:0)+" / "+std::to_string(filtered.size());
+        return true;
     }
-    if(pointerX>=l.right&&pointerX<=l.right+l.rightWidth&&pointerY>=l.placedListY&&pointerY<=l.validationY){
-        if(model_.recipe.modules.empty()){model_.placedScrollStart=0;return true;}
-        const std::size_t pageSize=std::max<std::size_t>(1,l.placedPageSize);
-        const std::size_t maxStart=model_.recipe.modules.size()>pageSize?model_.recipe.modules.size()-pageSize:0;
-        if(steps<0)model_.placedScrollStart=model_.placedScrollStart==0?0:model_.placedScrollStart-1;
+    if(inside("outliner",l.outlinerX,l.outlinerY,l.outlinerWidth,l.outlinerHeight)){
+        const auto count=model_.recipe.modules.size();
+        const std::size_t page= l.compact?4u:5u;
+        const std::size_t maxStart=count>page?count-page:0;
+        if(direction<0){if(model_.placedScrollStart)--model_.placedScrollStart;}
         else model_.placedScrollStart=std::min(maxStart,model_.placedScrollStart+1);
-        model_.status="Inspector module list scrolled";return true;
+        model_.status="Outliner scrolled";return true;
     }
+    // Any other visible panel occludes the 3D viewport for wheel input.
+    if(topFloat)return true;
+    for(const auto& panel:layers)if(panel.visible && panel.panelId!="viewport"&&
+        ShipyardPanelCompositorSystem::Contains(panel.rect,pointerX,pointerY))return true;
     return false;
+}
+
+bool ShipyardBuilderSystem::HandleAssetSearchInput(const std::string& text){
+    if(!model_.assetSearchFocused||text.empty())return false;
+    auto& value=model_.dcc.assetBrowser.search;
+    bool changed=false;
+    for(const unsigned char c:text){
+        if(c==8){if(!value.empty()){value.pop_back();changed=true;}}
+        else if(c==13||c==27){model_.assetSearchFocused=false;}
+        else if(c>=32&&c<127&&value.size()<80){value.push_back(static_cast<char>(c));changed=true;}
+    }
+    if(changed){model_.selectedFilteredModule=0;model_.catalogScrollStart=0;
+        model_.status="Asset search: "+value;}
+    return true;
 }
 
 bool ShipyardBuilderSystem::BeginCatalogDrag(int filteredIndex){

@@ -16,6 +16,10 @@ InteriorLayoutPlan ShipInteriorLayoutSystem::Plan(std::uint64_t shipId,
     p.carve=ShipInteriorCarvingSystem::Carve(catalog,recipe);
     p.decks=std::max(1,p.carve.deckCount);
     p.warnings=p.carve.warnings;
+    p.shell=ShipInteriorDerivedShellSystem::Build(p.carve);
+    for(const auto& issue:p.shell.errors)
+        p.warnings.push_back("Derived shell NOT READY: "+issue);
+    p.warnings.insert(p.warnings.end(),p.shell.warnings.begin(),p.shell.warnings.end());
 
     // The room list is now a projection of the actual carved pressure hull.
     // One transformed walkable module produces one primary room/cell; actual

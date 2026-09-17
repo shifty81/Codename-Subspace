@@ -44,6 +44,7 @@
 #include "ui/UIRenderer.h"
 #include "ui/SubspaceUiFramework.h"
 #include "ship_editor/ShipyardPanelCompositorSystem.h"
+#include "ship_editor/ShipyardCatalogViewport.h"
 
 #include <algorithm>
 #include <array>
@@ -2448,23 +2449,43 @@ void DrawShipProfileShield(const NativeBattlefieldRenderer::VisualAssets& assets
 }
 
 void DrawPlayableInterior(const NativeBattlefieldFrame& frame) {
-    if(!frame.playerPhysics)return;
-    const auto& p=frame.playerPhysics->position;
-    DisableSceneLighting();glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
-    // One compact starter deck; later ship construction metadata can replace
-    // these room bounds without changing the embodiment/camera authority.
-    DrawBox(p.x,p.y,0.02f,4.2f,5.8f,0.10f,{0.045f,0.065f,0.074f,1.0f});
-    DrawBox(p.x,p.y+2.82f,0.34f,4.2f,0.12f,0.62f,{0.18f,0.23f,0.25f,1.0f});
-    DrawBox(p.x,p.y-2.82f,0.34f,4.2f,0.12f,0.62f,{0.18f,0.23f,0.25f,1.0f});
-    DrawBox(p.x-2.04f,p.y,0.34f,0.12f,5.7f,0.62f,{0.18f,0.23f,0.25f,1.0f});
-    DrawBox(p.x+2.04f,p.y,0.34f,0.12f,5.7f,0.62f,{0.18f,0.23f,0.25f,1.0f});
-    DrawBox(p.x,p.y+1.55f,0.16f,2.8f,1.12f,0.20f,{0.10f,0.34f,0.43f,1.0f}); // cockpit
-    DrawBox(p.x-1.05f,p.y-0.20f,0.17f,1.35f,1.55f,0.22f,{0.42f,0.27f,0.10f,1.0f}); // furnace/engineering
-    DrawBox(p.x+1.05f,p.y-0.20f,0.17f,1.35f,1.55f,0.22f,{0.15f,0.37f,0.29f,1.0f}); // cargo/fabrication
-    DrawBox(p.x,p.y-1.85f,0.17f,2.9f,0.82f,0.22f,{0.28f,0.31f,0.34f,1.0f});
-    const Vector3 av{p.x+frame.interiorAvatar.localPosition.x*0.72f,p.y+frame.interiorAvatar.localPosition.y*0.72f,0.50f};
-    DrawSphere(av.x,av.y,av.z,0.18f,{0.88f,0.66f,0.22f,1.0f},16,8,SpaceMaterialKind::ShipHull);
-    glDisable(GL_BLEND);SetupSceneLighting();
+    if(!frame.playerPhysics||!frame.playerInteriorShell||!frame.playerInteriorShell->ready)return;
+    // The same quads are used by the on-foot traversal solver. Do NOT render
+    // the historical starter-deck boxes: they would restore phantom walls.
+    const auto& shell=*frame.playerInteriorShell;
+    const auto& ship=*frame.playerPhysics;
+    const GLboolean cull=glIsEnabled(GL_CULL_FACE);
+    const GLboolean blend=glIsEnabled(GL_BLEND);
+    if(cull)glDisable(GL_CULL_FACE);
+    glDisable(GL_BLEND);glDepthMask(GL_TRUE);
+    glPushMatrix();
+    glTranslatef(ship.position.x,ship.position.y,ship.position.z);
+    glRotatef(ship.rotation.z*180.0f/kPi,0,0,1);
+    glScalef(.72f,.72f,.72f); // same ship-local->world scale as avatar camera
+    for(const auto& surface:shell.surfaces){
+        // The present on-foot camera remains a top-down strategic view. Hide
+        // ceiling *visually* in this preview, never remove it from collision.
+        if(surface.axis==2&&surface.direction>0)continue;
+        const Rgba material=surface.axis==2
+            ? (surface.direction<0?Rgba{.16f,.20f,.24f,1.0f}:Rgba{.12f,.18f,.21f,1.0f})
+            : Rgba{.22f,.27f,.31f,1.0f};
+        SetMaterial(material,28.0f,0.0f,SpaceMaterialKind::ShipHull);
+        glBegin(GL_QUADS);
+        Vector3 normal{};
+        if(surface.axis==0)normal.x=static_cast<float>(surface.direction);
+        if(surface.axis==1)normal.y=static_cast<float>(surface.direction);
+        if(surface.axis==2)normal.z=static_cast<float>(surface.direction);
+        glNormal3f(normal.x,normal.y,normal.z);
+        for(const auto& v:surface.corners)glVertex3f(v.x,v.y,v.z);
+        glEnd();
+    }
+    const auto& avatar=frame.interiorAvatar;
+    DrawSphere(avatar.localPosition.x,avatar.localPosition.y,
+               avatar.localPosition.z+avatar.capsuleHeightMeters*.5f,.18f,
+               {.88f,.66f,.22f,1.0f},16,8,SpaceMaterialKind::ShipHull);
+    glPopMatrix();
+    if(cull)glEnable(GL_CULL_FACE);
+    if(blend)glEnable(GL_BLEND);
 }
 
 void DrawHangarBay(const NativeBattlefieldFrame& frame) {
@@ -2811,10 +2832,17 @@ void DrawHud(const NativeBattlefieldFrame& frame,const NativeBattlefieldRenderer
         DrawText5x7(frame.strategicFlightMode?"STRATEGIC FLIGHT":"MANUAL FLIGHT",w-302,20,1.05f,frame.strategicFlightMode?Rgba{0.30f,0.82f,0.72f,0.90f}:Rgba{0.90f,0.64f,0.24f,0.90f});
         DrawText5x7("TAB MODE   SHIFT BOOST",w-302,40,.76f,{0.42f,0.62f,0.68f,0.66f});
     }
-    if(frame.embodimentMode==ShipEmbodimentMode::InteriorOnFoot){
+    if(frame.embodimentMode==ShipEmbodimentMode::InteriorOnFoot&&
+       (!frame.playerInteriorShell||!frame.playerInteriorShell->ready)){
+        FilledRect(cx-238,72,0,476,64,{.20f,.045f,.045f,.95f});
+        DrawText5x7("INTERIOR SHELL NOT READY / MOVEMENT DISABLED",cx-219,92,.8f,{1.0f,.72f,.58f,1.0f});
+        DrawText5x7("I AT COCKPIT / CHECK INTERIOR VALIDATION",cx-219,113,.7f,{1.0f,.85f,.72f,1.0f});
+    }
+    if(frame.embodimentMode==ShipEmbodimentMode::InteriorOnFoot&&
+       frame.playerInteriorShell&&frame.playerInteriorShell->ready){
         FilledRect(cx-176,72,0,352,56,{.006f,.026f,.036f,.90f});
         DrawText5x7("SHIP INTERIOR / ON FOOT",cx-154,84,.92f,{.72f,.90f,.94f,.96f});
-        DrawText5x7("WASD MOVE   I RETURN TO CONTROLS",cx-154,106,.68f,{.92f,.64f,.18f,.92f});
+        DrawText5x7("WASD MOVE   I AT COCKPIT: CONTROLS",cx-154,106,.68f,{.92f,.64f,.18f,.92f});
     }
     if(frame.dockingState && frame.dockingStage!=DockingExperienceStage::Undocked && frame.dockingStage!=DockingExperienceStage::Docked){
         const auto& d=*frame.dockingState;
@@ -3314,6 +3342,13 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
         const auto metrics=EditorForgeGuiStyleSystem::Metrics(layout.compact);
         FilledRect(assetX,assetY,0,assetW,metrics.panelHeaderHeight*s,R(forgePalette.panelHeader));
         ShipyardText("ASSETS",assetX+10.0f*s,assetY+8.0f*s,.46f,text);
+        const auto v=ShipyardCatalogViewport::Compute(assetX,assetY,assetW,assetH,s,
+            m.dcc.assetBrowser.density,m.dcc.assetBrowser.thumbnailScale,
+            filteredCount,m.catalogScrollStart);
+        ShipyardText(filteredCount?std::to_string(v.start+1)+"-"+
+            std::to_string(std::min(v.start+v.pageSize,filteredCount))+" / "+
+            std::to_string(filteredCount):"NO MATCHING ASSETS",
+            assetX+8*s,assetY+38*s,.36f,muted);
     }
 
     // Right editor stack: Outliner over Properties. Only one hierarchy is
@@ -3507,7 +3542,11 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
     // read-only context, following ForgeGUI's inspector/object-header pattern.
     const float propertyTextX=right+54.0f*s;
     const float propertyWidth=rightW-64.0f*s;
-    if(m.inspectorTab==ShipyardInspectorTab::Transform){
+    if(m.workspaceMode==ShipyardWorkspaceMode::Model&&!m.testWorkspaceActive){
+        section("MODEL DRAFT",propertyTextX,layout.editLabelY,propertyWidth);
+        ShipyardText("Shape recipe only - 3D preview / publish not wired",
+            propertyTextX,layout.moveRowY+34.0f*s,.43f,muted);
+    }else if(m.inspectorTab==ShipyardInspectorTab::Transform){
         section("TRANSFORM",propertyTextX,layout.editLabelY,propertyWidth);
         ShipyardText("G move  |  R rotate  |  S scale  |  Shift precision",
             propertyTextX,layout.moveRowY+34.0f*s,.45f,muted);
@@ -3645,7 +3684,9 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
     // Full-width status bar with two deliberate text zones; long status text
     // is clipped before it can collide with contextual help.
     if(m.dcc.showStatusBar)FilledRect(0,layout.statusY,0,w,h-layout.statusY,R(forgePalette.status));
-    std::string help="G Move   R Rotate   S Scale   T Toolbar   N Sidebar   F3 Search   Ctrl+Space Maximize   [ ] Workspaces";
+    std::string help=m.workspaceMode==ShipyardWorkspaceMode::Model?
+        "MODEL DRAFT: Add Box/Wedge/Door on left. Shape preview and publish are not yet wired.":
+        (m.guidedWorkflow?"START: 1 Select asset  2 Drag into ship  3 Snap  4 Confirm  5 Save; use mouse wheel over Assets to browse":"G Move  R Rotate  S Scale  Mouse wheel over Assets to browse");
     if(hovered){
         switch(hovered->command){
             case ShipyardBuilderCommand::SelectModule:{

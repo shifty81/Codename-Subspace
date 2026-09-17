@@ -40,6 +40,8 @@ public:
     bool BoardInterior(std::uint64_t shipId);
     void SetInspection(bool enabled);
     void Move(float forward, float strafe, double seconds);
+    // Runtime shell traversal sets only a certified ship-local foot position.
+    void SetCertifiedFootPosition(Vector3 position) { if(IsOnFoot()) avatar_.localPosition=position; }
     void Look(float yawDeltaRadians,float pitchDeltaRadians);
     void SetTraversalBounds(const InteriorTraversalBounds& bounds) { traversalBounds_=bounds; }
     const InteriorTraversalBounds& TraversalBounds() const { return traversalBounds_; }

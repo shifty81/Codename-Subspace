@@ -883,3 +883,36 @@ if(SUBSPACE_BUILD_TESTS)
     target_compile_features(subspace_shipyard_overlay_foundation_tests PRIVATE cxx_std_17)
     add_test(NAME SubspaceShipyardOverlayFoundationTests COMMAND subspace_shipyard_overlay_foundation_tests)
 endif()
+
+# HOLLOW-SHELL SLICE 1: exercised production carve -> union/portal mesh ->
+# shared visual/collision surface authority. Independent of an OpenGL window.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_derived_hollow_shell_tests
+        tests/shipyard_derived_hollow_shell_tests.cpp)
+    target_link_libraries(subspace_derived_hollow_shell_tests PRIVATE subspace_engine)
+    add_test(NAME SubspaceDerivedHollowShellTests COMMAND subspace_derived_hollow_shell_tests)
+endif()
+
+# Hollow Shell Slice 2: production collision consumes exact shared render quads.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_hollow_shell_runtime_tests
+        src/interior/ShipInteriorDerivedShellSystem.cpp
+        src/interior/ShipInteriorShellTraversalSystem.cpp
+        tests/shipyard_hollow_shell_runtime_tests.cpp)
+    target_include_directories(subspace_hollow_shell_runtime_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_compile_features(subspace_hollow_shell_runtime_tests PRIVATE cxx_std_17)
+    add_test(NAME SubspaceHollowShellRuntimeTests COMMAND subspace_hollow_shell_runtime_tests)
+endif()
+
+if(SUBSPACE_BUILD_TESTS)
+    add_test(NAME SubspaceHollowShellRuntimeSourceGate COMMAND ${CMAKE_COMMAND}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/../tools/control/static-gates/hollow_shell_slice2_runtime_authority.cmake)
+endif()
+
+# SHIPYARD GUI RECOVERY: shared Asset Browser geometry and last-card reachability.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_shipyard_gui_recovery_tests tests/shipyard_gui_recovery_tests.cpp)
+    target_include_directories(subspace_shipyard_gui_recovery_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_compile_features(subspace_shipyard_gui_recovery_tests PRIVATE cxx_std_17)
+    add_test(NAME SubspaceShipyardGuiRecoveryTests COMMAND subspace_shipyard_gui_recovery_tests)
+endif()

@@ -16,6 +16,7 @@
 #include "navigation/TravelArrivalSystem.h"
 #include "interior/ShipEmbodimentSystem.h"
 #include "interior/ShipInteriorCarvingSystem.h"
+#include "interior/ShipInteriorLayoutSystem.h"
 #include "hangar/DockingExperienceSystem.h"
 #include "ui/ProductionInterfaceSystem.h"
 #include "rendering/ForwardSpacePresentationSystem.h"
@@ -83,6 +84,7 @@ private:
     void UpdateVectorTravel();
     double CurrentVectorTopSpeedMetersPerSecond() const;
     void UpdateEmbodiment();
+    void RebuildPlayerInterior(const std::vector<ShipyardModuleRecord>& catalog);
     void UpdateDocking();
     void UpdateVectorCamera();
     void UpdateOrbitalSimulation();
@@ -172,7 +174,7 @@ private:
     ShipyardRefitSession _shipyardRefit{};
     ProceduralShipVisualRecipe _playerShipRecipe{};
     ShipAppearanceState _playerShipAppearance{};
-    ShipInteriorCarvePlan _playerInteriorCarve{};
+    InteriorLayoutPlan _playerInteriorLayout{};
     bool _hasPlayerShipRecipe = false;
     bool _standaloneShipyard = false;
     bool _shipyardCameraCaptured = false;

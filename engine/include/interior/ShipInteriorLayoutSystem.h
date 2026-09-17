@@ -1,6 +1,7 @@
 #pragma once
 #include "content/ShipyardModuleSystem.h"
 #include "interior/ShipInteriorCarvingSystem.h"
+#include "interior/ShipInteriorDerivedShellSystem.h"
 #include "interior/ShipInteriorSystem.h"
 #include <cstdint>
 #include <string>
@@ -14,6 +15,7 @@ struct InteriorLayoutPlan {
     int rooms=0;
     std::vector<InteriorRoomType> roomTypes;
     ShipInteriorCarvePlan carve;
+    InteriorDerivedShell shell; // generated geometry; ready only when safely realizable
     std::vector<std::string> warnings;
 };
 class ShipInteriorLayoutSystem {

@@ -93,6 +93,12 @@ enum class ShipyardBuilderCommand {
     DccNextAssetPreset,
     DccToggleFavoriteSelected,
     DccClearAssetFilters,
+    DccAssetPrevious,
+    DccAssetNext,
+    DccAssetFocusSearch,
+    DccAssetClearSearch,
+    DccOutlinerPrevious,
+    DccOutlinerNext,
     DccToggleCommandPalette,
     DccWorkspacePrevious,
     DccWorkspaceNext,
@@ -414,6 +420,7 @@ struct ShipyardBuilderRuntimeModel {
     std::size_t selectedPlacedModule = 0;
     std::size_t selectedSocket = 0;
     std::size_t catalogScrollStart = 0;
+    bool assetSearchFocused = false;
     std::size_t placedScrollStart = 0;
     bool socketOverridesDirty = false;
     bool definitionOverridesDirty = false;
@@ -451,6 +458,7 @@ struct ShipyardBuilderRuntimeModel {
     ShipyardDragPreview dragPreview{};
     ShipyardBuilderValidation validation{};
     std::vector<ShipyardModuleRecord> catalog;
+    std::vector<std::string> availableModuleIds; // read-only catalog eligibility snapshot for renderer/input parity
     ProceduralShipVisualRecipe recipe{};
 };
 
@@ -526,6 +534,8 @@ public:
     bool SaveDefinitionOverrides(const std::string& path,std::string* error=nullptr,std::size_t* changedModules=nullptr) const;
     bool BeginCatalogDrag(int filteredIndex);
     bool HandleWheel(float pointerX,float pointerY,float wheelDelta,int viewportWidth,int viewportHeight);
+    bool HandleAssetSearchInput(const std::string& text);
+    void BlurAssetSearch() { model_.assetSearchFocused=false; }
     bool UpdateCatalogDrag(const Vector3& shipLocalPointer);
     bool StageCatalogDrag();
     bool CycleStagedSnapCandidate(int delta);

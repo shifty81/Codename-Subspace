@@ -15,6 +15,14 @@ const SubspaceDockLayout* Find(const std::vector<SubspaceDockLayout>& layers,con
     for(const auto& layer:layers)if(layer.panelId==id&&layer.visible)return &layer;
     return nullptr;
 }
+// Return an owned snapshot; a pointer into a temporary Materialize vector dies
+// at the end of its expression and can crash outside the Windows toolchain.
+SubspaceDockLayout FindLive(const SubspaceDockWorkspace& w,const char* id){
+    const auto layouts=SubspaceDockSystem::Materialize(w,1280,740,78);
+    const auto* layer=Find(layouts,id);
+    Check(layer!=nullptr,"materialized overlay panel exists");
+    return *layer;
+}
 bool Same(const SubspaceUiRect&a,const SubspaceUiRect&b){
     return std::fabs(a.x-b.x)<.01f&&std::fabs(a.y-b.y)<.01f&&
         std::fabs(a.width-b.width)<.01f&&std::fabs(a.height-b.height)<.01f;
@@ -68,7 +76,7 @@ int main(){
     Check(!ShipyardDockPointerSystem::CoversFloatingPanel(w,1280,740,78,640,165),
         "uncovered canvas remains pickable");
     Check(SubspaceDockSystem::FloatPanel(w,"asset_browser",{250,200,600,300}),"float assets");
-    Check(Same(Find(SubspaceDockSystem::Materialize(w,1280,740,78),"viewport")->rect,original),
+    Check(Same(FindLive(w,"viewport").rect,original),
           "canvas invariant after floating assets");
     Check(SubspaceDockSystem::FloatPanel(w,"outliner",{300,150,320,240}),"float outliner");
     Check(SubspaceDockSystem::FloatPanel(w,"properties",{400,170,380,400}),"float properties");
@@ -78,16 +86,16 @@ int main(){
     Check(Find(layers,"tool_rail")->floating,"tool rail is actually floating");
     Check(SubspaceDockSystem::ClosePanel(w,"asset_browser"),"hide assets");
     Check(SubspaceDockSystem::ClosePanel(w,"properties"),"hide properties");
-    Check(Same(Find(SubspaceDockSystem::Materialize(w,1280,740,78),"viewport")->rect,original),
+    Check(Same(FindLive(w,"viewport").rect,original),
           "hidden panels leave no reserved holes");
     Check(SubspaceDockSystem::DockPanel(w,"tool_rail","tool_left"),"redock tool rail");
-    Check(!Find(SubspaceDockSystem::Materialize(w,1280,740,78),"tool_rail")->floating,
+    Check(!FindLive(w,"tool_rail").floating,
           "tool rail restores anchored position");
     ShipyardDockPointerSystem pointer;
-    const auto rail=Find(SubspaceDockSystem::Materialize(w,1280,740,78),"tool_rail")->rect;
+    const auto rail=FindLive(w,"tool_rail").rect;
     Check(pointer.Begin(w,1280,740,78,rail.x+13,rail.y+8),"rail header begins drag");
     Check(pointer.Drag(w,80,90,1280,740,78),"rail moves through mouse drag");
-    Check(Find(SubspaceDockSystem::Materialize(w,1280,740,78),"tool_rail")->floating,
+    Check(FindLive(w,"tool_rail").floating,
           "rail drag actually undocks");
     Check(pointer.End(w,420,400,1280,740,78),"end rail drag over canvas");
     Check(SubspaceDockSystem::Validate(w),"no double panel ownership after gesture");
@@ -99,7 +107,7 @@ int main(){
     auto restored=Make();Check(ShipyardOverlayLayoutStore::Load(restored,temp,&error),"restore layout");
     Check(SubspaceDockSystem::Serialize(w)==SubspaceDockSystem::Serialize(restored),
           "restored layout is identical to saved workspace");
-    Check(Same(Find(SubspaceDockSystem::Materialize(restored,1280,740,78),"viewport")->rect,original),
+    Check(Same(FindLive(restored,"viewport").rect,original),
           "restart does not shrink viewport");
     {std::ofstream corrupt(temp,std::ios::binary|std::ios::trunc);corrupt<<"corrupt";}
     auto safe=Make();Check(!ShipyardOverlayLayoutStore::Load(safe,temp,&error),
