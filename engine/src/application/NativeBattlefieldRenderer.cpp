@@ -43,6 +43,7 @@
 #include "station/StationServiceEnvelopeSystem.h"
 #include "ui/UIRenderer.h"
 #include "ui/SubspaceUiFramework.h"
+#include "ship_editor/ShipyardPanelCompositorSystem.h"
 
 #include <algorithm>
 #include <array>
@@ -964,20 +965,22 @@ void DrawStandaloneShipyardBackdrop(const NativeBattlefieldFrame& frame) {
     glDisable(GL_BLEND);
 
     const float w=static_cast<float>(frame.viewportWidth),h=static_cast<float>(frame.viewportHeight);
-    const auto layout=ShipyardBuilderSystem::Layout(frame.viewportWidth,frame.viewportHeight);
+    // PASS1508R4: the backdrop used the legacy model-less DCC geometry while
+    // the panel renderer/pointer used the live dock workspace. Floating Assets
+    // therefore moved over a *different* floor-grid and background boundary.
+    // Resolve this once from the same live model as DrawShipBuilderOverlay.
+    const auto layout=frame.shipBuilder
+        ?ShipyardBuilderSystem::Layout(*frame.shipBuilder,frame.viewportWidth,frame.viewportHeight)
+        :ShipyardBuilderSystem::Layout(frame.viewportWidth,frame.viewportHeight);
     if(!layout.valid){FilledRect(0,0,0,w,h,{.075f,.078f,.082f,1.0f});return;}
 
-    // PASS1444-1453: a neutral DCC canvas replaces the black in-game-space
-    // backdrop. Authoring should read like a modeling application first and a
-    // flight scene second; accent color belongs to selection, not the canvas.
+    // Background/grid belong to the 3D View leaf, never to the position of an
+    // Asset Browser (docked or floating), sidebar, or fixed tool rail.
     FilledRect(0,0,0,w,h,{.055f,.058f,.062f,1.0f});
-    const bool maxView=frame.shipBuilder&&frame.shipBuilder->dcc.maximizeViewport;
-    const bool shelfVisible=layout.assetShelfHeight>1.0f&&!maxView;
-    const bool sidebarVisible=(layout.outlinerWidth>1.0f||layout.propertiesWidth>1.0f)&&!maxView;
-    const float left=maxView?4.0f:layout.viewportLeft;
-    const float right=maxView?w-4.0f:(sidebarVisible?layout.viewportRight:w-4.0f);
-    const float top=maxView?layout.viewportTop:layout.viewportTop;
-    const float bottom=maxView?layout.statusY-2.0f:(shelfVisible?layout.assetShelfY-2.0f:layout.statusY-2.0f);
+    const float left=layout.viewportLeft;
+    const float right=layout.viewportRight;
+    const float top=layout.viewportTop;
+    const float bottom=layout.viewportBottom;
     FilledRect(left,top,0,std::max(1.0f,right-left),std::max(1.0f,bottom-top),{.115f,.118f,.122f,1.0f});
 
     if(frame.shipBuilder && !frame.shipBuilder->dcc.showGrid)return;
@@ -3098,11 +3101,45 @@ void DrawShipyardModuleThumbnail(const ObjMeshData& mesh,float x,float y,float w
     const float scale=std::min(width*.82f/it->second.spanX,height*.82f/it->second.spanY);glBegin(GL_TRIANGLES);for(const auto& t:it->second.triangles){Color({tint.r*t.light,tint.g*t.light,tint.b*t.light,tint.a});for(const auto& q:t.p)glVertex3f(x+width*.5f+(q.x-it->second.cx)*scale,y+height*.5f+(q.y-it->second.cy)*scale,0);}glEnd();
 }
 
+// Scissor belongs to each editor panel, not the entire application overlay.
+// Preserve the caller's GL state so a clipped floating panel cannot clip the
+// viewport, global menu, tooltips, or subsequently rendered game UI.
+class ShipyardPanelClip {
+public:
+    ShipyardPanelClip(float x,float y,float width,float height,int frameW,int frameH){
+        enabled_=glIsEnabled(GL_SCISSOR_TEST);
+        glGetIntegerv(GL_SCISSOR_BOX,previous_);
+        const int x0=std::clamp(static_cast<int>(std::floor(x)),0,frameW);
+        const int x1=std::clamp(static_cast<int>(std::ceil(x+width)),x0,frameW);
+        const int y0=std::clamp(frameH-static_cast<int>(std::ceil(y+height)),0,frameH);
+        const int y1=std::clamp(frameH-static_cast<int>(std::floor(y)),y0,frameH);
+        int sx=x0,sy=y0,ex=x1,ey=y1;
+        if(enabled_){
+            sx=std::max(sx,previous_[0]);sy=std::max(sy,previous_[1]);
+            ex=std::max(sx,std::min(ex,previous_[0]+previous_[2]));
+            ey=std::max(sy,std::min(ey,previous_[1]+previous_[3]));
+        }
+        glEnable(GL_SCISSOR_TEST);
+        glScissor(sx,sy,ex-sx,ey-sy);
+    }
+    ~ShipyardPanelClip(){
+        if(enabled_)glScissor(previous_[0],previous_[1],previous_[2],previous_[3]);
+        else glDisable(GL_SCISSOR_TEST);
+    }
+    ShipyardPanelClip(const ShipyardPanelClip&)=delete;
+    ShipyardPanelClip& operator=(const ShipyardPanelClip&)=delete;
+private:
+    GLboolean enabled_=GL_FALSE;
+    GLint previous_[4]={0,0,0,0};
+};
+
 void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBattlefieldRenderer::VisualAssets* assets){
     if(!frame.shipBuilder)return;
     const auto& m=*frame.shipBuilder;
     const auto layout=ShipyardBuilderSystem::Layout(m,frame.viewportWidth,frame.viewportHeight);
     if(!layout.valid)return;
+    const auto panelLayers=ShipyardPanelCompositorSystem::Snapshot(m.dockWorkspace,
+        frame.viewportWidth, std::max(1,static_cast<int>(layout.statusY)),layout.viewportTop);
 
     const float w=static_cast<float>(frame.viewportWidth),h=static_cast<float>(frame.viewportHeight);
     const bool maximized=m.dcc.maximizeViewport;
@@ -3112,11 +3149,16 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
     const bool showProperties=layout.propertiesWidth>1.0f&&!maximized;
     const bool showSidebar=showOutliner||showProperties;
     const float top=layout.viewportTop;
-    const float right=layout.outlinerX,rightW=layout.outlinerWidth;
+    // The inspector follows Properties even after either panel is floated.
+    // Outliner coordinates are NEVER the owner of the selected-object header.
+    const float right=layout.propertiesX,rightW=layout.propertiesWidth;
     const float assetX=layout.assetShelfX,assetY=layout.assetShelfY,assetW=layout.assetShelfWidth,assetH=layout.assetShelfHeight;
     const float viewportLeft=maximized?4.0f:layout.viewportLeft;
-    const float viewportRight=maximized?w-4.0f:(showSidebar?layout.viewportRight:w-4.0f);
-    const float viewportBottom=maximized?layout.statusY-2.0f:(showAssetBrowser?layout.assetShelfY-2.0f:layout.statusY-2.0f);
+    // PASS1508R3: floating panels are overlays, not viewport boundaries.
+    // The 3D View rectangle is owned solely by its dock leaf, regardless of
+    // whether Asset Browser or either side panel is floating elsewhere.
+    const float viewportRight=maximized?w-4.0f:layout.viewportRight;
+    const float viewportBottom=maximized?layout.statusY-2.0f:layout.viewportBottom;
 
     // Blender-inspired neutral editor palette: charcoal areas, soft separators,
     // and blue reserved for active/selected state instead of cyan everywhere.
@@ -3173,32 +3215,31 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
 
     // Editor areas: Tool Rail | dominant 3D View | bottom Asset Browser |
     // Outliner over Properties. Area backgrounds use subtle one-pixel splits.
-    if(showAssetBrowser){
+    if(showAssetBrowser&&!ShipyardPanelCompositorSystem::IsFloating(m.dockWorkspace,"asset_browser")){
         FilledRect(assetX,assetY,0,assetW,assetH,panel);
         Line(assetX,assetY,0,assetX+assetW,assetY,0,{.035f,.037f,.040f,1.0f},1.0f);
     }
-    if(showSidebar){
+    // Never extend a dock separator to the global status bar or window edge:
+    // once floated, those absolute lines become the stray strokes in the view.
+    if(showOutliner&&!ShipyardPanelCompositorSystem::IsFloating(m.dockWorkspace,"outliner")){
         FilledRect(layout.outlinerX,layout.outlinerY,0,layout.outlinerWidth,layout.outlinerHeight,panel);
+        Line(layout.outlinerX,layout.outlinerY,0,layout.outlinerX,layout.outlinerY+layout.outlinerHeight,0,R(forgePalette.separator),1.0f);
+        Line(layout.outlinerX,layout.outlinerY+layout.outlinerHeight,0,layout.outlinerX+layout.outlinerWidth,layout.outlinerY+layout.outlinerHeight,0,R(forgePalette.separator),1.0f);
+    }
+    if(showProperties&&!ShipyardPanelCompositorSystem::IsFloating(m.dockWorkspace,"properties")){
         FilledRect(layout.propertiesX,layout.propertiesY,0,layout.propertiesWidth,layout.propertiesHeight,panel);
-        Line(layout.outlinerX,layout.outlinerY,0,layout.outlinerX,layout.statusY,0,{.035f,.037f,.040f,1.0f},1.0f);
-        Line(layout.outlinerX,layout.propertiesY,0,w,layout.propertiesY,0,{.035f,.037f,.040f,1.0f},1.0f);
+        Line(layout.propertiesX,layout.propertiesY,0,layout.propertiesX,layout.propertiesY+layout.propertiesHeight,0,R(forgePalette.separator),1.0f);
+        Line(layout.propertiesX,layout.propertiesY+layout.propertiesHeight,0,layout.propertiesX+layout.propertiesWidth,layout.propertiesY+layout.propertiesHeight,0,R(forgePalette.separator),1.0f);
     }
     if(showToolRail){
-        FilledRect(layout.toolRailX,layout.toolRailY,0,layout.toolRailWidth,viewportBottom-layout.toolRailY,{.075f,.078f,.082f,.98f});
-        Line(layout.toolRailX+layout.toolRailWidth,layout.toolRailY,0,layout.toolRailX+layout.toolRailWidth,viewportBottom,0,{.035f,.037f,.040f,.95f},1.0f);
+        // Rail paints to its own root-column extent; a moving Asset Browser
+        // must never shorten the rail or draw its divider at the shelf Y.
+        FilledRect(layout.toolRailX,layout.toolRailY,0,layout.toolRailWidth,layout.toolRailHeight,{.075f,.078f,.082f,.98f});
+        Line(layout.toolRailX+layout.toolRailWidth,layout.toolRailY,0,layout.toolRailX+layout.toolRailWidth,layout.toolRailY+layout.toolRailHeight,0,{.035f,.037f,.040f,.95f},1.0f);
     }
 
     const auto visibleCatalogIndices=ShipyardBuilderSystem::VisibleCatalogIndices(m);
     const std::size_t filteredCount=visibleCatalogIndices.size();
-
-    // Bottom editor area: Asset Browser shelf. The shelf intentionally stays
-    // secondary to the viewport and can be toggled with the existing T/N-style
-    // DCC commands without changing the construction document.
-    if(showAssetBrowser){
-        const auto metrics=EditorForgeGuiStyleSystem::Metrics(layout.compact);
-        FilledRect(assetX,assetY,0,assetW,metrics.panelHeaderHeight*s,R(forgePalette.panelHeader));
-        ShipyardText("ASSETS",assetX+10.0f*s,assetY+8.0f*s,.46f,text);
-    }
 
     // Compact viewport axis gizmo replaces the giant center-screen forward
     // arrow. Ship-forward +Y remains explicit without obscuring the model.
@@ -3255,22 +3296,40 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
         }
     }
 
+    // The ship's screen-space frame is a viewport effect. Its geometry
+    // must finish before any floating editor surface is composed.
+    // Float composition happens after all docked content, not here. Backing
+    // a floating panel before painting controls is why text leaked through it.
+
+    // PASS1508R4: draw the Assets header AFTER the floating-panel backing.
+    // The old order erased the header whenever Assets was floated.
+    if(showAssetBrowser&&!ShipyardPanelCompositorSystem::IsFloating(m.dockWorkspace,"asset_browser")){
+        ShipyardPanelClip clip(assetX,assetY,assetW,assetH,frame.viewportWidth,frame.viewportHeight);
+        const auto metrics=EditorForgeGuiStyleSystem::Metrics(layout.compact);
+        FilledRect(assetX,assetY,0,assetW,metrics.panelHeaderHeight*s,R(forgePalette.panelHeader));
+        ShipyardText("ASSETS",assetX+10.0f*s,assetY+8.0f*s,.46f,text);
+    }
+
     // Right editor stack: Outliner over Properties. Only one hierarchy is
     // drawn; the interactive rows come from BuildControls below so friendly
     // names, selection and hit testing share one authority.
     const auto forgeMetrics=EditorForgeGuiStyleSystem::Metrics(layout.compact);
     const float panelHeaderH=forgeMetrics.panelHeaderHeight*s;
-    if(showOutliner){
+    if(showOutliner&&!ShipyardPanelCompositorSystem::IsFloating(m.dockWorkspace,"outliner")){
+        ShipyardPanelClip clip(layout.outlinerX,layout.outlinerY,layout.outlinerWidth,
+                               layout.outlinerHeight,frame.viewportWidth,frame.viewportHeight);
         FilledRect(layout.outlinerX,layout.outlinerY,0,layout.outlinerWidth,panelHeaderH,R(forgePalette.panelHeader));
         ShipyardText("OUTLINER",layout.outlinerX+8.0f*s,layout.outlinerY+8.0f*s,.50f,text);
         ShipyardText(std::to_string(m.recipe.modules.size())+" objects",layout.outlinerX+layout.outlinerWidth-76.0f*s,layout.outlinerY+9.0f*s,.40f,muted);
-        Line(layout.outlinerX,layout.outlinerY+panelHeaderH,0,w,layout.outlinerY+panelHeaderH,0,R(forgePalette.separator),1.0f);
+        Line(layout.outlinerX,layout.outlinerY+panelHeaderH,0,layout.outlinerX+layout.outlinerWidth,layout.outlinerY+panelHeaderH,0,R(forgePalette.separator),1.0f);
     }
-    if(showProperties){
+    if(showProperties&&!ShipyardPanelCompositorSystem::IsFloating(m.dockWorkspace,"properties")){
+        ShipyardPanelClip clip(layout.propertiesX,layout.propertiesY,layout.propertiesWidth,
+                               layout.propertiesHeight,frame.viewportWidth,frame.viewportHeight);
         FilledRect(layout.propertiesX,layout.propertiesY,0,layout.propertiesWidth,panelHeaderH,R(forgePalette.panelHeader));
         ShipyardText("PROPERTIES",layout.propertiesX+8.0f*s,layout.propertiesY+8.0f*s,.50f,text);
         ShipyardText(ShipClassRoleSystem::ClassName(m.shipClass),layout.propertiesX+layout.propertiesWidth-92.0f*s,layout.propertiesY+9.0f*s,.40f,muted);
-        Line(layout.propertiesX,layout.propertiesY+panelHeaderH,0,w,layout.propertiesY+panelHeaderH,0,R(forgePalette.separator),1.0f);
+        Line(layout.propertiesX,layout.propertiesY+panelHeaderH,0,layout.propertiesX+layout.propertiesWidth,layout.propertiesY+panelHeaderH,0,R(forgePalette.separator),1.0f);
     }
 
     if(m.dragPreview.staged){
@@ -3300,7 +3359,7 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
 
     const auto controls=ShipyardBuilderSystem::BuildControls(m,frame.viewportWidth,frame.viewportHeight);
     const ShipyardBuilderControl* hovered=nullptr;
-    for(const auto& c:controls){
+    auto drawControl=[&](const ShipyardBuilderControl& c){
         const bool hover=frame.pointerX>=c.x&&frame.pointerX<=c.x+c.width&&frame.pointerY>=c.y&&frame.pointerY<=c.y+c.height;
         if(hover)hovered=&c;
 
@@ -3329,7 +3388,7 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
                 ShipyardText(detail,tx,c.y+49.0f*s,.48f,cert);
                 ShipyardText(thumb.mirrorSupported?"MIR":"",c.x+c.width-54.0f*s,c.y+10.0f*s,.42f,{.45f,.74f,.78f,.78f});
             }else ShipyardText(c.label,c.x+previewW+8.0f*s,c.y+18.0f*s,.62f,text);
-            continue;
+            return;
         }
 
         const bool toolRailControl=c.command==ShipyardBuilderCommand::ToolSelect||
@@ -3358,7 +3417,7 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
             }else{
                 Line(cx-9*s,cy-9*s,0,cx-3*s,cy-9*s,0,glyph,1.7f);Line(cx-9*s,cy-9*s,0,cx-9*s,cy-3*s,0,glyph,1.7f);Line(cx+9*s,cy+9*s,0,cx+3*s,cy+9*s,0,glyph,1.7f);Line(cx+9*s,cy+9*s,0,cx+9*s,cy+3*s,0,glyph,1.7f);
             }
-            continue;
+            return;
         }
 
         const bool tab=c.command==ShipyardBuilderCommand::WorkspaceBuild||
@@ -3399,8 +3458,21 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
         Line(c.x,c.y+c.height,0,c.x+c.width,c.y+c.height,0,{border.r*.62f,border.g*.62f,border.b*.62f,border.a*.78f},1.0f);
         if(tab&&c.active)FilledRect(c.x,c.y+c.height-3.0f,0,c.width,3.0f,cyan);
         ShipyardText(fitText(c.label,c.width-12.0f*s,.60f),c.x+6.0f*s,c.y+8.0f*s,.60f,fg);
+    };
+    // Dock UI is painted first; float UI is painted later in stack order.
+    // Always scissor controls to their actual panel, never the global frame.
+    for(const auto& c:controls)if(c.panelId.empty())drawControl(c);
+    for(const auto& d:panelLayers){
+        if(!d.visible||d.floating)continue;
+        ShipyardPanelClip clip(d.rect.x,d.rect.y,d.rect.width,d.rect.height,
+            frame.viewportWidth,frame.viewportHeight);
+        for(const auto& c:controls)if(c.panelId==d.panelId)drawControl(c);
     }
 
+    auto drawPropertyContext=[&](){
+    if(showProperties){
+    ShipyardPanelClip propertiesClip(layout.propertiesX,layout.propertiesY,
+        layout.propertiesWidth,layout.propertiesHeight,frame.viewportWidth,frame.viewportHeight);
     // ForgeGUI-style selected-object header. This surface is isolated from the
     // property controls below so text and buttons never compete for the same rows.
     const float summaryY=layout.selectedSummaryY;
@@ -3472,8 +3544,11 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
 
     // Validation card is intentionally compact and calm when valid.  It only
     // expands into error text when something needs action.
-    const float validationTop=layout.validationY;
-    const float validationH=std::max(58.0f,layout.statusY-validationTop-14.0f);
+    const float validationTop=layout.propertiesY+layout.propertiesHeight-78.0f*s;
+    const float validationH=std::min(66.0f*s,layout.propertiesHeight-20.0f*s);
+    // A short floating inspector is scroll-limited, not permitted to draw a
+    // validation card across the ship or another panel's title bar.
+    if(validationTop>layout.editRowY+3.0f*(forgeMetrics.propertyRowHeight+4.0f)*s+8.0f*s){
     cardBox(right+10,validationTop-6,rightW-20,validationH);
     ShipyardText(m.validation.valid?"GENERATOR CERTIFIED":"AUTHORING DRAFT / SAVE ALLOWED",
         right+18,validationTop+4,.72f,m.validation.valid?Rgba{.32f,.86f,.58f,.95f}:Rgba{1.0f,.66f,.24f,.95f});
@@ -3485,15 +3560,22 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
         vy+=18.0f;
         int shown=0;
         for(const auto& e:m.validation.errors){
-            if(shown++>=3||vy>layout.statusY-24.0f)break;
+            if(shown++>=1||vy>layout.propertiesY+layout.propertiesHeight-20.0f*s)break;
             ShipyardText("! "+shortText(e,58),right+18,vy,.58f,{.96f,.44f,.28f,.91f});vy+=18.0f;
         }
         shown=0;
         for(const auto& warn:m.validation.warnings){
-            if(shown++>=2||vy>layout.statusY-24.0f)break;
+            if(shown++>=1||vy>layout.propertiesY+layout.propertiesHeight-20.0f*s)break;
             ShipyardText("? "+shortText(warn,58),right+18,vy,.56f,{.92f,.70f,.28f,.84f});vy+=17.0f;
         }
     }
+
+    } // validation card only when Properties has sufficient vertical space
+    } // Properties content scissor; restore global GL scissor before viewport HUD
+
+    };
+    if(!ShipyardPanelCompositorSystem::IsFloating(m.dockWorkspace,"properties"))
+        drawPropertyContext();
 
     if(m.dcc.showStatsOverlay){
         const float sx=canvasRight-250.0f*s,sy=top+10.0f*s;
@@ -3502,6 +3584,48 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
         ShipyardText(std::to_string(m.recipe.modules.size())+" modules   "+std::to_string(m.recipe.attachments.size())+" links",sx+10.0f*s,sy+28.0f*s,.48f,muted);
         ShipyardText(std::string("Shading ")+ShipyardDccUiSystem::ShadingName(m.dcc.shading),sx+10.0f*s,sy+46.0f*s,.45f,muted);
     }
+    // PASS1508R5 / compositor normalization: all float UI is an opaque,
+    // independently clipped foreground layer. Paint complete panels in their
+    // authoritative back-to-front order. The old code painted translucent
+    // backings early, then drew EVERY panel's controls over every other panel.
+    if(!maximized)for(const auto& d:panelLayers){
+        if(!d.floating||!d.visible)continue;
+        ShipyardPanelClip clip(d.rect.x,d.rect.y,d.rect.width,d.rect.height,
+            frame.viewportWidth,frame.viewportHeight);
+        Rgba opaquePanel=panel;
+        opaquePanel.a=1.0f;
+        FilledRect(d.rect.x,d.rect.y,0,d.rect.width,d.rect.height,opaquePanel);
+        FilledRect(d.rect.x,d.rect.y,0,d.rect.width,panelHeaderH,R(forgePalette.panelHeader));
+        if(d.panelId=="asset_browser"){
+            ShipyardText("ASSETS",d.rect.x+10.0f*s,d.rect.y+8.0f*s,.46f,text);
+        }else if(d.panelId=="outliner"){
+            ShipyardText("OUTLINER",d.rect.x+8.0f*s,d.rect.y+8.0f*s,.50f,text);
+            ShipyardText(std::to_string(m.recipe.modules.size())+" objects",
+                d.rect.x+d.rect.width-76.0f*s,d.rect.y+9.0f*s,.40f,muted);
+        }else if(d.panelId=="properties"){
+            ShipyardText("PROPERTIES",d.rect.x+8.0f*s,d.rect.y+8.0f*s,.50f,text);
+            ShipyardText(ShipClassRoleSystem::ClassName(m.shipClass),
+                d.rect.x+d.rect.width-92.0f*s,d.rect.y+9.0f*s,.40f,muted);
+        }else{
+            const auto* p=SubspaceDockSystem::FindPanel(m.dockWorkspace,d.panelId);
+            if(p)ShipyardText(fitText(p->title,d.rect.width-110.0f*s,.50f),
+                d.rect.x+8.0f*s,d.rect.y+8.0f*s,.50f,text);
+        }
+        Line(d.rect.x,d.rect.y+panelHeaderH,0,
+            d.rect.x+d.rect.width,d.rect.y+panelHeaderH,0,R(forgePalette.separator),1.0f);
+        // Only controls belonging to this exact panel may appear in it.
+        for(const auto& c:controls)if(c.panelId==d.panelId)drawControl(c);
+        if(d.panelId=="properties")drawPropertyContext();
+        // An empty foreground body still occludes underlying controls and
+        // must not leave a hover tooltip from the hidden panel beneath it.
+        if(ShipyardPanelCompositorSystem::Contains(d.rect,frame.pointerX,frame.pointerY)){
+            hovered=nullptr;
+            for(const auto& c:controls)if(c.panelId==d.panelId&&
+                frame.pointerX>=c.x&&frame.pointerX<=c.x+c.width&&
+                frame.pointerY>=c.y&&frame.pointerY<=c.y+c.height){hovered=&c;}
+        }
+    }
+
     if(m.dcc.commandPaletteOpen){
         const float pw=560.0f*s,ph=300.0f*s,px=(w-pw)*.5f,py=116.0f*s;
         FilledRect(px,py,0,pw,ph,{.014f,.018f,.023f,.985f});Line(px,py,0,px+pw,py,0,cyan,1.5f*s);

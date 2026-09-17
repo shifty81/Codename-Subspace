@@ -822,3 +822,54 @@ if(SUBSPACE_BUILD_TESTS)
     target_compile_features(subspace_pass1507_dock_tests PRIVATE cxx_std_17)
     add_test(NAME SubspacePass1507DockActiveTabTests COMMAND subspace_pass1507_dock_tests)
 endif()
+
+# PASS1508: actual native pointer gesture routing exercised on the same dock
+# authority the editor uses. Does not depend on the graphics window.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_pass1508_dock_pointer_tests
+        src/ui/SubspaceUiFramework.cpp
+        tests/pass1508_dock_pointer_tests.cpp)
+    target_include_directories(subspace_pass1508_dock_pointer_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_compile_features(subspace_pass1508_dock_pointer_tests PRIVATE cxx_std_17)
+    add_test(NAME SubspacePass1508DockPointerTests COMMAND subspace_pass1508_dock_pointer_tests)
+endif()
+
+# PASS1508R3: certify the real Shipyard default dock tree and shelf/rail
+# independence, not merely a synthetic minimal workspace.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_pass1508r3_dock_region_tests
+        tests/pass1508r3_dock_region_tests.cpp)
+    target_link_libraries(subspace_pass1508r3_dock_region_tests PRIVATE subspace_engine)
+    add_test(NAME SubspacePass1508R3DockRegionTests COMMAND subspace_pass1508r3_dock_region_tests)
+endif()
+
+# PASS1508R4: prove the model-less DCC shell cannot regress to painting
+# the Asset Browser beneath the rail; runtime dock tests are owned by R3.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_pass1508r4_shell_geometry_tests
+        src/editor/EditorDccShellLayoutSystem.cpp
+        src/editor/EditorForgeGuiStyleSystem.cpp
+        tests/pass1508r4_shell_geometry_tests.cpp)
+    target_include_directories(subspace_pass1508r4_shell_geometry_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_compile_features(subspace_pass1508r4_shell_geometry_tests PRIVATE cxx_std_17)
+    add_test(NAME SubspacePass1508R4ShellGeometryTests COMMAND subspace_pass1508r4_shell_geometry_tests)
+endif()
+
+# PASS1508R5: one compositor authority and continuous editor camera navigation.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_pass1508r5_gui_camera_tests
+        src/core/Math.cpp
+        src/ui/SubspaceUiFramework.cpp
+        src/editor/ConstructionEditorCameraSystem.cpp
+        src/rendering/StrategicCamera.cpp
+        src/rendering/StrategicViewProjection.cpp
+        tests/pass1508r5_gui_camera_normalization_tests.cpp)
+    target_include_directories(subspace_pass1508r5_gui_camera_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_compile_features(subspace_pass1508r5_gui_camera_tests PRIVATE cxx_std_17)
+    add_test(NAME SubspacePass1508R5GuiCameraNormalizationTests COMMAND subspace_pass1508r5_gui_camera_tests)
+endif()
+
+if(SUBSPACE_BUILD_TESTS)
+    add_test(NAME SubspacePass1508R5CompositorCameraSourceGate COMMAND ${CMAKE_COMMAND}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/../tools/control/static-gates/pass1508r5_compositor_camera_authority.cmake)
+endif()

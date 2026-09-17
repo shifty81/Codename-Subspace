@@ -1,4 +1,5 @@
 #include "editor/ConstructionEditorCameraSystem.h"
+#include "rendering/StrategicViewProjection.h"
 
 #include <algorithm>
 #include <cmath>
@@ -15,7 +16,12 @@ void RebuildOrbitEye(ConstructionEditorCameraState&s){
     s.eye=s.assemblyCenter+fromTarget*std::max(.25f,s.orbitDistance);s.forward=Normalize(s.assemblyCenter-s.eye,{0,1,-.2f});
 }
 void FreeBasis(const ConstructionEditorCameraState&s,Vector3&right,Vector3&up){
-    Vector3 worldUp{0,0,1};if(std::fabs(s.forward.z)>.985f)worldUp={0,1,0};right=Normalize(Cross(s.forward,worldUp),{1,0,0});up=Normalize(Cross(right,s.forward),{0,0,1});
+    // The old 0.985 threshold changed the reference up axis at ~80 degrees,
+    // rotating the entire view by a quarter turn while RMB crossed it.
+    // Orbit and free-look are clamped to +/-89 degrees: world Z gives a
+    // non-degenerate right vector throughout the supported range.
+    right=Normalize(Cross(s.forward,{0,0,1}),{1,0,0});
+    up=Normalize(Cross(right,s.forward),{0,0,1});
     if(std::fabs(s.rollDegrees)>.001f){const float r=Rad(s.rollDegrees),c=std::cos(r),sn=std::sin(r);const auto rr=right*c+up*sn;const auto uu=up*c-right*sn;right=Normalize(rr,right);up=Normalize(uu,up);}
 }
 }
@@ -42,6 +48,17 @@ void ConstructionEditorCameraSystem::TruckPedestal(ConstructionEditorCameraState
     s.forward=Normalize(s.assemblyCenter-s.eye,s.forward);
     // orbitDistance/yaw/pitch intentionally remain unchanged: panning is a
     // pure translation of the current inspection frame.
+}
+void ConstructionEditorCameraSystem::PanPixels(ConstructionEditorCameraState&s,float dx,float dy,
+                                               float viewportHeight,float precision){
+    // Match the camera projection FOV and its CURRENT full-window viewport.
+    // The subrect camera/scissor/picking migration is separate and must switch
+    // all consumers together, not change the pan scale in isolation.
+    const float fov=StrategicViewProjectionConfig{}.verticalFovDegrees;
+    const float depth=std::max(.25f,(s.assemblyCenter-s.eye).length());
+    const float unitsPerPixel=2.0f*depth*std::tan(Rad(fov)*.5f)/std::max(1.0f,viewportHeight);
+    const float scale=unitsPerPixel*std::clamp(precision,.01f,1.0f);
+    TruckPedestal(s,-dx*scale,dy*scale);
 }
 void ConstructionEditorCameraSystem::BeginFreeFly(ConstructionEditorCameraState&s){if(s.mode==ConstructionCameraMode::FreeFly)return;s.mode=ConstructionCameraMode::FreeFly;s.forward=Normalize(s.assemblyCenter-s.eye,s.forward);}
 void ConstructionEditorCameraSystem::EndFreeFly(ConstructionEditorCameraState&s){if(s.mode!=ConstructionCameraMode::FreeFly)return;s.mode=ConstructionCameraMode::CenteredInspect;s.orbitDistance=std::max(.25f,(s.eye-s.assemblyCenter).length());s.forward=Normalize(s.assemblyCenter-s.eye,s.forward);const Vector3 d=(s.eye-s.assemblyCenter)*(1.0f/s.orbitDistance);s.pitchDegrees=std::asin(std::clamp(d.z,-1.0f,1.0f))*180.0f/kPi;s.yawDegrees=std::atan2(d.x,-d.y)*180.0f/kPi;}

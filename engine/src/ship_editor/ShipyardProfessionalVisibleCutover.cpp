@@ -2,6 +2,7 @@
 #include "content/ShipyardPartTaxonomySystem.h"
 #include "editor/EditorDccShellLayoutSystem.h"
 #include "editor/EditorForgeGuiStyleSystem.h"
+#include "ship_editor/ShipyardPanelCompositorSystem.h"
 
 #include <algorithm>
 #include <tuple>
@@ -243,6 +244,7 @@ ShipyardBuilderLayout ShipyardBuilderSystem::Layout(int w,int h){
     l.toolRailX=dcc.toolRail.x;
     l.toolRailY=dcc.toolRail.y;
     l.toolRailWidth=dcc.toolRail.width;
+    l.toolRailHeight=dcc.toolRail.height;
 
     // Asset Browser is a bottom shelf. Legacy y-fields are intentionally
     // projected into that shelf for test/automation compatibility.
@@ -288,7 +290,7 @@ ShipyardBuilderLayout ShipyardBuilderSystem::Layout(const ShipyardBuilderRuntime
         l.viewportRight=static_cast<float>(w)-4.0f*l.uiScale;
         l.viewportTop=l.top;
         l.viewportBottom=l.statusY-2.0f*l.uiScale;
-        l.assetShelfHeight=0;l.outlinerWidth=0;l.propertiesWidth=0;l.toolRailWidth=0;
+        l.assetShelfHeight=0;l.outlinerWidth=0;l.propertiesWidth=0;l.toolRailWidth=0;l.toolRailHeight=0;
         return l;
     }
 
@@ -302,8 +304,9 @@ ShipyardBuilderLayout ShipyardBuilderSystem::Layout(const ShipyardBuilderRuntime
         l.viewportRight=d->rect.x+d->rect.width;l.viewportBottom=d->rect.y+d->rect.height;
     }
     if(const auto* d=find("tool_rail")){
-        l.toolRailX=d->rect.x;l.toolRailY=d->rect.y;l.toolRailWidth=d->rect.width;
-    }else l.toolRailWidth=0;
+        l.toolRailX=d->rect.x;l.toolRailY=d->rect.y;
+        l.toolRailWidth=d->rect.width;l.toolRailHeight=d->rect.height;
+    }else {l.toolRailWidth=0;l.toolRailHeight=0;}
     if(const auto* d=find("asset_browser")){
         l.assetShelfX=d->rect.x;l.assetShelfY=d->rect.y;l.assetShelfWidth=d->rect.width;l.assetShelfHeight=d->rect.height;
         l.libraryListY=l.assetShelfY+34.0f*l.uiScale;
@@ -338,18 +341,31 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
     std::vector<ShipyardBuilderControl> out;
     const auto l=Layout(model,w,h);if(!l.valid)return out;
     const float s=l.uiScale,gap=5.0f*s;
-    auto add=[&](ShipyardBuilderCommand c,int value,float x,float y,float cw,float ch,std::string label,bool active=false,bool enabled=true){out.push_back({c,value,x,y,cw,ch,std::move(label),active,enabled});};
+    std::string currentPanelId;
+    auto add=[&](ShipyardBuilderCommand c,int value,float x,float y,float cw,float ch,std::string label,bool active=false,bool enabled=true){out.push_back({c,value,x,y,cw,ch,std::move(label),active,enabled});out.back().panelId=currentPanelId;};
 
     const bool maximized=model.dcc.maximizeViewport;
-    const bool showAssetBrowser=DockPanelShown(model,"asset_browser")&&!maximized;
-    const bool assetBrowserContent=DockPanelVisible(model,"asset_browser")&&!maximized;
-    const bool showToolRail=DockPanelShown(model,"tool_rail")&&!maximized;
-    const bool toolRailContent=DockPanelVisible(model,"tool_rail")&&!maximized;
-    const bool showOutliner=DockPanelShown(model,"outliner")&&!maximized;
-    const bool outlinerContent=DockPanelVisible(model,"outliner")&&!maximized;
-    const bool showProperties=DockPanelShown(model,"properties")&&!maximized;
-    const bool propertiesContent=DockPanelVisible(model,"properties")&&!maximized;
+    // PASS1508: inactive tabs have no materialized rectangle. Do not create
+    // phantom hit targets for their controls just because panel.visible=true.
+    const bool showAssetBrowser=DockPanelShown(model,"asset_browser")&&l.assetShelfHeight>1.0f&&!maximized;
+    const bool assetBrowserContent=showAssetBrowser&&DockPanelVisible(model,"asset_browser");
+    const bool showToolRail=DockPanelShown(model,"tool_rail")&&l.toolRailWidth>1.0f&&!maximized;
+    const bool toolRailContent=showToolRail&&DockPanelVisible(model,"tool_rail");
+    const bool showOutliner=DockPanelShown(model,"outliner")&&l.outlinerWidth>1.0f&&!maximized;
+    const bool outlinerContent=showOutliner&&DockPanelVisible(model,"outliner");
+    const bool showProperties=DockPanelShown(model,"properties")&&l.propertiesWidth>1.0f&&!maximized;
+    const bool propertiesContent=showProperties&&DockPanelVisible(model,"properties");
     const bool showSidebar=(showOutliner||showProperties)&&!maximized;
+    // The same panel bounds gate both painting AND hit targets. A row that
+    // spills out of a short floating panel must not select a ship behind it.
+    auto clipControls=[&](std::size_t first,float x,float y,float width,float height){
+        out.erase(std::remove_if(out.begin()+static_cast<std::ptrdiff_t>(first),out.end(),
+            [&](const ShipyardBuilderControl& c){
+                constexpr float epsilon=.25f;
+                return c.x<x-epsilon||c.y<y-epsilon||
+                       c.x+c.width>x+width+epsilon||c.y+c.height>y+height+epsilon;
+            }),out.end());
+    };
 
     // First-class authoring flow: assembly -> model -> interior -> systems ->
     // paint -> test. Developer-only workspaces remain under DEV.
@@ -390,6 +406,7 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         add(ShipyardBuilderCommand::DccToggleMaximizeViewport,0,vx+252*s,vy,46*s,25*s,"MAX",false,true);
     }
 
+    currentPanelId="asset_browser";
     if(showAssetBrowser){
         const float ax=l.assetShelfX,ay=l.assetShelfY,aw=l.assetShelfWidth,ah=l.assetShelfHeight;
         // Two-row panel chrome keeps panel-management controls separate from
@@ -444,6 +461,7 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         }
     }
 
+    currentPanelId="tool_rail";
     if(showToolRail&&toolRailContent){
         const float tx=l.toolRailX,tw=l.toolRailWidth,th=36.0f*s;
         add(ShipyardBuilderCommand::ToolSelect,0,tx,l.toolRailY,tw,th,"Q",model.transformTool==ShipyardTransformTool::Select,true);
@@ -454,8 +472,10 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         add(ShipyardBuilderCommand::FrameSelected,0,tx,l.toolRailY+5*(th+gap),tw,th,"F",false,HasPlaced(model));
     }
 
+    currentPanelId="outliner";
     if(showSidebar){
         const float rx=l.outlinerX+7*s,rw=l.outlinerWidth-14*s;
+        const std::size_t outlinerControlStart=out.size();
         if(showOutliner){
             const float hb=std::max(24.0f,21.0f*s),hgap=2.0f*s;const float hx=l.outlinerX+l.outlinerWidth-(hb*4+hgap*3)-5*s;
             add(ShipyardBuilderCommand::DccPanelToggleCollapse,1,hx,l.outlinerY+3*s,hb,hb,"-",DockPanelCollapsed(model,"outliner"),true);
@@ -471,6 +491,9 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
             const float rowsY=l.outlinerY+metrics.panelHeaderHeight*s+31.0f*s;
             for(std::size_t i=0;i<page&&start+i<rows.size();++i){const auto& item=rows[start+i];std::string displayLabel=item.label;if(item.moduleIndex<model.recipe.modules.size()){const auto& placedId=model.recipe.modules[item.moduleIndex].moduleId;const auto found=std::find_if(model.catalog.begin(),model.catalog.end(),[&](const auto& record){return record.source.moduleId==placedId;});if(found!=model.catalog.end())displayLabel=FriendlyModuleLabel(*found);}std::string label=model.dcc.outlinerMode==ShipyardDccOutlinerMode::Hierarchy?std::string(item.depth*2,' '):std::string{};if(model.dcc.outlinerMode!=ShipyardDccOutlinerMode::Hierarchy)label=item.group+" | ";label+=(item.attached?"|_ ":"o  ")+displayLabel;add(ShipyardBuilderCommand::SelectPlaced,static_cast<int>(item.moduleIndex),rx,rowsY+i*(l.rowHeight+gap),rw,l.rowHeight,label,item.selected,true);}
         }
+        clipControls(outlinerControlStart,l.outlinerX,l.outlinerY,l.outlinerWidth,l.outlinerHeight);
+        currentPanelId="properties";
+        const std::size_t propertiesControlStart=out.size();
         if(showProperties){
             const float hb=std::max(24.0f,21.0f*s),hgap=2.0f*s;const float hx=l.propertiesX+l.propertiesWidth-(hb*4+hgap*3)-5*s;
             add(ShipyardBuilderCommand::DccPanelToggleCollapse,2,hx,l.propertiesY+3*s,hb,hb,"-",DockPanelCollapsed(model,"properties"),true);
@@ -479,6 +502,9 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
             add(ShipyardBuilderCommand::DccPanelToggleVisible,2,hx+3*(hb+hgap),l.propertiesY+3*s,hb,hb,"X",false,true);
         }
         if(propertiesContent){
+            // Use the independent Properties rectangle, never the Outliner origin.
+            // Floating one panel must not teleport the other panel's controls.
+            const float rx=l.propertiesX+7*s,rw=l.propertiesWidth-14*s;
             // PASS1454-1465: the right side is now a real contextual Inspector.
             // A narrow context rail selects the workflow; only that workflow's
             // actions are projected into the property surface.
@@ -554,8 +580,10 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
                 break;
             }
         }
+        clipControls(propertiesControlStart,l.propertiesX,l.propertiesY,l.propertiesWidth,l.propertiesHeight);
     }
 
+    currentPanelId.clear();
     // Keep the complete historical command surface discoverable off-screen so
     // old automation and project-authored workflows remain compatible.
     const auto compatibility=LegacyBuildControls(model,w,h);constexpr float kCompatibilityStride=100000.0f;std::size_t compatibilityIndex=0;
@@ -565,12 +593,32 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         default:break;
         }
         const bool visibleDuplicate=std::any_of(out.begin(),out.end(),[&](const auto& current){return current.command==c.command&&current.value==c.value&&current.width>0.0f&&current.height>0.0f;});if(visibleDuplicate)continue;const float offset=kCompatibilityStride*static_cast<float>(compatibilityIndex++);c.x=-kCompatibilityStride-offset;c.y=-kCompatibilityStride-offset;out.push_back(std::move(c));}
+    // Render and hit-test the same z stack: global chrome, docked panels,
+    // then floating panels in their workspace order. Stable ordering preserves
+    // each panel's own control order; legacy offscreen commands stay offscreen.
+    const auto layers=ShipyardPanelCompositorSystem::Snapshot(model.dockWorkspace,w,h,l.viewportTop);
+    auto rank=[&](const ShipyardBuilderControl& control){
+        if(control.panelId.empty())return 0;
+        for(std::size_t i=0;i<layers.size();++i)
+            if(layers[i].panelId==control.panelId)
+                return layers[i].floating?1000+static_cast<int>(i):1+static_cast<int>(i);
+        return 0;
+    };
+    std::stable_sort(out.begin(),out.end(),[&](const auto& a,const auto& b){return rank(a)<rank(b);});
     return out;
 }
 
 ShipyardBuilderControl ShipyardBuilderSystem::HitTest(const ShipyardBuilderRuntimeModel& model,int w,int h,float x,float y){
     const auto controls=BuildControls(model,w,h);
-    for(auto it=controls.rbegin();it!=controls.rend();++it)if(it->Contains(x,y))return *it;
+    const auto layout=Layout(model,w,h);
+    const auto layers=ShipyardPanelCompositorSystem::Snapshot(model.dockWorkspace,w,h,layout.viewportTop);
+    const auto* topFloating=ShipyardPanelCompositorSystem::TopFloatingAt(layers,x,y);
+    for(auto it=controls.rbegin();it!=controls.rend();++it){
+        // A floating window occludes all controls beneath its body, including
+        // when that area has no control of its own.
+        if(topFloating&&it->panelId!=topFloating->panelId)continue;
+        if(it->Contains(x,y))return *it;
+    }
     return {};
 }
 

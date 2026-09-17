@@ -20,8 +20,11 @@ StrategicViewBasis StrategicViewProjection::Build(const StrategicCamera& camera,
     out.tanHalfFov=std::tan(fov*0.5f*kPi/180.0f);out.nearPlane=std::max(0.05f,config.nearPlane);out.farPlane=std::max(out.nearPlane+1.0f,config.farPlane);
     if(camera.HasEditorView()){
         out.eye=camera.GetEditorEye();out.target=camera.GetEditorTarget();out.forward=SafeNormalize(out.target-out.eye,{0,1,-1});
-        Vector3 worldUp{0,0,1};if(std::fabs(Dot(out.forward,worldUp))>0.985f)worldUp={0,1,0};
-        out.right=SafeNormalize(Cross(out.forward,worldUp),{1,0,0});out.up=SafeNormalize(Cross(out.right,out.forward),{0,0,1});
+        // Keep the same world-up basis across top and bottom inspection views.
+        // The camera clamps at +/-89 degrees, so a discrete switch to Y up
+        // near vertical would produce an apparent top/bottom snap.
+        out.right=SafeNormalize(Cross(out.forward,{0,0,1}),{1,0,0});
+        out.up=SafeNormalize(Cross(out.right,out.forward),{0,0,1});
         const float roll=camera.GetEditorRollDegrees()*kPi/180.0f;if(std::fabs(roll)>1.0e-6f){const float c=std::cos(roll),s=std::sin(roll);const Vector3 r=out.right*c+out.up*s;const Vector3 u=out.up*c-out.right*s;out.right=SafeNormalize(r,out.right);out.up=SafeNormalize(u,out.up);}return out;
     }
     const float zoom=std::max(0.05f,camera.GetZoom());const float distance=std::clamp(config.baseDistance/zoom,config.minDistance,config.maxDistance);const float tilt=std::clamp(camera.GetVisualTilt(),0.0f,1.0f);

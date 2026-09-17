@@ -29,6 +29,10 @@ public:
     static void SetAssemblyCenter(ConstructionEditorCameraState& state,const Vector3& center,bool preserveEye=true);
     static void Orbit(ConstructionEditorCameraState& state,float deltaYaw,float deltaPitch);
     static void TruckPedestal(ConstructionEditorCameraState& state,float deltaRight,float deltaUp);
+    // Convert pointer pixels to camera-plane translation consistently in both
+    // standalone and in-game Shipyard. Scene movement follows the pointer.
+    static void PanPixels(ConstructionEditorCameraState& state,float pointerDx,float pointerDy,
+                          float viewportHeight,float precision=1.0f);
     static void BeginFreeFly(ConstructionEditorCameraState& state);
     static void EndFreeFly(ConstructionEditorCameraState& state);
     static void Look(ConstructionEditorCameraState& state,float deltaYaw,float deltaPitch);

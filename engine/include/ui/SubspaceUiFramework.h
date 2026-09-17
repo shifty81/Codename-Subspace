@@ -112,6 +112,9 @@ public:
     static bool ActivatePanel(SubspaceDockWorkspace&,const std::string& panelId);
     static bool MovePanel(SubspaceDockWorkspace&,const std::string& panelId,const std::string& targetLeafId,bool activate=true);
     static bool FloatPanel(SubspaceDockWorkspace&,const std::string& panelId,SubspaceUiRect rect);
+    // Promote a dragged floating panel to foreground; visual and pointer order
+    // both consume the same floatingPanels sequence.
+    static bool RaiseFloatingPanel(SubspaceDockWorkspace&,const std::string& panelId);
     static bool DockPanel(SubspaceDockWorkspace&,const std::string& panelId,const std::string& targetLeafId,bool activate=true);
     static bool SetPanelOpacity(SubspaceDockWorkspace&,const std::string& panelId,float opacity,const SubspaceUiTheme& theme=SubspaceUiTheme::Dark());
     static bool ResizeSplit(SubspaceDockWorkspace&,const std::string& nodeId,float ratio);

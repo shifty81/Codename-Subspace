@@ -294,6 +294,9 @@ struct ShipyardBuilderControl {
     std::string label;
     bool active = false;
     bool enabled = true;
+    // GUI authority: generated controls identify their owning panel, so
+    // floating z-order and hit tests never rely on guessing from coordinates.
+    std::string panelId;
 
     bool Contains(float px, float py) const {
         return enabled && px >= x && py >= y && px <= x + width && py <= y + height;
@@ -312,6 +315,7 @@ struct ShipyardBuilderLayout {
     float toolRailX = 0.0f;
     float toolRailY = 0.0f;
     float toolRailWidth = 0.0f;
+    float toolRailHeight = 0.0f; // independent dock root column extent
     float leftWidth = 0.0f;
     float right = 0.0f;
     float rightWidth = 0.0f;
@@ -465,6 +469,8 @@ public:
     void SetAccessMode(ShipyardAccessMode mode);
 
     const ShipyardBuilderRuntimeModel& Model() const { return model_; }
+    // PASS1508: constrained dock-only mutation for native pointer routing.
+    SubspaceDockWorkspace& MutableDockWorkspace() { return model_.dockWorkspace; }
     const ProceduralShipVisualRecipe& Recipe() const { return model_.recipe; }
     const ShipAppearanceState& Appearance() const { return model_.appearance; }
     const ProceduralShipVisualRecipe& BaselineRecipe() const { return initialRecipe_; }

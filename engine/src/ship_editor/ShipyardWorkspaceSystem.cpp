@@ -13,14 +13,15 @@ SubspaceDockWorkspace ShipyardWorkspaceSystem::BuildDefaultDockWorkspace(){
     w.id="shipyard";
     w.rootNodeId="root";
 
-    // First-class DCC default: global menu remains fixed above this tree.
-    // Everything below it is represented as a dockable panel. The center
-    // viewport is permanent; authoring panels can move, float, collapse or
-    // auto-hide without creating a second layout authority.
+    // PASS1508R3: the fixed tool rail owns its own root column. The content
+    // branch alone divides into viewport/right stack above the asset shelf.
+    // Consequently a bottom shelf never passes underneath the tool rail and
+    // moving the shelf cannot change the rail's screen-space geometry.
+    // Tool rail and viewport remain non-floatable, non-closable shell surfaces.
     w.nodes={
-        {"root",true,SubspaceDockSplitAxis::Vertical,.78f,"upper","bottom",{}, {},false},
-        {"upper",true,SubspaceDockSplitAxis::Horizontal,.035f,"tool_left","center_right",{}, {},false},
-        {"center_right",true,SubspaceDockSplitAxis::Horizontal,.80f,"center","right_stack",{}, {},false},
+        {"root",true,SubspaceDockSplitAxis::Horizontal,.035f,"tool_left","content",{}, {},false},
+        {"content",true,SubspaceDockSplitAxis::Vertical,.78f,"upper","bottom",{}, {},false},
+        {"upper",true,SubspaceDockSplitAxis::Horizontal,.80f,"center","right_stack",{}, {},false},
         {"right_stack",true,SubspaceDockSplitAxis::Vertical,.38f,"right_top","right_bottom",{}, {},false},
         {"tool_left",false,SubspaceDockSplitAxis::Horizontal,.5f,{},{},{},{},false},
         {"center",false,SubspaceDockSplitAxis::Horizontal,.5f,{},{},{},{},false},

@@ -28,6 +28,7 @@
 #include "station/StationEcologySystem.h"
 #include "fleet/FleetCaptainAiSystem.h"
 #include "ship_editor/ShipyardBuilderSystem.h"
+#include "ship_editor/ShipyardDockPointerSystem.h"
 #include "ship_editor/ShipyardRefitSystem.h"
 #include "ship_editor/ShipBlueprintLibrarySystem.h"
 #include "ship_editor/ShipyardBuildSafetySystem.h"
@@ -183,6 +184,8 @@ private:
     float _preShipyardYawDegrees = 0.0f;
     float _preShipyardElevationDegrees = 34.0f;
     bool _preShipyardHadElevationOverride = false;
+    ShipyardDockPointerSystem _shipyardDockPointer{};
+    bool _shipyardDockSuppressClick = false;
     bool _shipyardPointerTransform = false;
     bool _shipyardCatalogPointerDrag = false;
     bool _shipyardCatalogPointerCandidate = false;

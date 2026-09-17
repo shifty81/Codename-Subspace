@@ -21,7 +21,13 @@ foreach(t WorkspaceBuild WorkspaceAppearance WorkspaceSystems WorkspaceAuthoring
   endif()
 endforeach()
 file(READ "${ROOT}/src/application/NativeBattlefieldRenderer.cpp" r)
-foreach(t "a neutral DCC canvas replaces the black in-game-space" "STAGED PART - NOT ATTACHED")
+# PASS1508R4R1: the renderer now uses the live dock viewport instead of
+# the legacy black-space replacement comment. Check production behavior tokens,
+# not the deleted historical prose, while retaining the staged-part contract.
+foreach(t "STAGED PART - NOT ATTACHED"
+    "ShipyardBuilderSystem::Layout(*frame.shipBuilder,frame.viewportWidth,frame.viewportHeight)"
+    "const float left=layout.viewportLeft"
+    "FilledRect(left,top,0")
   string(FIND "${r}" "${t}" pos)
   if(pos EQUAL -1)
     message(FATAL_ERROR "Renderer integration missing modern DCC authority: ${t}")

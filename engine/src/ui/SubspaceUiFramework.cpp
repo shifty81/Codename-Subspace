@@ -125,6 +125,13 @@ bool SubspaceDockSystem::ClosePanel(SubspaceDockWorkspace& w,const std::string& 
 bool SubspaceDockSystem::ActivatePanel(SubspaceDockWorkspace& w,const std::string& id){auto* p=FindPanel(w,id);if(!p)return false;if(!p->visible&&!OpenPanel(w,id))return false;for(auto& n:w.nodes)if(!n.split&&Contains(n.tabs,id)){n.activeTabId=id;n.collapsed=false;return true;}for(const auto& f:w.floatingPanels)if(f.panelId==id)return true;return false;}
 bool SubspaceDockSystem::MovePanel(SubspaceDockWorkspace& w,const std::string& id,const std::string& leafId,bool activate){auto* p=FindPanel(w,id);auto* leaf=FindNode(w,leafId);if(!p||!leaf||leaf->split)return false;RemovePanelHosts(w,id);leaf=FindNode(w,leafId);leaf->tabs.push_back(id);leaf->collapsed=false;p=FindPanel(w,id);p->visible=true;if(activate)leaf->activeTabId=id;return true;}
 bool SubspaceDockSystem::FloatPanel(SubspaceDockWorkspace& w,const std::string& id,SubspaceUiRect r){auto* p=FindPanel(w,id);if(!p||!p->floatable)return false;RemovePanelHosts(w,id);p=FindPanel(w,id);p->visible=true;r.width=std::clamp(r.width,p->minWidth,p->maxWidth);r.height=std::clamp(r.height,p->minHeight,p->maxHeight);w.floatingPanels.push_back({id,r});return true;}
+bool SubspaceDockSystem::RaiseFloatingPanel(SubspaceDockWorkspace& w,const std::string& id){
+    const auto it=std::find_if(w.floatingPanels.begin(),w.floatingPanels.end(),
+        [&](const auto& f){return f.panelId==id;});
+    if(it==w.floatingPanels.end())return false;
+    std::rotate(it,it+1,w.floatingPanels.end());
+    return true;
+}
 bool SubspaceDockSystem::DockPanel(SubspaceDockWorkspace& w,const std::string& id,const std::string& leafId,bool activate){return MovePanel(w,id,leafId,activate);}
 bool SubspaceDockSystem::SetPanelOpacity(SubspaceDockWorkspace& w,const std::string& id,float opacity,const SubspaceUiTheme& theme){auto* p=FindPanel(w,id);if(!p)return false;p->opacity=std::clamp(opacity,theme.panelOpacityMinimum,theme.panelOpacityMaximum);return true;}
 bool SubspaceDockSystem::ResizeSplit(SubspaceDockWorkspace& w,const std::string& id,float ratio){auto* n=FindNode(w,id);if(!n||!n->split)return false;n->ratio=std::clamp(ratio,.08f,.92f);return true;}

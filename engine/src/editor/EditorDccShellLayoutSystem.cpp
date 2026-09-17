@@ -42,13 +42,16 @@ EditorDccShellLayout EditorDccShellLayoutSystem::Compute(int width, int height) 
     const float shelfY = std::max(contentTop + minViewportHeight,
                                   contentBottom - shelfH);
 
-    out.toolRail = {0.0f, contentTop, toolW, shelfY - contentTop};
+    // PASS1508R4: even the model-less compatibility shell must reserve a
+    // full-height fixed rail and place the shelf INSIDE the content column.
+    // This matches the authoritative runtime dock tree (PASS1508R3).
+    out.toolRail = {0.0f, contentTop, toolW, contentBottom - contentTop};
     out.viewport = {toolW + splitter,
                     contentTop,
                     sidebarX - toolW - splitter,
                     shelfY - contentTop};
-    out.assetShelf = {0.0f, shelfY,
-                      sidebarX,
+    out.assetShelf = {out.viewport.x, shelfY,
+                      out.viewport.width,
                       contentBottom - shelfY};
 
     // Outliner is intentionally shallower than the Properties surface. The

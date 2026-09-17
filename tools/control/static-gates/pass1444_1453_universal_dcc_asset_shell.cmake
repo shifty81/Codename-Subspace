@@ -21,7 +21,11 @@ p1453_require("engine/include/editor/EditorAssetWorkbenchSystem.h" "EditorAssetD
 p1453_require("engine/src/editor/EditorAssetWorkbenchSystem.cpp" "SHIP MODULES")
 p1453_require("engine/src/ship_editor/ShipyardProfessionalVisibleCutover.cpp" "EditorDccShellLayoutSystem::Compute")
 p1453_require("engine/src/ship_editor/ShipyardProfessionalVisibleCutover.cpp" "l.assetShelfY=dcc.assetShelf.y")
-p1453_require("engine/src/application/NativeBattlefieldRenderer.cpp" "a neutral DCC canvas replaces the black in-game-space")
+# PASS1508R4R1: the old DCC-canvas phrase was removed when the
+# backdrop started consuming the live Shipyard viewport rectangle. Certify
+# the actual layout authority rather than a deleted comment string.
+p1453_require("engine/src/application/NativeBattlefieldRenderer.cpp" "ShipyardBuilderSystem::Layout(*frame.shipBuilder,frame.viewportWidth,frame.viewportHeight)")
+p1453_require("engine/src/application/NativeBattlefieldRenderer.cpp" "FilledRect(left,top,0")
 p1453_require("engine/src/application/NativeBattlefieldRenderer.cpp" "perspective floor grid")
 p1453_require("engine/src/application/NativeBattlefieldRenderer.cpp" "ASSET WORKBENCH / ")
 p1453_require("engine/src/application/NativeBattlefieldRenderer.cpp" "Compact viewport axis gizmo")
