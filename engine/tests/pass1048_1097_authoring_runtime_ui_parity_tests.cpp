@@ -74,6 +74,41 @@ int main(){
     Check(authoring.viewAuthority==RuntimeViewAuthority::AuthoringDev&&!authoring.firstPerson,"1074 Shipyard is an authoring/dev-mode camera over live runtime authority");
     Check(remote.cameraMode==CameraMode::TacticalFleet,"1075 existing tactical renderer becomes the presentation backend for Remote Fleet Command");
 
+    // G5 foundation: require physical seat claim and per-order revalidation.
+    FleetCommandSeatSnapshot commandSeat{};
+    commandSeat.seatId=21;commandSeat.hostEntityId=31;commandSeat.occupiedBy=7;
+    commandSeat.kind=FleetSeatKind::StationTerminal;
+    FleetCommandSession commandSession{};
+    Check(!FleetCommandSeatSystem::Enter(commandSession,7,commandSeat).allowed && !commandSession.active,
+        "G5 terminal requires permission/power/command-system/link rather than a UI toggle");
+    commandSeat.accessAllowed=true;commandSeat.powered=true;
+    commandSeat.commandSystemInstalled=true;commandSeat.commandLinkOnline=true;
+    Check(FleetCommandSeatSystem::Enter(commandSession,7,commandSeat).allowed && commandSession.active,
+        "G5 authoritative occupied command seat grants an explicit session");
+    Check(commandSession.returnView==FleetSeatReturnView::OnFoot,
+        "G5 station command view returns to the original on-foot seat");
+    Check(!FleetCommandSeatSystem::Enter(commandSession,8,commandSeat).allowed,
+        "G5 second actor cannot steal a claimed session");
+    auto live=control.BuildWithCommandSeat(SandboxWorkspaceMode::Flight,ShipEmbodimentMode::CockpitControl,
+        DockingExperienceStage::Undocked,false,true,7,commandSession,commandSeat);
+    Check(live.remoteFleetCommand&&!live.flightControls&&!live.weapons&&!live.mouseLook,
+        "G5 authorized fleet camera owns pointer without steering or weapon fire");
+    auto stationed=control.BuildWithCommandSeat(SandboxWorkspaceMode::Flight,ShipEmbodimentMode::InteriorOnFoot,
+        DockingExperienceStage::Docked,false,true,7,commandSession,commandSeat);
+    Check(stationed.remoteFleetCommand&&!stationed.flightControls&&!stationed.interiorControls,
+        "G5 station terminal can enter command view from occupied on-foot station seat");
+    commandSeat.commandLinkOnline=false;
+    Check(!FleetCommandSeatSystem::CanCommand(commandSession,7,commandSeat).allowed,
+        "G5 lost comm link revokes order permission without erasing world session");
+    live=control.BuildWithCommandSeat(SandboxWorkspaceMode::Flight,ShipEmbodimentMode::CockpitControl,
+        DockingExperienceStage::Undocked,false,true,7,commandSession,commandSeat);
+    Check(!live.remoteFleetCommand&&live.firstPerson,
+        "G5 invalid command link does not grant remote fleet camera");
+    Check(!FleetCommandSeatSystem::Exit(commandSession,8).allowed&&commandSession.active,
+        "G5 unauthorized actor cannot release another crew seat");
+    Check(FleetCommandSeatSystem::Exit(commandSession,7).allowed&&!commandSession.active,
+        "G5 rightful actor releases seat and clears session");
+
     const auto shieldPolicy=ConformalShieldSurfaceSystem::DefaultPolicy();
     auto nearShield=ConformalShieldSurfaceSystem::Select({500.0f,12,90000,true,false},shieldPolicy);
     Check(nearShield.lod==ShieldSurfaceLod::NearConformal&&nearShield.rippleBudget==4,"1076 local/near shield keeps full conformal water/ripple treatment");

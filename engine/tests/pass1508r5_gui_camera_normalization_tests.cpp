@@ -76,6 +76,21 @@ int main(){
     ConstructionEditorCameraSystem::Orbit(s,38.0f,0.0f);
     Check((s.assemblyCenter-initialTarget).length()<.001f,"orbit does not relocate actual ship");
 
+    // G4: camera orientation/framing remains independent of authored geometry.
+    ConstructionEditorCameraSystem::Reset(s,{0,0,0},2);
+    ConstructionEditorCameraSystem::Orbit(s,42.0f,-8.0f);
+    const Vector3 preservedRay=(s.eye-s.assemblyCenter).normalized();
+    ConstructionEditorCameraSystem::FramePreservingOrientation(s,{50,-20,8},7.0f);
+    Check((s.assemblyCenter-Vector3{50,-20,8}).length()<.001f,"G4 frame selection assigns independent new pivot");
+    Check(Dot((s.eye-s.assemblyCenter).normalized(),preservedRay)>.999f,"G4 frame preserves editor viewing angle");
+    Check(std::fabs(s.orbitDistance-19.6f)<.01f,"G4 frame scales distance from selection bounds");
+    ConstructionEditorCameraSystem::SetAxisView(s,ConstructionAxisView::Right);
+    Check(std::fabs(s.yawDegrees-90.0f)<.01f && std::fabs(s.pitchDegrees)<.01f,"G4 right view is stable");
+    ConstructionEditorCameraSystem::SetAxisView(s,ConstructionAxisView::Top);
+    Check(s.pitchDegrees==89.0f && std::isfinite(s.forward.z),"G4 near-top perspective avoids pole singularity");
+    ConstructionEditorCameraSystem::Orbit(s,9.0f,-12.0f);
+    Check(std::fabs(s.pitchDegrees-77.0f)<.01f,"G4 orbit remains interactive after top view");
+
     auto workspace=SubspaceDockSystem::CreateMinimalWorkspace("gui-compositor");
     SubspaceDockPanel a;a.id="assets";a.title="Assets";a.defaultLeafId="bottom";
     SubspaceDockPanel b=a;b.id="properties";b.title="Properties";b.defaultLeafId="right";

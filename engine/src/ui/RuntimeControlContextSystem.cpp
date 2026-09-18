@@ -9,4 +9,29 @@ RuntimeControlContext RuntimeControlContextSystem::Build(SandboxWorkspaceMode wo
     if(strategic){c.modeLabel="REMOTE FLEET COMMAND";c.cameraMode=CameraMode::TacticalFleet;c.viewAuthority=RuntimeViewAuthority::RemoteFleetCommand;c.firstPerson=false;c.mouseLook=false;c.sixDofFlight=false;c.remoteFleetCommand=true;return c;}
     c.modeLabel="COCKPIT / FIRST PERSON 6DOF";c.mouseLook=true;c.sixDofFlight=true;return c;
 }
+RuntimeControlContext RuntimeControlContextSystem::BuildWithCommandSeat(SandboxWorkspaceMode workspace,
+    ShipEmbodimentMode embodiment,DockingExperienceStage docking,bool vectorTransit,bool requested,
+    std::uint64_t actorId,const FleetCommandSession& session,const FleetCommandSeatSnapshot& seat) const{
+    const bool authorized=requested && FleetCommandSeatSystem::CanCommand(session,actorId,seat).allowed;
+    // Legacy Build prioritizes on-foot/docked states over strategic view; a real
+    // seated station terminal must be allowed to take UI ownership from on-foot.
+    RuntimeControlContext context=Build(workspace,embodiment,docking,vectorTransit,false);
+    if(authorized && workspace!=SandboxWorkspaceMode::ShipBuilder && !vectorTransit){
+        context.cameraMode=CameraMode::TacticalFleet;
+        context.viewAuthority=RuntimeViewAuthority::RemoteFleetCommand;
+        context.modeLabel="REMOTE FLEET COMMAND / SEATED";
+        context.remoteFleetCommand=true;
+        context.firstPerson=false;
+        // Tactical pointer must not simultaneously drive vessel flight or fire weapons.
+        context.flightControls=false;
+        context.weapons=false;
+        context.scanner=false;
+        context.vectorCommands=false;
+        context.interiorControls=false;
+        context.dockingControls=false;
+        context.mouseLook=false;
+        context.sixDofFlight=false;
+    }
+    return context;
+}
 }

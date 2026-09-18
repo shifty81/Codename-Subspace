@@ -5,6 +5,8 @@
 namespace subspace {
 
 enum class ConstructionCameraMode { CenteredInspect = 0, FreeFly };
+// Axis views are editor-only camera orientations, not ship heading or runtime movement.
+enum class ConstructionAxisView { Front, Right, Top, Back, Left, Bottom };
 
 struct ConstructionEditorCameraState {
     ConstructionCameraMode mode = ConstructionCameraMode::CenteredInspect;
@@ -28,6 +30,10 @@ public:
     static void Reset(ConstructionEditorCameraState& state,const Vector3& center,float radius=6.0f);
     static void SetAssemblyCenter(ConstructionEditorCameraState& state,const Vector3& center,bool preserveEye=true);
     static void Orbit(ConstructionEditorCameraState& state,float deltaYaw,float deltaPitch);
+    // Reframe selection without mutating the authored ship or snapping the view rotation.
+    static void FramePreservingOrientation(ConstructionEditorCameraState& state,const Vector3& pivot,float radius);
+    // Perspective cardinal inspection; exact orthographic projection is a later renderer task.
+    static void SetAxisView(ConstructionEditorCameraState& state,ConstructionAxisView view);
     static void TruckPedestal(ConstructionEditorCameraState& state,float deltaRight,float deltaUp);
     // Convert pointer pixels to camera-plane translation consistently in both
     // standalone and in-game Shipyard. Scene movement follows the pointer.
