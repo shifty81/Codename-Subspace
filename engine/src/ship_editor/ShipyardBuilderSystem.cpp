@@ -927,6 +927,12 @@ bool ShipyardBuilderSystem::AdjustSelectedArticulationSpeed(float delta){
 }
 
 bool ShipyardBuilderSystem::GenerateInteriorProgram(){
+    // The old implementation erased author-edited structures on every GENERATE.
+    // Preserve those drafts until a non-destructive reconciliation exists.
+    if(model_.interiorStructure.dirty){
+        model_.status="Interior has unsaved structural edits; generation blocked to prevent losing them";
+        return false;
+    }
     model_.interiorPlan=ShipModuleInteriorLinkSystem::BuildPlan(model_.catalog,model_.recipe,model_.worldScale);
     model_.interiorProgram=ShipInteriorAuthoringSystem::Generate(model_.interiorPlan,model_.shipClass,2.0f,3.0f);
     model_.interiorStructure=ShipInteriorStructureAuthoringSystem::GenerateDefaults(model_.interiorProgram);
@@ -1983,7 +1989,18 @@ bool ShipyardBuilderSystem::ConsumeSaveRequested(){const bool v=saveRequested_;s
 bool ShipyardBuilderSystem::ConsumeSocketOverridesSaveRequested(){const bool v=socketOverridesSaveRequested_;socketOverridesSaveRequested_=false;return v;}
 bool ShipyardBuilderSystem::ConsumeDefinitionOverridesSaveRequested(){const bool v=definitionOverridesSaveRequested_;definitionOverridesSaveRequested_=false;return v;}
 void ShipyardBuilderSystem::MarkApplied(){model_.dirty=false;model_.status="Applied to player ship visual blueprint";}
-void ShipyardBuilderSystem::MarkSaved(const std::string& path){model_.status="Blueprint saved: "+path;}
+void ShipyardBuilderSystem::MarkSaved(const std::string& path){
+    if(path.rfind("ERROR",0)==0){model_.status="Blueprint save failed: "+path;return;}
+    // This export stores ship recipe and appearance, NOT the editable model or
+    // interior structural drafts. Never mark those drafts clean and discardable.
+    if(model_.interiorStructure.dirty||!model_.modeling.recipe.primitives.empty()){
+        model_.status="Blueprint saved: "+path+" / interior or model drafts NOT saved; NEW EMPTY remains blocked";
+        model_.dirty=true;
+    }else{
+        model_.dirty=false;
+        model_.status="Blueprint saved: "+path;
+    }
+}
 void ShipyardBuilderSystem::MarkSocketOverridesSaved(const std::string& path){model_.socketOverridesDirty=false;model_.status="Socket overrides saved: "+path;}
 void ShipyardBuilderSystem::MarkDefinitionOverridesSaved(const std::string& path){model_.definitionOverridesDirty=false;model_.status="Definition overrides saved: "+path;}
 

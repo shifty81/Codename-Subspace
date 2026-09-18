@@ -410,6 +410,9 @@ void NativeGameApplication::ActivateFrontendCommand(FrontendCommand command)
 void NativeGameApplication::OpenShipyardWorkspace(bool standalone)
 {
     _standaloneShipyard=standalone;
+    _editorInteriorSourceKey.clear();
+    _editorInteriorLayout={};
+    _window.SetEditorNavigationMode(true);
     _shipyardDockPointer.Cancel();
     _shipyardDockSuppressClick=false;
     // Main-menu Studio always opens a new, empty document. In-game refits
@@ -461,17 +464,14 @@ void NativeGameApplication::OpenShipyardWorkspace(bool standalone)
     // boundary; gameplay limits are restored when the workspace closes.
     camera.SetZoomLimits(0.12f,96.0f);
     if(standalone)GoToFrontendScreen(FrontendScreen::InGame);
-    // Studio does not auto-frame a gameplay ship. An empty document receives
-    // a neutral, independent free-look camera at the world origin.
+    // Blender-style editor navigation: orbit the world origin on an empty
+    // document, without following any ship or invoking first-person flight.
     FrameShipyardView(false);
-    if(standalone&&_shipBuilder.Recipe().modules.empty()){
-        ConstructionEditorCameraSystem::BeginFreeFly(_constructionCamera);
-        ApplyConstructionCameraView();
-    }
 }
 
 void NativeGameApplication::RestoreGameplayCameraLimits()
 {
+    _window.SetEditorNavigationMode(false);
     auto& camera=_engine.GetStrategicCamera();
     camera.ClearEditorView();
     if(_shipyardCameraCaptured){
@@ -561,7 +561,7 @@ void NativeGameApplication::UpdateConstructionCameraKeyboard()
     if(!_shipBuilder.IsInitialized())return;
     const auto& input=_engine.GetInputState();
     const float dt=std::max(0.0f,_engine.GetLastDeltaTime());
-    if(_window.IsAltDown()){
+    if(_window.IsAltDown()&&!_window.EditorNavigationMode()){
         ConstructionEditorCameraSystem::BeginFreeFly(_constructionCamera);
         const float forward=(input.IsDown(InputAction::ThrustForward)?1.0f:0.0f)-(input.IsDown(InputAction::ThrustReverse)?1.0f:0.0f);
         const float right=(input.IsDown(InputAction::StrafeRight)?1.0f:0.0f)-(input.IsDown(InputAction::StrafeLeft)?1.0f:0.0f);
@@ -584,8 +584,6 @@ bool NativeGameApplication::ActivateShipyardControl(ShipyardBuilderCommand comma
     else if(command==ShipyardBuilderCommand::FrameShip)FrameShipyardView(false);
     else if(command==ShipyardBuilderCommand::NewEmptyDocument&&_standaloneShipyard){
         FrameShipyardView(false);
-        ConstructionEditorCameraSystem::BeginFreeFly(_constructionCamera);
-        ApplyConstructionCameraView();
     }
     if(command==ShipyardBuilderCommand::DccRevealAssetBrowser||
        command==ShipyardBuilderCommand::DccToggleToolRail||
@@ -1673,6 +1671,13 @@ void NativeGameApplication::HandleGlobalActions()
 
     if(_standaloneShipyard){
         if(input.WasPressed(InputAction::MenuBack)){
+            // Escape dismisses application menus; never quit the whole editor
+            // just because File or View is open.
+            if(_shipBuilder.IsInitialized()&&_shipBuilder.Model().openMenu>=0){
+                const auto menu=static_cast<ShipyardBuilderCommand>(
+                    static_cast<int>(ShipyardBuilderCommand::MenuFile)+_shipBuilder.Model().openMenu);
+                _shipBuilder.Activate(menu);return;
+            }
             // Escape cancels a live axis manipulation before leaving the Shipyard.
             // An incomplete drag must not silently become a committed edit.
             if(_shipyardGizmoHandle.valid){
@@ -1697,8 +1702,7 @@ void NativeGameApplication::HandleGlobalActions()
         float orbitX=0.0f,orbitY=0.0f;
         if(_window.ConsumeCameraOrbitDelta(orbitX,orbitY)){
             const float precision=_window.IsShiftDown()?.10f:1.0f;
-            if(_window.IsAltDown())ConstructionEditorCameraSystem::Look(_constructionCamera,orbitX*.30f*precision,-orbitY*.28f*precision);
-            else ConstructionEditorCameraSystem::Orbit(_constructionCamera,orbitX*.30f*precision,-orbitY*.28f*precision);
+            ConstructionEditorCameraSystem::Orbit(_constructionCamera,orbitX*.30f*precision,-orbitY*.28f*precision);
             ApplyConstructionCameraView();
         }
         float panX=0.0f,panY=0.0f;
@@ -2416,6 +2420,29 @@ NativeBattlefieldFrame NativeGameApplication::BuildRenderFrame() const
         f.systemMapHoveredNode=_playerFacing.HitTestSystemMapNode(*f.systemMap,f.universeSystemMap,
             _window.GetWidth(),_window.GetHeight(),f.systemMapZoom,f.systemMapPan,
             _window.GetPointerX(),_window.GetPointerY());
+    }
+    // Studio preview is an immutable snapshot from the same production carve
+    // and shell generator used by the runtime; regenerate only if input changes.
+    if(_standaloneShipyard&&_shipBuilder.IsInitialized()&&
+       _shipBuilder.Model().studioViewMode!=ShipyardStudioViewMode::Exterior){
+        const auto& recipe=_shipBuilder.Recipe();
+        std::ostringstream signature;
+        signature<<recipe.modules.size()<<':'<<recipe.attachments.size()<<':'
+                 <<recipe.widthScale<<':'<<recipe.lengthScale<<':'<<recipe.forwardVisualYawDegrees;
+        for(const auto& part:recipe.modules)
+            signature<<part.moduleId<<':'<<part.x<<':'<<part.y<<':'<<part.z<<':'
+                     <<part.scaleX<<':'<<part.scaleY<<':'<<part.scaleZ<<':'
+                     <<part.yawDegrees<<':'<<part.pitchDegrees<<':'<<part.rollDegrees<<':'
+                     <<part.mirrorX<<part.mirrorY<<part.mirrorZ<<';';
+        for(const auto& attachment:recipe.attachments)
+            signature<<attachment.parentModuleIndex<<':'<<attachment.childModuleIndex<<':'
+                     <<attachment.parentSocket<<':'<<attachment.childSocket<<':'
+                     <<attachment.measuredGap<<':'<<attachment.certified<<';';
+        if(_editorInteriorSourceKey!=signature.str()){
+            _editorInteriorSourceKey=signature.str();
+            _editorInteriorLayout=ShipInteriorLayoutSystem{}.Plan(0,_shipBuilder.Model().catalog,recipe);
+        }
+        f.editorInteriorShell=&_editorInteriorLayout.shell;
     }
     f.shipBuilder=_shipBuilder.IsInitialized()?&_shipBuilder.Model():nullptr;
     f.shipBuilderRecipe=_shipBuilder.IsInitialized()?&_shipBuilder.Recipe():nullptr;

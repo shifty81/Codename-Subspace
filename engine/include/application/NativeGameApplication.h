@@ -179,6 +179,8 @@ private:
     ProceduralShipVisualRecipe _playerShipRecipe{};
     ShipAppearanceState _playerShipAppearance{};
     InteriorLayoutPlan _playerInteriorLayout{};
+    mutable InteriorLayoutPlan _editorInteriorLayout{};
+    mutable std::string _editorInteriorSourceKey;
     bool _hasPlayerShipRecipe = false;
     bool _standaloneShipyard = false;
     bool _shipyardCameraCaptured = false;

@@ -33,14 +33,26 @@ string(FIND "${PASS1508R5_RENDER_TEXT}" "// PASS1508R5 / compositor normalizatio
 if(PASS1508R5_DOCK_PASS EQUAL -1 OR PASS1508R5_FLOAT_PASS LESS_EQUAL PASS1508R5_DOCK_PASS)
   message(FATAL_ERROR "PASS1508R5 draw order must be dock controls then complete floating windows")
 endif()
+# G3 introduces an application popup rendered after *all* floating docks. Its
+# controls have a higher z rank, so the matching hit-test must exempt only
+# studio_menu from the foreground floating-panel occlusion rule. Requiring the
+# historical exact expression would incorrectly reject the correct new stack.
 foreach(PASS1508R5_MARK IN ITEMS
     "TopFloatingAt(layers,x,y)"
-    "if(topFloating&&it->panelId!=topFloating->panelId)continue")
+    "if(control.panelId==\"studio_menu\")return 3000;"
+    "if(topFloating&&it->panelId!=topFloating->panelId&&it->panelId!=\"studio_menu\")continue;")
   string(FIND "${PASS1508R5_HIT_TEXT}" "${PASS1508R5_MARK}" PASS1508R5_POSITION)
   if(PASS1508R5_POSITION EQUAL -1)
-    message(FATAL_ERROR "PASS1508R5 hit testing no longer follows paint stack: ${PASS1508R5_MARK}")
+    message(FATAL_ERROR "PASS1508R5 hit testing lost floating occlusion or the G3 popup priority: ${PASS1508R5_MARK}")
   endif()
 endforeach()
+# This exception is valid only if the actual popup is rendered last. Otherwise
+# the user could click obscured controls; test render and hit-test together.
+string(FIND "${PASS1508R5_RENDER_TEXT}" "for(const auto& c:controls)if(c.panelId==\"studio_menu\")drawControl(c);" PASS1508R5_MENU_DRAW)
+string(FIND "${PASS1508R5_RENDER_TEXT}" "// PASS1508R5 / compositor normalization:" PASS1508R5_FLOAT_DRAW)
+if(PASS1508R5_MENU_DRAW EQUAL -1 OR PASS1508R5_MENU_DRAW LESS_EQUAL PASS1508R5_FLOAT_DRAW)
+  message(FATAL_ERROR "PASS1508R5 G3 popup must render after floating panels, matching its hit-test priority")
+endif()
 foreach(PASS1508R5_MARK IN ITEMS
     "TopFloatingAt(layers,x,y)"
     "if(pass==1&&topFloating)return false"

@@ -2454,6 +2454,40 @@ void DrawShipProfileShield(const NativeBattlefieldRenderer::VisualAssets& assets
     glEnd();glPopMatrix();glDepthMask(GL_TRUE);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);glDisable(GL_BLEND);SetupSceneLighting();
 }
 
+void DrawStudioInteriorShell(const NativeBattlefieldFrame& frame,const std::string& role){
+    if(!frame.editorInteriorShell||!frame.editorInteriorShell->ready||!frame.shipBuilderRecipe)return;
+    const auto& recipe=*frame.shipBuilderRecipe;
+    const auto& shell=*frame.editorInteriorShell;
+    // Match standalone DrawModularShip: no gameplay ship root and no extra
+    // avatar/world transform. Envelope-authority shells are still approximate,
+    // so present them as preview geometry, not production mesh booleans.
+    const auto profile=ForwardSpacePresentationSystem{}.ForShip(role,true,.22f);
+    const GLboolean cull=glIsEnabled(GL_CULL_FACE),blend=glIsEnabled(GL_BLEND);
+    if(cull)glDisable(GL_CULL_FACE);
+    glDisable(GL_BLEND);glDepthMask(GL_TRUE);
+    glPushMatrix();glTranslatef(0,0,.30f);
+    glRotatef(RecipeForwardVisualYawRadians(&recipe)*180.0f/kPi,0,0,1);
+    glScalef(.24f*profile.widthScale*recipe.widthScale,
+             .24f*profile.lengthScale*recipe.lengthScale,.24f);
+    for(const auto& surface:shell.surfaces){
+        // Cutaway / interior preview removes the ceiling ONLY visually.
+        // Collision and pressure boundary remain intact in the source plan.
+        if(surface.axis==2&&surface.direction>0)continue;
+        SetMaterial(surface.axis==2?Rgba{.18f,.27f,.34f,1.0f}:
+                    Rgba{.31f,.43f,.49f,1.0f},38,0,SpaceMaterialKind::ShipHull);
+        Vector3 normal{};
+        if(surface.axis==0)normal.x=static_cast<float>(surface.direction);
+        else if(surface.axis==1)normal.y=static_cast<float>(surface.direction);
+        else normal.z=static_cast<float>(surface.direction);
+        glBegin(GL_QUADS);glNormal3f(normal.x,normal.y,normal.z);
+        for(const auto& v:surface.corners)glVertex3f(v.x,v.y,v.z);
+        glEnd();
+    }
+    glPopMatrix();
+    if(cull)glEnable(GL_CULL_FACE);
+    if(blend)glEnable(GL_BLEND);
+}
+
 void DrawPlayableInterior(const NativeBattlefieldFrame& frame) {
     if(!frame.playerPhysics||!frame.playerInteriorShell||!frame.playerInteriorShell->ready)return;
     // The same quads are used by the on-foot traversal solver. Do NOT render
@@ -3247,6 +3281,12 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
 
     const float canvasLeft=viewportLeft;
     const float canvasRight=viewportRight;
+    if(frame.standaloneShipyard&&m.studioViewMode!=ShipyardStudioViewMode::Exterior&&
+       (!frame.editorInteriorShell||!frame.editorInteriorShell->ready)){
+        ShipyardText(m.recipe.modules.empty()?"INTERIOR: ADD A WALKABLE HULL MODULE FIRST":
+            "INTERIOR NOT READY: CHECK HULL CONNECTIONS / ROTATIONS",
+            layout.viewportLeft+18.0f*s,layout.viewportTop+18.0f*s,.65f,amber);
+    }
     const auto activeWorkspace=m.testWorkspaceActive?ShipyardWorkspaceMode::Test:m.workspaceMode;
     // The same header strip contains permanent ASSETS and RESET UI controls.
     // Do not paint non-interactive menu text over their hit rectangles.
@@ -3727,6 +3767,9 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
         }
     }
 
+    // Application popup must paint AFTER floating docks, matching its first
+    // priority in HitTest. A panel must never hide the File/View action menu.
+    for(const auto& c:controls)if(c.panelId=="studio_menu")drawControl(c);
     if(m.dcc.commandPaletteOpen){
         const float pw=560.0f*s,ph=300.0f*s,px=(w-pw)*.5f,py=116.0f*s;
         FilledRect(px,py,0,pw,ph,{.014f,.018f,.023f,.985f});Line(px,py,0,px+pw,py,0,cyan,1.5f*s);
@@ -4280,16 +4323,28 @@ void NativeBattlefieldRenderer::Render(const NativeBattlefieldFrame& frame) {
         }
         // WIREFRAME presentation mode uses the real GL polygon path, not a label-only toggle.
         const bool wireframe=frame.shipBuilder&&frame.shipBuilder->dcc.shading==ShipyardDccViewportShading::Wireframe;
-        if(wireframe)glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
-        DrawModularShip(*_assets,0.0f,0.0f,0.30f,0.0f,0.24f,true,previewRole,{0.34f,0.39f,0.43f,1.0f},1.0f,0.22f,frame.shipBuilderRecipe->seed,false,frame.shipBuilderRecipe,selected,frame.shipBuilderAppearance,selectedRecord,selectedSocket,socketEdit,frame.shipBuilder&&frame.shipBuilder->dragPreview.active?&frame.shipBuilder->dragPreview.ghost:nullptr,frame.shipBuilder&&frame.shipBuilder->dragPreview.mirroredPreviewActive?&frame.shipBuilder->dragPreview.mirroredGhost:nullptr,frame.elapsedSeconds);
-        if(wireframe)glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
+        const auto viewMode=frame.shipBuilder?frame.shipBuilder->studioViewMode:ShipyardStudioViewMode::Exterior;
+        const bool exterior=viewMode==ShipyardStudioViewMode::Exterior;
+        const bool overlay=viewMode==ShipyardStudioViewMode::Cutaway||viewMode==ShipyardStudioViewMode::XRay;
+        if(wireframe||overlay)glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);
+        if(viewMode!=ShipyardStudioViewMode::InteriorOnly){
+            DrawModularShip(*_assets,0.0f,0.0f,0.30f,0.0f,0.24f,true,previewRole,
+                {0.34f,0.39f,0.43f,1.0f},viewMode==ShipyardStudioViewMode::XRay?.40f:1.0f,
+                0.22f,frame.shipBuilderRecipe->seed,false,frame.shipBuilderRecipe,selected,
+                frame.shipBuilderAppearance,selectedRecord,selectedSocket,socketEdit,
+                frame.shipBuilder&&frame.shipBuilder->dragPreview.active?&frame.shipBuilder->dragPreview.ghost:nullptr,
+                frame.shipBuilder&&frame.shipBuilder->dragPreview.mirroredPreviewActive?&frame.shipBuilder->dragPreview.mirroredGhost:nullptr,
+                frame.elapsedSeconds);
+        }
+        if(wireframe||overlay)glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
+        if(!exterior)DrawStudioInteriorShell(frame,previewRole);
         // Pass790R2 SHIPYARD_STANDALONE_SHIELD_PREVIEW: standalone authoring must preview the
         // same one-foot hull-profile shield surface as the live runtime.
         const auto previewAxis=ResolveShipAxisScale(0.24f,previewRole,true,0.22f,frame.shipBuilderRecipe);
         PhysicsComponent previewPhysics{};
         previewPhysics.position={0.0f,0.0f,0.0f};
         previewPhysics.rotation.z=0.0f;
-        if(!frame.shipBuilderRecipe->modules.empty()&&(!frame.shipBuilder||frame.shipBuilder->dcc.showShieldPreview))
+        if(exterior&&!frame.shipBuilderRecipe->modules.empty()&&(!frame.shipBuilder||frame.shipBuilder->dcc.showShieldPreview))
             DrawShipProfileShield(*_assets,previewPhysics,frame.shipBuilderRecipe,previewAxis,1.0f,frame.elapsedSeconds,frame);
     }
 

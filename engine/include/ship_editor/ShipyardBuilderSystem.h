@@ -7,6 +7,7 @@
 #include "ship_editor/ShipyardDragDropSystem.h"
 #include "ship_editor/ShipyardWorkspaceSystem.h"
 #include "ship_editor/ShipyardDccUiSystem.h"
+#include "ship_editor/ShipyardStudioViewMode.h"
 #include "content/UniversalKitbashAuthority.h"
 #include "construction/UniversalConstructionSystem.h"
 #include "editor/ConstructionSymmetrySystem.h"
@@ -292,7 +293,12 @@ enum class ShipyardBuilderCommand {
     // Appended to preserve existing command identifiers.
     DccRevealAssetBrowser,
     // New authoring document; distinct from Reset (restores entry blueprint).
-    NewEmptyDocument
+    NewEmptyDocument,
+    DccCycleStudioView,
+    MenuFile,
+    MenuEdit,
+    MenuView,
+    MenuHelp
 };
 
 struct ShipyardBuilderControl {
@@ -426,6 +432,9 @@ struct ShipyardBuilderRuntimeModel {
     std::size_t selectedSocket = 0;
     std::size_t catalogScrollStart = 0;
     bool assetSearchFocused = false;
+    ShipyardStudioViewMode studioViewMode = ShipyardStudioViewMode::Exterior;
+    int openMenu = -1; // -1 closed; File/Edit/View/Help = 0..3
+
     std::size_t placedScrollStart = 0;
     bool socketOverridesDirty = false;
     bool definitionOverridesDirty = false;

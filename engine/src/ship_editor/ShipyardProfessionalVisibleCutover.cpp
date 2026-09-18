@@ -114,7 +114,24 @@ bool ShipyardBuilderSystem::Activate(ShipyardBuilderCommand command,int value){
     if(model_.assetSearchFocused&&command!=ShipyardBuilderCommand::DccAssetFocusSearch&&
        command!=ShipyardBuilderCommand::DccAssetClearSearch)
         model_.assetSearchFocused=false;
+    if(command!=ShipyardBuilderCommand::MenuFile&&command!=ShipyardBuilderCommand::MenuEdit&&
+       command!=ShipyardBuilderCommand::MenuView&&command!=ShipyardBuilderCommand::MenuHelp)
+        model_.openMenu=-1;
     switch(command){
+    case ShipyardBuilderCommand::MenuFile:
+    case ShipyardBuilderCommand::MenuEdit:
+    case ShipyardBuilderCommand::MenuView:
+    case ShipyardBuilderCommand::MenuHelp:{
+        const int menu=static_cast<int>(command)-static_cast<int>(ShipyardBuilderCommand::MenuFile);
+        model_.openMenu=model_.openMenu==menu?-1:menu;
+        return true;
+    }
+    case ShipyardBuilderCommand::DccCycleStudioView:
+        model_.studioViewMode=ShipyardStudioViewSystem::Next(model_.studioViewMode);
+        model_.status=std::string("Viewport: ")+ShipyardStudioViewSystem::Name(model_.studioViewMode)+
+            " / interior shell uses generated cavities; invalid cavities fail closed";
+        model_.openMenu=-1;
+        return true;
     case ShipyardBuilderCommand::DccRevealAssetBrowser:{
         auto* panel=SubspaceDockSystem::FindPanel(model_.dockWorkspace,"asset_browser");
         if(!panel)return false;
@@ -231,6 +248,9 @@ bool ShipyardBuilderSystem::Activate(ShipyardBuilderCommand command,int value){
     }
 
     const bool result=LegacyActivate(command,value);
+    if(result&&command==ShipyardBuilderCommand::WorkspaceInterior&&
+       model_.studioViewMode==ShipyardStudioViewMode::Exterior)
+        model_.studioViewMode=ShipyardStudioViewMode::InteriorOnly;
     if(result){
         switch(command){
         case ShipyardBuilderCommand::WorkspaceBuild:case ShipyardBuilderCommand::WorkspaceInterior:case ShipyardBuilderCommand::WorkspaceSystems:case ShipyardBuilderCommand::WorkspaceAppearance:
@@ -411,6 +431,16 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
             }),out.end());
     };
 
+    // Application menus are live controls, not painted text placeholders.
+    // Expose only actions that actually have an implementation. Open/Save As
+    // require a document chooser and are not falsely represented here.
+    const ShipyardBuilderCommand menus[4]={ShipyardBuilderCommand::MenuFile,
+        ShipyardBuilderCommand::MenuEdit,ShipyardBuilderCommand::MenuView,
+        ShipyardBuilderCommand::MenuHelp};
+    const char* menuNames[4]={"FILE","EDIT","VIEW","HELP"};
+    for(int i=0;i<4;++i)
+        add(menus[i],0,(180.0f+i*58.0f)*s,l.top+2.0f*s,54.0f*s,
+            std::max(16.0f,l.workspaceBarY-l.top-4.0f*s),menuNames[i],model.openMenu==i,true);
     // First-class authoring flow: assembly -> model -> interior -> systems ->
     // paint -> test. Developer-only workspaces remain under DEV.
     float bx=8.0f*s;const float tabW=82.0f*s,tabGap=2.0f*s;
@@ -451,7 +481,7 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         // the shared GUI metrics can make that overlap the DEV tab at 1280/1852.
         const float vy=l.workspaceBarY+l.workspaceBarHeight;
         const float buttonH=std::min(25.0f*s,std::max(1.0f,l.viewportTop-vy));
-        const float controlsW=(48+54+84+54+46)*s+4*3.0f*s;
+        const float controlsW=(48+54+84+54+62+46)*s+5*3.0f*s;
         const float vx=std::max(l.viewportLeft+300.0f*s,l.viewportRight-controlsW-8.0f*s);
         // These are global chrome, not controls inside the Asset Browser.
         // They remain clickable after Close, collapse, tab switches or reload.
@@ -465,7 +495,9 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         add(ShipyardBuilderCommand::DccToggleGizmos,0,vx+51*s,vy,54*s,buttonH,"GIZMO",model.dcc.showGizmos,true);
         add(ShipyardBuilderCommand::DccCycleShading,0,vx+108*s,vy,84*s,buttonH,ShipyardDccUiSystem::ShadingName(model.dcc.shading),true,true);
         add(ShipyardBuilderCommand::DccToggleStatsOverlay,0,vx+195*s,vy,54*s,buttonH,"STATS",model.dcc.showStatsOverlay,true);
-        add(ShipyardBuilderCommand::DccToggleMaximizeViewport,0,vx+252*s,vy,46*s,buttonH,"MAX",false,true);
+        add(ShipyardBuilderCommand::DccCycleStudioView,0,vx+252*s,vy,62*s,buttonH,
+            ShipyardStudioViewSystem::Name(model.studioViewMode),model.studioViewMode!=ShipyardStudioViewMode::Exterior,true);
+        add(ShipyardBuilderCommand::DccToggleMaximizeViewport,0,vx+317*s,vy,46*s,buttonH,"MAX",false,true);
     }
 
     currentPanelId="asset_browser";
@@ -545,6 +577,20 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
             add(ShipyardBuilderCommand::ModelAddDoor,0,tx,railButtonsY+3*(th+gap),tw,th,"DOOR",false,model.capabilities.model);
             add(ShipyardBuilderCommand::ModelDuplicatePrimitive,0,tx,railButtonsY+4*(th+gap),tw,th,"COPY",false,!model.modeling.recipe.primitives.empty());
             add(ShipyardBuilderCommand::ModelRemovePrimitive,0,tx,railButtonsY+5*(th+gap),tw,th,"DEL",false,!model.modeling.recipe.primitives.empty());
+        }else if(model.workspaceMode==ShipyardWorkspaceMode::Interior&&!model.testWorkspaceActive){
+            add(ShipyardBuilderCommand::GenerateInteriorProgram,0,tx,railButtonsY,tw,th,"GENERATE",false,HasPlaced(model));
+            add(ShipyardBuilderCommand::InteriorAddFloor,0,tx,railButtonsY+(th+gap),tw,th,"FLOOR",false,model.interiorProgram.valid);
+            add(ShipyardBuilderCommand::InteriorAddWall,0,tx,railButtonsY+2*(th+gap),tw,th,"WALL",false,model.interiorProgram.valid);
+            add(ShipyardBuilderCommand::InteriorAddDoor,0,tx,railButtonsY+3*(th+gap),tw,th,"DOOR DRAFT",false,model.interiorProgram.valid);
+            add(ShipyardBuilderCommand::InteriorPreviousElement,0,tx,railButtonsY+4*(th+gap),tw,th,"PREV",false,!model.interiorStructure.elements.empty());
+            add(ShipyardBuilderCommand::InteriorNextElement,0,tx,railButtonsY+5*(th+gap),tw,th,"NEXT",false,!model.interiorStructure.elements.empty());
+        }else if(model.workspaceMode==ShipyardWorkspaceMode::Appearance&&!model.testWorkspaceActive){
+            add(ShipyardBuilderCommand::NextLiveryPreset,0,tx,railButtonsY,tw,th,"LIVERY",false,HasPlaced(model));
+            add(ShipyardBuilderCommand::NextPrimaryPaint,0,tx,railButtonsY+(th+gap),tw,th,"PRIMARY",false,HasPlaced(model));
+            add(ShipyardBuilderCommand::NextSecondaryPaint,0,tx,railButtonsY+2*(th+gap),tw,th,"SECOND",false,HasPlaced(model));
+            add(ShipyardBuilderCommand::NextTrimPaint,0,tx,railButtonsY+3*(th+gap),tw,th,"TRIM",false,HasPlaced(model));
+            add(ShipyardBuilderCommand::NextPrimaryFinish,0,tx,railButtonsY+4*(th+gap),tw,th,"FINISH",false,HasPlaced(model));
+            add(ShipyardBuilderCommand::AddDecal,0,tx,railButtonsY+5*(th+gap),tw,th,"DECAL",false,HasPlaced(model));
         }else{
             add(ShipyardBuilderCommand::ToolSelect,0,tx,railButtonsY,tw,th,"Q",model.transformTool==ShipyardTransformTool::Select,true);
             add(ShipyardBuilderCommand::ToolMove,0,tx,railButtonsY+(th+gap),tw,th,"G",model.transformTool==ShipyardTransformTool::Move,HasPlaced(model));
@@ -636,6 +682,17 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
                 ay+=rowH+rowGap;
                 two(ShipyardBuilderCommand::ModelValidate,"VALIDATE DRAFT",false,model.capabilities.model,
                     ShipyardBuilderCommand::ModelPublishCanonical,"PUBLISH UNWIRED",false,false,ay);
+            }else if(model.workspaceMode==ShipyardWorkspaceMode::Interior&&!model.testWorkspaceActive){
+                add(ShipyardBuilderCommand::GenerateInteriorProgram,0,px,ay,pw,rowH,"GENERATE INTERIOR",false,HasPlaced(model));
+                ay+=rowH+rowGap;
+                two(ShipyardBuilderCommand::InteriorPreviousElement,"PREV ELEMENT",false,!model.interiorStructure.elements.empty(),
+                    ShipyardBuilderCommand::InteriorNextElement,"NEXT ELEMENT",false,!model.interiorStructure.elements.empty(),ay);
+                ay+=rowH+rowGap;
+                two(ShipyardBuilderCommand::InteriorAddAirlock,"AIRLOCK DRAFT",false,model.interiorProgram.valid,
+                    ShipyardBuilderCommand::InteriorAddHatch,"HATCH DRAFT",false,model.interiorProgram.valid,ay);
+                ay+=rowH+rowGap;
+                two(ShipyardBuilderCommand::InteriorRemoveElement,"REMOVE",false,!model.interiorStructure.elements.empty(),
+                    ShipyardBuilderCommand::Validate,"VALIDATE",false,HasPlaced(model),ay);
             }else switch(model.inspectorTab){
             case ShipyardInspectorTab::Transform:
                 two(ShipyardBuilderCommand::FrameSelected,"FRAME PART",false,HasPlaced(model),
@@ -688,6 +745,33 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         clipControls(propertiesControlStart,l.propertiesX,l.propertiesY,l.propertiesWidth,l.propertiesHeight);
     }
 
+    currentPanelId="studio_menu";
+    if(model.openMenu>=0&&model.openMenu<4){
+        const float x=(180.0f+model.openMenu*58.0f)*s, y=l.workspaceBarY;
+        const float width=184.0f*s,height=25.0f*s;
+        auto menuRow=[&](ShipyardBuilderCommand cmd,const char* label,bool enabled,int row){
+            add(cmd,0,x,y+row*height,width,height,label,false,enabled);
+        };
+        if(model.openMenu==0){
+            menuRow(ShipyardBuilderCommand::NewEmptyDocument,"NEW EMPTY",model.standaloneDesign,0);
+            menuRow(ShipyardBuilderCommand::SaveBlueprint,"SAVE BLUEPRINT",HasPlaced(model),1);
+            menuRow(ShipyardBuilderCommand::GenerateVariant,"GENERATE SHIP",model.standaloneDesign,2);
+        }else if(model.openMenu==1){
+            menuRow(ShipyardBuilderCommand::UndoAuthoring,"UNDO",true,0);
+            menuRow(ShipyardBuilderCommand::RedoAuthoring,"REDO",true,1);
+            menuRow(ShipyardBuilderCommand::RemoveModule,"DELETE MODULE",HasPlaced(model),2);
+        }else if(model.openMenu==2){
+            menuRow(ShipyardBuilderCommand::DccCycleStudioView,"CYCLE VIEW",true,0);
+            menuRow(ShipyardBuilderCommand::DccToggleGrid,"TOGGLE GRID",true,1);
+            menuRow(ShipyardBuilderCommand::FrameShip,"FRAME ALL",true,2);
+            menuRow(ShipyardBuilderCommand::DccResetLayout,"RESET LAYOUT",true,3);
+        }else{
+            menuRow(ShipyardBuilderCommand::DccToggleGuidedWorkflow,"TOGGLE GUIDANCE",true,0);
+            menuRow(ShipyardBuilderCommand::DccToggleStatsOverlay,"TOGGLE STATS",true,1);
+            menuRow(ShipyardBuilderCommand::DccRevealAssetBrowser,"RECOVER ASSETS",true,2);
+        }
+    }
+
     currentPanelId.clear();
     // Keep the complete historical command surface discoverable off-screen so
     // old automation and project-authored workflows remain compatible.
@@ -703,6 +787,7 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
     // each panel's own control order; legacy offscreen commands stay offscreen.
     const auto layers=ShipyardPanelCompositorSystem::Snapshot(model.dockWorkspace,w,h,l.viewportTop);
     auto rank=[&](const ShipyardBuilderControl& control){
+        if(control.panelId=="studio_menu")return 3000;
         if(control.panelId.empty())return 0;
         for(std::size_t i=0;i<layers.size();++i)
             if(layers[i].panelId==control.panelId)
@@ -721,7 +806,7 @@ ShipyardBuilderControl ShipyardBuilderSystem::HitTest(const ShipyardBuilderRunti
     for(auto it=controls.rbegin();it!=controls.rend();++it){
         // A floating window occludes all controls beneath its body, including
         // when that area has no control of its own.
-        if(topFloating&&it->panelId!=topFloating->panelId)continue;
+        if(topFloating&&it->panelId!=topFloating->panelId&&it->panelId!="studio_menu")continue;
         if(it->Contains(x,y))return *it;
     }
     return {};

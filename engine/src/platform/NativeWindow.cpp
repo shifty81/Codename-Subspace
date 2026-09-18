@@ -448,10 +448,15 @@ long long NativeWindow::WindowProc(void* hwndRaw, unsigned int message,
                 _lastOrbitY = _pointerY;
             }
             if (_cameraPanDragging) {
-                _cameraPanDeltaX += _pointerX - _lastPanX;
-                _cameraPanDeltaY += _pointerY - _lastPanY;
-                _lastPanX = _pointerX;
-                _lastPanY = _pointerY;
+                // Studio matches Blender: MMB orbit; Shift+MMB pan. Do not
+                // change the game's RMB orbit/MMB pan control profile.
+                const float dx=_pointerX-_lastPanX,dy=_pointerY-_lastPanY;
+                if(_editorNavigationMode&&!_shiftDown){
+                    _cameraOrbitDeltaX+=dx;_cameraOrbitDeltaY+=dy;
+                }else{
+                    _cameraPanDeltaX+=dx;_cameraPanDeltaY+=dy;
+                }
+                _lastPanX=_pointerX;_lastPanY=_pointerY;
             }
             return 0;
         }
@@ -491,7 +496,9 @@ long long NativeWindow::WindowProc(void* hwndRaw, unsigned int message,
         case WM_RBUTTONDOWN:
             _pointerX = static_cast<float>(static_cast<short>(LOWORD(static_cast<LPARAM>(lParam))));
             _pointerY = static_cast<float>(static_cast<short>(HIWORD(static_cast<LPARAM>(lParam))));
-            _cameraOrbitDragging = true;
+            // Studio RMB is reserved for the real context menu. In-game
+            // cameras retain their existing RMB-drag behavior.
+            _cameraOrbitDragging = !_editorNavigationMode;
             _lastOrbitX = _pointerX;
             _lastOrbitY = _pointerY;
             _rightDownX = _pointerX;

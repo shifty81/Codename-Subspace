@@ -944,3 +944,16 @@ if(SUBSPACE_BUILD_TESTS)
     add_test(NAME SubspaceShipyardBlankDocumentG2SourceGate COMMAND ${CMAKE_COMMAND}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/../tools/control/static-gates/shipyard_blank_document_g2_authority.cmake)
 endif()
+
+# G3 editor camera / view modes: standalone source-level test, no OpenGL required.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_shipyard_studio_g3_tests
+        tests/shipyard_studio_g3_workflow_tests.cpp
+        src/editor/ConstructionEditorCameraSystem.cpp
+        src/core/Math.cpp)
+    target_include_directories(subspace_shipyard_studio_g3_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_compile_features(subspace_shipyard_studio_g3_tests PRIVATE cxx_std_17)
+    add_test(NAME SubspaceShipyardStudioG3Tests COMMAND subspace_shipyard_studio_g3_tests)
+    add_test(NAME SubspaceShipyardStudioG3SourceGate COMMAND ${CMAKE_COMMAND}
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/../tools/control/static-gates/shipyard_studio_g3_editor_workflow.cmake")
+endif()

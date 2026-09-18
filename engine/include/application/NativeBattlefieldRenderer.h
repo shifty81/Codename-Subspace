@@ -128,6 +128,7 @@ struct NativeBattlefieldFrame {
     const ProceduralShipVisualRecipe* playerShipRecipe = nullptr;
     const ShipInteriorCarvePlan* playerInteriorCarve = nullptr;
     const InteriorDerivedShell* playerInteriorShell = nullptr;
+    const InteriorDerivedShell* editorInteriorShell = nullptr;
     const ShipAppearanceState* playerShipAppearance = nullptr;
     Vector3 systemMapPan{};
     int viewportWidth = 1600;

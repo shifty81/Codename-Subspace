@@ -56,6 +56,8 @@ public:
     bool IsControlDown() const { return _controlDown; }
     bool IsShiftDown() const { return _shiftDown; }
     bool IsAltDown() const { return _altDown; }
+    void SetEditorNavigationMode(bool enabled) { _editorNavigationMode = enabled; _cameraOrbitDragging = false; _cameraPanDragging = false; _cameraOrbitDeltaX = _cameraOrbitDeltaY = _cameraPanDeltaX = _cameraPanDeltaY = 0.0f; }
+    bool EditorNavigationMode() const { return _editorNavigationMode; }
 
     /// Consume a pending secondary-button click in client coordinates. A drag
     /// remains camera-orbit input; only a short RMB press/release becomes context.
@@ -130,6 +132,7 @@ private:
     float _rightDownX = 0.0f;
     float _rightDownY = 0.0f;
     float _rightDragDistance = 0.0f;
+    bool _editorNavigationMode = false;
     bool _cameraOrbitDragging = false;
     bool _cameraPanDragging = false;
     float _lastOrbitX = 0.0f;
