@@ -83,6 +83,9 @@ param(
         "open-logs",
         "run-game",
         "run-shipyard",
+        "run-studio",
+        "studio-smoke",
+        "build-studio",
         "run-smoke",
         "run-loop",
         "health",
@@ -1339,6 +1342,42 @@ function Invoke-RunSubspaceGame {
 }
 
 
+# Studio S11: project-owned machine provider for ForgePY / universal PCC.
+# Source, dependency and patch authority remain with this Subspace repository.
+# Studio discovery is confined to the configured render build tree; never run
+# an arbitrary stale subspace_studio.exe found in an unrelated directory.
+function Find-SubspaceStudioExecutable {
+    $build = Get-BuildDirectory
+    foreach ($candidate in @(
+        (Join-Path $build 'subspace_studio.exe'),
+        (Join-Path $build "$Configuration\subspace_studio.exe")
+    )) {
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
+    }
+    return $null
+}
+
+function Invoke-RunSubspaceStudio {
+    param([string[]]$StudioArguments = @())
+    Write-Header
+    $exe = Find-SubspaceStudioExecutable
+    if (-not $exe) {
+        throw 'subspace_studio.exe is not present in the active render build. Use build.studio or Full Quality Gate first.'
+    }
+    Write-Log "Running independent Studio executable: $exe"
+    Invoke-LoggedCommand -Label 'subspace_studio' -FilePath $exe -Arguments $StudioArguments -WorkingDirectory (Split-Path -Parent $exe) | Out-Null
+}
+
+function Invoke-BuildSubspaceStudio {
+    # Reuse the authoritative native CMake build + tests rather than creating
+    # a parallel Studio-only CMake configuration that can drift from Full Gate.
+    Invoke-BuildRender -Clean:$Clean
+    $exe = Find-SubspaceStudioExecutable
+    if (-not $exe) { throw 'Native build completed without subspace_studio.exe in the active render build.' }
+    Write-Log "Independent Studio build verified: $exe" 'PASS'
+}
+
+
 function Test-ZipArchiveReadable {
     param(
         [string]$ArchivePath,
@@ -2401,7 +2440,19 @@ function Invoke-FullGate {
         }
         Invoke-UtilityStep -Name "Native Shipyard rendered smoke" -ScriptBlock {
             Invoke-RunSubspaceGame -GameArguments @("--shipyard-smoke")
-            Write-Log "Native Shipyard smoke opened the real standalone Shipyard render path and completed." "PASS"
+            Write-Log "Native game Shipyard smoke completed (legacy in-game/editor path)." "PASS"
+        }
+        Invoke-UtilityStep -Name "Independent Studio executable present" -ScriptBlock {
+            $studioExe = Find-SubspaceStudioExecutable
+            if (-not $studioExe) { throw "Full Gate did not build subspace_studio.exe in the render build." }
+            Write-Log "Independent Studio binary found: $studioExe" "PASS"
+        }
+        Invoke-UtilityStep -Name "Independent Studio window/render smoke" -ScriptBlock {
+            Invoke-RunSubspaceStudio -StudioArguments @('--studio-smoke')
+            Write-Log "Independent Studio eight-frame smoke completed." "PASS"
+        }
+        Invoke-UtilityStep -Name "Studio universal PCC provider certification" -ScriptBlock {
+            Invoke-ProjectScript -RelativePath "tools\control\TestStudioUniversalPcc.ps1" -Arguments @('-Root',$Global:SubspaceRoot)
         }
     }
     Invoke-UtilityStep -Name "ProjectOps governed-source authority" -ScriptBlock { Invoke-ProjectSourceAuthorityCheck }
@@ -2719,6 +2770,7 @@ function Show-BuildVerifyMenu {
         Write-Host " 5. Run tests"
         Write-Host " 6. Project status"
         Write-Host " 7. Root cleanliness audit"
+        Write-Host " 8. Build standalone Studio (native CMake + tests)"
         Write-Host " 0. Back"
         Write-Host " Full GREEN is authoritative without deleting the build tree; use clean-room only for release/toolchain/cache validation." -ForegroundColor $Global:UiMutedForeground
         switch (Read-Host "Select") {
@@ -2729,6 +2781,7 @@ function Show-BuildVerifyMenu {
             "5" { Invoke-TestsOnly; Pause-ForUser }
             "6" { Invoke-ProjectStatus; Pause-ForUser }
             "7" { Invoke-RootAudit; Pause-ForUser }
+            "8" { Invoke-BuildSubspaceStudio; Pause-ForUser }
             "0" { return }
         }
     }
@@ -2739,12 +2792,12 @@ function Show-RunPlayMenu {
         Write-Header
         Write-Host " RUN & PLAY" -ForegroundColor $Global:UiTitleForeground
         Write-Host "------------------------------------------------------------------------" -ForegroundColor $Global:UiMutedForeground
-        Write-Host " 1. Launch SHIPYARD Dev Studio"
+        Write-Host " 1. Launch independent Subspace Studio"
         Write-Host " 2. Run native game"
         Write-Host " 3. Runtime smoke"
         Write-Host " 0. Back"
         switch (Read-Host "Select") {
-            "1" { Invoke-RunSubspaceGame -GameArguments @("--shipyard"); Pause-ForUser }
+            "1" { Invoke-RunSubspaceStudio; Pause-ForUser }
             "2" { Invoke-RunSubspaceGame -GameArguments @("--loop"); Pause-ForUser }
             "3" { Invoke-RunSubspaceGame -GameArguments @("--runtime-smoke"); Pause-ForUser }
             "0" { return }
@@ -2976,7 +3029,7 @@ function Show-MainMenu {
         Write-Host " 2. Commit + push current certified GREEN" -ForegroundColor $Global:UiGoodForeground
         Write-Host " 3. Build & verify / advanced gates"
         Write-Host " 4. Run & play"
-        Write-Host " 5. Shipyard Dev Studio"
+        Write-Host " 5. Independent Subspace Studio"
         Write-Host " 6. Asset authority & supply chain"
         Write-Host " 7. Project maintenance & diagnostics"
         Write-Host " 8. Packaging & baselines"
@@ -2991,7 +3044,7 @@ function Show-MainMenu {
                 "2" { Invoke-CommitAndPushCertifiedGreen; Pause-ForUser }
                 "3" { Show-BuildVerifyMenu }
                 "4" { Show-RunPlayMenu }
-                "5" { Invoke-RunSubspaceGame -GameArguments @("--shipyard"); Pause-ForUser }
+                "5" { Invoke-RunSubspaceStudio; Pause-ForUser }
                 "6" { Show-AssetAuthorityMenu }
                 "7" { Show-MaintenanceDiagnosticsMenu }
                 "8" { Show-PackagingBaselineMenu }
@@ -3071,7 +3124,10 @@ try {
         "cpp-port-audit" { Invoke-CppPortAudit }
         "open-logs" { Open-LogsFolder }
         "run-game" { Invoke-RunSubspaceGame -GameArguments @("--frames", "600") }
-        "run-shipyard" { Invoke-RunSubspaceGame -GameArguments @("--shipyard") }
+        "run-shipyard" { Invoke-RunSubspaceStudio } # Legacy command key now resolves to independent Studio.
+        "run-studio" { Invoke-RunSubspaceStudio }
+        "studio-smoke" { Invoke-RunSubspaceStudio -StudioArguments @('--studio-smoke') }
+        "build-studio" { Invoke-BuildSubspaceStudio }
         "run-smoke" { Invoke-RunSubspaceGame -GameArguments @("--runtime-smoke") }
         "run-loop" { Invoke-RunSubspaceGame -GameArguments @("--loop") }
         "health" { Invoke-StandardControlAction -ControlAction "health" }

@@ -278,6 +278,21 @@ function CommitPushGreen {
     $rc=RunRoot @('-Action','git-push','-NoPause');if($rc -ne 0){throw "GitHub push/remote verification failed with exit code $rc. Nothing was force-pushed."}
     P '[PASS] REMOTE VERIFY: certified GREEN source is committed and present on origin.' Green
 }
+function RunAndPlay {
+    Header
+    P ' 1. Launch independent Subspace Studio'
+    P ' 2. Launch game'
+    P ' 3. Studio smoke (8 frames)'
+    P ' 0. Back'
+    $mode=Read-Host 'Select'
+    switch($mode){
+        '1'{$rc=RunRoot @('-Action','run-studio','-NoPause');if($rc -ne 0){throw "Standalone Studio exited $rc"}}
+        '2'{$rc=RunRoot @('-Action','run-loop','-NoPause');if($rc -ne 0){throw "Game exited $rc"}}
+        '3'{$rc=RunRoot @('-Action','studio-smoke','-NoPause');if($rc -ne 0){throw "Studio smoke exited $rc"}}
+        '0'{return}
+        default{P 'Unknown run selection.' Yellow}
+    }
+}
 function PatchStatus {
     Archive-SupersededLegacyRootDrops
     Header;$p=@(PendingPatches);$legacy=@(PendingLegacyRootDrops);if($p.Count -eq 0 -and $legacy.Count -eq 0){P 'No root update handoffs pending.' Green}else{if($p.Count -gt 0){P 'Pending canonical root patches:' Yellow;foreach($x in $p){P ('  - '+(Get-HandoffName $x)) Yellow}};if($legacy.Count -gt 0){P 'Pending legacy ZIP handoffs requiring review:' Yellow;foreach($x in $legacy){P ('  - '+(Get-HandoffName $x)) Yellow}}}
@@ -298,7 +313,7 @@ while($true){
     P ' 1. FULL QUALITY GATE / CERTIFY GREEN' White
     P ' 2. COMMIT + PUSH CURRENT GREEN' White
     P ''
-    P ' 3. Run & play'
+    P ' 3. Run & play / independent Studio'
     P ' 4. Patch status / receipts'
     P ' 5. Project status / health'
     P ' 6. Package debug bundle'
@@ -311,7 +326,7 @@ while($true){
         switch($choice){
             '1'{FullGate}
             '2'{CommitPushGreen}
-            '3'{$rc=RunRoot @('-Action','run-loop','-NoPause');if($rc -ne 0){throw "Game exited $rc"}}
+            '3'{RunAndPlay}
             '4'{PatchStatus}
             '5'{$rc=RunRoot @('-Action','health','-NoPause');if($rc -ne 0){$rc=RunRoot @('-Action','status','-NoPause')}}
             '6'{$rc=RunRoot @('-Action','debug-bundle','-NoPause');if($rc -ne 0){throw "Debug bundle failed with exit code $rc"}}

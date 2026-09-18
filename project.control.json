@@ -39,7 +39,7 @@
       "category": "project",
       "mutates": false,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -56,7 +56,7 @@
       "category": "project",
       "mutates": false,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -73,7 +73,7 @@
       "category": "project",
       "mutates": false,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -90,7 +90,7 @@
       "category": "audit",
       "mutates": false,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -107,7 +107,7 @@
       "category": "build",
       "mutates": true,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -124,7 +124,7 @@
       "category": "build",
       "mutates": true,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -141,7 +141,7 @@
       "category": "build",
       "mutates": true,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -158,7 +158,7 @@
       "category": "test",
       "mutates": true,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -175,7 +175,7 @@
       "category": "run",
       "mutates": false,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -188,11 +188,11 @@
     },
     {
       "key": "run.shipyard",
-      "label": "Run Shipyard Dev Studio",
+      "label": "Run independent Subspace Studio (legacy Shipyard alias)",
       "category": "run",
       "mutates": false,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -200,7 +200,58 @@
         "-File",
         "SubspaceTools.ps1",
         "-Action",
-        "run-shipyard"
+        "run-studio"
+      ]
+    },
+    {
+      "key": "run.studio",
+      "label": "Launch independent Subspace Studio",
+      "category": "run",
+      "mutates": false,
+      "requiresConfirmation": false,
+      "executable": "powershell.exe",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "run-studio"
+      ]
+    },
+    {
+      "key": "test.studio",
+      "label": "Independent Studio eight-frame rendered smoke",
+      "category": "test",
+      "mutates": false,
+      "requiresConfirmation": false,
+      "executable": "powershell.exe",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "studio-smoke"
+      ]
+    },
+    {
+      "key": "build.studio",
+      "label": "Build Studio using project-owned native CMake and tests",
+      "category": "build",
+      "mutates": true,
+      "requiresConfirmation": false,
+      "executable": "powershell.exe",
+      "arguments": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "SubspaceTools.ps1",
+        "-Action",
+        "build-studio"
       ]
     },
     {
@@ -209,7 +260,7 @@
       "category": "run",
       "mutates": false,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -226,7 +277,7 @@
       "category": "gate",
       "mutates": true,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -243,7 +294,7 @@
       "category": "gate",
       "mutates": true,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -260,7 +311,7 @@
       "category": "gate",
       "mutates": true,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -277,7 +328,7 @@
       "category": "updates",
       "mutates": false,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -294,7 +345,7 @@
       "category": "updates",
       "mutates": false,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -311,7 +362,7 @@
       "category": "updates",
       "mutates": true,
       "requiresConfirmation": true,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -328,7 +379,7 @@
       "category": "recovery",
       "mutates": true,
       "requiresConfirmation": true,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -345,7 +396,7 @@
       "category": "package",
       "mutates": true,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -362,7 +413,7 @@
       "category": "package",
       "mutates": true,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -379,7 +430,7 @@
       "category": "package",
       "mutates": true,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -396,7 +447,7 @@
       "category": "package",
       "mutates": true,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -413,7 +464,7 @@
       "category": "diagnostics",
       "mutates": true,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -430,7 +481,7 @@
       "category": "artifacts",
       "mutates": true,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -447,7 +498,7 @@
       "category": "dependencies",
       "mutates": false,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -464,7 +515,7 @@
       "category": "audit",
       "mutates": false,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -481,7 +532,7 @@
       "category": "audit",
       "mutates": false,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -498,7 +549,7 @@
       "category": "source",
       "mutates": false,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -515,7 +566,7 @@
       "category": "git",
       "mutates": false,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -532,7 +583,7 @@
       "category": "git",
       "mutates": false,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -549,7 +600,7 @@
       "category": "git",
       "mutates": true,
       "requiresConfirmation": true,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -566,7 +617,7 @@
       "category": "repository",
       "mutates": false,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -583,7 +634,7 @@
       "category": "repository",
       "mutates": true,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -600,7 +651,7 @@
       "category": "repository",
       "mutates": true,
       "requiresConfirmation": true,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -617,7 +668,7 @@
       "category": "projectops",
       "mutates": false,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -634,7 +685,7 @@
       "category": "projectops",
       "mutates": false,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -651,7 +702,7 @@
       "category": "projectops",
       "mutates": false,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -668,7 +719,7 @@
       "category": "maintenance",
       "mutates": true,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -685,7 +736,7 @@
       "category": "audit",
       "mutates": true,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -702,7 +753,7 @@
       "category": "updates",
       "mutates": false,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -719,7 +770,7 @@
       "category": "updates",
       "mutates": false,
       "requiresConfirmation": false,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -736,7 +787,7 @@
       "category": "updates",
       "mutates": true,
       "requiresConfirmation": true,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -753,7 +804,7 @@
       "category": "source",
       "mutates": true,
       "requiresConfirmation": true,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -770,7 +821,7 @@
       "category": "source",
       "mutates": true,
       "requiresConfirmation": true,
-      "executable": "pwsh",
+      "executable": "powershell.exe",
       "arguments": [
         "-NoProfile",
         "-ExecutionPolicy",
@@ -1090,6 +1141,11 @@
     "embeddedForgePyGui": false,
     "interpreterPolicy": "honor-command-executable-verbatim",
     "shipyardHistory": "one-authoring-history-bridge",
-    "defaultTransformSpace": "view-camera"
+    "defaultTransformSpace": "view-camera",
+    "studioExecutable": "subspace_studio.exe",
+    "studioBuildTarget": "subspace_studio",
+    "studioBuildDirectory": "engine/build",
+    "studioFullGateSmoke": "--studio-smoke",
+    "forgeFrontend": "ForgePY consumes this project-owned forge.project.v1 command provider; no vendored ForgePY or Rust Forge dependency"
   }
 }
