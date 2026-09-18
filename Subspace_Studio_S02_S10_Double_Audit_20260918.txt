@@ -1,0 +1,50 @@
+CODENAME SUBSPACE — STUDIO S02–S10 CUMULATIVE SOURCE HANDOFF
+============================================================
+BASELINE: b6bf8378cdf3af591c5164424fb2b58b1237fda9
+PATCH: Subspace_Studio_S02_S10_CUMULATIVE_b6bf837_PCC.patch
+PATCH SHA256: ec95b68e1917b75d5edd3e80273ab55759f0ddae4f5b899b879f41a4d4e43f4d
+PATCH BYTES: 35824
+PAYLOAD: 13 source/test/doc files + one PATCH_MANIFEST.json. No removals.
+HANDOFF: overwrite-capable PCC root-drop archive; NOT a full source rollup.
+
+PASS A — SOURCE AND BUILD COMPATIBILITY: SOURCE-ONLY PASS
+------------------------------------------------------
+Github exact baseline Git blobs checked for all three pre-existing edited files:
+  engine/CMakeLists.txt bc07cc6f1ef29d71f2f313c5f412ff06bcce45ac
+  engine/src/studio_main.cpp 9e9b377e205df1fbb82515deef7a1ee584ff6ea2
+  engine/src/modeling/ShipyardModelingSystem.cpp 5b0e4f2524d667d57bd2368d2e4e74446d1a3f49
+Strict C++17 syntax with -Wall -Wextra -Werror: modeling source and Studio entry/application/document files PASS. Test-only projected modern headers needed: archived source predates current Github contracts, projections NOT shipped.
+Focused tests run as executables:
+  Studio session policies: 15/15 assertions PASS.
+  Studio geometry (wing/hull/tube/mirror/array/fail-closed): 21/21 assertions PASS.
+  Canonical blueprint codec round trip: 7/7 assertions PASS.
+CMake configure with SUBSPACE_BUILD_TESTS=OFF against local older snapshot PASS. A full configure with TESTS=ON on that older snapshot cannot represent the modern GitHub source; missing newer upstream test files, not suppressed or removed. No native Windows build or PCC Full Gate run here.
+The first baseline audit used an older archive's CMake file and correctly failed. It was corrected by extracting the exact S01 CMake and Studio entry payload from the previously delivered S01 PCC patch and verifying both blobs against the current Github repository, then the whole source audit was rerun and passed. No mismatch was bypassed in the packaged source.
+
+PASS B — WORKFLOW / DATA SAFETY / TRANSPORT: SOURCE-ONLY PASS
+-----------------------------------------------------------
+Studio_main no longer constructs NativeGameApplication. Studio owns its window, renderer lifetime, empty authoring world and input routing; game main/controller/render/window sources remain unchanged. Live refit Apply is unavailable.
+Esc is editor-scoped, cancels drags/transforms/palette/menu/constraint rather than navigating game frontend. Document New/Open reject dirty replacement; Open checks all referenced module IDs in current certified catalog. Save uses canonical blueprint codec: write pending, load/verify, stage prior file to recovery, promote new file, rollback attempt on failure; unhandled recovery collisions fail closed. A full fault-injection test of on-disk rollback has NOT been run.
+Native model baker now produces distinct hull/wing/tube meshes and real Mirror + LinearArray geometry. Unsupported modifiers explicitly reject validation/bake rather than pretending to work. The full modeling toolchain, topology editing, model recipe save and module catalog publication are NOT complete.
+PCC schema forge.patch.v1, projectId codename-subspace, baseline exact b6bf837. No removals; 13/13 SHA256 and bytes validated; ZIP CRC and unzip -t pass; no duplicate, absolute or traversal paths; one root PATCH_MANIFEST.json; old S01/R4 files not re-overlaid.
+
+IMPLEMENTATION STATUS
+---------------------
+S02 independent Studio entry/controller: implemented in patch; Windows acceptance pending.
+S03 ForgeGUI shell: pre-existing C++ concepts retained; full GUI redesign not done.
+S04 blueprint document storage: partial; no File Open/Save As UI dialogs, no editable model recipe save.
+S05 interactive viewport: partial; uses shared builder picking/drag/transform, no vertex/edge/face tools.
+S06 modeling: limited real geometry and evaluated Mirror/LinearArray; other modifiers blocked.
+S07 publish: in-memory canonical asset only; disk save/catalog registration/game reload incomplete.
+S08 socket/definition overrides: integrated; full interior and collision recertification incomplete.
+S09 paint: existing builder only, no new surface paint workspace/certification.
+S10 milestone: these two source/transport audits completed; feature-complete Studio is NOT certified.
+
+WINDOWS ACCEPTANCE REQUIRED BEFORE COMMIT
+-----------------------------------------
+1. Drop ONLY this .patch unextracted into repo root at Git b6bf837 and approve via PCC.
+2. Run PCC Full Quality Gate, confirm a new PASS fingerprint. If FAIL, upload debug bundle; do not force/overwrite.
+3. Launch Studio; Esc at idle must remain in Studio. Test first hull drag, transform, inspector/panels and opening popup.
+4. Save a ship and reopen with LaunchSubspaceStudio.cmd --open "<blueprint.subspace_ship>". Check persistence and rollback behavior.
+5. Review geometry/visuals, unsupported-modifier refusal, and launch normal game to test main menu/flight/refit.
+6. Commit/push only if gate is GREEN and visual acceptance passes. Otherwise debug bundle first.
