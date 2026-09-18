@@ -126,12 +126,19 @@ bool ShipyardBuilderSystem::Activate(ShipyardBuilderCommand command,int value){
         model_.openMenu=model_.openMenu==menu?-1:menu;
         return true;
     }
-    case ShipyardBuilderCommand::DccCycleStudioView:
-        model_.studioViewMode=ShipyardStudioViewSystem::Next(model_.studioViewMode);
-        model_.status=std::string("Viewport: ")+ShipyardStudioViewSystem::Name(model_.studioViewMode)+
-            " / interior shell uses generated cavities; invalid cavities fail closed";
+    case ShipyardBuilderCommand::DccCycleStudioView:{
+        const auto requested=ShipyardStudioViewSystem::Next(model_.studioViewMode);
+        const bool placing=model_.workspaceMode==ShipyardWorkspaceMode::Build&&
+            (model_.dragPreview.active||model_.dragPreview.staged);
+        // Do not turn off the only visible hull/ghost during an active placement.
+        model_.studioViewMode=placing?ShipyardStudioViewSystem::ForPlacement(requested):requested;
+        model_.status=placing&&requested==ShipyardStudioViewMode::InteriorOnly
+            ?"EXTERIOR: hull placement active; interior-only would hide the drag preview"
+            :std::string("Viewport: ")+ShipyardStudioViewSystem::Name(model_.studioViewMode)+
+                " / interior shell uses generated cavities; invalid cavities fail closed";
         model_.openMenu=-1;
         return true;
+    }
     case ShipyardBuilderCommand::DccRevealAssetBrowser:{
         auto* panel=SubspaceDockSystem::FindPanel(model_.dockWorkspace,"asset_browser");
         if(!panel)return false;
@@ -204,8 +211,16 @@ bool ShipyardBuilderSystem::Activate(ShipyardBuilderCommand command,int value){
         const auto order=ShipyardDccUiSystem::WorkspaceCycle();auto it=std::find(order.begin(),order.end(),model_.testWorkspaceActive?ShipyardWorkspaceMode::Test:model_.workspaceMode);
         std::size_t index=it==order.end()?0:static_cast<std::size_t>(std::distance(order.begin(),it));
         if(command==ShipyardBuilderCommand::DccWorkspaceNext)index=(index+1)%order.size();else index=(index+order.size()-1)%order.size();
-        const auto next=order[index];if(next==ShipyardWorkspaceMode::Test){model_.workspaceMode=ShipyardWorkspaceMode::Test;model_.testWorkspaceActive=true;model_.developerWorkspacesVisible=false;model_.status="Test workspace";return true;}
-        model_.testWorkspaceActive=false;return LegacyActivate(WorkspaceCommand(next),0);}
+        const auto next=order[index];
+        if(next==ShipyardWorkspaceMode::Test){
+            model_.studioViewMode=ShipyardStudioViewSystem::ForWorkspace(model_.studioViewMode,false);
+            model_.workspaceMode=ShipyardWorkspaceMode::Test;model_.testWorkspaceActive=true;
+            model_.developerWorkspacesVisible=false;model_.status="Test workspace";return true;
+        }
+        model_.testWorkspaceActive=false;
+        const bool changed=LegacyActivate(WorkspaceCommand(next),0);
+        if(changed)model_.studioViewMode=ShipyardStudioViewSystem::ForWorkspace(model_.studioViewMode,next==ShipyardWorkspaceMode::Interior);
+        return changed;}
     case ShipyardBuilderCommand::DccPropertiesPrevious:
     case ShipyardBuilderCommand::DccPropertiesNext:{const auto current=InspectorIndex(model_.inspectorTab);const auto next=(current+5+(command==ShipyardBuilderCommand::DccPropertiesNext?1:-1))%5;return LegacyActivate(InspectorCommand(next),0);}
     case ShipyardBuilderCommand::TransformConstraintX:return SetTransformConstraint(model_.transformConstraint==ShipyardTransformConstraint::YZ?ShipyardTransformConstraint::X:ShipyardTransformConstraint::X);
@@ -236,21 +251,61 @@ bool ShipyardBuilderSystem::Activate(ShipyardBuilderCommand command,int value){
     case ShipyardBuilderCommand::DccPanelResetWorkspace:model_.dockWorkspace=ShipyardWorkspaceSystem::BuildDefaultDockWorkspace();model_.status="Dock workspace restored";return true;
     case ShipyardBuilderCommand::DccToggleGuidedWorkflow:model_.guidedWorkflow=!model_.guidedWorkflow;model_.status=model_.guidedWorkflow?"Guided workflow enabled":"Guided workflow hidden";return true;
     case ShipyardBuilderCommand::WorkspaceDevWorld:
-        if(value==-1268){model_.workspaceMode=ShipyardWorkspaceMode::Test;model_.testWorkspaceActive=true;model_.developerWorkspacesVisible=false;model_.status="Test workspace - validate, frame, save draft, and prepare embodied playtest";return true;}
+        if(value==-1268){
+            // The visible TEST tab bypasses LegacyActivate; restore the hull here.
+            model_.studioViewMode=ShipyardStudioViewSystem::ForWorkspace(model_.studioViewMode,false);
+            model_.workspaceMode=ShipyardWorkspaceMode::Test;model_.testWorkspaceActive=true;
+            model_.developerWorkspacesVisible=false;
+            model_.status="Test workspace - validate, frame, save draft, and prepare embodied playtest";
+            return true;
+        }
         break;
     case ShipyardBuilderCommand::WorkspaceAuthoring:
         if(value==-1268){model_.developerWorkspacesVisible=!model_.developerWorkspacesVisible;model_.testWorkspaceActive=false;model_.status=model_.developerWorkspacesVisible?"Developer workspaces expanded":"Developer workspaces collapsed";return true;}
         break;
     case ShipyardBuilderCommand::PcgReroll:
-        if(value==-1268){const auto before=model_;model_.testWorkspaceActive=false;if(!ActivateInternal(ShipyardBuilderCommand::PcgReroll,0))return false;const bool generated=ActivateInternal(ShipyardBuilderCommand::GenerateVariant,0);if(generated)PushAuthoringSnapshot(before);return generated;}
+        if(value==-1268){
+            const auto before=model_;model_.testWorkspaceActive=false;
+            if(!ActivateInternal(ShipyardBuilderCommand::PcgReroll,0))return false;
+            const bool generated=ActivateInternal(ShipyardBuilderCommand::GenerateVariant,0);
+            if(generated){
+                PushAuthoringSnapshot(before);
+                if(model_.workspaceMode!=ShipyardWorkspaceMode::Interior)
+                    model_.studioViewMode=ShipyardStudioViewSystem::ForPlacement(model_.studioViewMode);
+            }
+            return generated;
+        }
         break;
     default:break;
     }
 
+    const auto priorWorkspace=model_.workspaceMode;
     const bool result=LegacyActivate(command,value);
-    if(result&&command==ShipyardBuilderCommand::WorkspaceInterior&&
-       model_.studioViewMode==ShipyardStudioViewMode::Exterior)
-        model_.studioViewMode=ShipyardStudioViewMode::InteriorOnly;
+    if(result&&(model_.workspaceMode!=priorWorkspace||
+                command==ShipyardBuilderCommand::WorkspaceInterior||command==ShipyardBuilderCommand::WorkspaceBuild))
+        model_.studioViewMode=ShipyardStudioViewSystem::ForWorkspace(
+            model_.studioViewMode,model_.workspaceMode==ShipyardWorkspaceMode::Interior);
+    // These user-facing actions must reveal a hull in non-Interior workspaces.
+    // Preserve intentional Cutaway and X-Ray; never alter a failed action.
+    const bool revealExterior=command==ShipyardBuilderCommand::AddModule||
+        command==ShipyardBuilderCommand::ConfirmPlacement||
+        command==ShipyardBuilderCommand::SelectPlaced||
+        command==ShipyardBuilderCommand::FrameSelected||
+        command==ShipyardBuilderCommand::FrameShip||
+        command==ShipyardBuilderCommand::GenerateVariant||
+        command==ShipyardBuilderCommand::NewEmptyDocument;
+    if(result&&revealExterior&&model_.workspaceMode!=ShipyardWorkspaceMode::Interior)
+        model_.studioViewMode=ShipyardStudioViewSystem::ForPlacement(model_.studioViewMode);
+    if(result&&command==ShipyardBuilderCommand::SelectModule){
+        // Both native mouse branches call SelectModule on catalog-card press,
+        // BEFORE BeginCatalogDrag. Do not wait for release/PLACE to reveal a
+        // first hull ghost after the user manually selected Interior-only.
+        const auto priorView=model_.studioViewMode;
+        model_.studioViewMode=ShipyardStudioViewSystem::ForCatalogPress(
+            priorView,model_.workspaceMode==ShipyardWorkspaceMode::Interior);
+        if(model_.studioViewMode!=priorView)
+            model_.status="EXTERIOR: catalog part selected; drag preview visible";
+    }
     if(result){
         switch(command){
         case ShipyardBuilderCommand::WorkspaceBuild:case ShipyardBuilderCommand::WorkspaceInterior:case ShipyardBuilderCommand::WorkspaceSystems:case ShipyardBuilderCommand::WorkspaceAppearance:
