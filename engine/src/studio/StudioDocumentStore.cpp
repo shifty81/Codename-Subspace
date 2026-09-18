@@ -1,6 +1,8 @@
 #include "studio/StudioDocumentStore.h"
 #include "ship_editor/ShipyardDocumentStartupSystem.h"
 #include "studio/StudioProjectPaths.h"
+#include "studio/StudioRecoveryPathPolicy.h"
+#include "studio/StudioUnsavedWorkPolicy.h"
 #include <chrono>
 #include <iomanip>
 #include <sstream>
@@ -21,7 +23,12 @@ std::filesystem::path NewDraftPath() {
 }
 }
 bool StudioDocumentStore::Open(const std::filesystem::path& source,ShipyardBuilderSystem& builder,std::string& error) {
-    if(builder.Model().dirty){error="Unsaved changes: save before opening another ship";return false;}
+    const auto& state=builder.Model();
+    if(StudioUnsavedWorkPolicy::HasUnsaved({state.dirty,state.socketOverridesDirty,
+            state.definitionOverridesDirty,!state.modeling.recipe.primitives.empty(),
+            state.interiorStructure.dirty})){
+        error="Unsaved changes in blueprint or authoring overrides: save before Open";return false;
+    }
     ShipBlueprintDocument document;
     if(!ShipBlueprintLibrarySystem::Load(source.string(),document,&error))return false;
     for(const auto& placed:document.recipe.modules) {
@@ -91,7 +98,7 @@ bool StudioDocumentStore::SaveAs(const std::filesystem::path& destination,Shipya
             if(rollback)error+="; recovery preserved at "+recovery.string();}
         return false;
     }
-    if(replacing){std::filesystem::remove(recovery,ec);if(ec){error="Saved, but recovery cleanup needs review: "+recovery.string();return false;}}
+    if(replacing){std::filesystem::remove(recovery,ec);if(ec)error="Saved; previous version remains for review at "+recovery.string();}
     path_=destination;builder.MarkSaved(path_.filename().string());
     return true;
 }
@@ -100,8 +107,36 @@ bool StudioDocumentStore::Save(ShipyardBuilderSystem& builder,std::string& error
     if(destination.empty()){error="Unable to reserve unique draft filename";return false;}
     return SaveAs(destination,builder,error);
 }
+bool StudioDocumentStore::SaveExitRecovery(ShipyardBuilderSystem& builder,
+                                            std::filesystem::path& recovered,std::string& error){
+    recovered.clear();error.clear();
+    if(builder.Recipe().modules.empty()){
+        error="No placed modules: blueprint recovery cannot store an editable model-only draft";
+        return false;
+    }
+    const auto base=StudioProjectPaths::Blueprints();
+    if(base.empty()){error="Project root missing: recovery cannot choose a safe destination";return false;}
+    const auto tick=std::chrono::system_clock::now().time_since_epoch().count();
+    for(unsigned i=0;i<1000;++i){
+        const auto candidate=StudioRecoveryPathPolicy::Candidate(base,tick,i);
+        std::error_code ec;
+        if(std::filesystem::exists(candidate,ec)||ec)continue;
+        const auto original=path_;
+        const bool saved=SaveAs(candidate,builder,error);
+        path_=original; // recovery must NEVER switch or replace the current document
+        if(saved){recovered=candidate;return true;}
+        return false; // failed writes are not retried over ambiguous pending files
+    }
+    error="Could not reserve a unique recovery filename";
+    return false;
+}
 bool StudioDocumentStore::New(ShipyardBuilderSystem& builder,std::string& error){
-    if(builder.Model().dirty){error="Unsaved changes: save before NEW";return false;}
+    const auto& state=builder.Model();
+    if(StudioUnsavedWorkPolicy::HasUnsaved({state.dirty,state.socketOverridesDirty,
+            state.definitionOverridesDirty,!state.modeling.recipe.primitives.empty(),
+            state.interiorStructure.dirty})){
+        error="Unsaved changes in blueprint or authoring overrides: save before New";return false;
+    }
     const auto catalog=builder.Model().catalog;
     const auto layout=builder.Model().dockWorkspace;
     builder.Initialize(catalog,ShipyardDocumentStartupSystem::EmptyDocument());

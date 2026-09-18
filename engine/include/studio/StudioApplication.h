@@ -21,6 +21,10 @@ private:
     void HandleEscape();
     void RouteControl(ShipyardBuilderCommand command,int value=0);
     void SaveDocument();
+    void SaveAsDocument();
+    void OpenDocument();
+    void NewDocument();
+    void ShowDocumentError(const std::string& error);
     void LoadAuthoringOverrides();
     void SaveAuthoringOverrides(bool sockets);
     void RenderFrame(float elapsed);

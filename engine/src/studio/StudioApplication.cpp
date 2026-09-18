@@ -1,6 +1,10 @@
 #include "studio/StudioApplication.h"
 #include "studio/StudioSessionPolicy.h"
 #include "studio/StudioProjectPaths.h"
+#include "studio/StudioDocumentShortcuts.h"
+#include "studio/StudioRecoveryPathPolicy.h"
+#include "studio/StudioUnsavedWorkPolicy.h"
+#include "studio/StudioFileDialog.h"
 #include "ship_editor/ShipyardDocumentStartupSystem.h"
 #include "ship_editor/ShipyardBuildSafetySystem.h"
 #include "editor/EditorTransformSpaceSystem.h"
@@ -40,6 +44,7 @@ int StudioApplication::Run(const std::filesystem::path& openFile,std::uint64_t m
     camera_.SetZoom(1.0f);camera_.SetTargetZoom(1.0f);
     camera_.SetVisualTilt(.46f);camera_.SetVisualHeight(.68f);
     window_.SetEditorNavigationMode(true);
+    std::cout<<"Studio documents: Ctrl+O Open, Ctrl+N New, Ctrl+S Save, Ctrl+Shift+S Save As\n";
     const auto start=std::chrono::steady_clock::now();
     std::uint64_t frames=0;
     while(window_.PumpEvents() && (maxFrames==0 || frames<maxFrames)){
@@ -52,9 +57,26 @@ int StudioApplication::Run(const std::filesystem::path& openFile,std::uint64_t m
         input_.EndFrame();
         ++frames;
     }
-    if(builder_.Model().dirty)
-        std::cerr<<"Studio exit: unsaved authoring changes were not saved\n";
-    renderer_.Shutdown();window_.Shutdown();return 0;
+    int exitCode=0;
+    const auto& closing=builder_.Model();
+    const StudioUnsavedWorkState unsaved{closing.dirty,closing.socketOverridesDirty,
+        closing.definitionOverridesDirty,!closing.modeling.recipe.primitives.empty(),
+        closing.interiorStructure.dirty};
+    if(StudioRecoveryPathPolicy::NeedsRecovery(unsaved.blueprint)){
+        std::filesystem::path recovered;
+        std::string error;
+        if(documents_.SaveExitRecovery(builder_,recovered,error)){
+            std::cerr<<"Studio exit: blueprint-only recovery written to "<<recovered.string()<<'\n';
+        }else{
+            std::cerr<<"Studio exit: unsaved changes; recovery unavailable: "<<error<<'\n';
+            exitCode=6; // tooling must not report an unrecoverable close as clean
+        }
+    }
+    if(StudioUnsavedWorkPolicy::HasUnsupportedRecovery(unsaved)){
+        std::cerr<<"Studio exit WARNING: socket/definition overrides and editable model/interior drafts are NOT in blueprint recovery\n";
+        exitCode=7;
+    }
+    renderer_.Shutdown();window_.Shutdown();return exitCode;
 }
 
 void StudioApplication::RenderFrame(float elapsed){
@@ -113,18 +135,78 @@ void StudioApplication::SaveAuthoringOverrides(bool sockets){
     std::cout<<"Studio overrides saved: "<<changed<<" module(s)\n";
 }
 
+void StudioApplication::ShowDocumentError(const std::string& error){
+    builder_.MarkSaved("ERROR "+error); // error status must not mark unsaved work clean
+    StudioFileDialog::ShowError(error);
+}
 void StudioApplication::SaveDocument(){
+    // First save chooses an explicit filename. Subsequent saves retain their
+    // authoritative document path and the transactional backup protocol.
+    if(documents_.Path().empty()){SaveAsDocument();return;}
     std::string error;
-    if(!documents_.Save(builder_,error))std::cerr<<"Studio SAVE blocked: "<<error<<'\n';
-    else std::cout<<"Studio saved "<<documents_.Path().string()<<'\n';
+    if(!documents_.Save(builder_,error))ShowDocumentError("Save blocked: "+error);
+    else {
+        std::cout<<"Studio saved "<<documents_.Path().string()<<'\n';
+        if(!error.empty())StudioFileDialog::ShowError(error); // preserved recovery backup
+    }
+}
+void StudioApplication::SaveAsDocument(){
+    if(builder_.Recipe().modules.empty()){
+        ShowDocumentError("Add a ship module before saving a blueprint; model-only documents are not yet serializable");
+        return;
+    }
+    auto directory=StudioProjectPaths::Blueprints();
+    if(directory.empty()){
+        ShowDocumentError("Project root unavailable: cannot choose a safe blueprint directory");return;
+    }
+    std::error_code ec;
+    std::filesystem::create_directories(directory,ec);
+    if(ec){ShowDocumentError("Cannot prepare blueprint directory: "+ec.message());return;}
+    std::filesystem::path selected;
+    std::string error;
+    if(!StudioFileDialog::ChooseSaveAs(directory,documents_.Path(),selected,error)){
+        if(!error.empty())ShowDocumentError(error);
+        return;
+    }
+    if(!documents_.SaveAs(selected,builder_,error))ShowDocumentError("Save As blocked: "+error);
+    else {
+        std::cout<<"Studio saved as "<<documents_.Path().string()<<'\n';
+        if(!error.empty())StudioFileDialog::ShowError(error);
+    }
+}
+void StudioApplication::OpenDocument(){
+    // Reject before opening the native picker; no document may silently
+    // replace pending edits or an unsaved authoring draft.
+    const auto& state=builder_.Model();
+    if(StudioUnsavedWorkPolicy::HasUnsaved({state.dirty,state.socketOverridesDirty,
+            state.definitionOverridesDirty,!state.modeling.recipe.primitives.empty(),
+            state.interiorStructure.dirty})){
+        ShowDocumentError("Unsaved blueprint, socket, definition, model or interior edits: save before Open");return;
+    }
+    const auto directory=StudioProjectPaths::Blueprints();
+    if(directory.empty()){ShowDocumentError("Project root unavailable: cannot locate blueprints");return;}
+    std::filesystem::path selected;
+    std::string error;
+    if(!StudioFileDialog::ChooseOpen(directory,selected,error)){
+        if(!error.empty())ShowDocumentError(error);
+        return;
+    }
+    if(!documents_.Open(selected,builder_,error)){ShowDocumentError("Open blocked: "+error);return;}
+    pendingCatalogPress_=false;catalogDragging_=false;pointerTransform_=false;
+    dockPointer_.Cancel();suppressClick_=true;
+    std::cout<<"Studio opened "<<documents_.Path().string()<<'\n';
+}
+void StudioApplication::NewDocument(){
+    std::string error;
+    if(!documents_.New(builder_,error)){ShowDocumentError("New blocked: "+error);return;}
+    pendingCatalogPress_=false;catalogDragging_=false;pointerTransform_=false;
+    dockPointer_.Cancel();suppressClick_=true;
+    std::cout<<"Studio: new empty document\n";
 }
 
 void StudioApplication::RouteControl(ShipyardBuilderCommand command,int value){
     if(command==ShipyardBuilderCommand::SaveBlueprint){SaveDocument();return;}
-    if(command==ShipyardBuilderCommand::NewEmptyDocument){
-        std::string error;if(!documents_.New(builder_,error))std::cerr<<"Studio NEW blocked: "<<error<<'\n';
-        return;
-    }
+    if(command==ShipyardBuilderCommand::NewEmptyDocument){NewDocument();return;}
     // No game menu, warp, engine pause or player refit is routed from Studio.
     if(command==ShipyardBuilderCommand::Apply)return;
     builder_.Activate(command,value);
@@ -160,7 +242,23 @@ void StudioApplication::HandleInput(){
     if(builder_.Model().assetSearchFocused&&!text.empty())builder_.HandleAssetSearchInput(text);
     if(input_.WasPressed(InputAction::Undo))builder_.UndoAuthoring();
     if(input_.WasPressed(InputAction::Redo))builder_.RedoAuthoring();
-    if(input_.WasPressed(InputAction::SaveBlueprint))SaveDocument();
+    // NativeWindow's legacy input vocabulary maps O/N/S as ordinary actions.
+    // Studio alone interprets their Ctrl variants: game input remains unchanged.
+    const bool scalePressed=input_.WasPressed(InputAction::EditorToolScale);
+    const auto documentShortcut=StudioDocumentShortcuts::Resolve(
+        window_.IsControlDown(),window_.IsShiftDown(),
+        input_.WasPressed(InputAction::OpenExploration),
+        input_.WasPressed(InputAction::OpenSystemMap),scalePressed);
+    switch(documentShortcut){
+    case StudioDocumentShortcut::Open:OpenDocument();break;
+    case StudioDocumentShortcut::New:NewDocument();break;
+    case StudioDocumentShortcut::Save:SaveDocument();break;
+    case StudioDocumentShortcut::SaveAs:SaveAsDocument();break;
+    case StudioDocumentShortcut::None:break;
+    }
+    if(input_.WasPressed(InputAction::SaveBlueprint)&&
+       documentShortcut!=StudioDocumentShortcut::Save&&
+       documentShortcut!=StudioDocumentShortcut::SaveAs)SaveDocument();
     if(input_.WasPressed(InputAction::MenuAccept))RouteControl(ShipyardBuilderCommand::AddModule);
     if(input_.WasPressed(InputAction::EditorFrameShip)){
         camera_.ClearPanOffset();camera_.SetZoom(1.0f);
@@ -168,7 +266,7 @@ void StudioApplication::HandleInput(){
     if(input_.WasPressed(InputAction::EditorToolSelect))RouteControl(ShipyardBuilderCommand::ToolSelect);
     if(input_.WasPressed(InputAction::EditorToolMove))RouteControl(ShipyardBuilderCommand::ToolMove);
     if(input_.WasPressed(InputAction::EditorToolRotate))RouteControl(ShipyardBuilderCommand::ToolRotate);
-    if(input_.WasPressed(InputAction::EditorToolScale))RouteControl(ShipyardBuilderCommand::ToolScale);
+    if(scalePressed&&!window_.IsControlDown())RouteControl(ShipyardBuilderCommand::ToolScale);
     if(input_.WasPressed(InputAction::DccCommandSearch))RouteControl(ShipyardBuilderCommand::DccToggleCommandPalette);
     if(input_.WasPressed(InputAction::DccWorkspaceNext))RouteControl(ShipyardBuilderCommand::DccWorkspaceNext);
     if(input_.WasPressed(InputAction::DccWorkspacePrevious))RouteControl(ShipyardBuilderCommand::DccWorkspacePrevious);

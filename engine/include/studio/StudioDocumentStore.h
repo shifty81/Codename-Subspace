@@ -14,6 +14,10 @@ public:
     bool Save(ShipyardBuilderSystem& builder, std::string& error);
     bool SaveAs(const std::filesystem::path& destination, ShipyardBuilderSystem& builder, std::string& error);
     bool New(ShipyardBuilderSystem& builder, std::string& error);
+    // Exit-only salvage of the blueprint portion into a unique separate file.
+    // Does not claim to persist editable model/interior drafts.
+    bool SaveExitRecovery(ShipyardBuilderSystem& builder, std::filesystem::path& recovered,
+                          std::string& error);
     const std::filesystem::path& Path() const noexcept { return path_; }
 private:
     std::filesystem::path path_;

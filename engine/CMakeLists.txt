@@ -179,6 +179,7 @@ add_executable(subspace_studio
     "${CMAKE_CURRENT_SOURCE_DIR}/src/studio_main.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/studio/StudioApplication.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/studio/StudioDocumentStore.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/studio/StudioFileDialog.cpp"
 )
 target_link_libraries(subspace_studio PRIVATE subspace_native_host subspace_engine)
 
@@ -190,6 +191,8 @@ if(WIN32)
         target_compile_definitions(${_subspace_native_executable} PRIVATE UNICODE _UNICODE)
         target_link_libraries(${_subspace_native_executable} PRIVATE OpenGL::GL windowscodecs ole32)
     endforeach()
+    # Win32 common document dialogs are Studio-owned, not gameplay dependencies.
+    target_link_libraries(subspace_studio PRIVATE comdlg32 user32)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -976,6 +979,14 @@ endif()
 # without requiring a GPU, game session, renderer initialization, or Windows.
 if(SUBSPACE_BUILD_TESTS)
     add_test(NAME SubspaceStudioEntrypointHelp COMMAND subspace_studio --help)
+    add_executable(subspace_studio_document_recovery_tests "${CMAKE_CURRENT_SOURCE_DIR}/tests/studio_document_recovery_tests.cpp")
+    target_include_directories(subspace_studio_document_recovery_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_compile_features(subspace_studio_document_recovery_tests PRIVATE cxx_std_17)
+    add_test(NAME SubspaceStudioDocumentRecoveryTests COMMAND subspace_studio_document_recovery_tests)
+    add_executable(subspace_studio_document_shortcuts_tests "${CMAKE_CURRENT_SOURCE_DIR}/tests/studio_document_shortcuts_tests.cpp")
+    target_include_directories(subspace_studio_document_shortcuts_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_compile_features(subspace_studio_document_shortcuts_tests PRIVATE cxx_std_17)
+    add_test(NAME SubspaceStudioDocumentShortcutsTests COMMAND subspace_studio_document_shortcuts_tests)
     add_executable(subspace_studio_session_tests "${CMAKE_CURRENT_SOURCE_DIR}/tests/studio_session_tests.cpp")
     target_link_libraries(subspace_studio_session_tests PRIVATE subspace_engine)
     add_test(NAME SubspaceStudioSessionTests COMMAND subspace_studio_session_tests)
