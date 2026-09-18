@@ -1,7 +1,6 @@
 #pragma once
 #include "hangar/DockingExperienceSystem.h"
 #include "fleet/FleetCommandSeatSystem.h"
-#include "fleet/FleetCommandSeatSystem.h"
 #include "interior/ShipEmbodimentSystem.h"
 #include "rendering/EnvironmentPresentationSystem.h"
 #include "ui/SandboxWorkspaceSystem.h"

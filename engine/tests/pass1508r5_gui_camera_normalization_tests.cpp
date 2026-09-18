@@ -90,6 +90,26 @@ int main(){
     Check(s.pitchDegrees==89.0f && std::isfinite(s.forward.z),"G4 near-top perspective avoids pole singularity");
     ConstructionEditorCameraSystem::Orbit(s,9.0f,-12.0f);
     Check(std::fabs(s.pitchDegrees-77.0f)<.01f,"G4 orbit remains interactive after top view");
+    ConstructionEditorCameraSystem::SetAxisView(s,ConstructionAxisView::Bottom);
+    Check(std::fabs(s.yawDegrees)<.001f&&s.pitchDegrees==-89.0f,
+        "G4 bottom view has deterministic screen orientation after arbitrary orbit");
+    ConstructionEditorCameraSystem::Reset(s,{0,0,0},3);
+    ConstructionEditorCameraSystem::Orbit(s,47.0f,5.0f);
+    const Vector3 stationaryEye=s.eye;
+    ConstructionEditorCameraSystem::SetAssemblyCenter(s,{1,2,1},true);
+    Check((s.eye-stationaryEye).length()<.001f,"G4 changing pivot does not move stationary camera");
+    const Vector3 pivotRay=(s.eye-s.assemblyCenter).normalized();
+    ConstructionEditorCameraSystem::Orbit(s,0.0f,0.0f);
+    Check(Dot(pivotRay,(s.eye-s.assemblyCenter).normalized())>.999f,
+        "G4 orbit after retargeting does not snap to stale angles");
+    ConstructionEditorCameraSystem::BeginFreeFly(s);
+    ConstructionEditorCameraSystem::Look(s,65.0f,7.0f);
+    const Vector3 freeForward=s.forward;
+    ConstructionEditorCameraSystem::MoveFree(s,0.5f,0.4f,0.0f,0.5f);
+    ConstructionEditorCameraSystem::FramePreservingOrientation(s,{40,-30,5},4.0f);
+    Check(s.mode==ConstructionCameraMode::CenteredInspect &&
+          Dot(freeForward,s.forward)>.999f,
+        "G4 frame from optional Fly mode respects actual look direction");
 
     auto workspace=SubspaceDockSystem::CreateMinimalWorkspace("gui-compositor");
     SubspaceDockPanel a;a.id="assets";a.title="Assets";a.defaultLeafId="bottom";

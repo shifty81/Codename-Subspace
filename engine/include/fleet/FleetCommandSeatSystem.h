@@ -6,7 +6,7 @@
 namespace subspace {
 
 enum class FleetSeatKind { StationTerminal, ShipCommandSeat, PilotSeat };
-enum class FleetSeatDenial { None, MissingIdentity, Unoccupied, Unauthorized, Unpowered, NoCommandSystem, LinkOffline, Busy, SessionMismatch };
+enum class FleetSeatDenial { None, MissingIdentity, Unoccupied, Unauthorized, Unpowered, NoCommandSystem, LinkOffline, Busy, SessionMismatch, InvalidReturnView };
 enum class FleetSeatReturnView { OnFoot, Cockpit };
 
 // Supplied from authoritative world/seat state. A request cannot authorize itself:
@@ -43,20 +43,34 @@ public:
         if(!seat.commandLinkOnline)return {false,FleetSeatDenial::LinkOffline};
         return {true,FleetSeatDenial::None};
     }
+    // Capture the actual originating embodiment. A walk-up command console
+    // on a ship is not a pilot chair and must return to on-foot first person.
     static FleetSeatResult Enter(FleetCommandSession& session,std::uint64_t actorId,
-                                const FleetCommandSeatSnapshot& seat){
+                                const FleetCommandSeatSnapshot& seat,FleetSeatReturnView origin){
+        if(session.active){
+            if(session.actorId!=actorId || session.seatId!=seat.seatId ||
+               session.hostEntityId!=seat.hostEntityId)return {false,FleetSeatDenial::Busy};
+            // Idempotent entry is still required to validate current seat state.
+            // Never rewrite the captured return view after a session begins.
+            return Validate(actorId,seat);
+        }
         const auto result=Validate(actorId,seat);
         if(!result.allowed)return result;
-        if(session.active && (session.actorId!=actorId || session.seatId!=seat.seatId ||
-                              session.hostEntityId!=seat.hostEntityId))
-            return {false,FleetSeatDenial::Busy};
+        if(seat.kind==FleetSeatKind::PilotSeat && origin!=FleetSeatReturnView::Cockpit)
+            return {false,FleetSeatDenial::InvalidReturnView};
         session.active=true;
         session.actorId=actorId;
         session.seatId=seat.seatId;
         session.hostEntityId=seat.hostEntityId;
-        session.returnView=seat.kind==FleetSeatKind::StationTerminal?
-            FleetSeatReturnView::OnFoot:FleetSeatReturnView::Cockpit;
+        session.returnView=origin;
         return {true,FleetSeatDenial::None};
+    }
+    // Compatibility for existing callers: non-pilot command seats are walk-up
+    // terminals unless the authoritative caller explicitly passes Cockpit.
+    static FleetSeatResult Enter(FleetCommandSession& session,std::uint64_t actorId,
+                                const FleetCommandSeatSnapshot& seat){
+        return Enter(session,actorId,seat,seat.kind==FleetSeatKind::PilotSeat?
+            FleetSeatReturnView::Cockpit:FleetSeatReturnView::OnFoot);
     }
     // Revalidate on every order/control use; powering down or losing comms revokes capabilities.
     static FleetSeatResult CanCommand(const FleetCommandSession& session,std::uint64_t actorId,
@@ -65,9 +79,11 @@ public:
            session.hostEntityId!=seat.hostEntityId)return {false,FleetSeatDenial::SessionMismatch};
         return Validate(actorId,seat);
     }
-    static FleetSeatResult Exit(FleetCommandSession& session,std::uint64_t actorId){
+    static FleetSeatResult Exit(FleetCommandSession& session,std::uint64_t actorId,
+                                FleetSeatReturnView* restoredView=nullptr){
         if(!session.active || !actorId || session.actorId!=actorId)
             return {false,FleetSeatDenial::SessionMismatch};
+        if(restoredView)*restoredView=session.returnView;
         session=FleetCommandSession{};
         return {true,FleetSeatDenial::None};
     }

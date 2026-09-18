@@ -6,7 +6,16 @@ RuntimeControlContext RuntimeControlContextSystem::Build(SandboxWorkspaceMode wo
     if(embodiment==ShipEmbodimentMode::InteriorOnFoot){c.flightControls=false;c.interiorControls=true;c.weapons=false;c.scanner=false;c.vectorCommands=false;c.sixDofFlight=false;c.modeLabel="ON FOOT / FIRST PERSON";c.cameraMode=CameraMode::OnFoot;c.viewAuthority=RuntimeViewAuthority::OnFootFirstPerson;c.firstPerson=true;return c;}
     if(docking==DockingExperienceStage::Docked||embodiment==ShipEmbodimentMode::DockedHangar){c.flightControls=false;c.dockingControls=true;c.weapons=false;c.vectorCommands=false;c.sixDofFlight=false;c.modeLabel="STATION HANGAR";c.cameraMode=CameraMode::DockedHangar;c.viewAuthority=RuntimeViewAuthority::DockedService;c.firstPerson=true;return c;}
     if(vectorTransit){c.flightControls=false;c.weapons=false;c.vectorCommands=false;c.sixDofFlight=false;c.modeLabel="VECTOR TRANSIT";c.cameraMode=CameraMode::ShipFlight;c.viewAuthority=RuntimeViewAuthority::Transit;c.firstPerson=true;return c;}
-    if(strategic){c.modeLabel="REMOTE FLEET COMMAND";c.cameraMode=CameraMode::TacticalFleet;c.viewAuthority=RuntimeViewAuthority::RemoteFleetCommand;c.firstPerson=false;c.mouseLook=false;c.sixDofFlight=false;c.remoteFleetCommand=true;return c;}
+    if(strategic){
+        // Until physical seat routing replaces the legacy path, do not allow
+        // tactical mouse input to also thrust, fire or issue vector commands.
+        c.modeLabel="REMOTE FLEET COMMAND";c.cameraMode=CameraMode::TacticalFleet;
+        c.viewAuthority=RuntimeViewAuthority::RemoteFleetCommand;
+        c.firstPerson=false;c.mouseLook=false;c.sixDofFlight=false;c.remoteFleetCommand=true;
+        c.flightControls=false;c.weapons=false;c.scanner=false;c.vectorCommands=false;
+        c.interiorControls=false;c.dockingControls=false;
+        return c;
+    }
     c.modeLabel="COCKPIT / FIRST PERSON 6DOF";c.mouseLook=true;c.sixDofFlight=true;return c;
 }
 RuntimeControlContext RuntimeControlContextSystem::BuildWithCommandSeat(SandboxWorkspaceMode workspace,

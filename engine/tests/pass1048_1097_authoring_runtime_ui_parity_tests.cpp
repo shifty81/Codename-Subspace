@@ -73,6 +73,9 @@ int main(){
     auto authoring=control.Build(SandboxWorkspaceMode::ShipBuilder,ShipEmbodimentMode::CockpitControl,DockingExperienceStage::Undocked,false,false);
     Check(authoring.viewAuthority==RuntimeViewAuthority::AuthoringDev&&!authoring.firstPerson,"1074 Shipyard is an authoring/dev-mode camera over live runtime authority");
     Check(remote.cameraMode==CameraMode::TacticalFleet,"1075 existing tactical renderer becomes the presentation backend for Remote Fleet Command");
+    Check(!remote.flightControls&&!remote.weapons&&!remote.scanner&&
+          !remote.vectorCommands&&!remote.dockingControls,
+          "G5 legacy tactical mouse ownership is isolated from flight and weapons");
 
     // G5 foundation: require physical seat claim and per-order revalidation.
     FleetCommandSeatSnapshot commandSeat{};
@@ -106,8 +109,30 @@ int main(){
         "G5 invalid command link does not grant remote fleet camera");
     Check(!FleetCommandSeatSystem::Exit(commandSession,8).allowed&&commandSession.active,
         "G5 unauthorized actor cannot release another crew seat");
-    Check(FleetCommandSeatSystem::Exit(commandSession,7).allowed&&!commandSession.active,
-        "G5 rightful actor releases seat and clears session");
+    FleetSeatReturnView restored=FleetSeatReturnView::Cockpit;
+    Check(FleetCommandSeatSystem::Exit(commandSession,7,&restored).allowed&&!commandSession.active&&
+          restored==FleetSeatReturnView::OnFoot,
+        "G5 rightful actor releases seat and restores the captured originating view");
+    FleetCommandSeatSnapshot shipConsole=commandSeat;
+    shipConsole.seatId=22;shipConsole.kind=FleetSeatKind::ShipCommandSeat;
+    shipConsole.commandLinkOnline=true;
+    Check(FleetCommandSeatSystem::Enter(commandSession,7,shipConsole,FleetSeatReturnView::OnFoot).allowed&&
+          commandSession.returnView==FleetSeatReturnView::OnFoot,
+        "G5 walk-up bridge console on a ship returns to first-person on foot");
+    Check(FleetCommandSeatSystem::Enter(commandSession,7,shipConsole,FleetSeatReturnView::Cockpit).allowed&&
+          commandSession.returnView==FleetSeatReturnView::OnFoot,
+        "G5 duplicate Enter cannot overwrite original camera return state");
+    Check(FleetCommandSeatSystem::Exit(commandSession,7,&restored).allowed&&restored==FleetSeatReturnView::OnFoot,
+        "G5 ship-console exit returns the captured on-foot origin");
+    shipConsole.seatId=23;shipConsole.kind=FleetSeatKind::PilotSeat;
+    Check(!FleetCommandSeatSystem::Enter(commandSession,7,shipConsole,FleetSeatReturnView::OnFoot).allowed&&
+          !commandSession.active,
+        "G5 pilot seat cannot incorrectly record on-foot exit authority");
+    Check(FleetCommandSeatSystem::Enter(commandSession,7,shipConsole,FleetSeatReturnView::Cockpit).allowed&&
+          commandSession.returnView==FleetSeatReturnView::Cockpit,
+        "G5 pilot seat captures cockpit as its original view");
+    Check(FleetCommandSeatSystem::Exit(commandSession,7,&restored).allowed&&restored==FleetSeatReturnView::Cockpit,
+        "G5 pilot seat exit restores cockpit");
 
     const auto shieldPolicy=ConformalShieldSurfaceSystem::DefaultPolicy();
     auto nearShield=ConformalShieldSurfaceSystem::Select({500.0f,12,90000,true,false},shieldPolicy);

@@ -26,7 +26,20 @@ void FreeBasis(const ConstructionEditorCameraState&s,Vector3&right,Vector3&up){
 }
 }
 void ConstructionEditorCameraSystem::Reset(ConstructionEditorCameraState&s,const Vector3&center,float radius){s={};s.assemblyCenter=center;s.orbitDistance=std::clamp(radius*2.8f,4.0f,160.0f);s.moveSpeed=std::clamp(radius*1.5f,2.0f,120.0f);RebuildOrbitEye(s);}
-void ConstructionEditorCameraSystem::SetAssemblyCenter(ConstructionEditorCameraState&s,const Vector3&center,bool preserveEye){const Vector3 delta=center-s.assemblyCenter;s.assemblyCenter=center;if(!preserveEye)s.eye=s.eye+delta;if(s.mode==ConstructionCameraMode::CenteredInspect&&s.centerLock)s.forward=Normalize(center-s.eye,s.forward);}
+void ConstructionEditorCameraSystem::SetAssemblyCenter(ConstructionEditorCameraState&s,const Vector3&center,bool preserveEye){
+    const Vector3 delta=center-s.assemblyCenter;
+    s.assemblyCenter=center;
+    if(!preserveEye)s.eye=s.eye+delta;
+    if(s.mode!=ConstructionCameraMode::CenteredInspect)return;
+    // Changing a pivot with a stationary eye must synchronize orbit state.
+    // Otherwise the next MMB orbit jumps back to the obsolete target angles.
+    const Vector3 fromTarget=s.eye-s.assemblyCenter;
+    s.orbitDistance=std::max(.25f,fromTarget.length());
+    const Vector3 ray=Normalize(fromTarget,{0.0f,-1.0f,0.0f});
+    s.pitchDegrees=std::clamp(std::asin(std::clamp(ray.z,-1.0f,1.0f))*180.0f/kPi,-89.0f,89.0f);
+    s.yawDegrees=std::atan2(ray.x,-ray.y)*180.0f/kPi;
+    s.forward=Normalize(s.assemblyCenter-s.eye,s.forward);
+}
 void ConstructionEditorCameraSystem::Orbit(ConstructionEditorCameraState&s,float dyaw,float dpitch){
     s.mode=ConstructionCameraMode::CenteredInspect;
     s.yawDegrees+=dyaw;
@@ -37,16 +50,18 @@ void ConstructionEditorCameraSystem::Orbit(ConstructionEditorCameraState&s,float
 }
 void ConstructionEditorCameraSystem::FramePreservingOrientation(ConstructionEditorCameraState&s,const Vector3&pivot,float radius){
     // Framing creates a new pivot; subsequent panning/orbiting are never parented to the selection.
-    if(s.mode==ConstructionCameraMode::FreeFly)EndFreeFly(s);
-    const Vector3 ray=Normalize(s.eye-s.assemblyCenter,{0.0f,-1.0f,0.0f});
+    // In Fly mode the previous pivot is not necessarily in the viewing
+    // direction: frame using the actual look vector, not the old target ray.
+    const Vector3 ray=s.mode==ConstructionCameraMode::FreeFly?
+        Normalize(s.forward*-1.0f,{0.0f,-1.0f,0.0f}):
+        Normalize(s.eye-s.assemblyCenter,{0.0f,-1.0f,0.0f});
     s.assemblyCenter=pivot;
     s.orbitDistance=std::clamp(std::max(.25f,radius)*2.8f,.35f,5000.0f);
-    s.eye=pivot+ray*s.orbitDistance;
-    s.forward=Normalize(pivot-s.eye,{0.0f,1.0f,0.0f});
-    s.pitchDegrees=std::asin(std::clamp(ray.z,-1.0f,1.0f))*180.0f/kPi;
+    s.pitchDegrees=std::clamp(std::asin(std::clamp(ray.z,-1.0f,1.0f))*180.0f/kPi,-89.0f,89.0f);
     s.yawDegrees=std::atan2(ray.x,-ray.y)*180.0f/kPi;
     s.centerLock=true;
     s.mode=ConstructionCameraMode::CenteredInspect;
+    RebuildOrbitEye(s);
 }
 void ConstructionEditorCameraSystem::SetAxisView(ConstructionEditorCameraState&s,ConstructionAxisView view){
     if(s.mode==ConstructionCameraMode::FreeFly)EndFreeFly(s);
@@ -54,10 +69,10 @@ void ConstructionEditorCameraSystem::SetAxisView(ConstructionEditorCameraState&s
     switch(view){
     case ConstructionAxisView::Front:s.yawDegrees=0.0f;s.pitchDegrees=0.0f;break;
     case ConstructionAxisView::Right:s.yawDegrees=90.0f;s.pitchDegrees=0.0f;break;
-    case ConstructionAxisView::Top:s.pitchDegrees=89.0f;break;
+    case ConstructionAxisView::Top:s.yawDegrees=0.0f;s.pitchDegrees=89.0f;break;
     case ConstructionAxisView::Back:s.yawDegrees=180.0f;s.pitchDegrees=0.0f;break;
     case ConstructionAxisView::Left:s.yawDegrees=-90.0f;s.pitchDegrees=0.0f;break;
-    case ConstructionAxisView::Bottom:s.pitchDegrees=-89.0f;break;
+    case ConstructionAxisView::Bottom:s.yawDegrees=0.0f;s.pitchDegrees=-89.0f;break;
     }
     s.mode=ConstructionCameraMode::CenteredInspect;
     s.centerLock=true;
