@@ -157,25 +157,37 @@ if(SUBSPACE_USE_GLFW)
 endif()
 
 # ---------------------------------------------------------------------------
-# Game executable
+# Native application shell: compile the shared C++ window / renderer / app
+# implementation once, then link independent game and Studio entry points.
+# This is a transitional shared host, NOT a second simulation or an egui fork.
 # ---------------------------------------------------------------------------
-add_executable(subspace_game
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp"
+add_library(subspace_native_host OBJECT
     "${CMAKE_CURRENT_SOURCE_DIR}/src/application/NativeGameApplication.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/application/NativeBattlefieldRenderer.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/platform/NativeWindow.cpp"
 )
+target_link_libraries(subspace_native_host PRIVATE subspace_engine)
 
-target_link_libraries(subspace_game PRIVATE
-    subspace_engine
+add_executable(subspace_game
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp"
 )
+target_link_libraries(subspace_game PRIVATE subspace_native_host subspace_engine)
+
+# Dedicated desktop process. Launch defaults are permanently editor-only;
+# this entrypoint never accepts the game's gameplay/runtime-smoke switches.
+add_executable(subspace_studio
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/studio_main.cpp"
+)
+target_link_libraries(subspace_studio PRIVATE subspace_native_host subspace_engine)
 
 if(WIN32)
-    # Keep the CMake-generated Windows target consistent with the checked-in
-    # Visual Studio project, which already uses the Unicode character set.
-    # NativeWindow also uses explicit W-suffixed Win32 APIs.
-    target_compile_definitions(subspace_game PRIVATE UNICODE _UNICODE)
-    target_link_libraries(subspace_game PRIVATE OpenGL::GL windowscodecs ole32)
+    # The shared host and both executables use the same Unicode Win32 ABI.
+    # Keep native OpenGL/WIC/COM confined to executable dependencies.
+    target_compile_definitions(subspace_native_host PRIVATE UNICODE _UNICODE)
+    foreach(_subspace_native_executable subspace_game subspace_studio)
+        target_compile_definitions(${_subspace_native_executable} PRIVATE UNICODE _UNICODE)
+        target_link_libraries(${_subspace_native_executable} PRIVATE OpenGL::GL windowscodecs ole32)
+    endforeach()
 endif()
 
 # ---------------------------------------------------------------------------
@@ -956,4 +968,10 @@ if(SUBSPACE_BUILD_TESTS)
     add_test(NAME SubspaceShipyardStudioG3Tests COMMAND subspace_shipyard_studio_g3_tests)
     add_test(NAME SubspaceShipyardStudioG3SourceGate COMMAND ${CMAKE_COMMAND}
         -P "${CMAKE_CURRENT_SOURCE_DIR}/../tools/control/static-gates/shipyard_studio_g3_editor_workflow.cmake")
+endif()
+
+# STUDIO-S01: This lightweight test exercises the dedicated editor entrypoint
+# without requiring a GPU, game session, renderer initialization, or Windows.
+if(SUBSPACE_BUILD_TESTS)
+    add_test(NAME SubspaceStudioEntrypointHelp COMMAND subspace_studio --help)
 endif()
