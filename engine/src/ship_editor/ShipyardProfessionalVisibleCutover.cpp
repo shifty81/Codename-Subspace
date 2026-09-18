@@ -440,10 +440,12 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         // while Assets was closed. No invisible-panel dependency.
         add(ShipyardBuilderCommand::DccRevealAssetBrowser,0,8.0f*s,l.top+4.0f*s,83.0f*s,26.0f*s,"ASSETS",false,true);
         add(ShipyardBuilderCommand::DccResetLayout,0,95.0f*s,l.top+4.0f*s,89.0f*s,26.0f*s,"RESET UI",false,true);
+        if(model.standaloneDesign)
+            add(ShipyardBuilderCommand::NewEmptyDocument,0,188.0f*s,l.top+4.0f*s,100.0f*s,26.0f*s,"NEW EMPTY",false,true);
         add(ShipyardBuilderCommand::DccToggleMaximizeViewport,0,w-92.0f*s,l.top+4.0f*s,82.0f*s,26.0f*s,"RESTORE",true,true);
     }else{
-        // 3D-view header: reserve the left side for View/Select/Add/Object
-        // menus and keep display toggles aligned to the right like a DCC.
+        // Real global recovery/new-document controls occupy the left header;
+        // display toggles are placed on the right without overlap.
         // The toolbar belongs to the viewport-header strip, immediately below
         // the workspace tabs. Do not subtract an assumed 25px from canvas Y:
         // the shared GUI metrics can make that overlap the DEV tab at 1280/1852.
@@ -455,6 +457,10 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         // They remain clickable after Close, collapse, tab switches or reload.
         add(ShipyardBuilderCommand::DccRevealAssetBrowser,0,8.0f*s,vy,83.0f*s,buttonH,"ASSETS",false,true);
         add(ShipyardBuilderCommand::DccResetLayout,0,95.0f*s,vy,89.0f*s,buttonH,"RESET UI",false,true);
+        if(model.standaloneDesign)
+            add(ShipyardBuilderCommand::NewEmptyDocument,0,188.0f*s,vy,100.0f*s,buttonH,"NEW EMPTY",false,true);
+        if(model.standaloneDesign&&!HasPlaced(model)&&387.0f*s<=vx-4.0f*s)
+            add(ShipyardBuilderCommand::GenerateVariant,0,292.0f*s,vy,95.0f*s,buttonH,"GENERATE",false,true);
         add(ShipyardBuilderCommand::DccToggleGrid,0,vx,vy,48*s,buttonH,"GRID",model.dcc.showGrid,true);
         add(ShipyardBuilderCommand::DccToggleGizmos,0,vx+51*s,vy,54*s,buttonH,"GIZMO",model.dcc.showGizmos,true);
         add(ShipyardBuilderCommand::DccCycleShading,0,vx+108*s,vy,84*s,buttonH,ShipyardDccUiSystem::ShadingName(model.dcc.shading),true,true);

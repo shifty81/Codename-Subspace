@@ -987,6 +987,9 @@ void DrawStandaloneShipyardBackdrop(const NativeBattlefieldFrame& frame) {
     if(frame.shipBuilder && !frame.shipBuilder->dcc.showGrid)return;
     glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
 
+    // Temporary screen-space construction perspective. Keep endpoints at
+    // viewport boundaries regardless of floating panel positions and resize.
+    // World-space grid projection is a separate camera/picking parity pass.
     // Blender-inspired perspective floor grid. It is screen-space on purpose:
     // it stays calm and readable while the real construction camera orbits the
     // ship, and avoids the old full-screen engineering graph-paper look.
@@ -996,7 +999,7 @@ void DrawStandaloneShipyardBackdrop(const NativeBattlefieldFrame& frame) {
     const Rgba major={.52f,.54f,.56f,.28f};
     for(int i=-12;i<=12;++i){
         const float t=static_cast<float>(i)/12.0f;
-        const float bx=cx+t*(right-left)*.72f;
+        const float bx=cx+t*(right-left)*.5f;
         Line(cx,horizon,0,bx,bottom,0,(i%4==0)?major:minor,(i%4==0)?1.15f:1.0f);
     }
     for(int i=1;i<=13;++i){
@@ -1770,14 +1773,17 @@ void DrawModularShip(const NativeBattlefieldRenderer::VisualAssets& assets,float
             if(selectedModuleIndex>=0&&placementIndex==static_cast<std::size_t>(selectedModuleIndex))
                 DrawShipyardSelectionOverlay(assets,placement,selectedAuthoringRecord,selectedSocketIndex,socketEdit);
         }
-        if(dragGhost){
-            glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);glDepthMask(GL_FALSE);
-            DrawModulePlacement(assets,*dragGhost,{.22f,.88f,.92f,.46f},.46f,appearance);
-            if(dragMirrorGhost)DrawModulePlacement(assets,*dragMirrorGhost,{.30f,.78f,1.0f,.38f},.38f,appearance);
-            glDepthMask(GL_TRUE);glDisable(GL_BLEND);SetupSceneLighting();
-        }
     } else {
-        // Shipyard-only authority: an unresolved recipe draws no synthetic ship.
+        // An empty authoring recipe renders no fake hull.
+    }
+    // A first module must still appear as a drag preview in an empty document.
+    // Keep this outside the nonempty-assembly branch; committing its placement
+    // promotes it into recipe.modules for the regular render path.
+    if(dragGhost){
+        glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);glDepthMask(GL_FALSE);
+        DrawModulePlacement(assets,*dragGhost,{.22f,.88f,.92f,.46f},.46f,appearance);
+        if(dragMirrorGhost)DrawModulePlacement(assets,*dragMirrorGhost,{.30f,.78f,1.0f,.38f},.38f,appearance);
+        glDepthMask(GL_TRUE);glDisable(GL_BLEND);SetupSceneLighting();
     }
 
     if(recipe&&appearance)DrawAppearanceDecals(assets,*recipe,*appearance,alpha);
@@ -3235,7 +3241,7 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
     Line(0,layout.workspaceBarY,0,w,layout.workspaceBarY,0,{.035f,.037f,.040f,1.0f},1.0f);
     Line(0,viewHeaderY,0,w,viewHeaderY,0,{.035f,.037f,.040f,1.0f},1.0f);
     Line(0,layout.viewportTop,0,w,layout.viewportTop,0,{.035f,.037f,.040f,1.0f},1.0f);
-    ShipyardText("File   Edit   View   Help",9.0f*s,6.0f*s,.47f,{.70f,.71f,.73f,.96f});
+    ShipyardText("SUBSPACE / SHIP DOCUMENT",9.0f*s,6.0f*s,.47f,{.70f,.71f,.73f,.96f});
     const auto& assetDomain=EditorAssetWorkbenchSystem::Describe(EditorAssetDomain::ShipModules);
     ShipyardText(frame.standaloneShipyard?(std::string("ASSET WORKBENCH / ")+assetDomain.label):"SHIPYARD / LIVE REFIT",w-255.0f*s,6.0f*s,.45f,{.66f,.68f,.71f,.94f});
 
@@ -3244,7 +3250,8 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
     const auto activeWorkspace=m.testWorkspaceActive?ShipyardWorkspaceMode::Test:m.workspaceMode;
     // The same header strip contains permanent ASSETS and RESET UI controls.
     // Do not paint non-interactive menu text over their hit rectangles.
-    if(!maximized)ShipyardText("3D VIEW",canvasLeft+190.0f*s,layout.viewportTop-19.0f*s,.48f,text);
+    if(!maximized&&w>1500.0f*s)
+        ShipyardText("3D VIEW",canvasLeft+390.0f*s,layout.viewportTop-19.0f*s,.48f,text);
 
     // Selected-module tool gizmo. Shared EditorGizmoSystem layout is used by
     // both native mouse branches for picking and dragging. Draw BEFORE panel
@@ -3282,6 +3289,14 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
                          (m.transformTool==ShipyardTransformTool::Scale?"DRAG AXIS / SCALE":"DRAG AXIS / ROTATE"),
                          h0.centerX+12.0f,h0.centerY+19.0f,.43f,muted);
         }
+    }
+
+    if(m.recipe.modules.empty()&&m.workspaceMode==ShipyardWorkspaceMode::Build){
+        const float titleX=canvasLeft+std::max(24.0f*s,(canvasRight-canvasLeft)*.16f);
+        const float titleY=top+std::max(42.0f*s,(viewportBottom-top)*.38f);
+        ShipyardText("EMPTY SHIP DOCUMENT",titleX,titleY,.95f,text);
+        ShipyardText("1. OPEN ASSETS  2. SELECT MODULE  3. PLACE MODULE",titleX,titleY+26.0f*s,.49f,muted);
+        ShipyardText("OPTIONAL: USE GENERATE IN ASSEMBLY PROPERTIES",titleX,titleY+46.0f*s,.49f,muted);
     }
 
     // Editor areas: Tool Rail | dominant 3D View | bottom Asset Browser |
@@ -4253,7 +4268,7 @@ void NativeBattlefieldRenderer::Render(const NativeBattlefieldFrame& frame) {
         }
     }
 
-    if(frame.standaloneShipyard&&!frame.playerPhysics&&frame.shipBuilderRecipe){
+    if(frame.standaloneShipyard&&frame.shipBuilderRecipe){
         const std::string previewRole=frame.shipBuilderRecipe->role.empty()?"INDUSTRIAL":frame.shipBuilderRecipe->role;
         const int selected=frame.shipBuilder&&!frame.shipBuilder->recipe.modules.empty()?static_cast<int>(frame.shipBuilder->selectedPlacedModule):-1;
         const ShipyardModuleRecord* selectedRecord=nullptr;int selectedSocket=-1;bool socketEdit=false;
@@ -4274,11 +4289,11 @@ void NativeBattlefieldRenderer::Render(const NativeBattlefieldFrame& frame) {
         PhysicsComponent previewPhysics{};
         previewPhysics.position={0.0f,0.0f,0.0f};
         previewPhysics.rotation.z=0.0f;
-        if(!frame.shipBuilder||frame.shipBuilder->dcc.showShieldPreview)
+        if(!frame.shipBuilderRecipe->modules.empty()&&(!frame.shipBuilder||frame.shipBuilder->dcc.showShieldPreview))
             DrawShipProfileShield(*_assets,previewPhysics,frame.shipBuilderRecipe,previewAxis,1.0f,frame.elapsedSeconds,frame);
     }
 
-    if(frame.playerPhysics){
+    if(frame.playerPhysics&&!frame.standaloneShipyard){
         const auto& p=*frame.playerPhysics;
         const auto* playerRecipe=frame.workspaceMode==SandboxWorkspaceMode::ShipBuilder&&frame.shipBuilderRecipe
             ? frame.shipBuilderRecipe

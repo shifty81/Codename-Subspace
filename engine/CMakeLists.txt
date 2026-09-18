@@ -934,3 +934,13 @@ if(SUBSPACE_BUILD_TESTS)
     add_test(NAME SubspaceUnifiedGizmoG1SourceGate COMMAND ${CMAKE_COMMAND}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/../tools/control/static-gates/shipyard_unified_gizmo_g1_authority.cmake)
 endif()
+
+# G2: Studio empty-document startup without an OpenGL context.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_shipyard_blank_document_g2_tests tests/shipyard_blank_document_g2_tests.cpp)
+    target_include_directories(subspace_shipyard_blank_document_g2_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_compile_features(subspace_shipyard_blank_document_g2_tests PRIVATE cxx_std_17)
+    add_test(NAME SubspaceShipyardBlankDocumentG2Tests COMMAND subspace_shipyard_blank_document_g2_tests)
+    add_test(NAME SubspaceShipyardBlankDocumentG2SourceGate COMMAND ${CMAKE_COMMAND}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/../tools/control/static-gates/shipyard_blank_document_g2_authority.cmake)
+endif()

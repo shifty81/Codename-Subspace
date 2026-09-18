@@ -1,4 +1,5 @@
 #include "ship_editor/ShipyardBuilderSystem.h"
+#include "ship_editor/ShipyardDocumentStartupSystem.h"
 #include "ship_editor/ShipyardCatalogViewport.h"
 #include "ship_editor/ShipyardPanelCompositorSystem.h"
 #include "ship_editor/ShipyardOrientationConstraintSystem.h"
@@ -1555,6 +1556,42 @@ bool ShipyardBuilderSystem::ActivateInternal(ShipyardBuilderCommand command,int 
             if(!model_.liveApplyEnabled){model_.status="Live refit requires a docked Shipyard - use SAVE BLUEPRINT here";return false;}
             if(model_.validation.valid){applyRequested_=true;model_.status="Apply requested - validated refit ready";return true;}
             model_.status="Cannot apply: design validation failed";return false;
+        case ShipyardBuilderCommand::NewEmptyDocument:{
+            if(!model_.standaloneDesign){model_.status="NEW EMPTY is available in standalone Studio only";return false;}
+            if(model_.dirty){
+                model_.status="Unsaved changes: SAVE DRAFT first, or RESET to discard before NEW EMPTY";
+                return false;
+            }
+            CancelTransform();CancelSocketTransform();
+            model_.recipe=ShipyardDocumentStartupSystem::EmptyDocument();
+            model_.appearance.decals.clear();
+            model_.interiorStructure={};
+            model_.interiorProgram={};
+            model_.interiorPlan=ShipModuleInteriorLinkSystem::BuildPlan(model_.catalog,model_.recipe,model_.worldScale);
+            model_.interiorProgramStatus="Interior program not generated";
+            model_.generatedInteriorRoomCount=0;
+            model_.generatedInteriorPortalCount=0;
+            model_.modeling.recipe.primitives.clear();
+            model_.modeling.recipe.modifiers.clear();
+            model_.modeling.selectedPrimitiveIndex=0;
+            model_.symmetryPairs.clear();
+            model_.selectedPlacedModule=0;model_.placedScrollStart=0;
+            model_.workspaceMode=ShipyardWorkspaceMode::Build;
+            model_.inspectorTab=ShipyardInspectorTab::Assembly;
+            model_.dragPreview={};model_.transform={};
+            // Documents are undo boundaries: never undo a new document into an
+            // unrelated previous blueprint or restore stale transform targets.
+            authoringUndo_.clear();authoringRedo_.clear();
+            pendingTransformHistory_.reset();pendingSocketTransformHistory_.reset();pendingDragHistory_.reset();
+            model_.appearance=ShipAppearanceState{};
+            initialAppearance_=model_.appearance;
+            model_.dirty=false;
+            RefreshForwardAuthority();NormalizeSelections();
+            model_.validation=Validate();
+            initialRecipe_=model_.recipe;
+            model_.status="NEW EMPTY - select a module in ASSETS, then place it; GENERATE creates an optional ship";
+            return true;
+        }
         case ShipyardBuilderCommand::Reset:model_.recipe=initialRecipe_;model_.appearance=initialAppearance_;model_.liveryPreset=0;model_.decalPreset=0;model_.liveryName="CUSTOM";model_.primaryPaintName=PaintName(model_.appearance.primary);model_.secondaryPaintName=PaintName(model_.appearance.secondary);model_.trimPaintName=PaintName(model_.appearance.trim);model_.transform={};model_.dragPreview={};model_.dirty=false;RefreshForwardAuthority();model_.status="Restored entry ship design";NormalizeSelections();model_.validation=Validate();return true;
         case ShipyardBuilderCommand::None:break;
     }

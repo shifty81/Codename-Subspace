@@ -29,6 +29,7 @@
 #include "station/StationEcologySystem.h"
 #include "fleet/FleetCaptainAiSystem.h"
 #include "ship_editor/ShipyardBuilderSystem.h"
+#include "ship_editor/ShipyardDocumentStartupSystem.h"
 #include "ship_editor/ShipyardDockPointerSystem.h"
 #include "ship_editor/ShipyardRefitSystem.h"
 #include "ship_editor/ShipBlueprintLibrarySystem.h"

@@ -290,7 +290,9 @@ enum class ShipyardBuilderCommand {
     Reset,
     // Recovery action: does not toggle a hidden/inactive Assets tab closed.
     // Appended to preserve existing command identifiers.
-    DccRevealAssetBrowser
+    DccRevealAssetBrowser,
+    // New authoring document; distinct from Reset (restores entry blueprint).
+    NewEmptyDocument
 };
 
 struct ShipyardBuilderControl {

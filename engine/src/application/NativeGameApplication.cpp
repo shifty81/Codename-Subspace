@@ -216,7 +216,8 @@ int NativeGameApplication::Run(const NativeGameRunOptions& options)
     // Pass428 regression repair: restore a real native Shipyard editor over
     // the same certified module catalog/recipe authority used by rendering.
     // The C++ conversion previously left only a painted placeholder workspace.
-    const auto starterShipyardRecipe = _renderer.DefaultShipyardRecipe("INDUSTRIAL", 1u);
+    const auto starterShipyardRecipe = ShipyardDocumentStartupSystem::SelectInitialDocument(
+        options.startShipyard,_renderer.DefaultShipyardRecipe("INDUSTRIAL", 1u));
     _shipBuilder.Initialize(_renderer.ShipyardCatalog(), starterShipyardRecipe);
     { std::string layoutError;
       ShipyardOverlayLayoutStore::Load(_shipBuilder.MutableDockWorkspace(),
@@ -411,8 +412,11 @@ void NativeGameApplication::OpenShipyardWorkspace(bool standalone)
     _standaloneShipyard=standalone;
     _shipyardDockPointer.Cancel();
     _shipyardDockSuppressClick=false;
-    const auto starter=(_hasPlayerShipRecipe&&!_playerShipRecipe.modules.empty())
-        ?_playerShipRecipe:_renderer.DefaultShipyardRecipe("INDUSTRIAL",1u);
+    // Main-menu Studio always opens a new, empty document. In-game refits
+    // continue using the actual player ship or gameplay fallback unchanged.
+    const auto starter=standalone?ShipyardDocumentStartupSystem::EmptyDocument():
+        ((_hasPlayerShipRecipe&&!_playerShipRecipe.modules.empty())
+        ?_playerShipRecipe:_renderer.DefaultShipyardRecipe("INDUSTRIAL",1u));
 
     if(!standalone&&_docking.stage==DockingExperienceStage::Docked){
         std::vector<ShipyardRefitPart> stationParts;stationParts.reserve(_renderer.ShipyardCatalog().size());
@@ -457,10 +461,13 @@ void NativeGameApplication::OpenShipyardWorkspace(bool standalone)
     // boundary; gameplay limits are restored when the workspace closes.
     camera.SetZoomLimits(0.12f,96.0f);
     if(standalone)GoToFrontendScreen(FrontendScreen::InGame);
-    // Pass655-674: every construction workspace uses the same explicit 6DOF
-    // inspection camera. Opening Shipyard always frames the authored assembly;
-    // module selection itself never steals the persistent camera target.
+    // Studio does not auto-frame a gameplay ship. An empty document receives
+    // a neutral, independent free-look camera at the world origin.
     FrameShipyardView(false);
+    if(standalone&&_shipBuilder.Recipe().modules.empty()){
+        ConstructionEditorCameraSystem::BeginFreeFly(_constructionCamera);
+        ApplyConstructionCameraView();
+    }
 }
 
 void NativeGameApplication::RestoreGameplayCameraLimits()
@@ -575,6 +582,11 @@ bool NativeGameApplication::ActivateShipyardControl(ShipyardBuilderCommand comma
     if(!handled)return false;
     if(command==ShipyardBuilderCommand::FrameSelected)FrameShipyardView(true);
     else if(command==ShipyardBuilderCommand::FrameShip)FrameShipyardView(false);
+    else if(command==ShipyardBuilderCommand::NewEmptyDocument&&_standaloneShipyard){
+        FrameShipyardView(false);
+        ConstructionEditorCameraSystem::BeginFreeFly(_constructionCamera);
+        ApplyConstructionCameraView();
+    }
     if(command==ShipyardBuilderCommand::DccRevealAssetBrowser||
        command==ShipyardBuilderCommand::DccToggleToolRail||
        command==ShipyardBuilderCommand::DccToggleAssetBrowser||
