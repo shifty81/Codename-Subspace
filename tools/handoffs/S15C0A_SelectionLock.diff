@@ -1,0 +1,59 @@
+diff --git a/engine/src/studio/StudioApplication.cpp b/engine/src/studio/StudioApplication.cpp
+--- a/engine/src/studio/StudioApplication.cpp
++++ b/engine/src/studio/StudioApplication.cpp
+@@ -10,1 +10,2 @@
+ #include "studio/StudioGizmoMath.h"
++#include "studio/StudioToolInteractionPolicy.h"
+@@ -483,12 +483,9 @@
+-                }else{
+-                const int picked=NativeBattlefieldRenderer::PickShipyardModule(builder_.Model().catalog,
+-                    builder_.Recipe(),camera_,window_.GetWidth(),window_.GetHeight(),
+-                    pressX,pressY,0,0,0,.24f,.22f,true);
+-                if(picked>=0){
+-                    RouteControl(ShipyardBuilderCommand::SelectPlaced,picked);
+-                    if(builder_.Model().transformTool!=ShipyardTransformTool::Select){
+-                        pointerTransform_=builder_.Model().inspectorTab==ShipyardInspectorTab::Sockets?
+-                            builder_.BeginSelectedSocketTransform():builder_.BeginSelectedTransform();
+-                    }
+-                }
+-                } // no handle: ordinary part selection remains available
++                }else if(StudioToolInteractionPolicy::AllowsViewportReselection(builder_.Model().transformTool)){
++                    // A missed Move/Rotate/Scale handle never selects or
++                    // transforms a different module. Switch to Select or use
++                    // the Outliner to intentionally change the target.
++                    const int picked=NativeBattlefieldRenderer::PickShipyardModule(builder_.Model().catalog,
++                        builder_.Recipe(),camera_,window_.GetWidth(),window_.GetHeight(),
++                        pressX,pressY,0,0,0,.24f,.22f,true);
++                    if(picked>=0)RouteControl(ShipyardBuilderCommand::SelectPlaced,picked);
++                } // non-Select viewport misses preserve the active target
+diff --git a/engine/src/application/NativeGameApplication.cpp b/engine/src/application/NativeGameApplication.cpp
+--- a/engine/src/application/NativeGameApplication.cpp
++++ b/engine/src/application/NativeGameApplication.cpp
+@@ -3,1 +3,2 @@
+ #include "ship_editor/ShipyardPanelCompositorSystem.h"
++#include "studio/StudioToolInteractionPolicy.h"
+@@ -1740,4 +1740,6 @@
+-                }else{
++                }else if(StudioToolInteractionPolicy::AllowsViewportReselection(_shipBuilder.Model().transformTool)){
++                    // A missed transform handle must not change selection or
++                    // open a free-transform transaction on another module.
+                     const int picked=NativeBattlefieldRenderer::PickShipyardModule(_shipBuilder.Model().catalog,_shipBuilder.Recipe(),_engine.GetStrategicCamera(),_window.GetWidth(),_window.GetHeight(),pressX,pressY,0,0,0,.24f,.22f,true);
+-                    if(picked>=0){_shipBuilder.Activate(ShipyardBuilderCommand::SelectPlaced,picked);if(_shipBuilder.Model().transformTool!=ShipyardTransformTool::Select)_shipyardPointerTransform=_shipBuilder.Model().inspectorTab==ShipyardInspectorTab::Sockets?_shipBuilder.BeginSelectedSocketTransform():_shipBuilder.BeginSelectedTransform();}
++                    if(picked>=0)_shipBuilder.Activate(ShipyardBuilderCommand::SelectPlaced,picked);
+                 }
+@@ -1806,2 +1806,3 @@
+         float sx=0.0f,sy=0.0f;if(_window.ConsumePrimaryClick(sx,sy)){if(!_shipyardDockSuppressClick){const auto c=ShipyardBuilderSystem::HitTest(_shipBuilder.Model(),_window.GetWidth(),_window.GetHeight(),sx,sy);if(c.command!=ShipyardBuilderCommand::None)ActivateShipyardControl(c.command,c.value);else if(!_shipBuilder.Model().dragPreview.staged &&
++                StudioToolInteractionPolicy::AllowsViewportReselection(_shipBuilder.Model().transformTool)&&
+                 !ShipyardDockPointerSystem::CoversFloatingPanel(_shipBuilder.Model().dockWorkspace,
+@@ -2204,5 +2204,5 @@
+-                }else{
++                }else if(StudioToolInteractionPolicy::AllowsViewportReselection(_shipBuilder.Model().transformTool)){
+                     float shipX=0,shipY=0,shipYaw=0;if(!_standaloneShipyard&&player){shipX=player->position.x;shipY=player->position.y;shipYaw=player->rotation.z;}
+                     const int picked=NativeBattlefieldRenderer::PickShipyardModule(_shipBuilder.Model().catalog,_shipBuilder.Recipe(),activeCamera,_window.GetWidth(),_window.GetHeight(),px,py,shipX,shipY,shipYaw,.24f,.22f,true);
+-                    if(picked>=0){_shipBuilder.Activate(ShipyardBuilderCommand::SelectPlaced,picked);if(_shipBuilder.Model().transformTool!=ShipyardTransformTool::Select)_shipyardPointerTransform=_shipBuilder.Model().inspectorTab==ShipyardInspectorTab::Sockets?_shipBuilder.BeginSelectedSocketTransform():_shipBuilder.BeginSelectedTransform();}
++                    if(picked>=0)_shipBuilder.Activate(ShipyardBuilderCommand::SelectPlaced,picked);
+                 }
+@@ -2273,2 +2273,3 @@
+         if(!uiConsumed&&_workspace.Mode()==SandboxWorkspaceMode::ShipBuilder&&_shipBuilder.IsInitialized()&&!_shipBuilder.Model().dragPreview.staged&&
++            StudioToolInteractionPolicy::AllowsViewportReselection(_shipBuilder.Model().transformTool)&&
+             !ShipyardDockPointerSystem::CoversFloatingPanel(_shipBuilder.Model().dockWorkspace,

@@ -1,0 +1,44 @@
+{
+  "schema": "subspace.external-pcc-integration.design.v1",
+  "status": "DRAFT_NOT_ENABLED",
+  "targetProjectId": "codename-subspace",
+  "existingProjectContract": "forge.project.v1",
+  "existingLauncher": "SubspaceTools.cmd",
+  "existingProvider": "SubspaceTools.ps1",
+  "existingMachineCli": "tools/control/ProjectOpsCli.py",
+  "existingMachineRegistry": "tools/control/ProjectCommandRegistry.ps1",
+  "independentOperationRequired": true,
+  "latestPublishedReferences": {
+    "subspace": "cee9993c48f7b0d3c854096c763a77577760b63b",
+    "cortex": "5e5e113d6168acac721bb722d169be04b4ec1c3f",
+    "forgeGuiCore": "eafa8e78efd54142a19e66d8be7b7d3985af23d2",
+    "forgePublishedForgePy": "f00ca0fea2dfa29dc930fcc18ddcedc347a7c6ad"
+  },
+  "requiredReadOnlyCapabilityAliases": {
+    "status": "project.status",
+    "health": "project.health",
+    "buildStudio": "build.studio",
+    "runStudio": "run.studio",
+    "studioSmoke": "test.studio",
+    "fullGate": "gate.full",
+    "patchPreview": "patch.preview",
+    "patchApplyRequiresUserConfirmation": "patch.apply",
+    "debugBundle": "diagnostics.bundle"
+  },
+  "governance": {
+    "projectOwnedPccRemainsGateAuthority": true,
+    "forgeNativeTakeoverRequiresBehavioralParityAndApproval": true,
+    "fullGateMustNeverImplicitlyApplyPatches": true,
+    "commandsRequireExplicitCapabilityProof": true,
+    "sourceMutationInvalidatesGreen": true,
+    "guiAndCliMustShareOperationId": true,
+    "cortexCanProposeButNotSelfApproveMutations": true,
+    "noExternalRuntimeNeededForStandalonePcc": true
+  },
+  "unimplementedRequiredServices": [
+    "VERSION_NEGOTIATED_PROJECT_CONTROL_PROTOCOL", "DURABLE_OPERATION_ID_AND_LEASE",
+    "STREAMED_EVENTS_AND_RECONNECT", "CROSS_CLIENT_RECEIPT_PARITY",
+    "APPROVAL_AND_RISK_ADAPTER", "CORTEX_SELECTION_CONTEXT_BRIDGE",
+    "STAGING_ONLY_GENERATION_CANDIDATES", "NATIVE_WINDOWS_PARITY_CERTIFICATION"
+  ]
+}

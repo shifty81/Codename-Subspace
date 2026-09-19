@@ -1,0 +1,42 @@
+{
+  "schema": "subspace.studio.generation-spec.design.v1",
+  "status": "DRAFT_NOT_REGISTERED_OR_EXECUTABLE",
+  "purpose": "Versioned proposal for Cortex-to-Subspace parametric shape / kitbash / animation candidate staging",
+  "authority": {
+    "projectId": "codename-subspace",
+    "geometry": "Subspace native Studio and game runtime",
+    "aiOrchestration": "External Cortex service",
+    "projectOperations": "Subspace project-owned PCC via future Forge operation adapter",
+    "artifactApproval": "User must accept a validated candidate in Studio",
+    "notAReplacementFor": ["project.control.json", "SubspaceTools.ps1", "existing Studio document schema"]
+  },
+  "requiredFields": [
+    "requestId", "projectId", "documentId", "documentRevision", "selectedStablePartIds",
+    "category", "seed", "units", "coordinateFrame", "sizeMeters", "sourceAssetIds",
+    "sourceContentHashes", "licenseRefs", "constraints", "outputStagingId"
+  ],
+  "categories": ["PARAMETRIC_PRIMITIVE", "ASSEMBLY", "KITBASH_DERIVATIVE", "BLENDER_TEMPLATE_DERIVATIVE", "EXTERNAL_MESH_DRAFT"],
+  "candidateStates": ["REQUESTED", "QUEUED", "GENERATING", "STAGED", "PREVIEWED", "VALIDATED", "REVIEW_REQUIRED", "REJECTED", "APPROVED", "PUBLISHED"],
+  "constraintFamilies": [
+    "FINITE_POSITIVE_DIMENSIONS", "BOUNDED_TRIANGLE_AND_MEMORY_BUDGET", "VALID_SOURCE_LICENSE_AND_PROVENANCE",
+    "PIVOT_AND_COORDINATE_CONSISTENCY", "AUTHORIZED_HULL_CONTACT", "NO_UNAPPROVED_INTERIOR_INTRUSION",
+    "SOCKET_AND_ATTACHMENT_VALIDITY", "MECHANICAL_SWEEP_CLEARANCE", "PRESSURE_AND_NAV_PORTAL_VALIDITY",
+    "MATERIAL_UV_TEXTURE_DEPENDENCIES", "RUNTIME_LOD_AND_COLLISION", "DOCUMENT_REVISION_MATCH"
+  ],
+  "security": {
+    "generatedCodeExecutionAllowed": false,
+    "writesToActiveDocumentBeforeApproval": false,
+    "automaticCatalogPromotion": false,
+    "stagingMustStayInApprovedRoot": true,
+    "pathAndSymlinkTraversalForbidden": true,
+    "sourceAndDerivativeHashesRequired": true
+  },
+  "example": {
+    "category": "PARAMETRIC_PRIMITIVE",
+    "goal": "Exterior hinged hatch with aperture, pressure boundary and open-close animation",
+    "sizeMeters": {"width": 1.2, "height": 2.1, "depth": 0.15},
+    "units": "meters",
+    "coordinateFrame": "ship-local",
+    "output": "STAGING_ONLY"
+  }
+}
