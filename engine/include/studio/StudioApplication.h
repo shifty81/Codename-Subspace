@@ -7,6 +7,7 @@
 #include "ship_editor/ShipyardBuilderSystem.h"
 #include "studio/StudioDocumentStore.h"
 #include "studio/StudioClosePolicy.h"
+#include "studio/StudioExitOutcomePolicy.h"
 #include "studio/StudioNativeCloseGuard.h"
 #include "studio/StudioAxisGizmo.h"
 #include "ship_editor/ShipyardDockPointerSystem.h"
@@ -46,6 +47,7 @@ private:
     StudioNativeCloseGuard closeGuard_;
     bool closeRecoveryPrepared_=false;
     bool closePromptActive_=false;
+    StudioExitOutcome closeOutcome_=StudioExitOutcome::Unconfirmed;
     GalaxySector emptySector_{};
     ShipyardDockPointerSystem dockPointer_;
     bool pendingCatalogPress_=false;

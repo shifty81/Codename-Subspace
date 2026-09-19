@@ -6,6 +6,7 @@
 #include "studio/StudioUnsavedWorkPolicy.h"
 #include "studio/StudioFileDialog.h"
 #include "studio/StudioClosePolicy.h"
+#include "studio/StudioExitOutcomePolicy.h"
 #include "studio/StudioGizmoOverlay.h"
 #include "studio/StudioGizmoMath.h"
 #ifdef _WIN32
@@ -103,7 +104,8 @@ int StudioApplication::Run(const std::filesystem::path& openFile,std::uint64_t m
         closing.interiorStructure.dirty};
     // The WM_CLOSE handler has already written and verified recovery before
     // releasing the window. Do not create a duplicate or erase the receipt.
-    if(!closeRecoveryPrepared_ && StudioRecoveryPathPolicy::NeedsRecovery(unsaved.blueprint)){
+    if(!StudioExitOutcomePolicy::IsUserConfirmed(closeOutcome_) &&
+       !closeRecoveryPrepared_ && StudioRecoveryPathPolicy::NeedsRecovery(unsaved.blueprint)){
         std::filesystem::path recovered;
         std::string error;
         if(documents_.SaveExitRecovery(builder_,recovered,error)){
@@ -113,10 +115,16 @@ int StudioApplication::Run(const std::filesystem::path& openFile,std::uint64_t m
             exitCode=6; // tooling must not report an unrecoverable close as clean
         }
     }
-    if(StudioUnsavedWorkPolicy::HasUnsupportedRecovery(unsaved)){
+    const bool unsupported=StudioUnsavedWorkPolicy::HasUnsupportedRecovery(unsaved);
+    if(unsupported){
         std::cerr<<"Studio exit WARNING: socket/definition overrides and editable model/interior drafts are NOT in blueprint recovery\n";
-        exitCode=7;
     }
+    exitCode=StudioExitOutcomePolicy::ExitCode(closeOutcome_,exitCode==6,unsupported);
+    std::cerr<<"STUDIO_EXIT_RESULT schema=subspace.studio-exit.v1 outcome="
+             <<StudioExitOutcomePolicy::Name(closeOutcome_)
+             <<" blueprint_recovery_verified="<<(closeRecoveryPrepared_?"true":"false")
+             <<" unsupported_drafts="<<(unsupported?"true":"false")
+             <<" process_exit="<<exitCode<<'\n';
     closeGuard_.Detach();
     renderer_.Shutdown();window_.Shutdown();return exitCode;
 }
@@ -129,7 +137,9 @@ StudioCloseState StudioApplication::CloseState() const {
 
 bool StudioApplication::ConfirmClose(){
     const auto before=CloseState();
-    if(!StudioClosePolicy::NeedsPrompt(before))return true;
+    if(!StudioClosePolicy::NeedsPrompt(before)){
+        closeOutcome_=StudioExitOutcome::Clean;return true;
+    }
     if(closePromptActive_)return false; // modal OS message loops may re-enter WM_CLOSE
     closePromptActive_=true;
     struct ResetPrompt { bool& active; ~ResetPrompt(){active=false;} } reset{closePromptActive_};
@@ -152,6 +162,7 @@ bool StudioApplication::ConfirmClose(){
             StudioFileDialog::ShowError("Studio remains open: the document has unsaved changes.");
             return false;
         }
+        closeOutcome_=StudioExitOutcome::Saved;
         return true;
     }
     // This is a SECOND, explicit acknowledgement when there is authoring data
@@ -178,7 +189,11 @@ bool StudioApplication::ConfirmClose(){
         closeRecoveryPrepared_=true;
         std::cerr<<"Studio close: verified blueprint-only recovery at "<<path.string()<<'\n';
     }
-    return StudioClosePolicy::MayCloseWithRecovery(before,recovered,acknowledged);
+    if(!StudioClosePolicy::MayCloseWithRecovery(before,recovered,acknowledged))return false;
+    // The user explicitly approved partial recovery / loss of draft-only data.
+    // This is normal app termination, NOT proof of a complete Studio save.
+    closeOutcome_=StudioExitOutcome::UserConfirmedPartialRecovery;
+    return true;
 #else
     return false; // no unguarded close on a backend without a confirmation UI
 #endif

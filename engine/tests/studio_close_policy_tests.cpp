@@ -1,4 +1,5 @@
 #include "studio/StudioClosePolicy.h"
+#include "studio/StudioExitOutcomePolicy.h"
 #include <iostream>
 using namespace subspace;
 int main(){
@@ -26,6 +27,12 @@ int main(){
     expect(StudioClosePolicy::MayCloseWithRecovery(model,true,true),"explicitly acknowledged partial recovery");
     expect(!StudioClosePolicy::MayCloseWithRecovery(interior,true,false),"interior warning cannot be bypassed");
     expect(StudioClosePolicy::MayCloseWithRecovery(interior,false,true),"interior-only explicit discard permitted");
+    expect(StudioExitOutcomePolicy::ExitCode(StudioExitOutcome::Clean,false,false)==0,"clean close succeeds");
+    expect(StudioExitOutcomePolicy::ExitCode(StudioExitOutcome::Saved,false,false)==0,"saved close succeeds");
+    expect(StudioExitOutcomePolicy::ExitCode(StudioExitOutcome::UserConfirmedPartialRecovery,false,true)==0,"acknowledged partial recovery is normal exit");
+    expect(StudioExitOutcomePolicy::ExitCode(StudioExitOutcome::Unconfirmed,false,true)==7,"unconfirmed unsupported draft is failure");
+    expect(StudioExitOutcomePolicy::ExitCode(StudioExitOutcome::UserConfirmedPartialRecovery,true,true)==6,"failed recovery remains an error");
+    expect(!StudioExitOutcomePolicy::IsUserConfirmed(StudioExitOutcome::Unconfirmed),"frame limit is not user consent");
     std::cout<<"Studio close policy: "<<(checks-failed)<<"/"<<checks<<" assertions passed\n";
     return failed?1:0;
 }
