@@ -17,6 +17,7 @@
 #include "ship_editor/ShipyardDocumentStartupSystem.h"
 #include "ship_editor/ShipyardBuildSafetySystem.h"
 #include "editor/EditorTransformSpaceSystem.h"
+#include "studio/StudioCameraNavigation.h"
 #include <algorithm>
 #include <chrono>
 #include <iostream>
@@ -24,6 +25,18 @@
 
 namespace subspace {
 StudioApplication::StudioApplication():window_(input_) {}
+
+void StudioApplication::SyncConstructionCamera(){
+    // One perspective authority for rendering, picking, projected gizmos and
+    // drag placement. The ship transform is NEVER changed by camera movement.
+    camera_.SetEditorView(constructionCamera_.eye,
+        ConstructionEditorCameraSystem::Target(constructionCamera_),
+        constructionCamera_.rollDegrees);
+    // Legacy gizmo sensitivity still reads StrategicCamera zoom. Derive that
+    // scalar from actual eye/pivot distance; never maintain a second orbit.
+    camera_.SetZoom(44.8f/std::max(.35f,constructionCamera_.orbitDistance));
+}
+
 
 int StudioApplication::Run(const std::filesystem::path& openFile,std::uint64_t maxFrames){
     NativeWindowConfig config;
@@ -53,7 +66,18 @@ int StudioApplication::Run(const std::filesystem::path& openFile,std::uint64_t m
     camera_.SetZoomLimits(.12f,96.0f);
     camera_.SetZoom(1.0f);camera_.SetTargetZoom(1.0f);
     camera_.SetVisualTilt(.46f);camera_.SetVisualHeight(.68f);
-    window_.SetEditorNavigationMode(true);
+    // Start with the existing 3D construction camera. Legacy OrbitVisual
+    // clamps elevation to an above-ship tilt and cannot inspect undersides.
+    ConstructionEditorCameraSystem::Reset(constructionCamera_,{},16.0f);
+    // Match Studio's prior near-55-degree opening angle while changing
+    // the underlying navigation to a genuinely three-dimensional orbit.
+    ConstructionEditorCameraSystem::Orbit(constructionCamera_,-18.0f,27.0f);
+    SyncConstructionCamera();
+    // Studio navigation profile: RMB drag orbits; MMB drag pans. Unlike the
+    // legacy MMB-orbit editor profile, the native right-drag accumulator now
+    // advances, so a real drag cannot be classified as a short RMB click.
+    // The game uses its own NativeWindow configuration and is unchanged.
+    window_.SetEditorNavigationMode(false);
     std::string closeError;
     if(!closeGuard_.Install(config.title,[this]{return ConfirmClose();},closeError)){
         std::cerr<<"Studio cannot protect window-close data: "<<closeError<<'\n';
@@ -394,7 +418,14 @@ void StudioApplication::HandleInput(){
        documentShortcut!=StudioDocumentShortcut::SaveAs)SaveDocument();
     if(input_.WasPressed(InputAction::MenuAccept))RouteControl(ShipyardBuilderCommand::AddModule);
     if(input_.WasPressed(InputAction::EditorFrameShip)){
-        camera_.ClearPanOffset();camera_.SetZoom(1.0f);
+        // F reframes the whole assembly without resetting inspection orientation.
+        // Framing individual components needs a separate precise bounds pass.
+        float radius=6.0f;
+        for(const auto& part:builder_.Recipe().modules){
+            radius=std::max(radius,std::sqrt(part.x*part.x+part.y*part.y+part.z*part.z)*.24f+3.0f);
+        }
+        ConstructionEditorCameraSystem::FramePreservingOrientation(constructionCamera_,{},radius);
+        SyncConstructionCamera();
     }
     if(input_.WasPressed(InputAction::EditorToolSelect))RouteControl(ShipyardBuilderCommand::ToolSelect);
     if(input_.WasPressed(InputAction::EditorToolMove))RouteControl(ShipyardBuilderCommand::ToolMove);
@@ -582,11 +613,18 @@ void StudioApplication::HandleInput(){
     const float wheel=window_.ConsumeWheelDelta();
     if(wheel!=0.0f){
         if(!builder_.HandleWheel(window_.GetPointerX(),window_.GetPointerY(),wheel,window_.GetWidth(),window_.GetHeight()))
-            camera_.ZoomBy(wheel*.12f);
+            ConstructionEditorCameraSystem::Dolly(constructionCamera_,wheel);
     }
     float dx=0,dy=0;
-    if(window_.ConsumeCameraOrbitDelta(dx,dy))camera_.OrbitVisual(dx*.38f,-dy*.004f);
-    if(window_.ConsumeCameraPanDelta(dx,dy))camera_.PanViewRelative(dx*.012f,dy*.012f);
+    if(window_.ConsumeCameraOrbitDelta(dx,dy)){
+        // RMB: horizontal yaw, vertical pitch, including underneath the ship.
+        // Shift+RMB: roll about the viewing axis while preserving orbit pivot.
+        StudioCameraNavigation::Orbit(constructionCamera_,dx,dy,window_.IsShiftDown());
+    }
+    if(window_.ConsumeCameraPanDelta(dx,dy))
+        ConstructionEditorCameraSystem::PanPixels(constructionCamera_,dx,dy,
+            static_cast<float>(std::max(1,window_.GetHeight())));
+    SyncConstructionCamera();
     ShipyardBuildSafetySystem::SuppressFlightAndWeapons(input_);
 }
 } // namespace subspace

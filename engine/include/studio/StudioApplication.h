@@ -3,6 +3,7 @@
 #include "input/InputState.h"
 #include "platform/NativeWindow.h"
 #include "rendering/StrategicCamera.h"
+#include "editor/ConstructionEditorCameraSystem.h"
 #include "ship_editor/ShipyardBuilderSystem.h"
 #include "studio/StudioDocumentStore.h"
 #include "studio/StudioClosePolicy.h"
@@ -38,6 +39,8 @@ private:
     NativeWindow window_;
     NativeBattlefieldRenderer renderer_;
     StrategicCamera camera_;
+    ConstructionEditorCameraState constructionCamera_{};
+    void SyncConstructionCamera();
     ShipyardBuilderSystem builder_;
     StudioDocumentStore documents_;
     StudioNativeCloseGuard closeGuard_;

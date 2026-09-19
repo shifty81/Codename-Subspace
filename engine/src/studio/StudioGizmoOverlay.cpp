@@ -1,4 +1,5 @@
 #include "studio/StudioGizmoOverlay.h"
+#include "studio/StudioMeasurementFormat.h"
 #include <algorithm>
 #include <cmath>
 #include <iomanip>
@@ -59,26 +60,39 @@ void Glyph(char ch,float x,float y){
         case 'D':Line(x,y,x,y+13);Line(x,y,x+5,y);Line(x+5,y,x+8,y+3);
                  Line(x+8,y+3,x+8,y+10);Line(x+8,y+10,x+5,y+13);
                  Line(x+5,y+13,x,y+13);break;
+        case 'O':Line(x,y,x+8,y);Line(x+8,y,x+8,y+13);Line(x+8,y+13,x,y+13);Line(x,y+13,x,y);break;
+        case 'T':Line(x,y,x+8,y);Line(x+4,y,x+4,y+13);break;
+        case 'C':Line(x+8,y,x,y);Line(x,y,x,y+13);Line(x,y+13,x+8,y+13);break;
+        case 'L':Line(x,y,x,y+13);Line(x,y+13,x+8,y+13);break;
+        case 'I':Line(x,y,x+8,y);Line(x+4,y,x+4,y+13);Line(x,y+13,x+8,y+13);break;
+        case 'M':Line(x,y+13,x,y);Line(x,y,x+4,y+6);Line(x+4,y+6,x+8,y);Line(x+8,y,x+8,y+13);break;
         default:break;
     }
 }
-std::string FormatValue(float value,int decimals){
-    if(!std::isfinite(value))return "--";
-    // The readout is explicitly a compact viewport HUD. Never truncate the
-    // authoritative transform or mutate it to fit the available pixels.
-    if(std::fabs(value)>9999.0f)return value<0?"-9999":"9999";
-    if(std::fabs(value)<.5f*std::pow(10.0f,-decimals))value=0;
-    std::ostringstream text;text<<std::fixed<<std::setprecision(decimals)<<value;
-    return text.str();
+// One fixed-stroke text authority for the small Studio-only HUD. This is a
+// transitional presentation until the shared editor typography backend owns
+// these readouts; avoid inventing a second font or persistent UI state.
+void Label(const char* text,float x,float y){
+    for(;*text;++text,x+=10.0f)Glyph(*text,x,y);
 }
-void DrawNumber(float x,float y,float value,int decimals,bool degrees=false,bool percent=false){
-    const auto text=FormatValue(value,decimals);
-    glLineWidth(1.4f);
+void DimensionLetter(int axis,float x,float y){
+    if(axis==0){ // W = width
+        Line(x-4,y-5,x-2,y+5);Line(x-2,y+5,x,y);Line(x,y,x+2,y+5);Line(x+2,y+5,x+4,y-5);
+    }else if(axis==1){ // L = length
+        Line(x-4,y-5,x-4,y+5);Line(x-4,y+5,x+4,y+5);
+    }else{ // H = height
+        Line(x-4,y-5,x-4,y+5);Line(x+4,y-5,x+4,y+5);Line(x-4,y,x+4,y);
+    }
+}
+void DrawNumber(float x,float y,float value,int decimals,bool degrees=false,bool percent=false,bool meters=false){
+    const auto text=StudioMeasurementFormat::Compact(value,decimals);
+    glLineWidth(1.6f);
     for(const auto ch:text){Digit(ch,x,y);x+=ch=='.'?5.0f:9.0f;}
     if(degrees)Circle(x+2,y+2,2.1f);
     if(percent){ // % marker in the same tiny stroke vocabulary.
         Circle(x+2,y+3,1.3f);Circle(x+8,y+11,1.3f);Line(x+1,y+13,x+9,y+1);
     }
+    if(meters)Glyph('M',x+1,y+1);
 }
 void TransformHud(const StudioGizmoSnapshot& snapshot){
     const float availableWidth=snapshot.viewportRight-snapshot.viewportLeft;
@@ -88,25 +102,30 @@ void TransformHud(const StudioGizmoSnapshot& snapshot){
     glColor4f(.012f,.023f,.038f,.83f);
     glBegin(GL_QUADS);glVertex2f(x,y);glVertex2f(x+435,y);
        glVertex2f(x+435,y+106);glVertex2f(x,y+106);glEnd();
-    const float fieldStarts[3]={x+40.0f,x+168.0f,x+296.0f};
+    const float fieldStarts[3]={x+57.0f,x+181.0f,x+305.0f};
     const std::array<std::array<float,3>,4> rows={{snapshot.readout.position,
         snapshot.readout.rotationDegrees,snapshot.readout.scalePercent,
         snapshot.readout.nominalLocalMeters}};
-    const char names[4]={'P','R','S','D'};
     for(int row=0;row<4;++row){
         const float lineY=y+10+row*23.5f;
         if(row==3&&!snapshot.readout.nominalDimensionsAvailable)continue;
-        glColor4f(.85f,.90f,.96f,.96f);glLineWidth(1.6f);Glyph(names[row],x+11,lineY);
+        const auto kind=static_cast<StudioMeasurementKind>(row);
+        glColor4f(.76f,.86f,.94f,.98f);glLineWidth(1.6f);
+        Label(StudioMeasurementFormat::Label(kind),x+8,lineY);
         for(int axis=0;axis<3;++axis){
             const float start=fieldStarts[axis];
-            Color(axis,.94f);Letter(axis,start,lineY+7);
-            glColor4f(.86f,.93f,.97f,.94f);
-            DrawNumber(start+15,lineY,rows[static_cast<std::size_t>(row)][static_cast<std::size_t>(axis)],
-                       row==1||row==2?1:2,row==1,row==2);
+            Color(axis,.94f);
+            if(kind==StudioMeasurementKind::NominalDimensions)
+                DimensionLetter(axis,start,lineY+7); // W/L/H, not XYZ.
+            else Letter(axis,start,lineY+7);
+            glColor4f(.93f,.96f,1.0f,1.0f);
+            DrawNumber(start+13,lineY,rows[static_cast<std::size_t>(row)][static_cast<std::size_t>(axis)],
+                       row==1||row==2?1:2,StudioMeasurementFormat::IsDegrees(kind),
+                       StudioMeasurementFormat::IsPercent(kind),StudioMeasurementFormat::IsMeters(kind));
         }
     }
-    // D is source-catalog nominal local W/L/H bounds, not a measured mesh
-    // silhouette. The actual world AABB/rotated bounds require a separate bake.
+    // DIM is NOMINAL catalog-space W/L/H in meters. It is not mesh-exact,
+    // a rotated world AABB, a Boolean result, or a promise of interior volume.
 }
 void AngleGauge(float x,float y,float value,int axis){
     Color(axis,.93f);glLineWidth(2.2f);
