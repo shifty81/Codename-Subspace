@@ -5,6 +5,9 @@
 #include "rendering/StrategicCamera.h"
 #include "ship_editor/ShipyardBuilderSystem.h"
 #include "studio/StudioDocumentStore.h"
+#include "studio/StudioClosePolicy.h"
+#include "studio/StudioNativeCloseGuard.h"
+#include "studio/StudioAxisGizmo.h"
 #include "ship_editor/ShipyardDockPointerSystem.h"
 #include <cstdint>
 #include <filesystem>
@@ -19,6 +22,9 @@ public:
 private:
     void HandleInput();
     void HandleEscape();
+    void RestoreGizmoConstraint();
+    StudioCloseState CloseState() const;
+    bool ConfirmClose();
     void RouteControl(ShipyardBuilderCommand command,int value=0);
     void SaveDocument();
     void SaveAsDocument();
@@ -34,11 +40,21 @@ private:
     StrategicCamera camera_;
     ShipyardBuilderSystem builder_;
     StudioDocumentStore documents_;
+    StudioNativeCloseGuard closeGuard_;
+    bool closeRecoveryPrepared_=false;
+    bool closePromptActive_=false;
     GalaxySector emptySector_{};
     ShipyardDockPointerSystem dockPointer_;
     bool pendingCatalogPress_=false;
     bool catalogDragging_=false;
     bool pointerTransform_=false;
+    StudioAxis gizmoAxis_=StudioAxis::None;
+    ShipyardTransformConstraint previousGizmoConstraint_=ShipyardTransformConstraint::Free;
+    bool previousGizmoLocal_=false;
+    StudioAxisHandle gizmoStartHandle_{};
+    bool gizmoDragged_=false;
+    float gizmoPixelAccum_=0;
+    float gizmoAngleDelta_=0;
     bool suppressClick_=false;
     int pendingCatalogIndex_=-1;
     float catalogPressX_=0.0f, catalogPressY_=0.0f;

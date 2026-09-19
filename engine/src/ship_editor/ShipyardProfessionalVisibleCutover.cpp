@@ -547,7 +547,7 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         if(model.standaloneDesign&&!HasPlaced(model)&&387.0f*s<=vx-4.0f*s)
             add(ShipyardBuilderCommand::GenerateVariant,0,292.0f*s,vy,95.0f*s,buttonH,"GENERATE",false,true);
         add(ShipyardBuilderCommand::DccToggleGrid,0,vx,vy,48*s,buttonH,"GRID",model.dcc.showGrid,true);
-        add(ShipyardBuilderCommand::DccToggleGizmos,0,vx+51*s,vy,54*s,buttonH,"GIZMO",model.dcc.showGizmos,true);
+        add(ShipyardBuilderCommand::DccToggleGizmos,0,vx+51*s,vy,54*s,buttonH,model.standaloneDesign?"AXES":"GIZMO",model.dcc.showGizmos,true);
         add(ShipyardBuilderCommand::DccCycleShading,0,vx+108*s,vy,84*s,buttonH,ShipyardDccUiSystem::ShadingName(model.dcc.shading),true,true);
         add(ShipyardBuilderCommand::DccToggleStatsOverlay,0,vx+195*s,vy,54*s,buttonH,"STATS",model.dcc.showStatsOverlay,true);
         add(ShipyardBuilderCommand::DccCycleStudioView,0,vx+252*s,vy,62*s,buttonH,
@@ -647,12 +647,12 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
             add(ShipyardBuilderCommand::NextPrimaryFinish,0,tx,railButtonsY+4*(th+gap),tw,th,"FINISH",false,HasPlaced(model));
             add(ShipyardBuilderCommand::AddDecal,0,tx,railButtonsY+5*(th+gap),tw,th,"DECAL",false,HasPlaced(model));
         }else{
-            add(ShipyardBuilderCommand::ToolSelect,0,tx,railButtonsY,tw,th,"Q",model.transformTool==ShipyardTransformTool::Select,true);
-            add(ShipyardBuilderCommand::ToolMove,0,tx,railButtonsY+(th+gap),tw,th,"G",model.transformTool==ShipyardTransformTool::Move,HasPlaced(model));
-            add(ShipyardBuilderCommand::ToolRotate,0,tx,railButtonsY+2*(th+gap),tw,th,"R",model.transformTool==ShipyardTransformTool::Rotate,HasPlaced(model));
-            add(ShipyardBuilderCommand::ToolScale,0,tx,railButtonsY+3*(th+gap),tw,th,"S",model.transformTool==ShipyardTransformTool::Scale,HasPlaced(model));
-            add(ShipyardBuilderCommand::ToggleTransformSnap,0,tx,railButtonsY+4*(th+gap),tw,th,"SNAP",model.transformSnap,HasPlaced(model));
-            add(ShipyardBuilderCommand::FrameSelected,0,tx,railButtonsY+5*(th+gap),tw,th,"F",false,HasPlaced(model));
+            add(ShipyardBuilderCommand::ToolSelect,0,tx,railButtonsY,tw,th,model.standaloneDesign?"SELECT":"Q",model.transformTool==ShipyardTransformTool::Select,true);
+            add(ShipyardBuilderCommand::ToolMove,0,tx,railButtonsY+(th+gap),tw,th,model.standaloneDesign?"MOVE":"G",model.transformTool==ShipyardTransformTool::Move,HasPlaced(model));
+            add(ShipyardBuilderCommand::ToolRotate,0,tx,railButtonsY+2*(th+gap),tw,th,model.standaloneDesign?"ROTATE":"R",model.transformTool==ShipyardTransformTool::Rotate,HasPlaced(model));
+            add(ShipyardBuilderCommand::ToolScale,0,tx,railButtonsY+3*(th+gap),tw,th,model.standaloneDesign?"SCALE":"S",model.transformTool==ShipyardTransformTool::Scale,HasPlaced(model));
+            add(ShipyardBuilderCommand::ToggleTransformSnap,0,tx,railButtonsY+4*(th+gap),tw,th,model.standaloneDesign?(model.transformSnap?"SNAP ON":"SNAP OFF"):"SNAP",model.transformSnap,HasPlaced(model));
+            add(ShipyardBuilderCommand::FrameSelected,0,tx,railButtonsY+5*(th+gap),tw,th,model.standaloneDesign?"FRAME":"F",false,HasPlaced(model));
         }
     }
 
@@ -700,11 +700,11 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
             const float py=l.editLabelY;
             const float tabH=27.0f*s;
             const float tabGap=3.0f*s;
-            add(ShipyardBuilderCommand::InspectorTransform,0,rx,py,rail,tabH,"T",model.inspectorTab==ShipyardInspectorTab::Transform,true);
-            add(ShipyardBuilderCommand::InspectorAssembly,0,rx,py+(tabH+tabGap),rail,tabH,"A",model.inspectorTab==ShipyardInspectorTab::Assembly,true);
+            add(ShipyardBuilderCommand::InspectorTransform,0,rx,py,rail,tabH,model.standaloneDesign?"XYZ":"T",model.inspectorTab==ShipyardInspectorTab::Transform,true);
+            add(ShipyardBuilderCommand::InspectorAssembly,0,rx,py+(tabH+tabGap),rail,tabH,model.standaloneDesign?"ASM":"A",model.inspectorTab==ShipyardInspectorTab::Assembly,true);
             add(ShipyardBuilderCommand::InspectorSockets,0,rx,py+2*(tabH+tabGap),rail,tabH,"SCK",model.inspectorTab==ShipyardInspectorTab::Sockets,model.capabilities.sockets);
-            add(ShipyardBuilderCommand::InspectorAuthoring,0,rx,py+3*(tabH+tabGap),rail,tabH,"D",model.inspectorTab==ShipyardInspectorTab::Authoring,true);
-            add(ShipyardBuilderCommand::InspectorAppearance,0,rx,py+4*(tabH+tabGap),rail,tabH,"M",model.inspectorTab==ShipyardInspectorTab::Appearance,true);
+            add(ShipyardBuilderCommand::InspectorAuthoring,0,rx,py+3*(tabH+tabGap),rail,tabH,model.standaloneDesign?"DEF":"D",model.inspectorTab==ShipyardInspectorTab::Authoring,true);
+            add(ShipyardBuilderCommand::InspectorAppearance,0,rx,py+4*(tabH+tabGap),rail,tabH,model.standaloneDesign?"MAT":"M",model.inspectorTab==ShipyardInspectorTab::Appearance,true);
 
             const float px=rx+rail+7.0f*s;
             const float pw=rw-rail-7.0f*s;

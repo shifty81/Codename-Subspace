@@ -180,6 +180,9 @@ add_executable(subspace_studio
     "${CMAKE_CURRENT_SOURCE_DIR}/src/studio/StudioApplication.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/studio/StudioDocumentStore.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/studio/StudioFileDialog.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/studio/StudioNativeCloseGuard.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/studio/StudioAxisGizmo.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/studio/StudioGizmoOverlay.cpp"
 )
 target_link_libraries(subspace_studio PRIVATE subspace_native_host subspace_engine)
 
@@ -192,7 +195,7 @@ if(WIN32)
         target_link_libraries(${_subspace_native_executable} PRIVATE OpenGL::GL windowscodecs ole32)
     endforeach()
     # Win32 common document dialogs are Studio-owned, not gameplay dependencies.
-    target_link_libraries(subspace_studio PRIVATE comdlg32 user32)
+    target_link_libraries(subspace_studio PRIVATE comdlg32 user32 comctl32)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -979,6 +982,27 @@ endif()
 # without requiring a GPU, game session, renderer initialization, or Windows.
 if(SUBSPACE_BUILD_TESTS)
     add_test(NAME SubspaceStudioEntrypointHelp COMMAND subspace_studio --help)
+    add_executable(subspace_studio_transform_readout_tests "${CMAKE_CURRENT_SOURCE_DIR}/tests/studio_transform_readout_tests.cpp")
+    target_include_directories(subspace_studio_transform_readout_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_compile_features(subspace_studio_transform_readout_tests PRIVATE cxx_std_17)
+    add_test(NAME SubspaceStudioTransformReadoutTests COMMAND subspace_studio_transform_readout_tests)
+    add_executable(subspace_studio_gizmo_math_tests "${CMAKE_CURRENT_SOURCE_DIR}/tests/studio_gizmo_math_tests.cpp")
+    target_include_directories(subspace_studio_gizmo_math_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_compile_features(subspace_studio_gizmo_math_tests PRIVATE cxx_std_17)
+    add_test(NAME SubspaceStudioGizmoMathTests COMMAND subspace_studio_gizmo_math_tests)
+    add_executable(subspace_studio_close_policy_tests "${CMAKE_CURRENT_SOURCE_DIR}/tests/studio_close_policy_tests.cpp")
+    target_include_directories(subspace_studio_close_policy_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_compile_features(subspace_studio_close_policy_tests PRIVATE cxx_std_17)
+    add_test(NAME SubspaceStudioClosePolicyTests COMMAND subspace_studio_close_policy_tests)
+    add_executable(subspace_studio_native_close_guard_tests
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/studio_native_close_guard_tests.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/studio/StudioNativeCloseGuard.cpp")
+    target_include_directories(subspace_studio_native_close_guard_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_compile_features(subspace_studio_native_close_guard_tests PRIVATE cxx_std_17)
+    if(WIN32)
+        target_link_libraries(subspace_studio_native_close_guard_tests PRIVATE comctl32 user32)
+    endif()
+    add_test(NAME SubspaceStudioNativeCloseGuardTests COMMAND subspace_studio_native_close_guard_tests)
     add_executable(subspace_studio_document_recovery_tests "${CMAKE_CURRENT_SOURCE_DIR}/tests/studio_document_recovery_tests.cpp")
     target_include_directories(subspace_studio_document_recovery_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
     target_compile_features(subspace_studio_document_recovery_tests PRIVATE cxx_std_17)

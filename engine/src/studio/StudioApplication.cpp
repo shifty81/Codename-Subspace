@@ -5,12 +5,22 @@
 #include "studio/StudioRecoveryPathPolicy.h"
 #include "studio/StudioUnsavedWorkPolicy.h"
 #include "studio/StudioFileDialog.h"
+#include "studio/StudioClosePolicy.h"
+#include "studio/StudioGizmoOverlay.h"
+#include "studio/StudioGizmoMath.h"
+#ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
 #include "ship_editor/ShipyardDocumentStartupSystem.h"
 #include "ship_editor/ShipyardBuildSafetySystem.h"
 #include "editor/EditorTransformSpaceSystem.h"
 #include <algorithm>
 #include <chrono>
 #include <iostream>
+#include <cmath>
 
 namespace subspace {
 StudioApplication::StudioApplication():window_(input_) {}
@@ -44,6 +54,11 @@ int StudioApplication::Run(const std::filesystem::path& openFile,std::uint64_t m
     camera_.SetZoom(1.0f);camera_.SetTargetZoom(1.0f);
     camera_.SetVisualTilt(.46f);camera_.SetVisualHeight(.68f);
     window_.SetEditorNavigationMode(true);
+    std::string closeError;
+    if(!closeGuard_.Install(config.title,[this]{return ConfirmClose();},closeError)){
+        std::cerr<<"Studio cannot protect window-close data: "<<closeError<<'\n';
+        renderer_.Shutdown();window_.Shutdown();return 8;
+    }
     std::cout<<"Studio documents: Ctrl+O Open, Ctrl+N New, Ctrl+S Save, Ctrl+Shift+S Save As\n";
     const auto start=std::chrono::steady_clock::now();
     std::uint64_t frames=0;
@@ -62,7 +77,9 @@ int StudioApplication::Run(const std::filesystem::path& openFile,std::uint64_t m
     const StudioUnsavedWorkState unsaved{closing.dirty,closing.socketOverridesDirty,
         closing.definitionOverridesDirty,!closing.modeling.recipe.primitives.empty(),
         closing.interiorStructure.dirty};
-    if(StudioRecoveryPathPolicy::NeedsRecovery(unsaved.blueprint)){
+    // The WM_CLOSE handler has already written and verified recovery before
+    // releasing the window. Do not create a duplicate or erase the receipt.
+    if(!closeRecoveryPrepared_ && StudioRecoveryPathPolicy::NeedsRecovery(unsaved.blueprint)){
         std::filesystem::path recovered;
         std::string error;
         if(documents_.SaveExitRecovery(builder_,recovered,error)){
@@ -76,7 +93,71 @@ int StudioApplication::Run(const std::filesystem::path& openFile,std::uint64_t m
         std::cerr<<"Studio exit WARNING: socket/definition overrides and editable model/interior drafts are NOT in blueprint recovery\n";
         exitCode=7;
     }
+    closeGuard_.Detach();
     renderer_.Shutdown();window_.Shutdown();return exitCode;
+}
+
+StudioCloseState StudioApplication::CloseState() const {
+    const auto& state=builder_.Model();
+    return {state.dirty,state.socketOverridesDirty,state.definitionOverridesDirty,
+            !state.modeling.recipe.primitives.empty(),state.interiorStructure.dirty};
+}
+
+bool StudioApplication::ConfirmClose(){
+    const auto before=CloseState();
+    if(!StudioClosePolicy::NeedsPrompt(before))return true;
+    if(closePromptActive_)return false; // modal OS message loops may re-enter WM_CLOSE
+    closePromptActive_=true;
+    struct ResetPrompt { bool& active; ~ResetPrompt(){active=false;} } reset{closePromptActive_};
+#ifdef _WIN32
+    const int choice=MessageBoxW(GetActiveWindow(),
+        L"This Studio session has unsaved work.\n\n"
+        L"YES: Save the ship blueprint and close (only if all work is saved).\n"
+        L"NO: Close with a separate blueprint recovery when a ship exists.\n"
+        L"CANCEL: Keep Studio open.\n\n"
+        L"Model/interior drafts and socket/definition edits are not stored in blueprint recovery.",
+        L"Subspace Studio - Unsaved Work",MB_YESNOCANCEL|MB_ICONWARNING|MB_DEFBUTTON3);
+    if(choice==IDCANCEL||choice==0)return false;
+    if(choice==IDYES){
+        if(StudioClosePolicy::NeedsExplicitDataLossWarning(before)){
+            StudioFileDialog::ShowError("Blueprint Save cannot preserve model/interior drafts or unpublished overrides. Model/interior persistence is not yet implemented: Cancel keeps Studio open; Close with recovery requires a separate explicit loss acknowledgement.");
+            return false;
+        }
+        SaveDocument(); // a canceled chooser or failed write leaves dirty state intact
+        if(!StudioClosePolicy::MayCloseAfterSave(CloseState())){
+            StudioFileDialog::ShowError("Studio remains open: the document has unsaved changes.");
+            return false;
+        }
+        return true;
+    }
+    // This is a SECOND, explicit acknowledgement when there is authoring data
+    // the blueprint codec cannot recover. Cancel never dismisses the window.
+    bool acknowledged=false;
+    if(StudioClosePolicy::NeedsExplicitDataLossWarning(before)){
+        const int confirm=MessageBoxW(GetActiveWindow(),
+            L"WARNING: The blueprint recovery file cannot save editable model or interior drafts,"
+            L" or unpublished socket/definition overrides. Those changes may be LOST.\n\n"
+            L"Continue closing with only the blueprint recovery?",
+            L"Subspace Studio - Partial Recovery",MB_OKCANCEL|MB_ICONSTOP|MB_DEFBUTTON2);
+        if(confirm!=IDOK)return false;
+        acknowledged=true;
+    }
+    bool recovered=!before.blueprintDirty;
+    if(before.blueprintDirty){
+        std::filesystem::path path;
+        std::string error;
+        recovered=documents_.SaveExitRecovery(builder_,path,error);
+        if(!recovered){
+            StudioFileDialog::ShowError("Close canceled: verified blueprint recovery failed. "+error);
+            return false;
+        }
+        closeRecoveryPrepared_=true;
+        std::cerr<<"Studio close: verified blueprint-only recovery at "<<path.string()<<'\n';
+    }
+    return StudioClosePolicy::MayCloseWithRecovery(before,recovered,acknowledged);
+#else
+    return false; // no unguarded close on a backend without a confirmation UI
+#endif
 }
 
 void StudioApplication::RenderFrame(float elapsed){
@@ -94,6 +175,41 @@ void StudioApplication::RenderFrame(float elapsed){
     frame.pointerX=window_.GetPointerX();frame.pointerY=window_.GetPointerY();
     frame.elapsedSeconds=elapsed;
     renderer_.Render(frame);
+    // Overlay uses the exact same projected ship position, viewport dock bounds,
+    // and input picking snapshot. It never owns the blueprint or renderer.
+    auto gizmo=StudioAxisGizmo::Build(builder_.Model(),camera_,window_.GetWidth(),window_.GetHeight());
+    for(auto& handle:gizmo.handles){
+        if(!handle.valid)continue;
+        const auto& dock=builder_.Model().dockWorkspace;
+        const int h=std::max(1,static_cast<int>(ShipyardBuilderSystem::Layout(
+            builder_.Model(),window_.GetWidth(),window_.GetHeight()).statusY));
+        const float top=gizmo.viewportTop;
+        if(ShipyardDockPointerSystem::CoversFloatingPanel(dock,window_.GetWidth(),h,top,
+                    handle.center.x,handle.center.y)||
+           ShipyardDockPointerSystem::CoversFloatingPanel(dock,window_.GetWidth(),h,top,
+                    handle.tip.x,handle.tip.y))handle.valid=false;
+    }
+    gizmo.visible=false;for(const auto& handle:gizmo.handles)gizmo.visible|=handle.valid;
+    // The measurement HUD cannot paint across floating docks. The normal
+    // viewport scissor is insufficient because floating panels live inside
+    // the viewport rectangle and are composed before this OpenGL overlay.
+    if(gizmo.readoutVisible){
+        const auto& dock=builder_.Model().dockWorkspace;
+        const auto layout=ShipyardBuilderSystem::Layout(builder_.Model(),window_.GetWidth(),window_.GetHeight());
+        const int dockHeight=std::max(1,static_cast<int>(layout.statusY));
+        for(int row=0;row<3&&gizmo.readoutVisible;++row){
+            for(int col=0;col<3&&gizmo.readoutVisible;++col){
+                const float x=gizmo.viewportLeft+9.0f+217.5f*col;
+                const float y=gizmo.viewportTop+9.0f+53.0f*row;
+                if(ShipyardDockPointerSystem::CoversFloatingPanel(dock,window_.GetWidth(),dockHeight,
+                    gizmo.viewportTop,x,y))gizmo.readoutVisible=false;
+            }
+        }
+    }
+    const auto hovered=gizmo.Pick(window_.GetPointerX(),window_.GetPointerY());
+    StudioGizmoOverlay::Draw(gizmo,window_.GetWidth(),window_.GetHeight(),
+        gizmoAxis_,hovered,builder_.Model().transformTool==ShipyardTransformTool::Rotate,
+        gizmoAngleDelta_);
 }
 
 void StudioApplication::LoadAuthoringOverrides(){
@@ -193,6 +309,7 @@ void StudioApplication::OpenDocument(){
     }
     if(!documents_.Open(selected,builder_,error)){ShowDocumentError("Open blocked: "+error);return;}
     pendingCatalogPress_=false;catalogDragging_=false;pointerTransform_=false;
+    gizmoAxis_=StudioAxis::None;gizmoDragged_=false;gizmoPixelAccum_=0;gizmoAngleDelta_=0;
     dockPointer_.Cancel();suppressClick_=true;
     std::cout<<"Studio opened "<<documents_.Path().string()<<'\n';
 }
@@ -200,6 +317,7 @@ void StudioApplication::NewDocument(){
     std::string error;
     if(!documents_.New(builder_,error)){ShowDocumentError("New blocked: "+error);return;}
     pendingCatalogPress_=false;catalogDragging_=false;pointerTransform_=false;
+    gizmoAxis_=StudioAxis::None;gizmoDragged_=false;gizmoPixelAccum_=0;gizmoAngleDelta_=0;
     dockPointer_.Cancel();suppressClick_=true;
     std::cout<<"Studio: new empty document\n";
 }
@@ -215,8 +333,23 @@ void StudioApplication::RouteControl(ShipyardBuilderCommand command,int value){
     if(builder_.ConsumeDefinitionOverridesSaveRequested())SaveAuthoringOverrides(false);
 }
 
+void StudioApplication::RestoreGizmoConstraint(){
+    if(previousGizmoConstraint_==ShipyardTransformConstraint::Free)
+        builder_.ClearTransformConstraint();
+    else {
+        builder_.SetTransformConstraint(previousGizmoConstraint_,false);
+        if(previousGizmoLocal_)builder_.SetTransformConstraint(previousGizmoConstraint_,true);
+    }
+}
 void StudioApplication::HandleEscape(){
+    if(gizmoAxis_!=StudioAxis::None){
+        builder_.CancelTransform();RestoreGizmoConstraint();
+        gizmoAxis_=StudioAxis::None;gizmoDragged_=false;gizmoPixelAccum_=0;
+        gizmoAngleDelta_=0;pointerTransform_=false;suppressClick_=true;
+        return;
+    }
     pendingCatalogPress_=false;catalogDragging_=false;pointerTransform_=false;
+    gizmoAxis_=StudioAxis::None;gizmoDragged_=false;gizmoPixelAccum_=0;gizmoAngleDelta_=0;
     dockPointer_.Cancel();suppressClick_=true;
     if(builder_.Model().assetSearchFocused){builder_.BlurAssetSearch();return;}
     // Socket manipulation has a distinct transaction from module transforms.
@@ -285,6 +418,29 @@ void StudioApplication::HandleInput(){
                 !ShipyardDockPointerSystem::CoversFloatingPanel(builder_.Model().dockWorkspace,
                    window_.GetWidth(),std::max(1,static_cast<int>(layout.statusY)),
                    layout.viewportTop,pressX,pressY)){
+                const auto snapshot=StudioAxisGizmo::Build(builder_.Model(),camera_,window_.GetWidth(),window_.GetHeight());
+                const auto axis=snapshot.Pick(pressX,pressY);
+                if(axis!=StudioAxis::None){
+                    const auto* handle=snapshot.Handle(axis);
+                    const bool obscured=!handle||ShipyardDockPointerSystem::CoversFloatingPanel(
+                        builder_.Model().dockWorkspace,window_.GetWidth(),
+                        std::max(1,static_cast<int>(layout.statusY)),layout.viewportTop,
+                        handle->tip.x,handle->tip.y);
+                    if(!obscured&&builder_.BeginSelectedTransform()){
+                        previousGizmoConstraint_=builder_.Model().transformConstraint;
+                        previousGizmoLocal_=builder_.Model().transformConstraintLocal;
+                        gizmoAxis_=axis;gizmoStartHandle_=*handle;
+                        gizmoPixelAccum_=0;gizmoAngleDelta_=0;gizmoDragged_=false;
+                        // Rotation's packed delta order is pitch, yaw, roll;
+                        // the physical gizmo's order is X, Y, Z. Apply the
+                        // mapped FIELD constraint, not the visible axis index.
+                        const auto constrained=builder_.Model().transformTool==ShipyardTransformTool::Rotate?
+                            StudioGizmoMath::RotationFieldAxis(axis):axis;
+                        builder_.SetTransformConstraint(constrained==StudioAxis::X?ShipyardTransformConstraint::X:
+                            constrained==StudioAxis::Y?ShipyardTransformConstraint::Y:ShipyardTransformConstraint::Z,false);
+                        pointerTransform_=true;suppressClick_=true;
+                    }
+                }else{
                 const int picked=NativeBattlefieldRenderer::PickShipyardModule(builder_.Model().catalog,
                     builder_.Recipe(),camera_,window_.GetWidth(),window_.GetHeight(),
                     pressX,pressY,0,0,0,.24f,.22f,true);
@@ -295,6 +451,7 @@ void StudioApplication::HandleInput(){
                             builder_.BeginSelectedSocketTransform():builder_.BeginSelectedTransform();
                     }
                 }
+                } // no handle: ordinary part selection remains available
             }
         }
     }
@@ -319,6 +476,51 @@ void StudioApplication::HandleInput(){
                 const float yaw=EditorTransformSpaceSystem::RenderedRootYawRadians(0.0f,builder_.Recipe().forwardVisualYawDegrees);
                 builder_.UpdateCatalogDrag(EditorTransformSpaceSystem::WorldToAssemblyDelta(world,yaw));
             }else if(pointerTransform_){
+                if(gizmoAxis_!=StudioAxis::None){
+                    // One pointer gesture = one authoritative ship-axis transaction.
+                    // Absolute targets avoid losing sub-snap drag deltas between frames.
+                    const auto& tx=builder_.Model().transform;
+                    const auto axis=gizmoAxis_;
+                    const bool rotate=builder_.Model().transformTool==ShipyardTransformTool::Rotate;
+                    gizmoPixelAccum_+=StudioGizmoMath::DragScalar(gizmoStartHandle_,dragX,dragY,rotate);
+                    if(std::fabs(gizmoPixelAccum_)>0.001f)gizmoDragged_=true;
+                    const bool fine=window_.IsShiftDown();
+                    const float step=std::max(.01f,camera_.GetZoom());
+                    if(rotate){
+                        const auto before=StudioGizmoMath::RotationComponent(axis,tx.before.pitchDegrees,
+                            tx.before.yawDegrees,tx.before.rollDegrees);
+                        const auto working=StudioGizmoMath::RotationComponent(axis,tx.working.pitchDegrees,
+                            tx.working.yawDegrees,tx.working.rollDegrees);
+                        float desired=before+gizmoPixelAccum_*(fine?.035f:.35f);
+                        if(tx.snap&&!fine&&tx.rotationSnapDegrees>0)
+                            desired=std::round(desired/tx.rotationSnapDegrees)*tx.rotationSnapDegrees;
+                        const float delta=desired-working;
+                        const float sourceDelta=fine?delta*10.0f:delta;
+                        const Vector3 rotation{axis==StudioAxis::X?sourceDelta:0,
+                            axis==StudioAxis::Z?sourceDelta:0,axis==StudioAxis::Y?sourceDelta:0};
+                        if(std::fabs(delta)>1e-5f)builder_.RotateSelected(rotation,fine);
+                        const auto& applied=builder_.Model().transform;
+                        gizmoAngleDelta_=StudioGizmoMath::RotationComponent(axis,applied.working.pitchDegrees,
+                            applied.working.yawDegrees,applied.working.rollDegrees)-before;
+                    }else if(builder_.Model().transformTool==ShipyardTransformTool::Move){
+                        const float before=StudioGizmoMath::Component(axis,tx.before.x,tx.before.y,tx.before.z);
+                        const float working=StudioGizmoMath::Component(axis,tx.working.x,tx.working.y,tx.working.z);
+                        const float desired=before+gizmoPixelAccum_*.012f/std::max(.35f,step)*(fine?.1f:1.0f);
+                        const float delta=desired-working;
+                        const float sourceDelta=fine?delta*10.0f:delta;
+                        const Vector3 translation{axis==StudioAxis::X?sourceDelta:0,
+                            axis==StudioAxis::Y?sourceDelta:0,axis==StudioAxis::Z?sourceDelta:0};
+                        if(std::fabs(delta)>1e-6f)builder_.TranslateSelected(translation,fine);
+                    }else if(builder_.Model().transformTool==ShipyardTransformTool::Scale){
+                        const float before=StudioGizmoMath::Component(axis,tx.before.scaleX,tx.before.scaleY,tx.before.scaleZ);
+                        const float working=StudioGizmoMath::Component(axis,tx.working.scaleX,tx.working.scaleY,tx.working.scaleZ);
+                        const float desired=std::clamp(before+gizmoPixelAccum_*.003f*(fine?.1f:1.0f),.10f,4.0f);
+                        const float delta=desired-working,sourceDelta=fine?delta*10.0f:delta;
+                        const Vector3 scale{axis==StudioAxis::X?sourceDelta:0,
+                            axis==StudioAxis::Y?sourceDelta:0,axis==StudioAxis::Z?sourceDelta:0};
+                        if(std::fabs(delta)>1e-6f)builder_.ScaleSelected(scale,fine);
+                    }
+                }else{
                 const bool fine=window_.IsShiftDown();
                 const bool socket=builder_.Model().inspectorTab==ShipyardInspectorTab::Sockets;
                 const auto tool=builder_.Model().transformTool;
@@ -336,6 +538,7 @@ void StudioApplication::HandleInput(){
                     const float amount=(dragX-dragY)*.003f;
                     builder_.ScaleSelected({amount,amount,amount},fine);
                 }
+                } // free manipulation, independent from axis gizmo
             }
         }
     }
@@ -349,7 +552,21 @@ void StudioApplication::HandleInput(){
         if(catalogDragging_)builder_.StageCatalogDrag();
         catalogDragging_=false;pendingCatalogPress_=false;pendingCatalogIndex_=-1;
         if(pointerTransform_){
-            if(builder_.Model().inspectorTab==ShipyardInspectorTab::Sockets)builder_.CommitSocketTransform();
+            if(gizmoAxis_!=StudioAxis::None){
+                const auto& tx=builder_.Model().transform;
+                const auto& a=tx.before;const auto& b=tx.working;
+                const auto changed=[](float x,float y){return std::fabs(x-y)>1e-5f;};
+                const bool mutated=changed(a.x,b.x)||changed(a.y,b.y)||changed(a.z,b.z)||
+                    changed(a.pitchDegrees,b.pitchDegrees)||changed(a.yawDegrees,b.yawDegrees)||
+                    changed(a.rollDegrees,b.rollDegrees)||changed(a.scaleX,b.scaleX)||
+                    changed(a.scaleY,b.scaleY)||changed(a.scaleZ,b.scaleZ);
+                if(gizmoDragged_&&mutated)builder_.CommitTransform();
+                else builder_.CancelTransform(); // click/sub-snap motion is not undo history
+                RestoreGizmoConstraint();
+                gizmoAxis_=StudioAxis::None;gizmoDragged_=false;
+                gizmoPixelAccum_=0;gizmoAngleDelta_=0;
+            }else if(builder_.Model().inspectorTab==ShipyardInspectorTab::Sockets)
+                builder_.CommitSocketTransform();
             else builder_.CommitTransform();
             pointerTransform_=false;suppressClick_=true;
         }
