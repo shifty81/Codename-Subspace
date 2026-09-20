@@ -423,7 +423,11 @@ long long NativeWindow::WindowProc(void* hwndRaw, unsigned int message,
 
         case WM_KILLFOCUS:
             _inputState.Clear();
-            _primaryButtonDown=false; _primaryPressPending=false; _primaryReleasePending=false; _primaryDragDeltaX=0.0f; _primaryDragDeltaY=0.0f; _cameraOrbitDragging=false; _cameraPanDragging=false; _altDown=false;
+            _primaryButtonDown=false; _primaryPressPending=false; _primaryReleasePending=false; _primaryDragDeltaX=0.0f; _primaryDragDeltaY=0.0f; _cameraOrbitDragging=false; _cameraPanDragging=false;
+            // Win32 may never deliver the matching KEYUP after focus leaves.
+            // A stale Ctrl blocks W/Q/E/S; a stale Shift changes shortcuts.
+            _altDown=false; _controlDown=false; _shiftDown=false;
+            _secondaryClickPending=false; _primaryClickPending=false;
             return 0;
 
         case WM_MOUSEMOVE: {

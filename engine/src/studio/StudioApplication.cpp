@@ -9,6 +9,7 @@
 #include "studio/StudioExitOutcomePolicy.h"
 #include "studio/StudioGizmoOverlay.h"
 #include "studio/StudioGizmoMath.h"
+#include "studio/StudioToolInteractionPolicy.h"
 #ifdef _WIN32
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -442,15 +443,48 @@ void StudioApplication::HandleInput(){
         ConstructionEditorCameraSystem::FramePreservingOrientation(constructionCamera_,{},radius);
         SyncConstructionCamera();
     }
-    if(input_.WasPressed(InputAction::EditorToolSelect))RouteControl(ShipyardBuilderCommand::ToolSelect);
-    if(input_.WasPressed(InputAction::EditorToolMove))RouteControl(ShipyardBuilderCommand::ToolMove);
-    if(input_.WasPressed(InputAction::EditorToolRotate))RouteControl(ShipyardBuilderCommand::ToolRotate);
-    if(scalePressed&&!window_.IsControlDown())RouteControl(ShipyardBuilderCommand::ToolScale);
-    if(input_.WasPressed(InputAction::DccCommandSearch))RouteControl(ShipyardBuilderCommand::DccToggleCommandPalette);
-    if(input_.WasPressed(InputAction::DccWorkspaceNext))RouteControl(ShipyardBuilderCommand::DccWorkspaceNext);
-    if(input_.WasPressed(InputAction::DccWorkspacePrevious))RouteControl(ShipyardBuilderCommand::DccWorkspacePrevious);
+    // NativeWindow publishes the DCC actions; standalone Studio must route
+    // them itself (the game app's shortcut dispatcher is never instantiated).
+    // Typing in Asset Search must never move or delete a ship component.
+    const bool typing=builder_.Model().assetSearchFocused;
+    const bool ctrl=window_.IsControlDown();
+    if(!typing){
+        if(input_.WasPressed(InputAction::DccMaximizeArea))
+            RouteControl(ShipyardBuilderCommand::DccToggleMaximizeViewport);
+        if(input_.WasPressed(InputAction::DccCommandSearch))
+            RouteControl(ShipyardBuilderCommand::DccToggleCommandPalette);
+        if(input_.WasPressed(InputAction::DccWorkspaceNext))
+            RouteControl(ShipyardBuilderCommand::DccWorkspaceNext);
+        if(input_.WasPressed(InputAction::DccWorkspacePrevious))
+            RouteControl(ShipyardBuilderCommand::DccWorkspacePrevious);
+        if(!ctrl){
+            if(input_.WasPressed(InputAction::EditorToolSelect))RouteControl(ShipyardBuilderCommand::ToolSelect);
+            if(input_.WasPressed(InputAction::EditorToolMove))RouteControl(ShipyardBuilderCommand::ToolMove);
+            if(input_.WasPressed(InputAction::EditorToolRotate))RouteControl(ShipyardBuilderCommand::ToolRotate);
+            if(scalePressed)RouteControl(ShipyardBuilderCommand::ToolScale);
+            if(input_.WasPressed(InputAction::DccToggleToolbar))RouteControl(ShipyardBuilderCommand::DccToggleToolRail);
+            if(input_.WasPressed(InputAction::DccToggleSidebar))RouteControl(ShipyardBuilderCommand::DccToggleSidebar);
+            if(input_.WasPressed(InputAction::DccCycleAssetFilter))RouteControl(ShipyardBuilderCommand::DccNextAssetPreset);
+            if(input_.WasPressed(InputAction::DccConstraintX))RouteControl(ShipyardBuilderCommand::TransformConstraintX);
+            if(input_.WasPressed(InputAction::DccConstraintY))RouteControl(ShipyardBuilderCommand::TransformConstraintY);
+            if(input_.WasPressed(InputAction::DccConstraintZ))RouteControl(ShipyardBuilderCommand::TransformConstraintZ);
+            if(input_.WasPressed(InputAction::EditorFrameSelected))RouteControl(ShipyardBuilderCommand::FrameSelected);
+            if(builder_.Model().workspaceMode==ShipyardWorkspaceMode::Build){
+                if(input_.WasPressed(InputAction::EditorDeleteModule))RouteControl(ShipyardBuilderCommand::RemoveModule);
+                if(input_.WasPressed(InputAction::EditorNudgeLeft))RouteControl(ShipyardBuilderCommand::NudgePort);
+                if(input_.WasPressed(InputAction::EditorNudgeRight))RouteControl(ShipyardBuilderCommand::NudgeStarboard);
+                if(input_.WasPressed(InputAction::EditorNudgeForward))RouteControl(ShipyardBuilderCommand::NudgeForward);
+                if(input_.WasPressed(InputAction::EditorNudgeAft))RouteControl(ShipyardBuilderCommand::NudgeAft);
+                if(input_.WasPressed(InputAction::EditorNudgeUp))RouteControl(ShipyardBuilderCommand::NudgeDorsal);
+                if(input_.WasPressed(InputAction::EditorNudgeDown))RouteControl(ShipyardBuilderCommand::NudgeVentral);
+            }
+        }
+    }
     float pressX=0,pressY=0;
     if(window_.ConsumePrimaryPress(pressX,pressY)){
+        // A previous real drag has no click edge; do not suppress the
+        // NEXT unrelated click after the user has released the mouse.
+        suppressClick_=false;
         const auto layout=ShipyardBuilderSystem::Layout(builder_.Model(),window_.GetWidth(),window_.GetHeight());
         const bool dockCaptured=dockPointer_.Begin(builder_.Model().dockWorkspace,
             window_.GetWidth(),std::max(1,static_cast<int>(layout.statusY)),layout.viewportTop,pressX,pressY);
@@ -491,10 +525,16 @@ void StudioApplication::HandleInput(){
                     builder_.Recipe(),camera_,window_.GetWidth(),window_.GetHeight(),
                     pressX,pressY,0,0,0,.24f,.22f,true);
                 if(picked>=0){
-                    RouteControl(ShipyardBuilderCommand::SelectPlaced,picked);
-                    if(builder_.Model().transformTool!=ShipyardTransformTool::Select){
+                    // Select changes target; other tools can free-drag only the
+                    // ALREADY selected part. A miss cannot silently retarget.
+                    const auto tool=builder_.Model().transformTool;
+                    if(StudioToolInteractionPolicy::AllowsViewportReselection(tool)){
+                        RouteControl(ShipyardBuilderCommand::SelectPlaced,picked);
+                    }else if(StudioToolInteractionPolicy::AllowsGizmoGesture(tool)&&
+                             static_cast<std::size_t>(picked)==builder_.Model().selectedPlacedModule){
                         pointerTransform_=builder_.Model().inspectorTab==ShipyardInspectorTab::Sockets?
                             builder_.BeginSelectedSocketTransform():builder_.BeginSelectedTransform();
+                        if(pointerTransform_)suppressClick_=true;
                     }
                 }
                 } // no handle: ordinary part selection remains available
