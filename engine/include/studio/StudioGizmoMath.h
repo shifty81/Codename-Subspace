@@ -64,5 +64,11 @@ struct StudioGizmoMath {
             default:return StudioAxis::None;
         }
     }
+    // The assembled ship and the non-destructive model recipe have distinct
+    // rotation storage contracts. Never apply the assembly Y/Z swap to the
+    // model's true XYZ angles: that causes a moving angle HUD but no geometry.
+    static constexpr StudioAxis ConstraintFieldAxis(StudioAxis axis,bool modelMode,bool rotation) noexcept {
+        return rotation&&!modelMode?RotationFieldAxis(axis):axis;
+    }
 };
 }

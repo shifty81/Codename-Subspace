@@ -1,0 +1,12 @@
+# Null Harbor R3 — Widget and renderer acceptance (manual Windows run required)
+
+1. Before applying: capture `git rev-parse HEAD`, `git status --short`, latest PCC receipt, `Get-FileHash` for StudioApplication/StudioAxisGizmo/SpaceMaterialSystem. Never force an overwrite when preimage differs.
+2. Apply the R3 `.patch` through project-owned PCC, then run Full Quality Gate. The read-only tests are `python tools/studio/tests/test_studio_foundation_r3.py --root .`, `python tools/identity/tests/test_null_harbor_rebrand_audit.py`; projection test is registered in CMake as `SubspaceStudioGizmoProjectionPolicyTests` and the foundation static gate runs through the existing static-certification suite.
+3. In **Model**, add an *asymmetric* wedge or beam. Select Rotate, Move and Scale. Orbit until the view is nearly parallel to each physical X, Y and Z axis. At every camera angle, verify each visible, distinct tip is clickable and drives the correct physical axis. Check both model geometry and readout; use undo and save/reopen. Ensure old Assembly/socket behavior remains unchanged.
+4. Switch Inspector to Sockets while in Assembly, then enter Model and select Rotate: the stale Assembly-only inspector mode must not eliminate the widget.
+5. Float Outliner/Inspector over the object; verify hidden handle portions do not capture clicks through the floating panel. Redock, resize and repeat. If all handles are occluded, move the panel: this patch does not yet implement complete panel-aware partial gizmo clipping.
+6. Run the same test with material shader enabled and with the shader failure/fallback path if exposed by a supported project setting. Visually compare before/after and inspect OpenGL compile/link errors. The R3 scope intentionally restores the prior material program after the overlay.
+7. Check 1120x740, 1280x800, 1600x900, 1920x1080, 2560x1440; scale 100%,125%,150%,200%. Record overlaps, missing controls and the real pointer positions. R3 does not claim GUI normalization completion.
+8. Verify shader R1 material appearance, planet day/night, shields and in-game/studio equivalent assets. Save before any material edits, and don't commit/push until Full Gate and hands-on acceptance pass.
+
+Fail conditions: invisible gizmo at an unobstructed valid camera, readout-only transform, disabled input due active material shader, wrong physical axis, GUI hit region mismatch, missing saved changes, shader compile failure without explicit fallback, or regression of assembly transforms.

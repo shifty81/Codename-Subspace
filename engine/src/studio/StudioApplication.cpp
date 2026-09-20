@@ -8,6 +8,7 @@
 #include "studio/StudioClosePolicy.h"
 #include "studio/StudioExitOutcomePolicy.h"
 #include "studio/StudioGizmoOverlay.h"
+#include "studio/StudioOverlayProgramScope.h"
 #include "studio/StudioGizmoMath.h"
 #include "studio/StudioToolInteractionPolicy.h"
 #ifdef _WIN32
@@ -308,6 +309,11 @@ void StudioApplication::RenderFrame(float elapsed){
         }
     }
     const auto hovered=gizmo.Pick(window_.GetPointerX(),window_.GetPointerY());
+    // The material renderer can leave a GLSL program bound.  Traditional
+    // glPushAttrib does NOT save GL_CURRENT_PROGRAM, so the fixed-function
+    // gizmo overlay must temporarily unbind the material program and restore it.
+    // This scope never changes picking or the authoritative transform model.
+    const StudioOverlayProgramScope overlayProgramScope;
     StudioGizmoOverlay::Draw(gizmo,window_.GetWidth(),window_.GetHeight(),
         gizmoAxis_,hovered,builder_.Model().transformTool==ShipyardTransformTool::Rotate,
         gizmoAngleDelta_);
@@ -595,11 +601,12 @@ void StudioApplication::HandleInput(){
                         previousGizmoLocal_=builder_.Model().transformConstraintLocal;
                         gizmoAxis_=axis;gizmoStartHandle_=*handle;
                         gizmoPixelAccum_=0;gizmoAngleDelta_=0;gizmoDragged_=false;
-                        // Rotation's packed delta order is pitch, yaw, roll;
-                        // the physical gizmo's order is X, Y, Z. Apply the
-                        // mapped FIELD constraint, not the visible axis index.
-                        const auto constrained=builder_.Model().transformTool==ShipyardTransformTool::Rotate?
-                            StudioGizmoMath::RotationFieldAxis(axis):axis;
+                        // Assembly placement stores pitch/yaw/roll in packed fields;
+                        // object-model primitives store true physical XYZ angles.
+                        // Only assembly rotation needs the legacy Y/Z field swap.
+                        const auto constrained=StudioGizmoMath::ConstraintFieldAxis(axis,
+                            builder_.Model().workspaceMode==ShipyardWorkspaceMode::Model,
+                            builder_.Model().transformTool==ShipyardTransformTool::Rotate);
                         builder_.SetTransformConstraint(constrained==StudioAxis::X?ShipyardTransformConstraint::X:
                             constrained==StudioAxis::Y?ShipyardTransformConstraint::Y:ShipyardTransformConstraint::Z,false);
                         pointerTransform_=true;suppressClick_=true;

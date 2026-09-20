@@ -1,4 +1,5 @@
 #include "studio/StudioAxisGizmo.h"
+#include "studio/StudioGizmoProjectionPolicy.h"
 #include "application/NativeBattlefieldRenderer.h"
 #include "editor/EditorTransformSpaceSystem.h"
 #include "rendering/ForwardSpacePresentationSystem.h"
@@ -12,7 +13,7 @@ StudioGizmoSnapshot StudioAxisGizmo::Build(const ShipyardBuilderRuntimeModel& mo
     const bool modelMode=model.workspaceMode==ShipyardWorkspaceMode::Model&&!model.modeling.recipe.primitives.empty();
     const bool assemblyMode=model.workspaceMode==ShipyardWorkspaceMode::Build&&!model.recipe.modules.empty();
     if(width<=0||height<=0||(!modelMode&&!assemblyMode)||!model.dcc.showGizmos||model.testWorkspaceActive||
-       model.inspectorTab==ShipyardInspectorTab::Sockets||model.dragPreview.active||model.dragPreview.staged)return out;
+       (assemblyMode&&model.inspectorTab==ShipyardInspectorTab::Sockets)||model.dragPreview.active||model.dragPreview.staged)return out;
     const auto layout=ShipyardBuilderSystem::Layout(model,width,height);
     out.viewportLeft=layout.viewportLeft;out.viewportRight=layout.viewportRight;
     out.viewportTop=layout.viewportTop;out.viewportBottom=layout.viewportBottom;
@@ -30,8 +31,11 @@ StudioGizmoSnapshot StudioAxisGizmo::Build(const ShipyardBuilderRuntimeModel& mo
         for(int i=0;i<3;++i){
             const auto projected=NativeBattlefieldRenderer::WorldToScreen(p.position+basis[i]*std::max(1.0f,p.size.length()*.55f),width,height,camera);
             auto& h=out.handles[static_cast<std::size_t>(i)];h.axis=static_cast<StudioAxis>(i);h.center={center.x,center.y};
-            if(!projected.visible)continue;const StudioPoint raw{projected.x-center.x,projected.y-center.y};if(StudioGizmoMath::Length(raw)<1.8f)continue;
-            const auto dir=StudioGizmoMath::Unit(raw);float length=68.0f;
+            if(!projected.visible)continue;const StudioPoint raw{projected.x-center.x,projected.y-center.y};// A camera looking along an axis projects it to nearly one pixel.
+            // Keep an explicitly screen-space handle for that physical axis
+            // instead of making the only mouse target disappear.
+            const auto dir=StudioGizmoProjectionPolicy::Direction(h.axis,raw);
+            float length=68.0f;
             const float left=out.viewportLeft+10,right=out.viewportRight-10,top=out.viewportTop+10,bottom=out.viewportBottom-10;
             if(dir.x>.001f)length=std::min(length,(right-center.x)/dir.x);else if(dir.x<-.001f)length=std::min(length,(left-center.x)/dir.x);
             if(dir.y>.001f)length=std::min(length,(bottom-center.y)/dir.y);else if(dir.y<-.001f)length=std::min(length,(top-center.y)/dir.y);
@@ -65,8 +69,8 @@ StudioGizmoSnapshot StudioAxisGizmo::Build(const ShipyardBuilderRuntimeModel& mo
         h.center={center.x,center.y};
         if(!projected.visible)continue;
         const StudioPoint projectedDelta{projected.x-center.x,projected.y-center.y};
-        if(StudioGizmoMath::Length(projectedDelta)<1.8f)continue;
-        const auto dir=StudioGizmoMath::Unit(projectedDelta);
+        // Preserve manipulator availability at camera-aligned views, too.
+        const auto dir=StudioGizmoProjectionPolicy::Direction(h.axis,projectedDelta);
         float length=68.0f;const float left=out.viewportLeft+10,right=out.viewportRight-10,top=out.viewportTop+10,bottom=out.viewportBottom-10;
         if(dir.x>.001f)length=std::min(length,(right-center.x)/dir.x);else if(dir.x<-.001f)length=std::min(length,(left-center.x)/dir.x);
         if(dir.y>.001f)length=std::min(length,(bottom-center.y)/dir.y);else if(dir.y<-.001f)length=std::min(length,(top-center.y)/dir.y);

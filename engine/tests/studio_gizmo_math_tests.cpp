@@ -63,5 +63,25 @@ int main(){
     Check(Near(masked(StudioAxis::Z,0,20,0),20),"Z survives constraint");
     Check(Near(masked(StudioAxis::Y,0,20,0),0),"Y excludes yaw field");
     Check(Near(masked(StudioAxis::Z,0,0,20),0),"Z excludes roll field");
+    // A model recipe uses XYZ geometry rotation directly. Assembly retains its
+    // historical packed pitch/yaw/roll mapping; translation remains direct.
+    Check(StudioGizmoMath::ConstraintFieldAxis(StudioAxis::X,true,true)==StudioAxis::X,
+          "model X rotation retains physical X");
+    Check(StudioGizmoMath::ConstraintFieldAxis(StudioAxis::Y,true,true)==StudioAxis::Y,
+          "model Y rotation retains physical Y");
+    Check(StudioGizmoMath::ConstraintFieldAxis(StudioAxis::Z,true,true)==StudioAxis::Z,
+          "model Z rotation retains physical Z");
+    Check(StudioGizmoMath::ConstraintFieldAxis(StudioAxis::X,false,true)==StudioAxis::X,
+          "assembly X rotation retains pitch mapping");
+    Check(StudioGizmoMath::ConstraintFieldAxis(StudioAxis::Y,false,true)==StudioAxis::Z,
+          "assembly Y rotation retains roll mapping");
+    Check(StudioGizmoMath::ConstraintFieldAxis(StudioAxis::Z,false,true)==StudioAxis::Y,
+          "assembly Z rotation retains yaw mapping");
+    Check(StudioGizmoMath::ConstraintFieldAxis(StudioAxis::Y,true,false)==StudioAxis::Y,
+          "model Y movement is direct");
+    Check(StudioGizmoMath::ConstraintFieldAxis(StudioAxis::Z,false,false)==StudioAxis::Z,
+          "assembly Z movement is direct");
+    Check(StudioGizmoMath::ConstraintFieldAxis(StudioAxis::None,true,true)==StudioAxis::None,
+          "invalid model axis is neutral");
     std::cout<<"Studio gizmo math: "<<count<<"/"<<count<<" PASS\n";
 }

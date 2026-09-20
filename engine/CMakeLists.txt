@@ -1036,4 +1036,11 @@ if(SUBSPACE_BUILD_TESTS)
     add_test(NAME SubspaceStudioModelDocumentCodecTests COMMAND subspace_studio_model_document_codec_tests)
     add_test(NAME SubspaceStudioModelingClosureSourceGate COMMAND ${CMAKE_COMMAND}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/../tools/control/static-gates/studio_modeling_closure_authority.cmake)
+    # R3: camera-aligned axis availability is a real CTest contract, not a
+    # report-only Python assertion. Builds on all compiler toolchains.
+    add_executable(subspace_studio_gizmo_projection_policy_tests
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/studio_gizmo_projection_policy_tests.cpp")
+    target_include_directories(subspace_studio_gizmo_projection_policy_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_compile_features(subspace_studio_gizmo_projection_policy_tests PRIVATE cxx_std_17)
+    add_test(NAME SubspaceStudioGizmoProjectionPolicyTests COMMAND subspace_studio_gizmo_projection_policy_tests)
 endif()
