@@ -52,6 +52,7 @@ public:
     bool ConsumePrimaryPress(float& x, float& y);
     bool ConsumePrimaryDragDelta(float& deltaX, float& deltaY);
     bool ConsumePrimaryRelease(float& x, float& y);
+    bool ConsumeInputCaptureLost() { const bool lost=_inputCaptureLostPending;_inputCaptureLostPending=false;return lost; }
     bool IsPrimaryButtonDown() const { return _primaryButtonDown; }
     bool IsControlDown() const { return _controlDown; }
     bool IsShiftDown() const { return _shiftDown; }
@@ -112,6 +113,7 @@ private:
     bool _primaryPressPending = false;
     bool _primaryReleasePending = false;
     bool _primaryButtonDown = false;
+    bool _inputCaptureLostPending = false;
     float _primaryDownX = 0.0f;
     float _primaryDownY = 0.0f;
     float _lastPrimaryX = 0.0f;

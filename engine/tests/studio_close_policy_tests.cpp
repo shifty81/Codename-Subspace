@@ -17,6 +17,7 @@ int main(){
     expect(StudioClosePolicy::NeedsPrompt(overrides),"override drafts request confirmation");
     expect(!StudioClosePolicy::NeedsExplicitDataLossWarning(assembly),"blueprint has recovery lane");
     expect(StudioClosePolicy::NeedsExplicitDataLossWarning(model),"model needs explicit warning");
+    expect(!StudioClosePolicy::NeedsExplicitDataLossWarning(model,true),"verified independent model recovery removes warning");
     expect(StudioClosePolicy::NeedsExplicitDataLossWarning(interior),"interior needs warning");
     expect(StudioClosePolicy::NeedsExplicitDataLossWarning(overrides),"overrides need warning");
     expect(StudioClosePolicy::MayCloseAfterSave(clean),"no work lost on clean close");
@@ -24,6 +25,8 @@ int main(){
     expect(!StudioClosePolicy::MayCloseWithRecovery(assembly,false,true),"failed recovery vetoes close");
     expect(StudioClosePolicy::MayCloseWithRecovery(assembly,true,false),"verified blueprint recovery permits close");
     expect(!StudioClosePolicy::MayCloseWithRecovery(model,true,false),"unacknowledged model loss vetoes close");
+    expect(StudioClosePolicy::MayCloseWithRecovery(model,true,false,true),"verified model plus blueprint recovery permits close");
+    expect(!StudioClosePolicy::MayCloseWithRecovery(model,false,false,true),"model recovery cannot excuse failed blueprint recovery");
     expect(StudioClosePolicy::MayCloseWithRecovery(model,true,true),"explicitly acknowledged partial recovery");
     expect(!StudioClosePolicy::MayCloseWithRecovery(interior,true,false),"interior warning cannot be bypassed");
     expect(StudioClosePolicy::MayCloseWithRecovery(interior,false,true),"interior-only explicit discard permitted");

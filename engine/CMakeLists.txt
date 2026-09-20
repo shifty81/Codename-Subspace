@@ -181,6 +181,7 @@ add_executable(subspace_studio
     "${CMAKE_CURRENT_SOURCE_DIR}/src/studio/StudioDocumentStore.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/studio/StudioFileDialog.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/studio/StudioNativeCloseGuard.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/studio/StudioModelDocumentCodec.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/studio/StudioAxisGizmo.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/studio/StudioGizmoOverlay.cpp"
 )
@@ -1028,4 +1029,11 @@ if(SUBSPACE_BUILD_TESTS)
     add_executable(subspace_studio_document_roundtrip_tests "${CMAKE_CURRENT_SOURCE_DIR}/tests/studio_document_roundtrip_tests.cpp")
     target_link_libraries(subspace_studio_document_roundtrip_tests PRIVATE subspace_engine)
     add_test(NAME SubspaceStudioDocumentRoundtripTests COMMAND subspace_studio_document_roundtrip_tests)
+    add_executable(subspace_studio_model_document_codec_tests
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/studio_model_document_codec_tests.cpp"
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/studio/StudioModelDocumentCodec.cpp")
+    target_link_libraries(subspace_studio_model_document_codec_tests PRIVATE subspace_engine)
+    add_test(NAME SubspaceStudioModelDocumentCodecTests COMMAND subspace_studio_model_document_codec_tests)
+    add_test(NAME SubspaceStudioModelingClosureSourceGate COMMAND ${CMAKE_COMMAND}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/../tools/control/static-gates/studio_modeling_closure_authority.cmake)
 endif()

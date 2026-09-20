@@ -15,7 +15,8 @@ namespace subspace {
 namespace {
 #ifdef _WIN32
 constexpr wchar_t kBlueprintFilter[] =
-    L"Subspace blueprints (*.subspace_ship)\0*.subspace_ship\0All files (*.*)\0*.*\0";
+    L"Subspace Studio documents (*.subspace_studio;*.subspace_ship)\0*.subspace_studio;*.subspace_ship\0"
+    L"Model documents (*.subspace_studio)\0*.subspace_studio\0Ship blueprints (*.subspace_ship)\0*.subspace_ship\0All files (*.*)\0*.*\0";
 
 bool Choose(const std::filesystem::path& directory,const std::filesystem::path& initial,
             bool save,std::filesystem::path& selected,std::string& error){
@@ -32,7 +33,8 @@ bool Choose(const std::filesystem::path& directory,const std::filesystem::path& 
     request.lpstrFile=buffer.data();
     request.nMaxFile=static_cast<DWORD>(buffer.size());
     request.lpstrInitialDir=dir.empty()?nullptr:dir.c_str();
-    request.lpstrDefExt=L"subspace_ship";
+    const bool modelDefault=initial.extension()==".subspace_studio";
+    request.lpstrDefExt=modelDefault?L"subspace_studio":L"subspace_ship";
     request.lpstrTitle=save?L"Save Subspace ship as":L"Open Subspace ship";
     request.Flags=OFN_EXPLORER|OFN_NOCHANGEDIR|OFN_PATHMUSTEXIST|
                   (save?0u:OFN_FILEMUSTEXIST);

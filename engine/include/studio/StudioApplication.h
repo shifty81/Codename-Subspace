@@ -45,7 +45,8 @@ private:
     ShipyardBuilderSystem builder_;
     StudioDocumentStore documents_;
     StudioNativeCloseGuard closeGuard_;
-    bool closeRecoveryPrepared_=false;
+    bool closeRecoveryPrepared_=false; // verified blueprint recovery only
+    bool modelRecoveryPrepared_=false; // verified independent model recovery only
     bool closePromptActive_=false;
     StudioExitOutcome closeOutcome_=StudioExitOutcome::Unconfirmed;
     GalaxySector emptySector_{};

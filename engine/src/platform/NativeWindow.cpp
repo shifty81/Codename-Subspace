@@ -143,6 +143,7 @@ void NativeWindow::Shutdown()
     _instance = nullptr;
 #endif
     _inputState.Clear();
+    _inputCaptureLostPending=false;
     _open = false;
 }
 
@@ -422,6 +423,7 @@ long long NativeWindow::WindowProc(void* hwndRaw, unsigned int message,
             return 0;
 
         case WM_KILLFOCUS:
+            if(_primaryButtonDown)_inputCaptureLostPending=true;
             _inputState.Clear();
             _primaryButtonDown=false; _primaryPressPending=false; _primaryReleasePending=false; _primaryDragDeltaX=0.0f; _primaryDragDeltaY=0.0f; _cameraOrbitDragging=false; _cameraPanDragging=false;
             // Win32 may never deliver the matching KEYUP after focus leaves.
@@ -429,6 +431,14 @@ long long NativeWindow::WindowProc(void* hwndRaw, unsigned int message,
             _altDown=false; _controlDown=false; _shiftDown=false;
             _secondaryClickPending=false; _primaryClickPending=false;
             return 0;
+
+        case WM_CAPTURECHANGED:
+            if(_primaryButtonDown){
+                _inputCaptureLostPending=true;_primaryButtonDown=false;
+                _primaryPressPending=false;_primaryReleasePending=false;_primaryClickPending=false;
+                _primaryDragDeltaX=_primaryDragDeltaY=0.0f;
+            }
+            _cameraOrbitDragging=false;_cameraPanDragging=false;return 0;
 
         case WM_MOUSEMOVE: {
             _pointerX = static_cast<float>(static_cast<short>(LOWORD(static_cast<LPARAM>(lParam))));

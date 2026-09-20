@@ -181,6 +181,7 @@ enum class ShipyardBuilderCommand {
     ToolScale,
     ModelPreviousPrimitive,
     ModelNextPrimitive,
+    ModelSelectPrimitive,
     ModelAddShape,
     ModelAddBox,
     ModelAddWedge,
@@ -513,6 +514,9 @@ public:
     bool LegacyActivate(ShipyardBuilderCommand command, int value = 0);
     bool CanUndoAuthoring() const { return !authoringUndo_.empty(); }
     bool CanRedoAuthoring() const { return !authoringRedo_.empty(); }
+    bool HasUnsavedModeling() const { return model_.modeling.recipe.revision!=model_.modeling.savedRevision; }
+    void SetModelingState(const ShipyardModelingState& state);
+    void MarkModelingSaved(const std::string& path);
     bool UndoAuthoring();
     bool RedoAuthoring();
     std::size_t AuthoringUndoCount() const { return authoringUndo_.size(); }
@@ -661,6 +665,7 @@ private:
     std::vector<ShipyardBuilderRuntimeModel> authoringUndo_{};
     std::vector<ShipyardBuilderRuntimeModel> authoringRedo_{};
     std::optional<ShipyardBuilderRuntimeModel> pendingTransformHistory_{};
+    bool modelTransformActive_ = false;
     std::optional<ShipyardBuilderRuntimeModel> pendingSocketTransformHistory_{};
     std::optional<ShipyardBuilderRuntimeModel> pendingDragHistory_{};
     ProceduralShipVisualRecipe initialRecipe_{};

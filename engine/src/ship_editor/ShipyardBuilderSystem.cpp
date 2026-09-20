@@ -1209,6 +1209,11 @@ bool ShipyardBuilderSystem::RecordsAuthoringHistory(ShipyardBuilderCommand comma
     case ShipyardBuilderCommand::ModelAddDoor:
     case ShipyardBuilderCommand::ModelAddAirlock:
     case ShipyardBuilderCommand::ModelAddFloor:
+    case ShipyardBuilderCommand::ModelDuplicatePrimitive:
+    case ShipyardBuilderCommand::ModelRemovePrimitive:
+    case ShipyardBuilderCommand::ModelAddMirrorModifier:
+    case ShipyardBuilderCommand::ModelAddLinearArrayModifier:
+    case ShipyardBuilderCommand::ModelAddBevelModifier:
     case ShipyardBuilderCommand::ModelPreviousPurpose:
     case ShipyardBuilderCommand::ModelNextPurpose:
     case ShipyardBuilderCommand::ModelAssignPurpose:
@@ -1410,6 +1415,11 @@ bool ShipyardBuilderSystem::ActivateInternal(ShipyardBuilderCommand command,int 
         case ShipyardBuilderCommand::ToolMove:if(model_.inspectorTab!=ShipyardInspectorTab::Sockets&&model_.workspaceMode!=ShipyardWorkspaceMode::Model){model_.workspaceMode=ShipyardWorkspaceMode::Build;model_.inspectorTab=ShipyardInspectorTab::Transform;}model_.transformTool=ShipyardTransformTool::Move;CancelTransform();CancelSocketTransform();model_.status=model_.inspectorTab==ShipyardInspectorTab::Sockets?"Socket MOVE tool":"Move tool";return true;
         case ShipyardBuilderCommand::ToolRotate:if(model_.inspectorTab!=ShipyardInspectorTab::Sockets&&model_.workspaceMode!=ShipyardWorkspaceMode::Model){model_.workspaceMode=ShipyardWorkspaceMode::Build;model_.inspectorTab=ShipyardInspectorTab::Transform;}model_.transformTool=ShipyardTransformTool::Rotate;CancelTransform();CancelSocketTransform();model_.status=model_.inspectorTab==ShipyardInspectorTab::Sockets?"Socket ROTATE tool":"Rotate tool";return true;
         case ShipyardBuilderCommand::ToolScale:if(model_.workspaceMode!=ShipyardWorkspaceMode::Model){model_.workspaceMode=ShipyardWorkspaceMode::Build;model_.inspectorTab=ShipyardInspectorTab::Transform;}model_.transformTool=ShipyardTransformTool::Scale;CancelTransform();model_.status="Scale tool";return true;
+        case ShipyardBuilderCommand::ModelSelectPrimitive:{
+            if(!model_.capabilities.model||value<0||static_cast<std::size_t>(value)>=model_.modeling.recipe.primitives.size())return false;
+            model_.modeling.selectedPrimitiveIndex=static_cast<std::size_t>(value);
+            model_.modeling.selectedPrimitive=model_.modeling.recipe.primitives[static_cast<std::size_t>(value)].type;
+            model_.status=std::string("Selected model shape ")+model_.modeling.recipe.primitives[static_cast<std::size_t>(value)].id;return true;}
         case ShipyardBuilderCommand::ModelPreviousPrimitive:
         case ShipyardBuilderCommand::ModelNextPrimitive:{if(!model_.capabilities.model)return false;constexpr int count=static_cast<int>(ModelingPrimitiveType::Pipe)+1;int i=static_cast<int>(model_.modeling.selectedPrimitive)+(command==ShipyardBuilderCommand::ModelNextPrimitive?1:-1);if(i<0)i=count-1;if(i>=count)i=0;model_.modeling.selectedPrimitive=static_cast<ModelingPrimitiveType>(i);model_.status=std::string("Add Shape: ")+ShipyardModelingSystem::PrimitiveName(model_.modeling.selectedPrimitive);return true;}
         case ShipyardBuilderCommand::ModelAddShape:{if(!model_.capabilities.model)return false;const auto i=ShipyardModelingSystem::AddPrimitive(model_.modeling.recipe,model_.modeling.selectedPrimitive);model_.modeling.selectedPrimitiveIndex=i;model_.dirty=true;model_.status=std::string("Added modeled ")+ShipyardModelingSystem::PrimitiveName(model_.modeling.selectedPrimitive)+" shape";return true;}
@@ -1433,7 +1443,7 @@ bool ShipyardBuilderSystem::ActivateInternal(ShipyardBuilderCommand command,int 
         case ShipyardBuilderCommand::ModelPreviousPurpose:
         case ShipyardBuilderCommand::ModelNextPurpose:{if(!model_.capabilities.model)return false;constexpr int count=11;int i=static_cast<int>(model_.modeling.selectedPurpose)+(command==ShipyardBuilderCommand::ModelNextPurpose?1:-1);if(i<0)i=count-1;if(i>=count)i=0;model_.modeling.selectedPurpose=static_cast<SemanticObjectPurpose>(i);model_.status=std::string("Object purpose: ")+AuthoringStandardsSystem::PurposeName(model_.modeling.selectedPurpose);return true;}
         case ShipyardBuilderCommand::ModelAssignPurpose:{if(!model_.capabilities.model)return false;const bool ok=ShipyardModelingSystem::AssignSemanticPurpose(model_.modeling.recipe,model_.modeling.selectedPurpose,model_.worldScale);if(ok){model_.dirty=true;model_.status=std::string("Assigned gameplay purpose: ")+AuthoringStandardsSystem::PurposeName(model_.modeling.selectedPurpose)+" - validate character fit before publish";}return ok;}
-        case ShipyardBuilderCommand::ModelCycleSelectionMode:{if(!model_.capabilities.model)return false;int i=(static_cast<int>(model_.modeling.selectionMode)+1)%4;model_.modeling.selectionMode=static_cast<ModelingSelectionMode>(i);model_.modeling.recipe.selectionMode=model_.modeling.selectionMode;model_.status=std::string("Model selection: ")+ShipyardModelingSystem::SelectionModeName(model_.modeling.selectionMode);return true;}
+        case ShipyardBuilderCommand::ModelCycleSelectionMode:{if(!model_.capabilities.model)return false;model_.modeling.selectionMode=ModelingSelectionMode::Object;model_.modeling.recipe.selectionMode=ModelingSelectionMode::Object;model_.status="OBJECT primitive editing active; vertex/edge/face topology tools are not implemented and are not exposed";return true;}
         case ShipyardBuilderCommand::ModelStretchXNegative:case ShipyardBuilderCommand::ModelStretchXPositive:case ShipyardBuilderCommand::ModelStretchYNegative:case ShipyardBuilderCommand::ModelStretchYPositive:case ShipyardBuilderCommand::ModelStretchZNegative:case ShipyardBuilderCommand::ModelStretchZPositive:{if(!model_.capabilities.model||model_.modeling.recipe.primitives.empty())return false;Vector3 d{};const float step=model_.modeling.stretchStep;const float sign=(command==ShipyardBuilderCommand::ModelStretchXNegative||command==ShipyardBuilderCommand::ModelStretchYNegative||command==ShipyardBuilderCommand::ModelStretchZNegative)?-1.0f:1.0f;if(command==ShipyardBuilderCommand::ModelStretchXNegative||command==ShipyardBuilderCommand::ModelStretchXPositive)d.x=step*sign;else if(command==ShipyardBuilderCommand::ModelStretchYNegative||command==ShipyardBuilderCommand::ModelStretchYPositive)d.y=step*sign;else d.z=step*sign;const bool ok=ShipyardModelingSystem::StretchPrimitive(model_.modeling.recipe,std::min(model_.modeling.selectedPrimitiveIndex,model_.modeling.recipe.primitives.size()-1),d,model_.modeling.symmetricStretch);if(ok){model_.dirty=true;model_.status="Modeled shape stretched; collision marked dirty";}return ok;}
         case ShipyardBuilderCommand::ModelToggleSymmetricStretch:if(!model_.capabilities.model)return false;model_.modeling.symmetricStretch=!model_.modeling.symmetricStretch;model_.status=std::string("Symmetric stretch ")+(model_.modeling.symmetricStretch?"ON":"OFF");return true;
         case ShipyardBuilderCommand::ModelValidate:{if(!model_.capabilities.model)return false;const auto v=ShipyardModelingSystem::Validate(model_.modeling.recipe);model_.status=v.valid?"Model recipe valid; collision/surface warnings may remain":"Model recipe invalid - inspect modeling errors";return true;}
@@ -1656,6 +1666,11 @@ void ShipyardBuilderSystem::ClearTransformConstraint(){
 }
 
 bool ShipyardBuilderSystem::BeginSelectedTransform(){
+    if(model_.workspaceMode==ShipyardWorkspaceMode::Model){
+        if(model_.modeling.recipe.primitives.empty()||model_.transformTool==ShipyardTransformTool::Select)return false;
+        if(!pendingTransformHistory_)pendingTransformHistory_=model_;
+        modelTransformActive_=true;model_.status="Model transform preview";return true;
+    }
     if(model_.recipe.modules.empty()||model_.transformTool==ShipyardTransformTool::Select)return false;
     if(!pendingTransformHistory_)pendingTransformHistory_=model_;
     const auto index=std::min(model_.selectedPlacedModule,model_.recipe.modules.size()-1);
@@ -1670,6 +1685,11 @@ bool ShipyardBuilderSystem::BeginSelectedTransform(){
 }
 
 bool ShipyardBuilderSystem::ResetSelectedTransformPreview(){
+    if(modelTransformActive_&&pendingTransformHistory_){
+        model_.modeling=pendingTransformHistory_->modeling;
+        model_.dirty=pendingTransformHistory_->dirty;
+        return true;
+    }
     if(!model_.transform.active||model_.transform.moduleIndex>=model_.recipe.modules.size())return false;
     model_.transform.working=model_.transform.before;
     model_.recipe.modules[model_.transform.moduleIndex]=model_.transform.before;
@@ -1751,9 +1771,24 @@ bool ShipyardBuilderSystem::ScaleAssembly(float factor){
     std::ostringstream ss;ss.setf(std::ios::fixed);ss.precision(2);ss<<"Assembly scaled x"<<safeFactor;if(std::fabs(safeFactor-factor)>.0001f)ss<<" (morph-limited)";model_.status=ss.str();return true;
 }
 
-bool ShipyardBuilderSystem::CommitTransform(){if(!model_.transform.active)return false;const auto index=model_.transform.moduleIndex;auto p=ShipyardTransformSystem::Commit(model_.transform);if(index<model_.recipe.modules.size())model_.recipe.modules[index]=p;SyncSymmetryPartner(index);model_.validation=Validate();if(pendingTransformHistory_){PushAuthoringSnapshot(*pendingTransformHistory_);pendingTransformHistory_.reset();}model_.status=model_.validation.valid?"Transform committed":"Transform committed with validation issues";return true;}
+bool ShipyardBuilderSystem::CommitTransform(){
+    if(modelTransformActive_){
+        modelTransformActive_=false;
+        if(pendingTransformHistory_){
+            if(model_.modeling.recipe.revision!=pendingTransformHistory_->modeling.recipe.revision)PushAuthoringSnapshot(*pendingTransformHistory_);
+            pendingTransformHistory_.reset();
+        }
+        model_.status="Model transform committed";return true;
+    }
+    if(!model_.transform.active)return false;const auto index=model_.transform.moduleIndex;auto p=ShipyardTransformSystem::Commit(model_.transform);if(index<model_.recipe.modules.size())model_.recipe.modules[index]=p;SyncSymmetryPartner(index);model_.validation=Validate();if(pendingTransformHistory_){PushAuthoringSnapshot(*pendingTransformHistory_);pendingTransformHistory_.reset();}model_.status=model_.validation.valid?"Transform committed":"Transform committed with validation issues";return true;}
 
-bool ShipyardBuilderSystem::CancelTransform(){if(!model_.transform.active)return false;const auto index=model_.transform.moduleIndex;auto p=ShipyardTransformSystem::Cancel(model_.transform);if(index<model_.recipe.modules.size())model_.recipe.modules[index]=p;pendingTransformHistory_.reset();model_.status="Transform cancelled";return true;}
+bool ShipyardBuilderSystem::CancelTransform(){
+    if(modelTransformActive_){
+        modelTransformActive_=false;
+        if(pendingTransformHistory_){model_.modeling=pendingTransformHistory_->modeling;model_.dirty=pendingTransformHistory_->dirty;pendingTransformHistory_.reset();}
+        model_.status="Model transform cancelled";return true;
+    }
+    if(!model_.transform.active)return false;const auto index=model_.transform.moduleIndex;auto p=ShipyardTransformSystem::Cancel(model_.transform);if(index<model_.recipe.modules.size())model_.recipe.modules[index]=p;pendingTransformHistory_.reset();model_.status="Transform cancelled";return true;}
 
 bool ShipyardBuilderSystem::MirrorSelectedSubtreeX(){
     if(model_.recipe.modules.empty())return false;
@@ -1989,6 +2024,17 @@ bool ShipyardBuilderSystem::ConsumeSaveRequested(){const bool v=saveRequested_;s
 bool ShipyardBuilderSystem::ConsumeSocketOverridesSaveRequested(){const bool v=socketOverridesSaveRequested_;socketOverridesSaveRequested_=false;return v;}
 bool ShipyardBuilderSystem::ConsumeDefinitionOverridesSaveRequested(){const bool v=definitionOverridesSaveRequested_;definitionOverridesSaveRequested_=false;return v;}
 void ShipyardBuilderSystem::MarkApplied(){model_.dirty=false;model_.status="Applied to player ship visual blueprint";}
+void ShipyardBuilderSystem::SetModelingState(const ShipyardModelingState& state){
+    model_.modeling=state;model_.workspaceMode=ShipyardWorkspaceMode::Model;
+    model_.transformTool=ShipyardTransformTool::Select;model_.transformSpace=ShipyardTransformSpace::Ship;
+    model_.dirty=false;modelTransformActive_=false;pendingTransformHistory_.reset();
+    model_.status="Model document loaded";
+}
+void ShipyardBuilderSystem::MarkModelingSaved(const std::string& path){
+    model_.modeling.savedRevision=model_.modeling.recipe.revision;
+    if(model_.recipe.modules.empty())model_.dirty=false;
+    model_.status="Saved model document: "+path;
+}
 void ShipyardBuilderSystem::MarkSaved(const std::string& path){
     if(path.rfind("ERROR",0)==0){model_.status="Blueprint save failed: "+path;return;}
     // This export stores ship recipe and appearance, NOT the editable model or

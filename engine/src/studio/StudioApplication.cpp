@@ -26,6 +26,52 @@
 #include <cmath>
 
 namespace subspace {
+namespace {
+// Rendering and pointer-down share one occlusion-filtered snapshot. Hidden
+// handles are never pickable through a floating panel.
+StudioGizmoSnapshot VisibleGizmoSnapshot(const ShipyardBuilderRuntimeModel& model,
+        const StrategicCamera& camera,int width,int height){
+    auto snapshot=StudioAxisGizmo::Build(model,camera,width,height);
+    if(!snapshot.visible)return snapshot;
+    const auto layout=ShipyardBuilderSystem::Layout(model,width,height);
+    const int dockHeight=std::max(1,static_cast<int>(layout.statusY));
+    for(auto& handle:snapshot.handles){
+        if(!handle.valid)continue;
+        for(int sample=0;sample<=5;++sample){
+            const float t=static_cast<float>(sample)/5.0f;
+            const float x=handle.center.x+(handle.tip.x-handle.center.x)*t;
+            const float y=handle.center.y+(handle.tip.y-handle.center.y)*t;
+            if(ShipyardDockPointerSystem::CoversFloatingPanel(model.dockWorkspace,
+                    width,dockHeight,layout.viewportTop,x,y)){handle.valid=false;break;}
+        }
+    }
+    snapshot.visible=false;for(const auto& h:snapshot.handles)snapshot.visible|=h.valid;
+    return snapshot;
+}
+
+int PickModelPrimitive(const ShipyardBuilderRuntimeModel& model,const StrategicCamera& camera,
+                       int width,int height,float x,float y){
+    if(model.workspaceMode!=ShipyardWorkspaceMode::Model||model.modeling.recipe.primitives.empty())return -1;
+    const auto layout=ShipyardBuilderSystem::Layout(model,width,height);
+    if(x<layout.viewportLeft||x>layout.viewportRight||y<layout.viewportTop||y>layout.viewportBottom)return -1;
+    float best=1.0e30f;int picked=-1;
+    for(std::size_t i=0;i<model.modeling.recipe.primitives.size();++i){
+        const auto& p=model.modeling.recipe.primitives[i];
+        const auto center=NativeBattlefieldRenderer::WorldToScreen(p.position,width,height,camera);
+        if(!center.visible)continue;
+        float radius=14.0f;
+        const Vector3 half=p.size*.5f;
+        for(const Vector3 d: {Vector3{half.x,0,0},Vector3{0,half.y,0},Vector3{0,0,half.z}}){
+            const auto edge=NativeBattlefieldRenderer::WorldToScreen(p.position+d,width,height,camera);
+            if(edge.visible){const float dx=edge.x-center.x,dy=edge.y-center.y;radius=std::max(radius,std::sqrt(dx*dx+dy*dy));}
+        }
+        radius=std::clamp(radius,14.0f,180.0f);
+        const float dx=x-center.x,dy=y-center.y,d2=dx*dx+dy*dy;
+        if(d2<=radius*radius&&d2<best){best=d2;picked=static_cast<int>(i);}
+    }
+    return picked;
+}
+} // namespace
 StudioApplication::StudioApplication():window_(input_) {}
 
 void StudioApplication::SyncConstructionCamera(){
@@ -100,8 +146,8 @@ int StudioApplication::Run(const std::filesystem::path& openFile,std::uint64_t m
     }
     int exitCode=0;
     const auto& closing=builder_.Model();
-    const StudioUnsavedWorkState unsaved{closing.dirty,closing.socketOverridesDirty,
-        closing.definitionOverridesDirty,!closing.modeling.recipe.primitives.empty(),
+    const StudioUnsavedWorkState unsaved{closing.dirty&&!closing.recipe.modules.empty(),closing.socketOverridesDirty,
+        closing.definitionOverridesDirty,builder_.HasUnsavedModeling(),
         closing.interiorStructure.dirty};
     // The WM_CLOSE handler has already written and verified recovery before
     // releasing the window. Do not create a duplicate or erase the receipt.
@@ -110,20 +156,33 @@ int StudioApplication::Run(const std::filesystem::path& openFile,std::uint64_t m
         std::filesystem::path recovered;
         std::string error;
         if(documents_.SaveExitRecovery(builder_,recovered,error)){
+            closeRecoveryPrepared_=true;
             std::cerr<<"Studio exit: blueprint-only recovery written to "<<recovered.string()<<'\n';
         }else{
             std::cerr<<"Studio exit: unsaved changes; recovery unavailable: "<<error<<'\n';
             exitCode=6; // tooling must not report an unrecoverable close as clean
         }
     }
-    const bool unsupported=StudioUnsavedWorkPolicy::HasUnsupportedRecovery(unsaved);
+    if(!StudioExitOutcomePolicy::IsUserConfirmed(closeOutcome_) &&
+       unsaved.modelDraft && !modelRecoveryPrepared_){
+        std::filesystem::path recovered;std::string error;
+        if(documents_.SaveModelExitRecovery(builder_,recovered,error)){
+            modelRecoveryPrepared_=true;
+            std::cerr<<"Studio exit: verified model recovery written to "<<recovered.string()<<'\n';
+        }else{
+            std::cerr<<"Studio exit: model recovery unavailable: "<<error<<'\n';
+            exitCode=6;
+        }
+    }
+    const bool unsupported=StudioUnsavedWorkPolicy::HasUnsupportedRecovery(unsaved,modelRecoveryPrepared_);
     if(unsupported){
-        std::cerr<<"Studio exit WARNING: socket/definition overrides and editable model/interior drafts are NOT in blueprint recovery\n";
+        std::cerr<<"Studio exit WARNING: socket/definition overrides, interior, or unrecovered model drafts may be lost\n";
     }
     exitCode=StudioExitOutcomePolicy::ExitCode(closeOutcome_,exitCode==6,unsupported);
     std::cerr<<"STUDIO_EXIT_RESULT schema=subspace.studio-exit.v1 outcome="
              <<StudioExitOutcomePolicy::Name(closeOutcome_)
              <<" blueprint_recovery_verified="<<(closeRecoveryPrepared_?"true":"false")
+             <<" model_recovery_verified="<<(modelRecoveryPrepared_?"true":"false")
              <<" unsupported_drafts="<<(unsupported?"true":"false")
              <<" process_exit="<<exitCode<<'\n';
     closeGuard_.Detach();
@@ -132,8 +191,8 @@ int StudioApplication::Run(const std::filesystem::path& openFile,std::uint64_t m
 
 StudioCloseState StudioApplication::CloseState() const {
     const auto& state=builder_.Model();
-    return {state.dirty,state.socketOverridesDirty,state.definitionOverridesDirty,
-            !state.modeling.recipe.primitives.empty(),state.interiorStructure.dirty};
+    return {state.dirty&&!state.recipe.modules.empty(),state.socketOverridesDirty,state.definitionOverridesDirty,
+            builder_.HasUnsavedModeling(),state.interiorStructure.dirty};
 }
 
 bool StudioApplication::ConfirmClose(){
@@ -147,15 +206,15 @@ bool StudioApplication::ConfirmClose(){
 #ifdef _WIN32
     const int choice=MessageBoxW(GetActiveWindow(),
         L"This Studio session has unsaved work.\n\n"
-        L"YES: Save the ship blueprint and close (only if all work is saved).\n"
-        L"NO: Close with a separate blueprint recovery when a ship exists.\n"
+        L"YES: Save the active Studio document and close if all work is saved.\n"
+        L"NO: Close with verified separate blueprint/model recovery files.\n"
         L"CANCEL: Keep Studio open.\n\n"
-        L"Model/interior drafts and socket/definition edits are not stored in blueprint recovery.",
+        L"Unpublished socket/definition overrides and interior drafts still require explicit save/review.",
         L"Subspace Studio - Unsaved Work",MB_YESNOCANCEL|MB_ICONWARNING|MB_DEFBUTTON3);
     if(choice==IDCANCEL||choice==0)return false;
     if(choice==IDYES){
-        if(StudioClosePolicy::NeedsExplicitDataLossWarning(before)){
-            StudioFileDialog::ShowError("Blueprint Save cannot preserve model/interior drafts or unpublished overrides. Model/interior persistence is not yet implemented: Cancel keeps Studio open; Close with recovery requires a separate explicit loss acknowledgement.");
+        if(StudioClosePolicy::NeedsExplicitDataLossWarning(before,true)){
+            StudioFileDialog::ShowError("This save cannot preserve unsaved interior or unpublished socket/definition overrides. Cancel keeps Studio open; save those lanes before closing.");
             return false;
         }
         SaveDocument(); // a canceled chooser or failed write leaves dirty state intact
@@ -166,14 +225,26 @@ bool StudioApplication::ConfirmClose(){
         closeOutcome_=StudioExitOutcome::Saved;
         return true;
     }
-    // This is a SECOND, explicit acknowledgement when there is authoring data
-    // the blueprint codec cannot recover. Cancel never dismisses the window.
+    // Recover the model independently: blueprint recovery cannot contain it,
+    // even when an assembly and model draft coexist in the same session.
+    bool modelRecovered=!before.modelDraft;
+    if(before.modelDraft){
+        std::filesystem::path modelPath;std::string error;
+        if(!documents_.SaveModelExitRecovery(builder_,modelPath,error)){
+            StudioFileDialog::ShowError("Close canceled: verified model recovery failed. "+error);
+            return false;
+        }
+        modelRecovered=true; // publish receipt only once close is accepted
+        std::cerr<<"Studio close: verified independent model recovery at "<<modelPath.string()<<'\n';
+    }
+    // Only truly unsupported lanes require a SECOND loss acknowledgement.
+    // Cancel never dismisses the window.
     bool acknowledged=false;
-    if(StudioClosePolicy::NeedsExplicitDataLossWarning(before)){
+    if(StudioClosePolicy::NeedsExplicitDataLossWarning(before,modelRecovered)){
         const int confirm=MessageBoxW(GetActiveWindow(),
-            L"WARNING: The blueprint recovery file cannot save editable model or interior drafts,"
+            L"WARNING: automatic recovery cannot save unsaved interior drafts,"
             L" or unpublished socket/definition overrides. Those changes may be LOST.\n\n"
-            L"Continue closing with only the blueprint recovery?",
+            L"Continue closing with the available verified recovery files?",
             L"Subspace Studio - Partial Recovery",MB_OKCANCEL|MB_ICONSTOP|MB_DEFBUTTON2);
         if(confirm!=IDOK)return false;
         acknowledged=true;
@@ -190,8 +261,10 @@ bool StudioApplication::ConfirmClose(){
         closeRecoveryPrepared_=true;
         std::cerr<<"Studio close: verified blueprint-only recovery at "<<path.string()<<'\n';
     }
-    if(!StudioClosePolicy::MayCloseWithRecovery(before,recovered,acknowledged))return false;
-    // The user explicitly approved partial recovery / loss of draft-only data.
+    if(!StudioClosePolicy::MayCloseWithRecovery(before,recovered,acknowledged,modelRecovered))return false;
+    if(before.modelDraft)modelRecoveryPrepared_=true;
+    // The user requested recovery; independent model/blueprint recovery is
+    // verified, and any remaining unsupported data loss was explicitly approved.
     // This is normal app termination, NOT proof of a complete Studio save.
     closeOutcome_=StudioExitOutcome::UserConfirmedPartialRecovery;
     return true;
@@ -217,19 +290,7 @@ void StudioApplication::RenderFrame(float elapsed){
     renderer_.Render(frame);
     // Overlay uses the exact same projected ship position, viewport dock bounds,
     // and input picking snapshot. It never owns the blueprint or renderer.
-    auto gizmo=StudioAxisGizmo::Build(builder_.Model(),camera_,window_.GetWidth(),window_.GetHeight());
-    for(auto& handle:gizmo.handles){
-        if(!handle.valid)continue;
-        const auto& dock=builder_.Model().dockWorkspace;
-        const int h=std::max(1,static_cast<int>(ShipyardBuilderSystem::Layout(
-            builder_.Model(),window_.GetWidth(),window_.GetHeight()).statusY));
-        const float top=gizmo.viewportTop;
-        if(ShipyardDockPointerSystem::CoversFloatingPanel(dock,window_.GetWidth(),h,top,
-                    handle.center.x,handle.center.y)||
-           ShipyardDockPointerSystem::CoversFloatingPanel(dock,window_.GetWidth(),h,top,
-                    handle.tip.x,handle.tip.y))handle.valid=false;
-    }
-    gizmo.visible=false;for(const auto& handle:gizmo.handles)gizmo.visible|=handle.valid;
+    auto gizmo=VisibleGizmoSnapshot(builder_.Model(),camera_,window_.GetWidth(),window_.GetHeight());
     // The measurement HUD cannot paint across floating docks. The normal
     // viewport scissor is insufficient because floating panels live inside
     // the viewport rectangle and are composed before this OpenGL overlay.
@@ -307,10 +368,8 @@ void StudioApplication::SaveDocument(){
     }
 }
 void StudioApplication::SaveAsDocument(){
-    if(builder_.Recipe().modules.empty()){
-        ShowDocumentError("Add a ship module before saving a blueprint; model-only documents are not yet serializable");
-        return;
-    }
+    const bool modelOnly=builder_.Recipe().modules.empty()&&!builder_.Model().modeling.recipe.primitives.empty();
+    if(builder_.Recipe().modules.empty()&&!modelOnly){ShowDocumentError("Document has no ship modules or model geometry to save");return;}
     auto directory=StudioProjectPaths::Blueprints();
     if(directory.empty()){
         ShowDocumentError("Project root unavailable: cannot choose a safe blueprint directory");return;
@@ -320,7 +379,9 @@ void StudioApplication::SaveAsDocument(){
     if(ec){ShowDocumentError("Cannot prepare blueprint directory: "+ec.message());return;}
     std::filesystem::path selected;
     std::string error;
-    if(!StudioFileDialog::ChooseSaveAs(directory,documents_.Path(),selected,error)){
+    std::filesystem::path suggested=documents_.Path();
+    if(suggested.empty()&&modelOnly)suggested=directory/"untitled.subspace_studio";
+    if(!StudioFileDialog::ChooseSaveAs(directory,suggested,selected,error)){
         if(!error.empty())ShowDocumentError(error);
         return;
     }
@@ -335,7 +396,7 @@ void StudioApplication::OpenDocument(){
     // replace pending edits or an unsaved authoring draft.
     const auto& state=builder_.Model();
     if(StudioUnsavedWorkPolicy::HasUnsaved({state.dirty,state.socketOverridesDirty,
-            state.definitionOverridesDirty,!state.modeling.recipe.primitives.empty(),
+            state.definitionOverridesDirty,builder_.HasUnsavedModeling(),
             state.interiorStructure.dirty})){
         ShowDocumentError("Unsaved blueprint, socket, definition, model or interior edits: save before Open");return;
     }
@@ -410,6 +471,17 @@ void StudioApplication::HandleEscape(){
     }
 }
 void StudioApplication::HandleInput(){
+    if(window_.ConsumeInputCaptureLost()){
+        if(gizmoAxis_!=StudioAxis::None){builder_.CancelTransform();RestoreGizmoConstraint();}
+        else if(pointerTransform_){
+            if(builder_.Model().inspectorTab==ShipyardInspectorTab::Sockets)builder_.CancelSocketTransform();
+            else builder_.CancelTransform();
+        }
+        if(catalogDragging_)builder_.CancelCatalogDrag();
+        pendingCatalogPress_=false;catalogDragging_=false;pendingCatalogIndex_=-1;
+        pointerTransform_=false;gizmoAxis_=StudioAxis::None;gizmoDragged_=false;
+        gizmoPixelAccum_=0;gizmoAngleDelta_=0;dockPointer_.Cancel();suppressClick_=true;
+    }
     if(input_.WasPressed(InputAction::MenuBack))HandleEscape();
     const auto text=window_.ConsumeTextInput();
     if(builder_.Model().assetSearchFocused&&!text.empty())builder_.HandleAssetSearchInput(text);
@@ -434,14 +506,19 @@ void StudioApplication::HandleInput(){
        documentShortcut!=StudioDocumentShortcut::SaveAs)SaveDocument();
     if(input_.WasPressed(InputAction::MenuAccept))RouteControl(ShipyardBuilderCommand::AddModule);
     if(input_.WasPressed(InputAction::EditorFrameShip)){
-        // F reframes the whole assembly without resetting inspection orientation.
-        // Framing individual components needs a separate precise bounds pass.
-        float radius=6.0f;
-        for(const auto& part:builder_.Recipe().modules){
+        float radius=6.0f;Vector3 center{};
+        if(builder_.Model().workspaceMode==ShipyardWorkspaceMode::Model&&!builder_.Model().modeling.recipe.primitives.empty()){
+            for(const auto& p:builder_.Model().modeling.recipe.primitives){center=center+p.position;radius=std::max(radius,p.position.length()+p.size.length());}
+            center=center*(1.0f/static_cast<float>(builder_.Model().modeling.recipe.primitives.size()));
+        }else for(const auto& part:builder_.Recipe().modules)
             radius=std::max(radius,std::sqrt(part.x*part.x+part.y*part.y+part.z*part.z)*.24f+3.0f);
-        }
-        ConstructionEditorCameraSystem::FramePreservingOrientation(constructionCamera_,{},radius);
-        SyncConstructionCamera();
+        ConstructionEditorCameraSystem::FramePreservingOrientation(constructionCamera_,center,radius);SyncConstructionCamera();
+    }
+    if(input_.WasPressed(InputAction::EditorFrameSelected)&&builder_.Model().workspaceMode==ShipyardWorkspaceMode::Model&&
+       !builder_.Model().modeling.recipe.primitives.empty()){
+        const auto i=std::min(builder_.Model().modeling.selectedPrimitiveIndex,builder_.Model().modeling.recipe.primitives.size()-1);
+        const auto& p=builder_.Model().modeling.recipe.primitives[i];
+        ConstructionEditorCameraSystem::FramePreservingOrientation(constructionCamera_,p.position,std::max(1.0f,p.size.length()));SyncConstructionCamera();
     }
     // NativeWindow publishes the DCC actions; standalone Studio must route
     // them itself (the game app's shortcut dispatcher is never instantiated).
@@ -469,8 +546,15 @@ void StudioApplication::HandleInput(){
             if(input_.WasPressed(InputAction::DccConstraintY))RouteControl(ShipyardBuilderCommand::TransformConstraintY);
             if(input_.WasPressed(InputAction::DccConstraintZ))RouteControl(ShipyardBuilderCommand::TransformConstraintZ);
             if(input_.WasPressed(InputAction::EditorFrameSelected))RouteControl(ShipyardBuilderCommand::FrameSelected);
+            if(input_.WasPressed(InputAction::EditorDeleteModule)){
+                switch(builder_.Model().workspaceMode){
+                case ShipyardWorkspaceMode::Build:RouteControl(ShipyardBuilderCommand::RemoveModule);break;
+                case ShipyardWorkspaceMode::Model:RouteControl(ShipyardBuilderCommand::ModelRemovePrimitive);break;
+                case ShipyardWorkspaceMode::Interior:RouteControl(ShipyardBuilderCommand::InteriorRemoveElement);break;
+                default:break;
+                }
+            }
             if(builder_.Model().workspaceMode==ShipyardWorkspaceMode::Build){
-                if(input_.WasPressed(InputAction::EditorDeleteModule))RouteControl(ShipyardBuilderCommand::RemoveModule);
                 if(input_.WasPressed(InputAction::EditorNudgeLeft))RouteControl(ShipyardBuilderCommand::NudgePort);
                 if(input_.WasPressed(InputAction::EditorNudgeRight))RouteControl(ShipyardBuilderCommand::NudgeStarboard);
                 if(input_.WasPressed(InputAction::EditorNudgeForward))RouteControl(ShipyardBuilderCommand::NudgeForward);
@@ -498,7 +582,7 @@ void StudioApplication::HandleInput(){
                 !ShipyardDockPointerSystem::CoversFloatingPanel(builder_.Model().dockWorkspace,
                    window_.GetWidth(),std::max(1,static_cast<int>(layout.statusY)),
                    layout.viewportTop,pressX,pressY)){
-                const auto snapshot=StudioAxisGizmo::Build(builder_.Model(),camera_,window_.GetWidth(),window_.GetHeight());
+                const auto snapshot=VisibleGizmoSnapshot(builder_.Model(),camera_,window_.GetWidth(),window_.GetHeight());
                 const auto axis=snapshot.Pick(pressX,pressY);
                 if(axis!=StudioAxis::None){
                     const auto* handle=snapshot.Handle(axis);
@@ -521,23 +605,32 @@ void StudioApplication::HandleInput(){
                         pointerTransform_=true;suppressClick_=true;
                     }
                 }else{
-                const int picked=NativeBattlefieldRenderer::PickShipyardModule(builder_.Model().catalog,
-                    builder_.Recipe(),camera_,window_.GetWidth(),window_.GetHeight(),
-                    pressX,pressY,0,0,0,.24f,.22f,true);
-                if(picked>=0){
-                    // Select changes target; other tools can free-drag only the
-                    // ALREADY selected part. A miss cannot silently retarget.
-                    const auto tool=builder_.Model().transformTool;
-                    if(StudioToolInteractionPolicy::AllowsViewportReselection(tool)){
-                        RouteControl(ShipyardBuilderCommand::SelectPlaced,picked);
-                    }else if(StudioToolInteractionPolicy::AllowsGizmoGesture(tool)&&
-                             static_cast<std::size_t>(picked)==builder_.Model().selectedPlacedModule){
-                        pointerTransform_=builder_.Model().inspectorTab==ShipyardInspectorTab::Sockets?
-                            builder_.BeginSelectedSocketTransform():builder_.BeginSelectedTransform();
-                        if(pointerTransform_)suppressClick_=true;
+                const auto tool=builder_.Model().transformTool;
+                if(builder_.Model().workspaceMode==ShipyardWorkspaceMode::Model){
+                    const int picked=PickModelPrimitive(builder_.Model(),camera_,window_.GetWidth(),window_.GetHeight(),pressX,pressY);
+                    if(picked>=0){
+                        if(StudioToolInteractionPolicy::AllowsViewportReselection(tool))
+                            RouteControl(ShipyardBuilderCommand::ModelSelectPrimitive,picked);
+                        else if(StudioToolInteractionPolicy::AllowsGizmoGesture(tool)&&
+                                static_cast<std::size_t>(picked)==builder_.Model().modeling.selectedPrimitiveIndex){
+                            pointerTransform_=builder_.BeginSelectedTransform();if(pointerTransform_)suppressClick_=true;
+                        }
+                    }
+                }else{
+                    const int picked=NativeBattlefieldRenderer::PickShipyardModule(builder_.Model().catalog,
+                        builder_.Recipe(),camera_,window_.GetWidth(),window_.GetHeight(),
+                        pressX,pressY,0,0,0,.24f,.22f,true);
+                    if(picked>=0){
+                        if(StudioToolInteractionPolicy::AllowsViewportReselection(tool))RouteControl(ShipyardBuilderCommand::SelectPlaced,picked);
+                        else if(StudioToolInteractionPolicy::AllowsGizmoGesture(tool)&&
+                                static_cast<std::size_t>(picked)==builder_.Model().selectedPlacedModule){
+                            pointerTransform_=builder_.Model().inspectorTab==ShipyardInspectorTab::Sockets?
+                                builder_.BeginSelectedSocketTransform():builder_.BeginSelectedTransform();
+                            if(pointerTransform_)suppressClick_=true;
+                        }
                     }
                 }
-                } // no handle: ordinary part selection remains available
+                } // no handle: ordinary object selection remains available
             }
         }
     }
@@ -563,6 +656,28 @@ void StudioApplication::HandleInput(){
                 builder_.UpdateCatalogDrag(EditorTransformSpaceSystem::WorldToAssemblyDelta(world,yaw));
             }else if(pointerTransform_){
                 if(gizmoAxis_!=StudioAxis::None){
+                    // Model primitives and assembled modules share the gesture lifecycle,
+                    // but model transforms use the non-destructive model recipe transaction.
+                    if(builder_.Model().workspaceMode==ShipyardWorkspaceMode::Model){
+                        const auto axis=gizmoAxis_;const auto tool=builder_.Model().transformTool;
+                        const bool rotate=tool==ShipyardTransformTool::Rotate;
+                        gizmoPixelAccum_+=StudioGizmoMath::DragScalar(gizmoStartHandle_,dragX,dragY,rotate);
+                        if(std::fabs(gizmoPixelAccum_)>0.001f)gizmoDragged_=true;
+                        const bool fine=window_.IsShiftDown();
+                        if(builder_.ResetSelectedTransformPreview()){
+                            if(tool==ShipyardTransformTool::Move){
+                                const float amount=gizmoPixelAccum_*.012f/std::max(.35f,camera_.GetZoom())*(fine?.1f:1.0f);
+                                builder_.TranslateSelected({axis==StudioAxis::X?amount:0,axis==StudioAxis::Y?amount:0,axis==StudioAxis::Z?amount:0},false);
+                            }else if(tool==ShipyardTransformTool::Rotate){
+                                const float amount=gizmoPixelAccum_*(fine?.035f:.35f);
+                                builder_.RotateSelected({axis==StudioAxis::X?amount:0,axis==StudioAxis::Y?amount:0,axis==StudioAxis::Z?amount:0},false);
+                                gizmoAngleDelta_=amount;
+                            }else if(tool==ShipyardTransformTool::Scale){
+                                const float amount=gizmoPixelAccum_*.003f*(fine?.1f:1.0f);
+                                builder_.ScaleSelected({axis==StudioAxis::X?amount:0,axis==StudioAxis::Y?amount:0,axis==StudioAxis::Z?amount:0},false);
+                            }
+                        }
+                    }else{
                     // One pointer gesture = one authoritative ship-axis transaction.
                     // Absolute targets avoid losing sub-snap drag deltas between frames.
                     const auto& tx=builder_.Model().transform;
@@ -606,6 +721,7 @@ void StudioApplication::HandleInput(){
                             axis==StudioAxis::Y?sourceDelta:0,axis==StudioAxis::Z?sourceDelta:0};
                         if(std::fabs(delta)>1e-6f)builder_.ScaleSelected(scale,fine);
                     }
+                    } // assembly gizmo transaction
                 }else{
                 const bool fine=window_.IsShiftDown();
                 const bool socket=builder_.Model().inspectorTab==ShipyardInspectorTab::Sockets;
@@ -639,15 +755,17 @@ void StudioApplication::HandleInput(){
         catalogDragging_=false;pendingCatalogPress_=false;pendingCatalogIndex_=-1;
         if(pointerTransform_){
             if(gizmoAxis_!=StudioAxis::None){
-                const auto& tx=builder_.Model().transform;
-                const auto& a=tx.before;const auto& b=tx.working;
-                const auto changed=[](float x,float y){return std::fabs(x-y)>1e-5f;};
-                const bool mutated=changed(a.x,b.x)||changed(a.y,b.y)||changed(a.z,b.z)||
-                    changed(a.pitchDegrees,b.pitchDegrees)||changed(a.yawDegrees,b.yawDegrees)||
-                    changed(a.rollDegrees,b.rollDegrees)||changed(a.scaleX,b.scaleX)||
-                    changed(a.scaleY,b.scaleY)||changed(a.scaleZ,b.scaleZ);
+                bool mutated=gizmoDragged_;
+                if(builder_.Model().workspaceMode!=ShipyardWorkspaceMode::Model){
+                    const auto& tx=builder_.Model().transform;const auto& a=tx.before;const auto& b=tx.working;
+                    const auto changed=[](float x,float y){return std::fabs(x-y)>1e-5f;};
+                    mutated=changed(a.x,b.x)||changed(a.y,b.y)||changed(a.z,b.z)||
+                        changed(a.pitchDegrees,b.pitchDegrees)||changed(a.yawDegrees,b.yawDegrees)||
+                        changed(a.rollDegrees,b.rollDegrees)||changed(a.scaleX,b.scaleX)||
+                        changed(a.scaleY,b.scaleY)||changed(a.scaleZ,b.scaleZ);
+                }
                 if(gizmoDragged_&&mutated)builder_.CommitTransform();
-                else builder_.CancelTransform(); // click/sub-snap motion is not undo history
+                else builder_.CancelTransform();
                 RestoreGizmoConstraint();
                 gizmoAxis_=StudioAxis::None;gizmoDragged_=false;
                 gizmoPixelAccum_=0;gizmoAngleDelta_=0;

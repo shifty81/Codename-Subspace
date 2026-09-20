@@ -25,6 +25,8 @@ int main(){
     check(StudioUnsavedWorkPolicy::HasUnsupportedRecovery({false,true,false,false,false}),"socket overrides cannot claim full recovery");
     check(StudioUnsavedWorkPolicy::HasUnsupportedRecovery({false,false,true,false,false}),"definition overrides cannot claim full recovery");
     check(StudioUnsavedWorkPolicy::HasUnsupportedRecovery({false,false,false,true,false}),"model draft cannot claim full recovery");
+    check(!StudioUnsavedWorkPolicy::HasUnsupportedRecovery({false,false,false,true,false},true),"verified separate model recovery covers model draft");
+    check(StudioUnsavedWorkPolicy::HasUnsupportedRecovery({false,true,false,true,false},true),"model recovery does not excuse unpublished socket overrides");
     check(StudioUnsavedWorkPolicy::HasUnsupportedRecovery({false,false,false,false,true}),"interior draft cannot claim full recovery");
     std::cout<<"Studio recovery policy: "<<assertions-failed<<"/"<<assertions<<" assertions passed\n";
     return failed?1:0;

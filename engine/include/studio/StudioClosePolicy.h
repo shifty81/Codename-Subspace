@@ -15,17 +15,20 @@ struct StudioClosePolicy {
         return state.blueprintDirty||state.socketDirty||state.definitionDirty||
                state.modelDraft||state.interiorDraft;
     }
-    static constexpr bool NeedsExplicitDataLossWarning(StudioCloseState state) noexcept {
-        return state.socketDirty||state.definitionDirty||state.modelDraft||state.interiorDraft;
+    static constexpr bool NeedsExplicitDataLossWarning(StudioCloseState state,
+                                                       bool modelRecoveryVerified=false) noexcept {
+        return state.socketDirty||state.definitionDirty||
+               (state.modelDraft&&!modelRecoveryVerified)||state.interiorDraft;
     }
     static constexpr bool MayCloseAfterSave(StudioCloseState state) noexcept {
         return !NeedsPrompt(state);
     }
     static constexpr bool MayCloseWithRecovery(StudioCloseState state,
                                                bool blueprintRecovered,
-                                               bool acknowledgedUnsupported) noexcept {
+                                               bool acknowledgedUnsupported,
+                                               bool modelRecoveryVerified=false) noexcept {
         if(state.blueprintDirty && !blueprintRecovered)return false;
-        if(NeedsExplicitDataLossWarning(state)&&!acknowledgedUnsupported)return false;
+        if(NeedsExplicitDataLossWarning(state,modelRecoveryVerified)&&!acknowledgedUnsupported)return false;
         return true;
     }
 };

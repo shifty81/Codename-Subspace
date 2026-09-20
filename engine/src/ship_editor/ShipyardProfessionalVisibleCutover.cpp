@@ -197,7 +197,7 @@ bool ShipyardBuilderSystem::Activate(ShipyardBuilderCommand command,int value){
         return true;}
     case ShipyardBuilderCommand::DccOutlinerPrevious:
     case ShipyardBuilderCommand::DccOutlinerNext:{
-        const auto count=model_.recipe.modules.size();
+        const auto count=model_.workspaceMode==ShipyardWorkspaceMode::Model?model_.modeling.recipe.primitives.size():model_.recipe.modules.size();
         if(!count){model_.placedScrollStart=0;return true;}
         if(command==ShipyardBuilderCommand::DccOutlinerPrevious){if(model_.placedScrollStart)--model_.placedScrollStart;}
         else model_.placedScrollStart=std::min(count-1,model_.placedScrollStart+1);
@@ -626,12 +626,13 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         const float tx=l.toolRailX,tw=l.toolRailWidth,th=36.0f*s;
         const float railButtonsY=l.toolRailY+24.0f*s;
         if(model.workspaceMode==ShipyardWorkspaceMode::Model&&!model.testWorkspaceActive){
-            add(ShipyardBuilderCommand::ModelAddBox,0,tx,railButtonsY,tw,th,"BOX",false,model.capabilities.model);
-            add(ShipyardBuilderCommand::ModelAddWedge,0,tx,railButtonsY+(th+gap),tw,th,"WEDGE",false,model.capabilities.model);
-            add(ShipyardBuilderCommand::ModelAddCylinder,0,tx,railButtonsY+2*(th+gap),tw,th,"CYL",false,model.capabilities.model);
-            add(ShipyardBuilderCommand::ModelAddDoor,0,tx,railButtonsY+3*(th+gap),tw,th,"DOOR",false,model.capabilities.model);
-            add(ShipyardBuilderCommand::ModelDuplicatePrimitive,0,tx,railButtonsY+4*(th+gap),tw,th,"COPY",false,!model.modeling.recipe.primitives.empty());
-            add(ShipyardBuilderCommand::ModelRemovePrimitive,0,tx,railButtonsY+5*(th+gap),tw,th,"DEL",false,!model.modeling.recipe.primitives.empty());
+            const bool hasShape=!model.modeling.recipe.primitives.empty();
+            add(ShipyardBuilderCommand::ToolSelect,0,tx,railButtonsY,tw,th,"SELECT",model.transformTool==ShipyardTransformTool::Select,true);
+            add(ShipyardBuilderCommand::ToolMove,0,tx,railButtonsY+(th+gap),tw,th,"MOVE",model.transformTool==ShipyardTransformTool::Move,hasShape);
+            add(ShipyardBuilderCommand::ToolRotate,0,tx,railButtonsY+2*(th+gap),tw,th,"ROTATE",model.transformTool==ShipyardTransformTool::Rotate,hasShape);
+            add(ShipyardBuilderCommand::ToolScale,0,tx,railButtonsY+3*(th+gap),tw,th,"SCALE",model.transformTool==ShipyardTransformTool::Scale,hasShape);
+            add(ShipyardBuilderCommand::ModelAddBox,0,tx,railButtonsY+4*(th+gap),tw,th,"ADD BOX",false,model.capabilities.model);
+            add(ShipyardBuilderCommand::ModelRemovePrimitive,0,tx,railButtonsY+5*(th+gap),tw,th,"DEL",false,hasShape);
         }else if(model.workspaceMode==ShipyardWorkspaceMode::Interior&&!model.testWorkspaceActive){
             add(ShipyardBuilderCommand::GenerateInteriorProgram,0,tx,railButtonsY,tw,th,"GENERATE",false,HasPlaced(model));
             add(ShipyardBuilderCommand::InteriorAddFloor,0,tx,railButtonsY+(th+gap),tw,th,"FLOOR",false,model.interiorProgram.valid);
@@ -673,10 +674,17 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
             add(ShipyardBuilderCommand::DccCycleOutlinerMode,0,rx,navY,std::max(24*s,rw-55*s),24*s,ShipyardDccUiSystem::OutlinerModeName(model.dcc.outlinerMode),true,true);
             add(ShipyardBuilderCommand::DccOutlinerPrevious,0,rx+rw-51*s,navY,24*s,24*s,"<",false,model.placedScrollStart>0);
             add(ShipyardBuilderCommand::DccOutlinerNext,0,rx+rw-25*s,navY,24*s,24*s,">",false,model.placedScrollStart+1<model.recipe.modules.size());
-            const auto rows=ShipyardDccUiSystem::BuildOutlinerRows(model.catalog,model.recipe,model.selectedPlacedModule,model.dcc.outlinerMode);
-            const std::size_t page=l.compact?4u:5u;const std::size_t start=rows.empty()?0:std::min(model.placedScrollStart,rows.size()>page?rows.size()-page:0u);
-            const float rowsY=l.outlinerY+metrics.panelHeaderHeight*s+31.0f*s;
-            for(std::size_t i=0;i<page&&start+i<rows.size();++i){const auto& item=rows[start+i];std::string displayLabel=item.label;if(item.moduleIndex<model.recipe.modules.size()){const auto& placedId=model.recipe.modules[item.moduleIndex].moduleId;const auto found=std::find_if(model.catalog.begin(),model.catalog.end(),[&](const auto& record){return record.source.moduleId==placedId;});if(found!=model.catalog.end())displayLabel=FriendlyModuleLabel(*found);}std::string label=model.dcc.outlinerMode==ShipyardDccOutlinerMode::Hierarchy?std::string(item.depth*2,' '):std::string{};if(model.dcc.outlinerMode!=ShipyardDccOutlinerMode::Hierarchy)label=item.group+" | ";label+=(item.attached?"|_ ":"o  ")+displayLabel;add(ShipyardBuilderCommand::SelectPlaced,static_cast<int>(item.moduleIndex),rx,rowsY+i*(l.rowHeight+gap),rw,l.rowHeight,label,item.selected,true);}
+            const std::size_t page=l.compact?4u:5u;const float rowsY=l.outlinerY+metrics.panelHeaderHeight*s+31.0f*s;
+            if(model.workspaceMode==ShipyardWorkspaceMode::Model){
+                const auto& shapes=model.modeling.recipe.primitives;const std::size_t start=shapes.empty()?0:std::min(model.placedScrollStart,shapes.size()>page?shapes.size()-page:0u);
+                for(std::size_t i=0;i<page&&start+i<shapes.size();++i){const auto index=start+i;const auto& p=shapes[index];
+                    const std::string label=std::to_string(index+1)+" | "+ShipyardModelingSystem::PrimitiveName(p.type)+" | "+p.id;
+                    add(ShipyardBuilderCommand::ModelSelectPrimitive,static_cast<int>(index),rx,rowsY+i*(l.rowHeight+gap),rw,l.rowHeight,label,index==model.modeling.selectedPrimitiveIndex,true);}
+            }else{
+                const auto rows=ShipyardDccUiSystem::BuildOutlinerRows(model.catalog,model.recipe,model.selectedPlacedModule,model.dcc.outlinerMode);
+                const std::size_t start=rows.empty()?0:std::min(model.placedScrollStart,rows.size()>page?rows.size()-page:0u);
+                for(std::size_t i=0;i<page&&start+i<rows.size();++i){const auto& item=rows[start+i];std::string displayLabel=item.label;if(item.moduleIndex<model.recipe.modules.size()){const auto& placedId=model.recipe.modules[item.moduleIndex].moduleId;const auto found=std::find_if(model.catalog.begin(),model.catalog.end(),[&](const auto& record){return record.source.moduleId==placedId;});if(found!=model.catalog.end())displayLabel=FriendlyModuleLabel(*found);}std::string label=model.dcc.outlinerMode==ShipyardDccOutlinerMode::Hierarchy?std::string(item.depth*2,' '):std::string{};if(model.dcc.outlinerMode!=ShipyardDccOutlinerMode::Hierarchy)label=item.group+" | ";label+=(item.attached?"|_ ":"o  ")+displayLabel;add(ShipyardBuilderCommand::SelectPlaced,static_cast<int>(item.moduleIndex),rx,rowsY+i*(l.rowHeight+gap),rw,l.rowHeight,label,item.selected,true);}
+            }
         }
         clipControls(outlinerControlStart,l.outlinerX,l.outlinerY,l.outlinerWidth,l.outlinerHeight);
         currentPanelId="properties";
@@ -724,7 +732,7 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
                     ShipyardBuilderCommand::ModelNextPrimitive,"NEXT SHAPE",false,model.capabilities.model,ay);
                 ay+=rowH+rowGap;
                 two(ShipyardBuilderCommand::ModelAddShape,"CREATE SHAPE",false,model.capabilities.model,
-                    ShipyardBuilderCommand::ModelCycleSelectionMode,"SELECT MODE",false,hasShape,ay);
+                    ShipyardBuilderCommand::ModelDuplicatePrimitive,"DUPLICATE",false,hasShape,ay);
                 ay+=rowH+rowGap;
                 two(ShipyardBuilderCommand::ModelStretchXNegative,"WIDTH -",false,hasShape,
                     ShipyardBuilderCommand::ModelStretchXPositive,"WIDTH +",false,hasShape,ay);

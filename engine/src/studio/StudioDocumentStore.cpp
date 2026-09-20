@@ -3,6 +3,7 @@
 #include "studio/StudioProjectPaths.h"
 #include "studio/StudioRecoveryPathPolicy.h"
 #include "studio/StudioUnsavedWorkPolicy.h"
+#include "studio/StudioModelDocumentCodec.h"
 #include <chrono>
 #include <iomanip>
 #include <sstream>
@@ -25,9 +26,15 @@ std::filesystem::path NewDraftPath() {
 bool StudioDocumentStore::Open(const std::filesystem::path& source,ShipyardBuilderSystem& builder,std::string& error) {
     const auto& state=builder.Model();
     if(StudioUnsavedWorkPolicy::HasUnsaved({state.dirty,state.socketOverridesDirty,
-            state.definitionOverridesDirty,!state.modeling.recipe.primitives.empty(),
+            state.definitionOverridesDirty,builder.HasUnsavedModeling(),
             state.interiorStructure.dirty})){
         error="Unsaved changes in blueprint or authoring overrides: save before Open";return false;
+    }
+    if(StudioModelDocumentCodec::IsStudioModelPath(source)){
+        ShipyardModelingState modeling;if(!StudioModelDocumentCodec::Load(source,modeling,error))return false;
+        const auto catalog=builder.Model().catalog;const auto layout=builder.Model().dockWorkspace;
+        builder.Initialize(catalog,ShipyardDocumentStartupSystem::EmptyDocument());builder.MutableDockWorkspace()=layout;
+        builder.SetLiveApplyEnabled(false,true);builder.SetModelingState(modeling);path_=source;builder.MarkModelingSaved(path_.filename().string());return true;
     }
     ShipBlueprintDocument document;
     if(!ShipBlueprintLibrarySystem::Load(source.string(),document,&error))return false;
@@ -48,9 +55,15 @@ bool StudioDocumentStore::Open(const std::filesystem::path& source,ShipyardBuild
     return true;
 }
 bool StudioDocumentStore::SaveAs(const std::filesystem::path& destination,ShipyardBuilderSystem& builder,std::string& error){
-    if(destination.empty()){error="Choose a blueprint path";return false;}
-    if(destination.extension()!=".subspace_ship") {error="Studio saves .subspace_ship blueprints";return false;}
-    if(builder.Recipe().modules.empty()){error="Empty document: add a module before saving";return false;}
+    if(destination.empty()){error="Choose a Studio document path";return false;}
+    if(StudioModelDocumentCodec::IsStudioModelPath(destination)){
+        if(builder.Model().modeling.recipe.primitives.empty()){error="Model document has no geometry";return false;}
+        const bool overwrite=destination==path_;
+        if(!StudioModelDocumentCodec::Save(destination,builder.Model().modeling,overwrite,error))return false;
+        path_=destination;builder.MarkModelingSaved(path_.filename().string());return true;
+    }
+    if(destination.extension()!=".subspace_ship") {error="Studio saves .subspace_ship or .subspace_studio documents";return false;}
+    if(builder.Recipe().modules.empty()){error="Empty ship document: add a module before saving";return false;}
     std::error_code ec;
     const auto parent=destination.parent_path();
     if(!parent.empty())std::filesystem::create_directories(parent,ec);
@@ -103,17 +116,37 @@ bool StudioDocumentStore::SaveAs(const std::filesystem::path& destination,Shipya
     return true;
 }
 bool StudioDocumentStore::Save(ShipyardBuilderSystem& builder,std::string& error){
-    const auto destination=path_.empty()?NewDraftPath():path_;
+    std::filesystem::path destination=path_;
+    if(destination.empty()&&!builder.Model().modeling.recipe.primitives.empty()&&builder.Recipe().modules.empty()){
+        const auto base=StudioProjectPaths::Blueprints();if(base.empty()){error="Unable to locate Studio document directory";return false;}
+        const auto tick=std::chrono::system_clock::now().time_since_epoch().count();destination=base/("studio_model_"+std::to_string(tick)+".subspace_studio");
+    }else if(destination.empty())destination=NewDraftPath();
     if(destination.empty()){error="Unable to reserve unique draft filename";return false;}
     return SaveAs(destination,builder,error);
+}
+bool StudioDocumentStore::SaveModelExitRecovery(ShipyardBuilderSystem& builder,
+                                                 std::filesystem::path& recovered,std::string& error){
+    recovered.clear();error.clear();
+    const auto& modeling=builder.Model().modeling;
+    if(modeling.recipe.primitives.empty()&&modeling.recipe.sourceAssetId.empty()){
+        error="No model geometry to recover";return false;
+    }
+    const auto base=StudioProjectPaths::Blueprints();
+    if(base.empty()){error="Project root missing: model recovery cannot choose a safe destination";return false;}
+    const auto tick=std::chrono::system_clock::now().time_since_epoch().count();
+    for(unsigned i=0;i<1000;++i){
+        const auto candidate=base/"recovery"/("studio_model_recovery_"+std::to_string(tick)+"_"+std::to_string(i)+".subspace_studio");
+        std::error_code ec;
+        if(std::filesystem::exists(candidate,ec)||ec)continue;
+        if(!StudioModelDocumentCodec::Save(candidate,modeling,false,error))return false;
+        recovered=candidate;return true; // codec verifies round-trip before returning
+    }
+    error="Could not reserve a unique model recovery filename";return false;
 }
 bool StudioDocumentStore::SaveExitRecovery(ShipyardBuilderSystem& builder,
                                             std::filesystem::path& recovered,std::string& error){
     recovered.clear();error.clear();
-    if(builder.Recipe().modules.empty()){
-        error="No placed modules: blueprint recovery cannot store an editable model-only draft";
-        return false;
-    }
+    if(builder.Recipe().modules.empty())return SaveModelExitRecovery(builder,recovered,error);
     const auto base=StudioProjectPaths::Blueprints();
     if(base.empty()){error="Project root missing: recovery cannot choose a safe destination";return false;}
     const auto tick=std::chrono::system_clock::now().time_since_epoch().count();
@@ -133,7 +166,7 @@ bool StudioDocumentStore::SaveExitRecovery(ShipyardBuilderSystem& builder,
 bool StudioDocumentStore::New(ShipyardBuilderSystem& builder,std::string& error){
     const auto& state=builder.Model();
     if(StudioUnsavedWorkPolicy::HasUnsaved({state.dirty,state.socketOverridesDirty,
-            state.definitionOverridesDirty,!state.modeling.recipe.primitives.empty(),
+            state.definitionOverridesDirty,builder.HasUnsavedModeling(),
             state.interiorStructure.dirty})){
         error="Unsaved changes in blueprint or authoring overrides: save before New";return false;
     }

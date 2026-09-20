@@ -27,9 +27,13 @@ struct StudioGizmoMath {
         const auto d=Delta(h.tip,h.center),q=Delta({px,py},h.center);
         const float len2=Dot(d,d);if(len2<64)return false;
         // The pivot is not a selectable axis; prevent X/Y/Z ambiguity.
-        const float t=std::clamp(Dot(q,d)/len2,.24f,1.12f);
+        const float tipDistance=Length(Delta({px,py},h.tip));
+        if(tipDistance<=radius+6.0f)return true; // marker is intentionally easier than the shaft
+        // The proximal handle is a real hit target without capturing the
+        // shared pivot; keep shaft and tip radii distinct.
+        const float t=Dot(q,d)/len2;if(t<.16f||t>1.12f)return false;
         const StudioPoint nearestPoint{h.center.x+d.x*t,h.center.y+d.y*t};
-        return Length(Delta({px,py},nearestPoint))<=radius;
+        return Length(Delta({px,py},nearestPoint))<=std::max(8.0f,radius-3.0f);
     }
     static float WrappedAngle(float angle) noexcept {
         if(!std::isfinite(angle))return 0;

@@ -35,6 +35,7 @@
 #include "rendering/GasGiantWeatherSystem.h"
 #include "effects/PropulsionVisualSystem.h"
 #include "editor/EditorGizmoSystem.h"
+#include "modeling/ShipyardModelingSystem.h"
 #include "editor/EditorAssetWorkbenchSystem.h"
 #include "editor/EditorForgeGuiStyleSystem.h"
 #include "editor/EditorAssetThumbnailSystem.h"
@@ -731,6 +732,29 @@ void DrawBox(float cx, float cy, float cz, float sx, float sy, float sz, const R
     glNormal3f(0,1,0); glVertex3f(x0,y1,z1); glVertex3f(x1,y1,z1); glVertex3f(x1,y1,z0); glVertex3f(x0,y1,z0);
     glNormal3f(0,-1,0); glVertex3f(x0,y0,z0); glVertex3f(x1,y0,z0); glVertex3f(x1,y0,z1); glVertex3f(x0,y0,z1);
     glEnd();
+}
+
+void DrawStudioModelScene(const NativeBattlefieldFrame& frame){
+    if(!frame.shipBuilder||frame.shipBuilder->workspaceMode!=ShipyardWorkspaceMode::Model||
+       frame.shipBuilder->modeling.recipe.primitives.empty())return;
+    auto preview=frame.shipBuilder->modeling.recipe;
+    // Unsupported modifiers are stored honestly but must not make the editable
+    // source geometry disappear from the viewport.
+    for(auto& m:preview.modifiers)if(m.type!=ModelingModifierType::Mirror&&m.type!=ModelingModifierType::LinearArray)m.enabled=false;
+    const auto asset=ShipyardModelingSystem::BakeCanonicalAsset(preview,"studio.model.preview");if(asset.meshes.empty())return;
+    const auto layout=ShipyardBuilderSystem::Layout(*frame.shipBuilder,frame.viewportWidth,frame.viewportHeight);
+    glEnable(GL_SCISSOR_TEST);glScissor(static_cast<GLint>(layout.viewportLeft),static_cast<GLint>(frame.viewportHeight-layout.viewportBottom),
+        static_cast<GLsizei>(layout.viewportRight-layout.viewportLeft),static_cast<GLsizei>(layout.viewportBottom-layout.viewportTop));
+    DisableShader();glEnable(GL_DEPTH_TEST);glDisable(GL_TEXTURE_2D);glEnable(GL_LIGHTING);
+    for(std::size_t ni=0;ni<asset.nodes.size();++ni){const auto& node=asset.nodes[ni];if(node.meshIndex==assets::kInvalidAssetIndex||node.meshIndex>=asset.meshes.size())continue;
+        glPushMatrix();glMultMatrixf(node.localTransform.value.data());const bool selected=ni==frame.shipBuilder->modeling.selectedPrimitiveIndex;
+        SetMaterial(selected?Rgba{.22f,.66f,.82f,1.0f}:Rgba{.34f,.40f,.46f,1.0f},selected?54.0f:28.0f,0.0f,SpaceMaterialKind::ShipHull);
+        for(const auto& part:asset.meshes[node.meshIndex].primitives){glBegin(GL_TRIANGLES);for(const auto idx:part.indices)if(idx<part.vertices.size()){const auto& v=part.vertices[idx];glNormal3f(v.normal.x,v.normal.y,v.normal.z);glVertex3f(v.position.x,v.position.y,v.position.z);}glEnd();}
+        if(selected){glDisable(GL_LIGHTING);glColor4f(.32f,.86f,1.0f,.92f);glPolygonMode(GL_FRONT_AND_BACK,GL_LINE);glLineWidth(1.6f);
+            for(const auto& part:asset.meshes[node.meshIndex].primitives){glBegin(GL_TRIANGLES);for(const auto idx:part.indices)if(idx<part.vertices.size()){const auto& v=part.vertices[idx];glVertex3f(v.position.x,v.position.y,v.position.z);}glEnd();}
+            glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);glEnable(GL_LIGHTING);}
+        glPopMatrix();}
+    glDisable(GL_SCISSOR_TEST);
 }
 
 Rgba PlanetColor(PlanetType t) {
@@ -4312,6 +4336,7 @@ void NativeBattlefieldRenderer::Render(const NativeBattlefieldFrame& frame) {
     }
 
     if(frame.standaloneShipyard&&frame.shipBuilderRecipe){
+        DrawStudioModelScene(frame);
         const std::string previewRole=frame.shipBuilderRecipe->role.empty()?"INDUSTRIAL":frame.shipBuilderRecipe->role;
         const int selected=frame.shipBuilder&&!frame.shipBuilder->recipe.modules.empty()?static_cast<int>(frame.shipBuilder->selectedPlacedModule):-1;
         const ShipyardModuleRecord* selectedRecord=nullptr;int selectedSocket=-1;bool socketEdit=false;

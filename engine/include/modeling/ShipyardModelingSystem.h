@@ -104,6 +104,9 @@ struct ShipyardModelingState {
     bool symmetricStretch = false;
     bool autoCollision = true;
     bool liveCanonicalPreview = true;
+    // Dirty state is revision-based so a successfully saved model remains clean
+    // even though its primitives continue to exist in the document.
+    std::uint32_t savedRevision = 1;
     std::string status = "Model workspace ready";
 };
 

@@ -21,6 +21,8 @@ int main(){
     Check(StudioGizmoMath::Hit(x,291,251),"X shaft hit");
     Check(StudioGizmoMath::Hit(x,262,262),"expanded proximal shaft hit, not just tiny endpoint");
     Check(!StudioGizmoMath::Hit(x,250,250),"pivot must not capture axis");
+    Check(!StudioGizmoMath::Hit(x,260,250),"proximal exclusion remains around pivot");
+    Check(!StudioGizmoMath::Hit(x,262,265),"expanded proximal shaft does not capture distant points");
     Check(!StudioGizmoMath::Hit(x,250,180),"Y tip not captured by X");
     Check(StudioGizmoMath::Hit(y,250,180),"Y tip hit");
     Check(StudioGizmoMath::Hit(z,201,299),"Z tip hit");

@@ -14,8 +14,10 @@ struct StudioUnsavedWorkPolicy {
     }
     // A blueprint recovery is necessarily partial when any independent
     // authoring lane is dirty; do not certify it as a complete session save.
-    static constexpr bool HasUnsupportedRecovery(const StudioUnsavedWorkState& s) noexcept {
-        return s.socketOverrides||s.definitionOverrides||s.modelDraft||s.interiorDraft;
+    static constexpr bool HasUnsupportedRecovery(const StudioUnsavedWorkState& s,
+                                                  bool modelRecoveryVerified=false) noexcept {
+        return s.socketOverrides||s.definitionOverrides||
+               (s.modelDraft&&!modelRecoveryVerified)||s.interiorDraft;
     }
 };
 }
