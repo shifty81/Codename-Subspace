@@ -12,3 +12,26 @@ required("engine/src/studio/StudioAxisGizmo.cpp" "(assemblyMode&&model.inspector
 required("engine/include/studio/StudioOverlayProgramScope.h" "use_(static_cast<GLuint>(previous_))")
 required("engine/include/studio/StudioOverlayProgramScope.h" "if (previous_ != 0) use_(0);")
 message(STATUS "Null Harbor Studio foundation R3 widget/overlay authority PASS")
+# R3R2 visibility repair: the builder must feed one offscreen-safe, distinct
+# snapshot to the existing painter AND picker. No second gizmo is introduced.
+required("engine/src/studio/StudioAxisGizmo.cpp" "StudioGizmoProjectionPolicy::ProbeUsable")
+required("engine/src/studio/StudioAxisGizmo.cpp" "StudioGizmoProjectionPolicy::BuildHandles")
+required("engine/src/studio/StudioAxisGizmo.cpp" "PopulateHandles(out,camera,width,height")
+required("engine/include/studio/StudioGizmoProjectionPolicy.h" "kMinimumTipSpacingPixels")
+required("engine/tests/studio_gizmo_projection_policy_tests.cpp" "assert(samples==4940)")
+message(STATUS "Null Harbor R3R2 all-angle gizmo projection authority PASS")
+
+# R4 migration: no secondary gizmo, renderer, interior generator or source marker
+# from an unshipped shader file. Require the actual consumer/service wiring.
+required("engine/src/studio/StudioApplication.cpp" "StudioGizmoProjectionPolicy::ReflowForOcclusion")
+required("engine/src/studio/StudioApplication.cpp" "ShipyardPanelCompositorSystem::Snapshot(")
+required("engine/src/studio/StudioApplication.cpp" "ShipyardPanelCompositorSystem::TopFloatingAt(layers,x,y)")
+required("engine/src/studio/StudioApplication.cpp" "frame.editorInteriorShell=&interiorPreview_.shell;")
+required("engine/src/studio/StudioApplication.cpp" "ShipInteriorLayoutSystem{}.Plan(")
+required("engine/src/studio/StudioApplication.cpp" "StudioInteriorPreviewKey::Compute(")
+required("engine/src/studio/StudioApplication.cpp" "Null Harbor Studio - Ship Authoring")
+required("engine/src/studio/StudioApplication.cpp" "ShipyardBuilderCommand::DccCycleStudioView")
+required("engine/include/studio/StudioGizmoProjectionPolicy.h" "ReflowForOcclusion(")
+required("engine/include/studio/StudioInteriorPreviewKey.h" "struct StudioInteriorPreviewKey")
+required("engine/tests/studio_r4_studio_bridge_tests.cpp" "TestDockOcclusion()")
+message(STATUS "Null Harbor R4 Studio shared gizmo/derived-interior authority PASS")

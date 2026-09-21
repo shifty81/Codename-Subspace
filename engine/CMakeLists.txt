@@ -1043,4 +1043,11 @@ if(SUBSPACE_BUILD_TESTS)
     target_include_directories(subspace_studio_gizmo_projection_policy_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
     target_compile_features(subspace_studio_gizmo_projection_policy_tests PRIVATE cxx_std_17)
     add_test(NAME SubspaceStudioGizmoProjectionPolicyTests COMMAND subspace_studio_gizmo_projection_policy_tests)
+    # R4: same snapshot governs gizmo draw/pick and floating-dock reflow;
+    # interior-shell preview invalidates on every relevant assembly edit.
+    add_executable(subspace_studio_r4_bridge_tests
+        "${CMAKE_CURRENT_SOURCE_DIR}/tests/studio_r4_studio_bridge_tests.cpp")
+    target_include_directories(subspace_studio_r4_bridge_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_compile_features(subspace_studio_r4_bridge_tests PRIVATE cxx_std_17)
+    add_test(NAME SubspaceStudioR4BridgeTests COMMAND subspace_studio_r4_bridge_tests)
 endif()

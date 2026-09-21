@@ -10,6 +10,8 @@
 #include "studio/StudioGizmoOverlay.h"
 #include "studio/StudioOverlayProgramScope.h"
 #include "studio/StudioGizmoMath.h"
+#include "studio/StudioGizmoProjectionPolicy.h"
+#include "studio/StudioInteriorPreviewKey.h"
 #include "studio/StudioToolInteractionPolicy.h"
 #ifdef _WIN32
 #ifndef NOMINMAX
@@ -36,16 +38,25 @@ StudioGizmoSnapshot VisibleGizmoSnapshot(const ShipyardBuilderRuntimeModel& mode
     if(!snapshot.visible)return snapshot;
     const auto layout=ShipyardBuilderSystem::Layout(model,width,height);
     const int dockHeight=std::max(1,static_cast<int>(layout.statusY));
-    for(auto& handle:snapshot.handles){
-        if(!handle.valid)continue;
-        for(int sample=0;sample<=5;++sample){
-            const float t=static_cast<float>(sample)/5.0f;
-            const float x=handle.center.x+(handle.tip.x-handle.center.x)*t;
-            const float y=handle.center.y+(handle.tip.y-handle.center.y)*t;
-            if(ShipyardDockPointerSystem::CoversFloatingPanel(model.dockWorkspace,
-                    width,dockHeight,layout.viewportTop,x,y)){handle.valid=false;break;}
-        }
-    }
+    // R4: all-angle projection and dock occlusion share one handle layout.
+    // The previous sample-and-delete pass discarded axes without retrying.
+    // Materialize the existing compositor geometry ONCE. Calling the pointer
+    // helper for each of ~300 reflow probes would rebuild the dock tree on
+    // every probe, causing severe per-frame allocation and layout churn.
+    const auto layers=ShipyardPanelCompositorSystem::Snapshot(
+        model.dockWorkspace,width,dockHeight,layout.viewportTop);
+    const auto occluded=[&](float x,float y){
+        if(ShipyardPanelCompositorSystem::TopFloatingAt(layers,x,y))return true;
+        // Preserve the pointer system's overlay-first rule for docked bodies.
+        if(model.dockWorkspace.id=="shipyard")for(const auto& layer:layers)
+            if(layer.visible&&layer.panelId!="viewport"&&
+               ShipyardPanelCompositorSystem::Contains(layer.rect,x,y))return true;
+        return false;
+    };
+    snapshot.handles=StudioGizmoProjectionPolicy::ReflowForOcclusion(
+        snapshot.handles,
+        {snapshot.viewportLeft+10.0f,snapshot.viewportTop+10.0f,
+         snapshot.viewportRight-10.0f,snapshot.viewportBottom-10.0f},occluded);
     snapshot.visible=false;for(const auto& h:snapshot.handles)snapshot.visible|=h.valid;
     return snapshot;
 }
@@ -89,7 +100,7 @@ void StudioApplication::SyncConstructionCamera(){
 
 int StudioApplication::Run(const std::filesystem::path& openFile,std::uint64_t maxFrames){
     NativeWindowConfig config;
-    config.title="Subspace Studio - Ship Authoring";
+    config.title="Null Harbor Studio - Ship Authoring";
     config.width=1600;config.height=900;
     if(!window_.Initialize(config)){std::cerr<<"Studio window initialization failed\n";return 2;}
     if(!renderer_.Initialize()){
@@ -285,6 +296,19 @@ void StudioApplication::RenderFrame(float elapsed){
     frame.shipBuilder=&builder_.Model();
     frame.shipBuilderRecipe=&builder_.Recipe();
     frame.shipBuilderAppearance=&builder_.Appearance();
+    // The game already supplies editorInteriorShell to this renderer, but the
+    // standalone Studio did not. This is a derived preview, not a second
+    // interior document or a mutation of authored structural changes.
+    if(builder_.Model().studioViewMode!=ShipyardStudioViewMode::Exterior){
+        const auto sourceKey=StudioInteriorPreviewKey::Compute(
+            builder_.Model().catalog,builder_.Recipe());
+        if(sourceKey!=interiorPreviewSourceKey_){
+            interiorPreview_=ShipInteriorLayoutSystem{}.Plan(
+                0,builder_.Model().catalog,builder_.Recipe());
+            interiorPreviewSourceKey_=sourceKey;
+        }
+        frame.editorInteriorShell=&interiorPreview_.shell;
+    }
     frame.viewportWidth=window_.GetWidth();frame.viewportHeight=window_.GetHeight();
     frame.pointerX=window_.GetPointerX();frame.pointerY=window_.GetPointerY();
     frame.elapsedSeconds=elapsed;
@@ -435,6 +459,18 @@ void StudioApplication::RouteControl(ShipyardBuilderCommand command,int value){
     // No game menu, warp, engine pause or player refit is routed from Studio.
     if(command==ShipyardBuilderCommand::Apply)return;
     builder_.Activate(command,value);
+    if(command==ShipyardBuilderCommand::WorkspaceInterior &&
+       builder_.Model().workspaceMode==ShipyardWorkspaceMode::Interior){
+        interiorPreviewSourceKey_.clear();
+        // The builder's Interior command changes authoring mode but not view.
+        // Use its EXISTING view command to enter X-Ray (visible ghost hull)
+        // rather than leaving the editor showing only the opaque exterior.
+        // Preserve any explicit Cutaway / Interior-only selection.
+        if(builder_.Model().studioViewMode==ShipyardStudioViewMode::Exterior){
+            for(int i=0;i<3 && builder_.Model().studioViewMode!=ShipyardStudioViewMode::XRay;++i)
+                if(!builder_.Activate(ShipyardBuilderCommand::DccCycleStudioView))break;
+        }
+    }
     if(builder_.ConsumeSaveRequested())SaveDocument();
     if(builder_.ConsumeSocketOverridesSaveRequested())SaveAuthoringOverrides(true);
     if(builder_.ConsumeDefinitionOverridesSaveRequested())SaveAuthoringOverrides(false);

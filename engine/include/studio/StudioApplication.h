@@ -10,6 +10,8 @@
 #include "studio/StudioExitOutcomePolicy.h"
 #include "studio/StudioNativeCloseGuard.h"
 #include "studio/StudioAxisGizmo.h"
+#include "interior/ShipInteriorLayoutSystem.h"
+#include <string>
 #include "ship_editor/ShipyardDockPointerSystem.h"
 #include <cstdint>
 #include <filesystem>
@@ -50,6 +52,10 @@ private:
     bool closePromptActive_=false;
     StudioExitOutcome closeOutcome_=StudioExitOutcome::Unconfirmed;
     GalaxySector emptySector_{};
+    // Derived, never authored: a standalone preview of the same shell the
+    // game uses. Keep the currently edited document as the sole source.
+    InteriorLayoutPlan interiorPreview_{};
+    std::string interiorPreviewSourceKey_;
     ShipyardDockPointerSystem dockPointer_;
     bool pendingCatalogPress_=false;
     bool catalogDragging_=false;

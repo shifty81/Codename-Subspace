@@ -4,9 +4,36 @@
 #include "editor/EditorTransformSpaceSystem.h"
 #include "rendering/ForwardSpacePresentationSystem.h"
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <limits>
 
 namespace subspace {
+namespace {
+void PopulateHandles(StudioGizmoSnapshot& snapshot,const StrategicCamera& camera,
+                     int width,int height,const Vector3& origin,
+                     const std::array<Vector3,3>& basis,float probeMeters,
+                     const StrategicScreenPoint& center){
+    std::array<StudioPoint,3> directions{};
+    for(std::size_t i=0;i<directions.size();++i){
+        const auto probe=NativeBattlefieldRenderer::WorldToScreen(
+            origin+basis[i]*probeMeters,width,height,camera);
+        const StudioPoint point{probe.x,probe.y};
+        // `visible` means the whole probe is inside the camera frustum, which
+        // is NOT required for a 68-pixel on-screen handle. Accept finite
+        // projected coordinates even when the long probe is off-screen.
+        const bool usable=StudioGizmoProjectionPolicy::ProbeUsable(probe.depth,point);
+        const StudioPoint delta=usable?StudioPoint{point.x-center.x,point.y-center.y}
+                                      :StudioPoint{std::numeric_limits<float>::quiet_NaN(),0};
+        directions[i]=StudioGizmoProjectionPolicy::Direction(static_cast<StudioAxis>(i),delta);
+    }
+    snapshot.handles=StudioGizmoProjectionPolicy::BuildHandles(
+        {center.x,center.y},directions,
+        {snapshot.viewportLeft+10.0f,snapshot.viewportTop+10.0f,
+         snapshot.viewportRight-10.0f,snapshot.viewportBottom-10.0f});
+    for(const auto& handle:snapshot.handles)snapshot.visible|=handle.valid;
+}
+} // namespace
 StudioGizmoSnapshot StudioAxisGizmo::Build(const ShipyardBuilderRuntimeModel& model,
                                           const StrategicCamera& camera,int width,int height) {
     StudioGizmoSnapshot out;
@@ -27,20 +54,11 @@ StudioGizmoSnapshot StudioAxisGizmo::Build(const ShipyardBuilderRuntimeModel& mo
         if(model.transformTool==ShipyardTransformTool::Select)return out;
         const auto center=NativeBattlefieldRenderer::WorldToScreen(p.position,width,height,camera);
         if(!center.visible||center.x<out.viewportLeft+18||center.x>out.viewportRight-18||center.y<out.viewportTop+18||center.y>out.viewportBottom-18)return out;
-        const Vector3 basis[3]={{1,0,0},{0,1,0},{0,0,1}};
-        for(int i=0;i<3;++i){
-            const auto projected=NativeBattlefieldRenderer::WorldToScreen(p.position+basis[i]*std::max(1.0f,p.size.length()*.55f),width,height,camera);
-            auto& h=out.handles[static_cast<std::size_t>(i)];h.axis=static_cast<StudioAxis>(i);h.center={center.x,center.y};
-            if(!projected.visible)continue;const StudioPoint raw{projected.x-center.x,projected.y-center.y};// A camera looking along an axis projects it to nearly one pixel.
-            // Keep an explicitly screen-space handle for that physical axis
-            // instead of making the only mouse target disappear.
-            const auto dir=StudioGizmoProjectionPolicy::Direction(h.axis,raw);
-            float length=68.0f;
-            const float left=out.viewportLeft+10,right=out.viewportRight-10,top=out.viewportTop+10,bottom=out.viewportBottom-10;
-            if(dir.x>.001f)length=std::min(length,(right-center.x)/dir.x);else if(dir.x<-.001f)length=std::min(length,(left-center.x)/dir.x);
-            if(dir.y>.001f)length=std::min(length,(bottom-center.y)/dir.y);else if(dir.y<-.001f)length=std::min(length,(top-center.y)/dir.y);
-            if(!std::isfinite(length)||length<24)continue;h.tip={center.x+dir.x*length,center.y+dir.y*length};h.valid=true;out.visible=true;
-        }
+        const std::array<Vector3,3> basis{{{1,0,0},{0,1,0},{0,0,1}}};
+        // A large box must not require an endpoint inside the frustum; only
+        // direction matters. Keep the probe local to the pivot for stability.
+        const float probe=std::clamp(p.size.length()*.12f,0.35f,2.0f);
+        PopulateHandles(out,camera,width,height,p.position,basis,probe,center);
         return out;
     }
     const auto& part=model.recipe.modules[std::min(model.selectedPlacedModule,model.recipe.modules.size()-1)];
@@ -62,24 +80,8 @@ StudioGizmoSnapshot StudioAxisGizmo::Build(const ShipyardBuilderRuntimeModel& mo
     const auto center=NativeBattlefieldRenderer::WorldToScreen(origin,width,height,camera);
     if(!center.visible||center.x<out.viewportLeft+18||center.x>out.viewportRight-18||
        center.y<out.viewportTop+18||center.y>out.viewportBottom-18)return out;
-    const Vector3 basis[3]={{c,s,0},{-s,c,0},{0,0,1}};
-    for(int i=0;i<3;++i){
-        const auto projected=NativeBattlefieldRenderer::WorldToScreen(origin+basis[i]*3.0f,width,height,camera);
-        auto& h=out.handles[static_cast<std::size_t>(i)];h.axis=static_cast<StudioAxis>(i);
-        h.center={center.x,center.y};
-        if(!projected.visible)continue;
-        const StudioPoint projectedDelta{projected.x-center.x,projected.y-center.y};
-        // Preserve manipulator availability at camera-aligned views, too.
-        const auto dir=StudioGizmoProjectionPolicy::Direction(h.axis,projectedDelta);
-        float length=68.0f;const float left=out.viewportLeft+10,right=out.viewportRight-10,top=out.viewportTop+10,bottom=out.viewportBottom-10;
-        if(dir.x>.001f)length=std::min(length,(right-center.x)/dir.x);else if(dir.x<-.001f)length=std::min(length,(left-center.x)/dir.x);
-        if(dir.y>.001f)length=std::min(length,(bottom-center.y)/dir.y);else if(dir.y<-.001f)length=std::min(length,(top-center.y)/dir.y);
-        if(!std::isfinite(length)||length<24.0f)continue;
-        h.tip={center.x+dir.x*length,center.y+dir.y*length};
-        h.valid=h.tip.x>=out.viewportLeft+10&&h.tip.x<=out.viewportRight-10&&
-                h.tip.y>=out.viewportTop+10&&h.tip.y<=out.viewportBottom-10;
-        out.visible=out.visible||h.valid;
-    }
+    const std::array<Vector3,3> basis{{{c,s,0},{-s,c,0},{0,0,1}}};
+    PopulateHandles(out,camera,width,height,origin,basis,3.0f,center);
     return out;
 }
-}
+} // namespace subspace
