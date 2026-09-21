@@ -71,7 +71,8 @@ struct StudioGizmoProjectionPolicy {
         if(!std::isfinite(center.x)||!std::isfinite(center.y)||occluded(center.x,center.y))return result;
         constexpr std::array<int,8> offsets{{0,1,-1,2,-2,3,-3,4}};
         for(std::size_t i=0;i<3;++i){
-            auto& handle=result[i];handle.axis=static_cast<StudioAxis>(i);handle.center=center;
+            auto& handle=result[i];handle=projected[i];
+            handle.axis=static_cast<StudioAxis>(i);handle.center=center;handle.valid=false;
             if(!projected[i].valid)continue;
             const auto base=StudioGizmoMath::Unit(StudioGizmoMath::Delta(projected[i].tip,center));
             for(const int offset:offsets){

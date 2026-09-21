@@ -64,6 +64,7 @@ private:
     ShipyardTransformConstraint previousGizmoConstraint_=ShipyardTransformConstraint::Free;
     bool previousGizmoLocal_=false;
     StudioAxisHandle gizmoStartHandle_{};
+    float gizmoPressX_=0.0f,gizmoPressY_=0.0f;
     bool gizmoDragged_=false;
     float gizmoPixelAccum_=0;
     float gizmoAngleDelta_=0;

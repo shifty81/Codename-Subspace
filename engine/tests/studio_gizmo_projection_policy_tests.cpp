@@ -1,4 +1,5 @@
 #include "studio/StudioGizmoProjectionPolicy.h"
+#include "studio/StudioGizmoDragPolicy.h"
 #include <array>
 #include <cassert>
 #include <cmath>
@@ -64,5 +65,58 @@ int main(){
         check(P::BuildHandles(center,dirs,bounds));++samples;
     }
     assert(samples==4940);
+    // Perspective calibration in authored units, independent of fixed HUD pixels.
+    StudioAxisHandle model{StudioAxis::X,{200,150},{268,150},true};
+    model.physicalPixelsPerUnit={100,0};model.projectedAxisUsable=true;
+    model.fallbackPixelsPerUnit=24;
+    assert(close(StudioGizmoDragPolicy::MoveUnits(model,{100,0}),1));
+    assert(close(StudioGizmoDragPolicy::MoveUnits(model,{-50,20}),-.5f));
+    assert(close(StudioGizmoDragPolicy::MoveUnits(model,{100,0},true),.1f));
+    // Assembly world scale is ~.24m/unit but projection supplies the correct
+    // authored sensitivity: 24 physical pixels => ONE assembly unit.
+    StudioAxisHandle assembly=model;
+    assembly.physicalPixelsPerUnit={0,-24};
+    assert(close(StudioGizmoDragPolicy::MoveUnits(assembly,{0,-48}),2));
+    assert(close(StudioGizmoDragPolicy::MoveUnits(assembly,{0,48}),-2));
+    // A floating panel may rotate ONLY the drawn handle; real movement must
+    // still follow the physical projected direction, with no false X motion.
+    assembly.tip={240,190};
+    assert(close(StudioGizmoDragPolicy::MoveUnits(assembly,{0,-24}),1));
+    assert(close(StudioGizmoDragPolicy::MoveUnits(assembly,{24,0}),0));
+    // Camera-facing axis: deterministic bounded manual depth mode.
+    StudioAxisHandle depth=model;depth.physicalPixelsPerUnit={.01f,0};
+    depth.fallbackPixelsPerUnit=24;
+    assert(close(StudioGizmoDragPolicy::MoveUnits(depth,{48,0}),2));
+    assert(close(StudioGizmoDragPolicy::MoveUnits(depth,{48,0},true),.2f));
+    assert(close(StudioGizmoDragPolicy::MoveUnits(depth,{0,0}),0));
+    assert(close(StudioGizmoDragPolicy::MoveUnits(depth,{NAN,0}),0));
+    // Reflow must copy frozen calibration despite changing onscreen shafts.
+    const auto projected=P::BuildHandles({320,190},{{{1,0},{0,-1},{0,1}}},bounds);
+    auto calibrated=projected;
+    calibrated[0].physicalPixelsPerUnit={100,0};
+    calibrated[0].fallbackPixelsPerUnit=22;
+    calibrated[0].projectedAxisUsable=true;
+    const auto shifted=P::ReflowForOcclusion(calibrated,bounds,
+        [](float x,float y){return x>365&&y>178&&y<215;});
+    assert(shifted[0].valid);
+    assert(close(shifted[0].physicalPixelsPerUnit.x,100));
+    assert(close(shifted[0].fallbackPixelsPerUnit,22));
+    assert(shifted[0].projectedAxisUsable);
+    assert(close(StudioGizmoDragPolicy::MoveUnits(shifted[0],{100,0}),1));
+    // Camera/zoom/axis sweep: pixel displacement of two projected authored
+    // units must recover two units regardless of screen bearing and density.
+    int calibrations=0;
+    for(int degrees=0;degrees<360;degrees+=5)for(float density:{3.0f,8.0f,24.0f,80.0f,180.0f}){
+        const float a=degrees*.017453292519943295f;
+        StudioAxisHandle h=model;
+        h.physicalPixelsPerUnit={density*std::cos(a),density*std::sin(a)};
+        const StudioPoint expected{h.physicalPixelsPerUnit.x*2,h.physicalPixelsPerUnit.y*2};
+        const StudioPoint lateral{-std::sin(a)*13,std::cos(a)*13};
+        assert(std::fabs(StudioGizmoDragPolicy::MoveUnits(h,expected)-2.0f)<.0002f);
+        assert(std::fabs(StudioGizmoDragPolicy::MoveUnits(h,
+            {expected.x+lateral.x,expected.y+lateral.y})-2.0f)<.0002f);
+        ++calibrations;
+    }
+    assert(calibrations==360);
     std::cout<<"Studio gizmo offscreen probes / end-on / angular separation / picking: PASS\n";
 }

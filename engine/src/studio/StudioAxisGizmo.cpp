@@ -12,9 +12,12 @@ namespace subspace {
 namespace {
 void PopulateHandles(StudioGizmoSnapshot& snapshot,const StrategicCamera& camera,
                      int width,int height,const Vector3& origin,
-                     const std::array<Vector3,3>& basis,float probeMeters,
+                     const std::array<Vector3,3>& basis,
+                     const std::array<float,3>& authoredWorldUnits,float probeMeters,
                      const StrategicScreenPoint& center){
     std::array<StudioPoint,3> directions{};
+    std::array<StudioPoint,3> perUnit{};
+    std::array<bool,3> projectable{};
     for(std::size_t i=0;i<directions.size();++i){
         const auto probe=NativeBattlefieldRenderer::WorldToScreen(
             origin+basis[i]*probeMeters,width,height,camera);
@@ -26,12 +29,34 @@ void PopulateHandles(StudioGizmoSnapshot& snapshot,const StrategicCamera& camera
         const StudioPoint delta=usable?StudioPoint{point.x-center.x,point.y-center.y}
                                       :StudioPoint{std::numeric_limits<float>::quiet_NaN(),0};
         directions[i]=StudioGizmoProjectionPolicy::Direction(static_cast<StudioAxis>(i),delta);
+        // One model unit is a world meter; assembly XYZ instead use the
+        // renderer's actual width/length/height scales, including ship yaw.
+        // Never infer physical mouse sensitivity from the 68px drawn marker.
+        const auto unit=NativeBattlefieldRenderer::WorldToScreen(
+            origin+basis[i]*authoredWorldUnits[i],width,height,camera);
+        const StudioPoint pixel{unit.x,unit.y};
+        projectable[i]=StudioGizmoProjectionPolicy::ProbeUsable(unit.depth,pixel);
+        if(projectable[i])perUnit[i]={pixel.x-center.x,pixel.y-center.y};
     }
     snapshot.handles=StudioGizmoProjectionPolicy::BuildHandles(
         {center.x,center.y},directions,
         {snapshot.viewportLeft+10.0f,snapshot.viewportTop+10.0f,
          snapshot.viewportRight-10.0f,snapshot.viewportBottom-10.0f});
-    for(const auto& handle:snapshot.handles)snapshot.visible|=handle.valid;
+    // If the selected axis points into the camera, screen-space displacement
+    // cannot geometrically resolve depth. Give that axis a bounded depth-drag
+    // sensitivity derived from the two visible axes at this SAME camera zoom.
+    for(std::size_t i=0;i<3;++i){
+        float sum=0;int count=0;
+        for(std::size_t j=0;j<3;++j)if(j!=i&&projectable[j]){
+            const float density=StudioGizmoMath::Length(perUnit[j]);
+            if(std::isfinite(density)&&density>=2.0f){sum+=density;++count;}
+        }
+        auto& handle=snapshot.handles[i];
+        handle.physicalPixelsPerUnit=perUnit[i];
+        handle.projectedAxisUsable=projectable[i];
+        handle.fallbackPixelsPerUnit=std::clamp(count?sum/count:24.0f,8.0f,160.0f);
+        snapshot.visible|=handle.valid;
+    }
 }
 } // namespace
 StudioGizmoSnapshot StudioAxisGizmo::Build(const ShipyardBuilderRuntimeModel& model,
@@ -58,7 +83,7 @@ StudioGizmoSnapshot StudioAxisGizmo::Build(const ShipyardBuilderRuntimeModel& mo
         // A large box must not require an endpoint inside the frustum; only
         // direction matters. Keep the probe local to the pivot for stability.
         const float probe=std::clamp(p.size.length()*.12f,0.35f,2.0f);
-        PopulateHandles(out,camera,width,height,p.position,basis,probe,center);
+        PopulateHandles(out,camera,width,height,p.position,basis,{{1,1,1}},probe,center);
         return out;
     }
     const auto& part=model.recipe.modules[std::min(model.selectedPlacedModule,model.recipe.modules.size()-1)];
@@ -81,7 +106,7 @@ StudioGizmoSnapshot StudioAxisGizmo::Build(const ShipyardBuilderRuntimeModel& mo
     if(!center.visible||center.x<out.viewportLeft+18||center.x>out.viewportRight-18||
        center.y<out.viewportTop+18||center.y>out.viewportBottom-18)return out;
     const std::array<Vector3,3> basis{{{c,s,0},{-s,c,0},{0,0,1}}};
-    PopulateHandles(out,camera,width,height,origin,basis,3.0f,center);
+    PopulateHandles(out,camera,width,height,origin,basis,{{sx,sy,sz}},3.0f,center);
     return out;
 }
 } // namespace subspace

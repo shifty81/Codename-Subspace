@@ -8,7 +8,16 @@ namespace subspace {
 // Camera yaw and recipe forwardVisualYaw are presentation only.
 enum class StudioAxis { None=-1, X=0, Y=1, Z=2 };
 struct StudioPoint { float x=0, y=0; };
-struct StudioAxisHandle { StudioAxis axis=StudioAxis::None; StudioPoint center{}, tip{}; bool valid=false; };
+struct StudioAxisHandle {
+    StudioAxis axis=StudioAxis::None;
+    StudioPoint center{},tip{};
+    bool valid=false;
+    // Frozen, source-exact derivative of this PHYSICAL axis in pixels per
+    // authored unit. UI reflow may move tip, but must retain calibration.
+    StudioPoint physicalPixelsPerUnit{};
+    float fallbackPixelsPerUnit=0.0f;
+    bool projectedAxisUsable=false;
+};
 struct StudioGizmoMath {
     static float Length(StudioPoint v) noexcept { return std::sqrt(v.x*v.x+v.y*v.y); }
     static StudioPoint Unit(StudioPoint v) noexcept {

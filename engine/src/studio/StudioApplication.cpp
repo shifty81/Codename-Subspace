@@ -10,6 +10,7 @@
 #include "studio/StudioGizmoOverlay.h"
 #include "studio/StudioOverlayProgramScope.h"
 #include "studio/StudioGizmoMath.h"
+#include "studio/StudioGizmoDragPolicy.h"
 #include "studio/StudioGizmoProjectionPolicy.h"
 #include "studio/StudioInteriorPreviewKey.h"
 #include "studio/StudioToolInteractionPolicy.h"
@@ -144,6 +145,7 @@ int StudioApplication::Run(const std::filesystem::path& openFile,std::uint64_t m
         renderer_.Shutdown();window_.Shutdown();return 8;
     }
     std::cout<<"Studio documents: Ctrl+O Open, Ctrl+N New, Ctrl+S Save, Ctrl+Shift+S Save As\n";
+    std::cout<<"Studio manipulation: click object to select in any tool; drag X/Y/Z handle to transform; Ctrl+drag selected body for free transform; Shift=precision; Esc=cancel; RMB=orbit; MMB=pan\n";
     const auto start=std::chrono::steady_clock::now();
     std::uint64_t frames=0;
     while(window_.PumpEvents() && (maxFrames==0 || frames<maxFrames)){
@@ -636,6 +638,7 @@ void StudioApplication::HandleInput(){
                         previousGizmoConstraint_=builder_.Model().transformConstraint;
                         previousGizmoLocal_=builder_.Model().transformConstraintLocal;
                         gizmoAxis_=axis;gizmoStartHandle_=*handle;
+                        gizmoPressX_=pressX;gizmoPressY_=pressY;
                         gizmoPixelAccum_=0;gizmoAngleDelta_=0;gizmoDragged_=false;
                         // Assembly placement stores pitch/yaw/roll in packed fields;
                         // object-model primitives store true physical XYZ angles.
@@ -652,9 +655,9 @@ void StudioApplication::HandleInput(){
                 if(builder_.Model().workspaceMode==ShipyardWorkspaceMode::Model){
                     const int picked=PickModelPrimitive(builder_.Model(),camera_,window_.GetWidth(),window_.GetHeight(),pressX,pressY);
                     if(picked>=0){
-                        if(StudioToolInteractionPolicy::AllowsViewportReselection(tool))
+                        if(StudioToolInteractionPolicy::AllowsViewportReselection(tool)||!window_.IsControlDown())
                             RouteControl(ShipyardBuilderCommand::ModelSelectPrimitive,picked);
-                        else if(StudioToolInteractionPolicy::AllowsGizmoGesture(tool)&&
+                        else if(window_.IsControlDown()&&StudioToolInteractionPolicy::AllowsGizmoGesture(tool)&&
                                 static_cast<std::size_t>(picked)==builder_.Model().modeling.selectedPrimitiveIndex){
                             pointerTransform_=builder_.BeginSelectedTransform();if(pointerTransform_)suppressClick_=true;
                         }
@@ -664,8 +667,9 @@ void StudioApplication::HandleInput(){
                         builder_.Recipe(),camera_,window_.GetWidth(),window_.GetHeight(),
                         pressX,pressY,0,0,0,.24f,.22f,true);
                     if(picked>=0){
-                        if(StudioToolInteractionPolicy::AllowsViewportReselection(tool))RouteControl(ShipyardBuilderCommand::SelectPlaced,picked);
-                        else if(StudioToolInteractionPolicy::AllowsGizmoGesture(tool)&&
+                        if(StudioToolInteractionPolicy::AllowsViewportReselection(tool)||!window_.IsControlDown())
+                            RouteControl(ShipyardBuilderCommand::SelectPlaced,picked);
+                        else if(window_.IsControlDown()&&StudioToolInteractionPolicy::AllowsGizmoGesture(tool)&&
                                 static_cast<std::size_t>(picked)==builder_.Model().selectedPlacedModule){
                             pointerTransform_=builder_.Model().inspectorTab==ShipyardInspectorTab::Sockets?
                                 builder_.BeginSelectedSocketTransform():builder_.BeginSelectedTransform();
@@ -709,7 +713,8 @@ void StudioApplication::HandleInput(){
                         const bool fine=window_.IsShiftDown();
                         if(builder_.ResetSelectedTransformPreview()){
                             if(tool==ShipyardTransformTool::Move){
-                                const float amount=gizmoPixelAccum_*.012f/std::max(.35f,camera_.GetZoom())*(fine?.1f:1.0f);
+                                const float amount=StudioGizmoDragPolicy::MoveUnits(gizmoStartHandle_,
+                                    {window_.GetPointerX()-gizmoPressX_,window_.GetPointerY()-gizmoPressY_},fine);
                                 builder_.TranslateSelected({axis==StudioAxis::X?amount:0,axis==StudioAxis::Y?amount:0,axis==StudioAxis::Z?amount:0},false);
                             }else if(tool==ShipyardTransformTool::Rotate){
                                 const float amount=gizmoPixelAccum_*(fine?.035f:.35f);
@@ -729,7 +734,6 @@ void StudioApplication::HandleInput(){
                     gizmoPixelAccum_+=StudioGizmoMath::DragScalar(gizmoStartHandle_,dragX,dragY,rotate);
                     if(std::fabs(gizmoPixelAccum_)>0.001f)gizmoDragged_=true;
                     const bool fine=window_.IsShiftDown();
-                    const float step=std::max(.01f,camera_.GetZoom());
                     if(rotate){
                         const auto before=StudioGizmoMath::RotationComponent(axis,tx.before.pitchDegrees,
                             tx.before.yawDegrees,tx.before.rollDegrees);
@@ -749,7 +753,8 @@ void StudioApplication::HandleInput(){
                     }else if(builder_.Model().transformTool==ShipyardTransformTool::Move){
                         const float before=StudioGizmoMath::Component(axis,tx.before.x,tx.before.y,tx.before.z);
                         const float working=StudioGizmoMath::Component(axis,tx.working.x,tx.working.y,tx.working.z);
-                        const float desired=before+gizmoPixelAccum_*.012f/std::max(.35f,step)*(fine?.1f:1.0f);
+                        const float desired=before+StudioGizmoDragPolicy::MoveUnits(gizmoStartHandle_,
+                            {window_.GetPointerX()-gizmoPressX_,window_.GetPointerY()-gizmoPressY_},fine);
                         const float delta=desired-working;
                         const float sourceDelta=fine?delta*10.0f:delta;
                         const Vector3 translation{axis==StudioAxis::X?sourceDelta:0,
