@@ -1209,6 +1209,47 @@ function Invoke-CleanBuildOutputs {
     }
 }
 
+function Assert-NativeLinkOutputsReady {
+    param([Parameter(Mandatory=$true)][string]$BuildDirectory)
+
+    # MSVC cannot overwrite a Windows executable while another process owns it.
+    # Detect the problem before linking (and before a requested clean deletes any
+    # build artifacts). Never kill user processes or silently erase the build tree.
+    if ($env:OS -ne 'Windows_NT') { return }
+
+    foreach ($binaryName in @('subspace_game.exe', 'subspace_studio.exe')) {
+        $binaryPath = Join-Path $BuildDirectory $binaryName
+        $processName = [System.IO.Path]::GetFileNameWithoutExtension($binaryName)
+        $holders = @(Get-Process -Name $processName -ErrorAction SilentlyContinue | Where-Object {
+            $candidate = ''
+            try { $candidate = [string]$_.Path } catch { $candidate = '' }
+            $candidate -and [string]::Equals($candidate, $binaryPath, [System.StringComparison]::OrdinalIgnoreCase)
+        })
+        if ($holders.Count -gt 0) {
+            $pids = (@($holders | ForEach-Object { $_.Id }) -join ', ')
+            throw ("NATIVE_LINK_OUTPUT_IN_USE: {0} is running (PID(s): {1}). Close that game's or Studio's window, verify it has exited in Task Manager, and run Full Quality Gate again. No process was terminated and no build outputs were removed." -f $binaryPath, $pids)
+        }
+        if (-not (Test-Path -LiteralPath $binaryPath -PathType Leaf)) { continue }
+
+        $handle = $null
+        try {
+            # FileShare.None plus write access detects a locked or unwritable
+            # existing image; the file is not modified by this open/close probe.
+            $handle = [System.IO.File]::Open($binaryPath,
+                [System.IO.FileMode]::Open,
+                [System.IO.FileAccess]::ReadWrite,
+                [System.IO.FileShare]::None)
+        }
+        catch {
+            throw ("NATIVE_LINK_OUTPUT_UNAVAILABLE: MSVC cannot safely replace {0}. Close any running game/Studio processes and release other file handles; check file permissions if the problem persists. The build tree was preserved. Windows reports: {1}" -f $binaryPath, $_.Exception.Message)
+        }
+        finally {
+            if ($null -ne $handle) { $handle.Dispose() }
+        }
+    }
+    Write-Log 'Native linker output preflight: existing game/Studio executables are available for relinking.' 'PASS'
+}
+
 function Invoke-CMakeBuild {
     param([switch]$Headless, [switch]$CleanFirst, [switch]$TestsOnly)
 
@@ -1217,6 +1258,7 @@ function Invoke-CMakeBuild {
     }
 
     $buildDir = Get-BuildDirectory -Headless:$Headless
+    Assert-NativeLinkOutputsReady -BuildDirectory $buildDir
     if ($CleanFirst -and (Test-Path -LiteralPath $buildDir)) {
         Write-Log "Removing build directory: $buildDir"
         Remove-Item -LiteralPath $buildDir -Recurse -Force
@@ -1246,6 +1288,7 @@ function Invoke-CMakeBuild {
 
         $parallelJobs = Get-SubspaceParallelJobs
         Write-Log ("Native build parallelism: {0} worker(s)." -f $parallelJobs) "INFO"
+        Assert-NativeLinkOutputsReady -BuildDirectory $buildDir
         Invoke-LoggedCommand -Label "CMake build" -FilePath "cmake" -Arguments @(
             "--build", $buildDir,
             "--config", $Configuration,

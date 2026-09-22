@@ -1051,3 +1051,14 @@ if(SUBSPACE_BUILD_TESTS)
     target_compile_features(subspace_studio_r4_bridge_tests PRIVATE cxx_std_17)
     add_test(NAME SubspaceStudioR4BridgeTests COMMAND subspace_studio_r4_bridge_tests)
 endif()
+
+# R6 Studio UX: exercise shared dock geometry, real drag activation and
+# readable palette/metric contracts without opening a Windows graphics window.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_studio_gui_interaction_r6_tests
+        tests/studio_gui_interaction_r6_tests.cpp
+        src/editor/EditorForgeGuiStyleSystem.cpp)
+    target_include_directories(subspace_studio_gui_interaction_r6_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_compile_features(subspace_studio_gui_interaction_r6_tests PRIVATE cxx_std_17)
+    add_test(NAME SubspaceStudioGuiInteractionR6Tests COMMAND subspace_studio_gui_interaction_r6_tests)
+endif()

@@ -23,6 +23,13 @@ public:
         return rect.width>0.0f&&rect.height>0.0f&&
             x>=rect.x&&y>=rect.y&&x<rect.x+rect.width&&y<rect.y+rect.height;
     }
+    // Shared half-open rectangle geometry for rendering, pointer occlusion and
+    // Studio readouts. Edge contact does not hide an otherwise visible control.
+    static bool Intersects(const SubspaceUiRect& a,const SubspaceUiRect& b) noexcept {
+        return a.width>0.0f&&a.height>0.0f&&b.width>0.0f&&b.height>0.0f&&
+            a.x<b.x+b.width&&b.x<a.x+a.width&&
+            a.y<b.y+b.height&&b.y<a.y+a.height;
+    }
     static const SubspaceDockLayout* TopFloatingAt(const Layers& layers,float x,float y){
         for(auto it=layers.rbegin();it!=layers.rend();++it)
             if(it->visible&&it->floating&&Contains(it->rect,x,y))return &*it;

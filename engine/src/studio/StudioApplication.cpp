@@ -11,6 +11,7 @@
 #include "studio/StudioOverlayProgramScope.h"
 #include "studio/StudioGizmoMath.h"
 #include "studio/StudioGizmoDragPolicy.h"
+#include "studio/StudioGuiInteractionPolicy.h"
 #include "studio/StudioGizmoProjectionPolicy.h"
 #include "studio/StudioInteriorPreviewKey.h"
 #include "studio/StudioToolInteractionPolicy.h"
@@ -224,7 +225,7 @@ bool StudioApplication::ConfirmClose(){
         L"NO: Close with verified separate blueprint/model recovery files.\n"
         L"CANCEL: Keep Studio open.\n\n"
         L"Unpublished socket/definition overrides and interior drafts still require explicit save/review.",
-        L"Subspace Studio - Unsaved Work",MB_YESNOCANCEL|MB_ICONWARNING|MB_DEFBUTTON3);
+        L"Null Harbor Studio - Unsaved Work",MB_YESNOCANCEL|MB_ICONWARNING|MB_DEFBUTTON3);
     if(choice==IDCANCEL||choice==0)return false;
     if(choice==IDYES){
         if(StudioClosePolicy::NeedsExplicitDataLossWarning(before,true)){
@@ -259,7 +260,7 @@ bool StudioApplication::ConfirmClose(){
             L"WARNING: automatic recovery cannot save unsaved interior drafts,"
             L" or unpublished socket/definition overrides. Those changes may be LOST.\n\n"
             L"Continue closing with the available verified recovery files?",
-            L"Subspace Studio - Partial Recovery",MB_OKCANCEL|MB_ICONSTOP|MB_DEFBUTTON2);
+            L"Null Harbor Studio - Partial Recovery",MB_OKCANCEL|MB_ICONSTOP|MB_DEFBUTTON2);
         if(confirm!=IDOK)return false;
         acknowledged=true;
     }
@@ -322,17 +323,14 @@ void StudioApplication::RenderFrame(float elapsed){
     // viewport scissor is insufficient because floating panels live inside
     // the viewport rectangle and are composed before this OpenGL overlay.
     if(gizmo.readoutVisible){
-        const auto& dock=builder_.Model().dockWorkspace;
         const auto layout=ShipyardBuilderSystem::Layout(builder_.Model(),window_.GetWidth(),window_.GetHeight());
-        const int dockHeight=std::max(1,static_cast<int>(layout.statusY));
-        for(int row=0;row<3&&gizmo.readoutVisible;++row){
-            for(int col=0;col<3&&gizmo.readoutVisible;++col){
-                const float x=gizmo.viewportLeft+9.0f+217.5f*col;
-                const float y=gizmo.viewportTop+9.0f+53.0f*row;
-                if(ShipyardDockPointerSystem::CoversFloatingPanel(dock,window_.GetWidth(),dockHeight,
-                    gizmo.viewportTop,x,y))gizmo.readoutVisible=false;
-            }
-        }
+        const auto layers=ShipyardPanelCompositorSystem::Snapshot(
+            builder_.Model().dockWorkspace,window_.GetWidth(),
+            std::max(1,static_cast<int>(layout.statusY)),layout.viewportTop);
+        // The native HUD currently measures 435x106px. Check its ENTIRE area
+        // against real floating geometry: point sampling missed thin panels.
+        const SubspaceUiRect hud{gizmo.viewportLeft+9.0f,gizmo.viewportTop+9.0f,435.0f,106.0f};
+        gizmo.readoutVisible=StudioGuiInteractionPolicy::ClearOverlayArea(layers,hud);
     }
     const auto hovered=gizmo.Pick(window_.GetPointerX(),window_.GetPointerY());
     // The material renderer can leave a GLSL program bound.  Traditional
@@ -703,13 +701,20 @@ void StudioApplication::HandleInput(){
                 builder_.UpdateCatalogDrag(EditorTransformSpaceSystem::WorldToAssemblyDelta(world,yaw));
             }else if(pointerTransform_){
                 if(gizmoAxis_!=StudioAxis::None){
+                    const StudioPoint travel{window_.GetPointerX()-gizmoPressX_,
+                                             window_.GetPointerY()-gizmoPressY_};
+                    // A mouse press selects the handle. Do not mutate a document
+                    // until genuine travel has crossed the shared gesture gate.
+                    // R5's press-origin projection calibration stays unchanged.
+                    if(StudioGuiInteractionPolicy::DragActivated(travel)){
+                    gizmoDragged_=true;
                     // Model primitives and assembled modules share the gesture lifecycle,
                     // but model transforms use the non-destructive model recipe transaction.
                     if(builder_.Model().workspaceMode==ShipyardWorkspaceMode::Model){
                         const auto axis=gizmoAxis_;const auto tool=builder_.Model().transformTool;
                         const bool rotate=tool==ShipyardTransformTool::Rotate;
                         gizmoPixelAccum_+=StudioGizmoMath::DragScalar(gizmoStartHandle_,dragX,dragY,rotate);
-                        if(std::fabs(gizmoPixelAccum_)>0.001f)gizmoDragged_=true;
+
                         const bool fine=window_.IsShiftDown();
                         if(builder_.ResetSelectedTransformPreview()){
                             if(tool==ShipyardTransformTool::Move){
@@ -732,7 +737,7 @@ void StudioApplication::HandleInput(){
                     const auto axis=gizmoAxis_;
                     const bool rotate=builder_.Model().transformTool==ShipyardTransformTool::Rotate;
                     gizmoPixelAccum_+=StudioGizmoMath::DragScalar(gizmoStartHandle_,dragX,dragY,rotate);
-                    if(std::fabs(gizmoPixelAccum_)>0.001f)gizmoDragged_=true;
+
                     const bool fine=window_.IsShiftDown();
                     if(rotate){
                         const auto before=StudioGizmoMath::RotationComponent(axis,tx.before.pitchDegrees,
@@ -770,6 +775,7 @@ void StudioApplication::HandleInput(){
                         if(std::fabs(delta)>1e-6f)builder_.ScaleSelected(scale,fine);
                     }
                     } // assembly gizmo transaction
+                    } // activated Studio axis gesture
                 }else{
                 const bool fine=window_.IsShiftDown();
                 const bool socket=builder_.Model().inspectorTab==ShipyardInspectorTab::Sockets;
