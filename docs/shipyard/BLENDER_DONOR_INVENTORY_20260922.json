@@ -1,0 +1,650 @@
+{
+  "archiveSha256": "4115510fca8e1575b63b81d63d6cb09ed34b0e58d0e8ac3b1b6e5dd65fd2b3f1",
+  "authority": "READ_ONLY_EVIDENCE",
+  "donors": [
+    {
+      "bytes": 43579,
+      "category": "archived-version-not-authority",
+      "sha256": "b43725f9a4f1ec9a2bc09975aa000f0b86a99e7ac59f501f8e2043c492ac8d0c",
+      "sourcePath": "SourceWork/Tools/Blender/Archive/NullharborAssetGenerator_v28/NullharborAssetGenerator/__init__.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 15730,
+      "category": "archived-version-not-authority",
+      "sha256": "06793c4a29bd04b88462f4fc384b2b3cd138b69c077fe28debb405463e0824ca",
+      "sourcePath": "SourceWork/Tools/Blender/Archive/NullharborAssetGenerator_v28/NullharborAssetGenerator/cli.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 491583,
+      "category": "archived-version-not-authority",
+      "sha256": "786d1b90c6d119ec8e157a635428b35dcdbace41294d9a28d9a1a735e242a8e2",
+      "sourcePath": "SourceWork/Tools/Blender/Archive/NullharborAssetGenerator_v28/NullharborAssetGenerator/generator_core.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 21666,
+      "category": "archived-version-not-authority",
+      "sha256": "5beae8cf137c15f9fec36f76340d9faf3c2537903561af9456bba45914c12187",
+      "sourcePath": "SourceWork/Tools/Blender/Archive/NullharborShipFoundry_v44_pre_v45_merge/__init__.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 98886,
+      "category": "archived-version-not-authority",
+      "sha256": "6fe2b4ed6fdf5f56b8f1ab056be92b567341fd000d98703623c161fcb74b37ce",
+      "sourcePath": "SourceWork/Tools/Blender/Archive/NullharborShipFoundry_v44_pre_v45_merge/generator_core.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 6312,
+      "category": "character-rig-separate",
+      "sha256": "d50e54f444268e79da0721d038d8d27b122eb0f8b118f5287c5525a04b6bebcb",
+      "sourcePath": "SourceWork/Tools/Blender/CharacterRigGenerator/add_calibration_orientation_guides_cli.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 2735,
+      "category": "character-rig-separate",
+      "sha256": "b918a152e684ac87766cc73e5a2be5ba4ba4f52fea280c1b0d29e0d2e9b91a5d",
+      "sourcePath": "SourceWork/Tools/Blender/CharacterRigGenerator/export_character_equipment_calibration_full_cli.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 2272,
+      "category": "character-rig-separate",
+      "sha256": "bf10c6c6084bbc90f7ac4c882edbb2fbb725c69a4124acc12eae32f193a080c1",
+      "sourcePath": "SourceWork/Tools/Blender/CharacterRigGenerator/export_character_equipment_socket_calibration_cli.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 30353,
+      "category": "character-rig-separate",
+      "sha256": "3b80d3c1c106d75905b94e862f359bfc64939f97299b61474ade9edf20f9c665",
+      "sourcePath": "SourceWork/Tools/Blender/CharacterRigGenerator/generate_character_equipment_calibration_scene_cli.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 24201,
+      "category": "character-rig-separate",
+      "sha256": "7fee5ae4278c1cb93254da1c6f8a0daf256cd53c6b5be39cff6e85deed9a86b8",
+      "sourcePath": "SourceWork/Tools/Blender/CharacterRigGenerator/generate_character_powered_suit_shape_grammar_cli.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 14791,
+      "category": "character-rig-separate",
+      "sha256": "d9cf4206aeaf7071673e8d04ca8a0dbb1ca5dc33e17026e34cb89edeff0caf75",
+      "sourcePath": "SourceWork/Tools/Blender/CharacterRigGenerator/generate_character_surface_fitted_powered_suit_cli.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 14586,
+      "category": "character-rig-separate",
+      "sha256": "d8c7144a03c46e8ce13fe5d1db8354b6c3301f4ce79315c33fafa06e2d4f3ee5",
+      "sourcePath": "SourceWork/Tools/Blender/CharacterRigGenerator/generate_character_tool_prototypes_cli.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 16527,
+      "category": "character-rig-separate",
+      "sha256": "cedb1581b56168628096f0f49203773226218540e5781ad3ffe06a2b17473d90",
+      "sourcePath": "SourceWork/Tools/Blender/CharacterRigGenerator/generate_nullharbor_universal_mannequin_cli.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 26434,
+      "category": "character-rig-separate",
+      "sha256": "6db98e90b43789f11e08ab0771bda6c3beea7a9101ce2940d28dd8ede2bd85fc",
+      "sourcePath": "SourceWork/Tools/Blender/CharacterRigGenerator/generate_player_rig_cli.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 7016,
+      "category": "character-rig-separate",
+      "sha256": "c8c66afa1129e1f7653dd4bc6b4ba91e6a6085ded5e0c3d15e63c1ebe6c1524f",
+      "sourcePath": "SourceWork/Tools/Blender/CharacterRigGenerator/generate_ual2_animation_review_cli.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 2455,
+      "category": "character-rig-separate",
+      "sha256": "6ef25d6e24bca1db16e9259a85d0c0baead86a81f6eb2cccda1bdcf15da646ec",
+      "sourcePath": "SourceWork/Tools/Blender/CharacterRigGenerator/inspect_character_source.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 10752,
+      "category": "character-rig-separate",
+      "sha256": "a87dd31f0e2dfbb3914c2f7a6580390a0fe03b3565c8871cbdc6ed1cfc588543",
+      "sourcePath": "SourceWork/Tools/Blender/CharacterRigGenerator/retarget_lafan1_mocap_cli.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 4072,
+      "category": "unclassified-blender-donor",
+      "sha256": "b1fa363dddd478d20ce76289bc2fdebc394e677334ca572eef4ff0f89c97527a",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborAssetAuthoringPipeline/generate_asset_authoring_contracts.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 19675,
+      "category": "unclassified-blender-donor",
+      "sha256": "fe96df7c4d0c35e5b70ffc6dee60138db9cd9851093229b3c266d273bd613325",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborAssetFoundryAddon/nullharbor_asset_foundry/__init__.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 2831,
+      "category": "unclassified-blender-donor",
+      "sha256": "e188a695a3d0f587af7ae737032d3ea8207fa3319d817a54f4d9c50f97fdc5a5",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborAssetPipeline/export_blender_asset_review_packet_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 6837,
+      "category": "unclassified-blender-donor",
+      "sha256": "c423a02cf146c74b07860146e1000aa59721e5ce1945599ad6da767eb3924778",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborAssetPipeline/generate_blender_review_scenes_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 2976,
+      "category": "unclassified-blender-donor",
+      "sha256": "ef98e98e6c1ecfc3d3cc0177f47360c1e67dbbbd61cf944396906a96547a1f78",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborAssetPipeline/run_blender_review_validation_suite_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 7307,
+      "category": "unclassified-blender-donor",
+      "sha256": "7d83bc16d8831057e1b28685a832af13fd24716c2bee36badf581c50d1aee52f",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborAssetPipeline/scan_blender_asset_workspace_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 3280,
+      "category": "unclassified-blender-donor",
+      "sha256": "c6d4031f0cdd92fa26a5c151689d15eaa32ddcf6e2eb15c2048b2160dfa02b99",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborAssetPipeline/setup_blender_asset_workspace_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 4377,
+      "category": "unclassified-blender-donor",
+      "sha256": "3dc06e96abc0dd53fb8f178bd34c8e2bc7535889a126ecdde74a75b1b2318012",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborAssetPipeline/validate_asset_scale_snap_orientation_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 3169,
+      "category": "unclassified-blender-donor",
+      "sha256": "9134f410695f71a62376080aa3b83b43ab5545194490318231a740bbb1048015",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborAssetPipeline/validate_cargo_aisles_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 3673,
+      "category": "unclassified-blender-donor",
+      "sha256": "7a2de2ecb03de6f2e38be97a614d9ce82bdf0dab7436968beccc6f5f032b5616",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborAssetPipeline/validate_character_clearance_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 3395,
+      "category": "unclassified-blender-donor",
+      "sha256": "80766b218d35581f2868f68a9ce6cb4617de32558e9301cbe18b093bc4d4a534",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborAssetPipeline/validate_parametric_runs_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 4827,
+      "category": "unclassified-blender-donor",
+      "sha256": "2070c7e61b97e5e941997c04ffade8f308bfc0c8909660412774e0067d0c60bb",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborCharacterPipeline/promote_universal_mannequin_runtime_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 22407,
+      "category": "unclassified-blender-donor",
+      "sha256": "d01a38f70dbf0623c0a4e730f5b48226ddd3bb538d0fa1c0c697a51adbac065e",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborInteriorKitPipeline/generate_interior_proof_assets.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 12913,
+      "category": "geometry-material-kitbash",
+      "sha256": "e3cb233048e0e87706650174487341039ca4bb5d0d15786435f5dafc4e4af40b",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborKitbashGenerator/bake_material_trim_sheets_and_role_tints_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 23185,
+      "category": "geometry-material-kitbash",
+      "sha256": "f1578af2a5fdd13ef70384fa4adca31a6e701b3daf3eab3c313d2eaef3585a55",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborKitbashGenerator/emit_real_scene_glbs_and_normalize_donors_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 5458,
+      "category": "geometry-material-kitbash",
+      "sha256": "5f0d1b4730f5c9b8fb9901b748bc6accfe52baa24e0e39511bd6b6f4806ee297",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborKitbashGenerator/export_blender_pcg_instance_layout_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 13490,
+      "category": "geometry-material-kitbash",
+      "sha256": "af110d6f9a4c2bc2233cfc65411ae77debad6c3dfc5ea688789d630ef829d238",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborKitbashGenerator/generate_complete_kitbash_library_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 20907,
+      "category": "geometry-material-kitbash",
+      "sha256": "bdf0cb25a0e754e1bd9e4176b9dcf8d442629bdc6fb7d8bc3d3eefceb90f5e99",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborKitbashGenerator/generate_concept_locked_hangar_ship_scene_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 20102,
+      "category": "geometry-material-kitbash",
+      "sha256": "81b5e91b5b7d6a89ad8137c3f7bf6b62a0b38df3eb6849f3557d6f1a20a1579b",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborKitbashGenerator/generate_donor_grammar_driven_concept_scene_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 17584,
+      "category": "geometry-material-kitbash",
+      "sha256": "96b36371aaef4780d291995e9dbe76f162eaf15f1d782e3c652b364c3582c526",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborKitbashGenerator/generate_donor_grammar_final_art_replacement_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 19149,
+      "category": "geometry-material-kitbash",
+      "sha256": "33b75528b2a717f9390a14b330af83828d4256e8402887ffd5ffe093c7d556a5",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborKitbashGenerator/generate_first_scene_priority_assets_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 21749,
+      "category": "geometry-material-kitbash",
+      "sha256": "286d490591a2a8b8f80da9b53e6ee6b5599ef570e96a39f51dc5c28232c70706",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborKitbashGenerator/generate_golden_mountain_hangar_frigate_scene_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 3526,
+      "category": "geometry-material-kitbash",
+      "sha256": "f13391d013bee920dcb8b0b6ff88d8a93354c4c1fbe8599bf060b8fc1b1976bc",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborKitbashGenerator/generate_hangar_readability_kit_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 3980,
+      "category": "geometry-material-kitbash",
+      "sha256": "57a38aceb70a343efd44a5abb11143a04d6db14dfe9cf317d41de7cf69470735",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborKitbashGenerator/generate_kitbash_assembly_review_scenes_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 7639,
+      "category": "geometry-material-kitbash",
+      "sha256": "dc8adfb3fa7b5c4dee2852265adbac6e1c63d95bf5ba8f0b009b09a2c98a9057",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborKitbashGenerator/generate_kitbash_atmospherics_surface_detail_library_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 16127,
+      "category": "geometry-material-kitbash",
+      "sha256": "c7d1785401426196b7902f4309fdbfc3d793d1bc83a05c161edbebf08de03139",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborKitbashGenerator/generate_mountain_hangar_skybox_door_scene_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 84721,
+      "category": "geometry-material-kitbash",
+      "sha256": "cc52ac9ca8a89a6640c7c15616649d743b3da8308d5151ba50c105428c9f529a",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborKitbashGenerator/generate_open_gl_assembled_hangar_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 12222,
+      "category": "geometry-material-kitbash",
+      "sha256": "88e8ca566bf3cfe126f421b9f8f817142428e8156b736ae9cbaebbd2485f3f36",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborKitbashGenerator/generate_projectwide_asset_completion_workbench_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 9704,
+      "category": "geometry-material-kitbash",
+      "sha256": "e48d014da4e8f6028e3024ab74380910131542d4d6f84ccb111c8369bac040a1",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborKitbashGenerator/generate_projectwide_detail_refinement_library_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 7415,
+      "category": "geometry-material-kitbash",
+      "sha256": "b58e9458fdbfd6b863400b52f8930e4a76f6d54e6f8dd004e487ab583037a893",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborKitbashGenerator/generate_projectwide_kitbash_blueprints_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 10036,
+      "category": "geometry-material-kitbash",
+      "sha256": "b80a3dfe9a31c7d2f7fa3291b14f91543af98c8403501cf6ef8235ade063eedc",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborKitbashGenerator/generate_projectwide_scene_assembly_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 12024,
+      "category": "geometry-material-kitbash",
+      "sha256": "9f95054ec556fa88e5159074d514451bff057d9b0ce6b147fb0d8a879e85cae3",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborKitbashGenerator/generate_refined_kitbash_asset_library_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 12311,
+      "category": "geometry-material-kitbash",
+      "sha256": "b0334aefb0a353c3c889358e11c542b4737d1d4b949d101df50f91325d4f696c",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborKitbashGenerator/promote_projectwide_generated_scene_glbs_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 14860,
+      "category": "geometry-material-kitbash",
+      "sha256": "aeda301aae348f36dcaf1eab0f35f7e3ed540f8ef016281bf83cc4041fd84e32",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborKitbashGenerator/refine_kitbash_assets_realism_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 17910,
+      "category": "geometry-material-kitbash",
+      "sha256": "4085d035e1dcd7fc8296c16843e4a864ec6fdb57a425f6b9a1cbf80fb530ad5b",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborKitbashGenerator/refine_kitbash_finish_quality_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 11793,
+      "category": "geometry-material-kitbash",
+      "sha256": "912837847304d8749dcf3d573a00d80b7086a88ab87f93d7e800fd0051d56b6f",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborKitbashGenerator/refine_projectwide_kitbash_visual_quality_v2.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 20236,
+      "category": "geometry-material-kitbash",
+      "sha256": "f968d5df7c56ccf82d91744d00368006d9e7805334cb6aadf79fba6eb0df7743",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborKitbashGenerator/refine_projectwide_kitbash_visual_quality_v3.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 25912,
+      "category": "unclassified-blender-donor",
+      "sha256": "f17dd220832a03a02b8f9fa71c57d0b9bca3dfa408866e9123bba8c2c7046646",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborModularGridKitPipeline/generate_modular_grid_kit_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 16788,
+      "category": "unclassified-blender-donor",
+      "sha256": "a62ef67a43702ce3c27e47a0e3587477b68ebad4395678fba9f75a667db4759f",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborPlayableSceneObjectsPipeline/generate_playable_scene_object_glbs.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 1204,
+      "category": "procedural-ship-foundry",
+      "sha256": "bf9506cd7db5ee52f8cdcc0de625270aa9b3aa634139756c996f39a8aa6bd058",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborShipFoundry/generate_v44_showcase_blend.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 340,
+      "category": "procedural-ship-foundry",
+      "sha256": "ce0016fbc1afe9e2929e63f9195634559b71cba30212ee4f9d2d84c409917dbe",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborShipFoundry/inspect_showcase_blend.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 379,
+      "category": "procedural-ship-foundry",
+      "sha256": "05b597041ad4094cf548342f03b4ce9c47531c337886c50671362fa3cd6e4a7d",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborShipFoundry/locate_blender_addon.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 64235,
+      "category": "procedural-ship-foundry",
+      "sha256": "b17f7368e2c4e6dc8aa1ed82cf2e420304ef965236f5bdca86028e0d042ce8e8",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborShipFoundry/nullharbor_ship_foundry/__init__.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 98886,
+      "category": "procedural-ship-foundry",
+      "sha256": "6fe2b4ed6fdf5f56b8f1ab056be92b567341fd000d98703623c161fcb74b37ce",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborShipFoundry/nullharbor_ship_foundry/generator_core.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 965,
+      "category": "procedural-ship-foundry",
+      "sha256": "c5234b5d0a6c5a0d0551428c5cc68b8198adb9c496ba4eaa96466b4b1c2444b6",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborShipFoundry/smoke_test_installed_v44.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 1153,
+      "category": "procedural-ship-foundry",
+      "sha256": "552184ad0a459a6b989a45c34c0719baa94a8f5833aa5fc611f3d9ee9875dd16",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborShipFoundry/smoke_test_v44_generate.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 48941,
+      "category": "procedural-ship-foundry",
+      "sha256": "11b6f05de92962cc7da2de7ec3b8c076186590ef0224e0caaedd083d8282908f",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborShipFoundry/standalone_addon_zip_contents/nullharbor_ship_foundry/__init__.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 98886,
+      "category": "procedural-ship-foundry",
+      "sha256": "6fe2b4ed6fdf5f56b8f1ab056be92b567341fd000d98703623c161fcb74b37ce",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborShipFoundry/standalone_addon_zip_contents/nullharbor_ship_foundry/generator_core.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 0,
+      "category": "shipyard-plan-socket",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborShipyardPipeline/__init__.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 25292,
+      "category": "shipyard-plan-socket",
+      "sha256": "59016c66be418bcb446a9bcda7876faee13f0a32d926631561ff55bb257af312",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborShipyardPipeline/build_shipyard_blockout.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 44383,
+      "category": "shipyard-plan-socket",
+      "sha256": "6becd0d7eee225290149d1f7b23cba5f4f150268f1f286cc098fa41dd7523965",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborShipyardPipeline/builders/blender_blockout_builder.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 27484,
+      "category": "shipyard-plan-socket",
+      "sha256": "f94b58a024d9e1714e227e1aca8df05e96b03223d5693def0f64fd63ae448e77",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborShipyardPipeline/builders/blender_modular_assembly_builder.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 19808,
+      "category": "shipyard-plan-socket",
+      "sha256": "5207e07f9e942b36177747c17a728ee47af51c41271eaae127f20adc46e362e2",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborShipyardPipeline/generate_modular_ship_assembly.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 20323,
+      "category": "shipyard-plan-socket",
+      "sha256": "1e4588a1ba2f58aee2e0a4ddf6a383876e0d4e5b0101a1ceacfc35374aa2caf0",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborShipyardPipeline/generate_shipyard_plan.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 2391,
+      "category": "shipyard-plan-socket",
+      "sha256": "b56078799738df8b427194585fe4f5894ff2943a3e92a6c2bc4aef83da224c22",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborShipyardPipeline/mesh_recipe_registry.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 4813,
+      "category": "shipyard-plan-socket",
+      "sha256": "fea64d98a23121b6f9d64312a9312067fa4515d454e0a1f1a89431198bc32a91",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborShipyardPipeline/validate_modular_ship_against_targets.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 5796,
+      "category": "shipyard-plan-socket",
+      "sha256": "fbf4624d49be76cd578645964e57cd64f6c9820877653e2cf6c38fa66bc00eb6",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborShipyardPipeline/validation/validate_modular_ship_assembly.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 3264,
+      "category": "shipyard-plan-socket",
+      "sha256": "79a44b0a5123f39a7d82e5f4a8f6a54cf79e143699ed8dd5dfecc54691d4ef68",
+      "sourcePath": "SourceWork/Tools/Blender/NullharborShipyardPipeline/validation/validate_modular_ship_parts.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 43944,
+      "category": "ship-interior-lineage",
+      "sha256": "6676f1e8d3e1e35eb8408004d35baa36cc066af6fd27483e241c18d83af2f83d",
+      "sourcePath": "SourceWork/Tools/Blender/ShipyardLineageGenerator/generate_shipyard_lineage_cli.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 2111,
+      "category": "ship-interior-lineage",
+      "sha256": "3e6c1efe3c35ea07a654d602d4c47a25d6d5ccc56a8a675c2d42bc947b59b575",
+      "sourcePath": "SourceWork/Tools/Blender/ShipyardLineageGenerator/inspect_donor_modules.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 2893,
+      "category": "unclassified-blender-donor",
+      "sha256": "4b28d405a1c705f531a7ef63607418511e0be4994e0f5be62256a638e9ea6efd",
+      "sourcePath": "SourceWork/Tools/Blender/build_donor_derived_hangar_grammar_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 2914,
+      "category": "unclassified-blender-donor",
+      "sha256": "71d791bd37bce6cca724620dfb37f923a1dd558e0ad6ea65615b266a84dd77ce",
+      "sourcePath": "SourceWork/Tools/Blender/build_donor_derived_ship_grammar_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 2949,
+      "category": "unclassified-blender-donor",
+      "sha256": "f432e962788d4f404f9475ef3a32f7ab40755ef8df31a9750a210df9d9763513",
+      "sourcePath": "SourceWork/Tools/Blender/build_glb_render_mesh_sidecar.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 2172,
+      "category": "unclassified-blender-donor",
+      "sha256": "f227cc297d66e3a3deeb5895bd9eeeca0805d13dd5039450fdc0e16969afbe79",
+      "sourcePath": "SourceWork/Tools/Blender/debug_nullharbor_addon_cli.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 986,
+      "category": "unclassified-blender-donor",
+      "sha256": "3b049f0de0e54b6516d4d1849e5ad43bf7f13bceff01c1c6961c8d288bd455e4",
+      "sourcePath": "SourceWork/Tools/Blender/disable_stale_nullharbor_extension_cli.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 16711,
+      "category": "unclassified-blender-donor",
+      "sha256": "004d5d4de1dcc2b27b1135dae0b7011b93277c1a2b4dbe40bd889311ab20418a",
+      "sourcePath": "SourceWork/Tools/Blender/finalize_nullharbor_blender_assets.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 13748,
+      "category": "unclassified-blender-donor",
+      "sha256": "c05e633ece991d3beaeaf671a0ef35c729160817c28486c603f80eca57fecb81",
+      "sourcePath": "SourceWork/Tools/Blender/generate_playable_scene_object_glbs.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 2665,
+      "category": "unclassified-blender-donor",
+      "sha256": "bf57b912f3798e9f84d9da5a82a1e7d6e0c974ea3594d35df138ef31505f597a",
+      "sourcePath": "SourceWork/Tools/Blender/inspect_glb_bounds_blender.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 1050,
+      "category": "unclassified-blender-donor",
+      "sha256": "ad17963950ad72cf1050b924a262248999924a1a0cfb7a3f74af6e23de9b0cdf",
+      "sourcePath": "SourceWork/Tools/Blender/install_asset_foundry_addon.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 13521,
+      "category": "unclassified-blender-donor",
+      "sha256": "e45ec4c0b6ef3e9f18a0cfee6447060ffacb17f4b03fecb1b3dc791774cba621",
+      "sourcePath": "SourceWork/Tools/Blender/nullharbor_asset_factory/__init__.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 504,
+      "category": "unclassified-blender-donor",
+      "sha256": "97ef47e40973890017da643d12110e1318aacb271b1a4a86ca4d327c28bed837",
+      "sourcePath": "SourceWork/Tools/Blender/package_nullharbor_blender_addon_v101.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 3561,
+      "category": "unclassified-blender-donor",
+      "sha256": "5defc78d9d8741cc18197dc842b263a783c2549752db45a31f5c84ac86b03611",
+      "sourcePath": "SourceWork/Tools/Blender/render_generated_scene_preview_cli.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 6398,
+      "category": "unclassified-blender-donor",
+      "sha256": "289c13e693793d0f9d4fdb270fe850c6dc77b4d0563dd41dcfdb5fe8966f0841",
+      "sourcePath": "SourceWork/Tools/Blender/scan_donor_glb_shape_grammar_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    },
+    {
+      "bytes": 11489,
+      "category": "blender-scene-recipe-bridge",
+      "sha256": "9eefbf23f0d9cb9a690398753c139aabd4e7ba0b80c0c44ee4eb85788bc0cffb",
+      "sourcePath": "SourceWork/Tools/GameTools/compile_blender_scene_to_cpp_pcg_recipe_v1.py",
+      "status": "REVIEW_BEFORE_PORT"
+    }
+  ],
+  "schema": "subspace.kitbash-donor-inventory.v1",
+  "status": "CANDIDATES_UNREVIEWED",
+  "warnings": [
+    "Inventory is not evidence that a script runs in the current Blender version.",
+    "Donor files are not shipped, imported, executed, or made Subspace runtime dependencies.",
+    "License, source permission, scene assets, output geometry, axis parity and tests require separate certification."
+  ]
+}

@@ -1,6 +1,7 @@
 #include "studio/StudioAxisGizmo.h"
 #include "studio/StudioGizmoProjectionPolicy.h"
 #include "application/NativeBattlefieldRenderer.h"
+#include "editor/ConstructionTransformBasisSystem.h"
 #include "editor/EditorTransformSpaceSystem.h"
 #include "rendering/ForwardSpacePresentationSystem.h"
 #include <algorithm>
@@ -12,15 +13,17 @@ namespace subspace {
 namespace {
 void PopulateHandles(StudioGizmoSnapshot& snapshot,const StrategicCamera& camera,
                      int width,int height,const Vector3& origin,
-                     const std::array<Vector3,3>& basis,
-                     const std::array<float,3>& authoredWorldUnits,float probeMeters,
+                     const ConstructionTransformBasis& axisWorldUnits,float probeMeters,
                      const StrategicScreenPoint& center){
     std::array<StudioPoint,3> directions{};
     std::array<StudioPoint,3> perUnit{};
     std::array<bool,3> projectable{};
     for(std::size_t i=0;i<directions.size();++i){
+        const auto worldUnit=ConstructionTransformBasisSystem::Axis(axisWorldUnits,static_cast<int>(i));
+        const auto fallback=i==1?Vector3{0,1,0}:(i==2?Vector3{0,0,1}:Vector3{1,0,0});
+        const auto worldDirection=ConstructionTransformBasisSystem::Normalize(worldUnit,fallback);
         const auto probe=NativeBattlefieldRenderer::WorldToScreen(
-            origin+basis[i]*probeMeters,width,height,camera);
+            origin+worldDirection*probeMeters,width,height,camera);
         const StudioPoint point{probe.x,probe.y};
         // `visible` means the whole probe is inside the camera frustum, which
         // is NOT required for a 68-pixel on-screen handle. Accept finite
@@ -29,11 +32,11 @@ void PopulateHandles(StudioGizmoSnapshot& snapshot,const StrategicCamera& camera
         const StudioPoint delta=usable?StudioPoint{point.x-center.x,point.y-center.y}
                                       :StudioPoint{std::numeric_limits<float>::quiet_NaN(),0};
         directions[i]=StudioGizmoProjectionPolicy::Direction(static_cast<StudioAxis>(i),delta);
-        // One model unit is a world meter; assembly XYZ instead use the
-        // renderer's actual width/length/height scales, including ship yaw.
-        // Never infer physical mouse sensitivity from the 68px drawn marker.
+        // Project the ACTUAL world vector produced by one local authoring unit.
+        // This is important for rotated parts under anisotropic ship width /
+        // length scaling: a local X/Y handle must follow the geometry it edits.
         const auto unit=NativeBattlefieldRenderer::WorldToScreen(
-            origin+basis[i]*authoredWorldUnits[i],width,height,camera);
+            origin+worldUnit,width,height,camera);
         const StudioPoint pixel{unit.x,unit.y};
         projectable[i]=StudioGizmoProjectionPolicy::ProbeUsable(unit.depth,pixel);
         if(projectable[i])perUnit[i]={pixel.x-center.x,pixel.y-center.y};
@@ -79,11 +82,14 @@ StudioGizmoSnapshot StudioAxisGizmo::Build(const ShipyardBuilderRuntimeModel& mo
         if(model.transformTool==ShipyardTransformTool::Select)return out;
         const auto center=NativeBattlefieldRenderer::WorldToScreen(p.position,width,height,camera);
         if(!center.visible||center.x<out.viewportLeft+18||center.x>out.viewportRight-18||center.y<out.viewportTop+18||center.y>out.viewportBottom-18)return out;
-        const std::array<Vector3,3> basis{{{1,0,0},{0,1,0},{0,0,1}}};
-        // A large box must not require an endpoint inside the frustum; only
-        // direction matters. Keep the probe local to the pivot for stability.
+        // Primitive size X/Y/Z is local pre-rotation geometry. Scale therefore
+        // ALWAYS presents local object axes. Move/Rotate retain world axes
+        // unless the user explicitly toggled the local constraint.
+        ConstructionTransformBasis basis{};
+        if(model.transformTool==ShipyardTransformTool::Scale||model.transformConstraintLocal)
+            basis=ConstructionTransformBasisSystem::ModelLocal(p.rotationDegrees);
         const float probe=std::clamp(p.size.length()*.12f,0.35f,2.0f);
-        PopulateHandles(out,camera,width,height,p.position,basis,{{1,1,1}},probe,center);
+        PopulateHandles(out,camera,width,height,p.position,basis,probe,center);
         return out;
     }
     const auto& part=model.recipe.modules[std::min(model.selectedPlacedModule,model.recipe.modules.size()-1)];
@@ -105,8 +111,17 @@ StudioGizmoSnapshot StudioAxisGizmo::Build(const ShipyardBuilderRuntimeModel& mo
     const auto center=NativeBattlefieldRenderer::WorldToScreen(origin,width,height,camera);
     if(!center.visible||center.x<out.viewportLeft+18||center.x>out.viewportRight-18||
        center.y<out.viewportTop+18||center.y>out.viewportBottom-18)return out;
-    const std::array<Vector3,3> basis{{{c,s,0},{-s,c,0},{0,0,1}}};
-    PopulateHandles(out,camera,width,height,origin,basis,{{sx,sy,sz}},3.0f,center);
+
+    const Vector3 rootScale{sx,sy,sz};
+    // scaleX/scaleY/scaleZ are module-local dimensions, therefore the Scale
+    // gizmo must follow the selected module's actual rotated/mirrored basis.
+    // This closes the "drag Y, get width / drag X, get length" presentation
+    // mismatch on rotated kitbash pieces without swapping serialized X and Y.
+    ConstructionTransformBasis basis=ConstructionTransformBasisSystem::ShipWorld(yaw,rootScale);
+    if(model.transformTool==ShipyardTransformTool::Scale||
+       model.transformSpace==ShipyardTransformSpace::Local||model.transformConstraintLocal)
+        basis=ConstructionTransformBasisSystem::AssemblyWorld(part,yaw,rootScale,true);
+    PopulateHandles(out,camera,width,height,origin,basis,3.0f,center);
     return out;
 }
 } // namespace subspace

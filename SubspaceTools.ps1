@@ -1250,6 +1250,84 @@ function Assert-NativeLinkOutputsReady {
     Write-Log 'Native linker output preflight: existing game/Studio executables are available for relinking.' 'PASS'
 }
 
+
+function Test-NativeLinkOutputRaceInCurrentSession {
+    param([Parameter(Mandatory=$true)][string]$BuildLabel)
+    # Detect only the narrow Windows relink race we know how to retry safely.
+    # A normal compiler, unresolved-symbol, or arbitrary linker failure must
+    # continue to fail immediately rather than being hidden by retries.
+    if (-not (Test-Path -LiteralPath $Global:SessionLog -PathType Leaf)) { return $false }
+    try {
+        $tail = (Get-Content -LiteralPath $Global:SessionLog -Tail 320 -ErrorAction Stop) -join [Environment]::NewLine
+        $marker = 'RUN: ' + $BuildLabel
+        $markerIndex = $tail.LastIndexOf($marker, [System.StringComparison]::Ordinal)
+        if ($markerIndex -ge 0) { $tail = $tail.Substring($markerIndex) }
+        return [regex]::IsMatch($tail, '(?im)(LNK1104|LNK1168).*subspace_(game|studio)\.exe')
+    }
+    catch { return $false }
+}
+
+function Write-NativeLinkOutputDiagnostics {
+    param([Parameter(Mandatory=$true)][string]$BuildDirectory)
+
+    if ($env:OS -ne 'Windows_NT') { return }
+    foreach ($binaryName in @('subspace_game.exe', 'subspace_studio.exe')) {
+        $binaryPath = Join-Path $BuildDirectory $binaryName
+        $processName = [System.IO.Path]::GetFileNameWithoutExtension($binaryName)
+        $holders = @(Get-Process -Name $processName -ErrorAction SilentlyContinue | ForEach-Object {
+            $candidate = ''
+            try { $candidate = [string]$_.Path } catch { $candidate = '' }
+            [pscustomobject]@{ Id=$_.Id; Path=$candidate }
+        })
+        foreach ($holder in $holders) {
+            Write-Log ("Native link diagnostic: process {0} PID={1} path='{2}'" -f $processName,$holder.Id,$holder.Path) 'WARN'
+        }
+        if (Test-Path -LiteralPath $binaryPath -PathType Leaf) {
+            $handle = $null
+            try {
+                $handle = [System.IO.File]::Open($binaryPath,[System.IO.FileMode]::Open,[System.IO.FileAccess]::ReadWrite,[System.IO.FileShare]::None)
+                Write-Log ("Native link diagnostic: exclusive probe available now: {0}" -f $binaryPath) 'INFO'
+            }
+            catch {
+                Write-Log ("Native link diagnostic: exclusive probe still blocked: {0} :: {1}" -f $binaryPath,$_.Exception.Message) 'WARN'
+            }
+            finally { if ($null -ne $handle) { $handle.Dispose() } }
+        }
+    }
+}
+
+function Invoke-CMakeBuildWithNativeLinkRetry {
+    param(
+        [Parameter(Mandatory=$true)][string]$BuildDirectory,
+        [Parameter(Mandatory=$true)][int]$ParallelJobs
+    )
+
+    $buildArgs = @("--build", $BuildDirectory, "--config", $Configuration, "--parallel", $ParallelJobs)
+    $maxAttempts = 3
+    for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
+        try {
+            $label = if ($attempt -eq 1) { 'CMake build' } else { "CMake build retry $attempt/$maxAttempts (native link output)" }
+            Invoke-LoggedCommand -Label $label -FilePath 'cmake' -Arguments $buildArgs -WorkingDirectory $Global:SubspaceRoot | Out-Null
+            if ($attempt -gt 1) { Write-Log ("Native linker output race recovered on build attempt {0}/{1}." -f $attempt,$maxAttempts) 'PASS' }
+            return
+        }
+        catch {
+            $failure = $_
+            if (-not (Test-NativeLinkOutputRaceInCurrentSession -BuildLabel $label) -or $attempt -ge $maxAttempts) { throw $failure }
+
+            Write-Log ("Detected transient native linker output race after build attempt {0}/{1}; preserving outputs and retrying only this narrow failure class." -f $attempt,$maxAttempts) 'WARN'
+            Write-NativeLinkOutputDiagnostics -BuildDirectory $BuildDirectory
+            Start-Sleep -Milliseconds (650 * $attempt)
+
+            # If a user-launched game or Studio now owns the exact output, this
+            # raises the existing actionable NATIVE_LINK_OUTPUT_IN_USE error.
+            # If the lock was only transient (for example a scanner/indexer),
+            # the incremental CMake retry relinks without rebuilding the world.
+            Assert-NativeLinkOutputsReady -BuildDirectory $BuildDirectory
+        }
+    }
+}
+
 function Invoke-CMakeBuild {
     param([switch]$Headless, [switch]$CleanFirst, [switch]$TestsOnly)
 
@@ -1289,11 +1367,7 @@ function Invoke-CMakeBuild {
         $parallelJobs = Get-SubspaceParallelJobs
         Write-Log ("Native build parallelism: {0} worker(s)." -f $parallelJobs) "INFO"
         Assert-NativeLinkOutputsReady -BuildDirectory $buildDir
-        Invoke-LoggedCommand -Label "CMake build" -FilePath "cmake" -Arguments @(
-            "--build", $buildDir,
-            "--config", $Configuration,
-            "--parallel", $parallelJobs
-        ) -WorkingDirectory $Global:SubspaceRoot | Out-Null
+        Invoke-CMakeBuildWithNativeLinkRetry -BuildDirectory $buildDir -ParallelJobs $parallelJobs
     }
 
     if (-not $SkipTests) {

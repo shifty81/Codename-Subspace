@@ -39,7 +39,13 @@ struct ConstructionSymmetryValidation {
 /// handedness, not duplicate+180-degree rotation.
 class ConstructionSymmetrySystem {
 public:
+    // Context-neutral editor presentation, keeping the serialized legacy
+    // enum values and physical reflection axes unchanged.
     static const char* AxisName(ConstructionSymmetryAxis axis);
+    // Existing ship-oriented phrasing remains available for legacy content.
+    static const char* LegacyAxisName(ConstructionSymmetryAxis axis);
+    // X=0, Y=1, Z=2; no permutation of authored or serialized coordinates.
+    static int AxisIndex(ConstructionSymmetryAxis axis);
     static Vector3 ReflectPoint(const Vector3& point, const ConstructionSymmetryFrame& frame);
     static Vector3 ReflectDirection(const Vector3& direction, ConstructionSymmetryAxis axis);
     static VisualModulePlacement ReflectPlacement(const VisualModulePlacement& placement,

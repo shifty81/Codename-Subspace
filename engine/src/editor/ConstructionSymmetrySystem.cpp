@@ -14,11 +14,29 @@ std::string SwapOnce(const std::string& name,const char* a,const char* b){
 
 const char* ConstructionSymmetrySystem::AxisName(ConstructionSymmetryAxis axis){
     switch(axis){
+    case ConstructionSymmetryAxis::PortStarboard:return "MIRROR X";
+    case ConstructionSymmetryAxis::ForeAft:return "MIRROR Y";
+    case ConstructionSymmetryAxis::DorsalVentral:return "MIRROR Z";
+    }
+    return "SYMMETRY";
+}
+
+const char* ConstructionSymmetrySystem::LegacyAxisName(ConstructionSymmetryAxis axis){
+    switch(axis){
     case ConstructionSymmetryAxis::PortStarboard:return "PORT <-> STARBOARD";
     case ConstructionSymmetryAxis::ForeAft:return "FORE <-> AFT";
     case ConstructionSymmetryAxis::DorsalVentral:return "DORSAL <-> VENTRAL";
     }
     return "SYMMETRY";
+}
+
+int ConstructionSymmetrySystem::AxisIndex(ConstructionSymmetryAxis axis){
+    switch(axis){
+    case ConstructionSymmetryAxis::PortStarboard:return 0;
+    case ConstructionSymmetryAxis::ForeAft:return 1;
+    case ConstructionSymmetryAxis::DorsalVentral:return 2;
+    }
+    return -1;
 }
 
 Vector3 ConstructionSymmetrySystem::ReflectPoint(const Vector3&p,const ConstructionSymmetryFrame&f){

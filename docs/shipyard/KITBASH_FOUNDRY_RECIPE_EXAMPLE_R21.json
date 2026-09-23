@@ -1,0 +1,38 @@
+{
+  "schema": "subspace.kitbash-foundry.recipe.v1",
+  "assetId": "example.frigate.engine_pod",
+  "parts": [
+    {
+      "id": "housing",
+      "primitive": "HULL_SEGMENT",
+      "size": [3.2, 6.0, 2.8],
+      "position": [0.0, 0.0, 0.0],
+      "rotationDeg": [0.0, 0.0, 0.0],
+      "role": "ENGINE_HOUSING",
+      "materialZone": "HULL_PRIMARY"
+    },
+    {
+      "id": "nozzle",
+      "primitive": "CYLINDER",
+      "size": [2.1, 2.8, 2.1],
+      "position": [0.0, -4.2, 0.0],
+      "rotationDeg": [90.0, 0.0, 0.0],
+      "role": "ENGINE_NOZZLE",
+      "materialZone": "PROPULSION_NOZZLE"
+    }
+  ],
+  "sockets": [
+    {
+      "id": "pod.mount.forward",
+      "partId": "housing",
+      "position": [0.0, 3.0, 0.0],
+      "forward": [0.0, 1.0, 0.0],
+      "up": [0.0, 0.0, 1.0],
+      "kind": "STRUCTURAL"
+    }
+  ],
+  "metadata": {
+    "purpose": "R21 deterministic Blender worker example",
+    "coordinateContract": "+X width/right, +Y forward, +Z up"
+  }
+}
