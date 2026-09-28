@@ -51,7 +51,7 @@ int main(){
     Check(Near(viewRect.y+viewRect.height,static_cast<float>(height)),
           "canvas extends behind docked asset shelf");
     const auto* tool=SubspaceDockSystem::FindPanel(w,"tool_rail");
-    Check(tool&&tool->floatable&&tool->closable,"rail is an independent dockable tool");
+    Check(tool&&!tool->floatable&&!tool->closable,"rail is a fixed independent tool region");
     Check(SubspaceDockSystem::FloatPanel(w,"asset_browser",{430,320,600,280}),
           "asset shelf can float independently");
     layouts=SubspaceDockSystem::Materialize(w,width,height,top);

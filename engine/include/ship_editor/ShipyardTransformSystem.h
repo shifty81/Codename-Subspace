@@ -14,7 +14,7 @@ struct ShipyardTransformTransaction {
     bool active = false;
     std::size_t moduleIndex = 0;
     ShipyardTransformTool tool = ShipyardTransformTool::Select;
-    ShipyardTransformSpace space = ShipyardTransformSpace::View;
+    ShipyardTransformSpace space = ShipyardTransformSpace::Ship; // PARENT default
     VisualModulePlacement before{};
     VisualModulePlacement working{};
     bool snap = true;
@@ -27,7 +27,7 @@ class ShipyardTransformSystem {
 public:
     static bool Begin(ShipyardTransformTransaction& tx,std::size_t moduleIndex,
                       const VisualModulePlacement& placement,ShipyardTransformTool tool,
-                      ShipyardTransformSpace space=ShipyardTransformSpace::View);
+                      ShipyardTransformSpace space=ShipyardTransformSpace::Ship);
     static void Translate(ShipyardTransformTransaction& tx,const Vector3& delta,bool fine=false);
     static void Rotate(ShipyardTransformTransaction& tx,const Vector3& deltaDegrees,bool fine=false);
     static void Scale(ShipyardTransformTransaction& tx,const Vector3& deltaScale,bool fine=false);

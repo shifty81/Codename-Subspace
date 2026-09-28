@@ -29,6 +29,48 @@ Emit ""
 
 $failures = [System.Collections.Generic.List[string]]::new()
 
+# R32R1: approved R32 carried a transactional Construct source cutover, but
+# Full Gate previously reached CTest without invoking it. Pass/source
+# continuity is the disk-loaded pre-build checkpoint used by both Full Gate
+# and render builds, so close that one-time approved migration here as well as
+# from the updated root utility. This keeps same-process PCC sessions safe.
+$pass1509 = Join-Path $Root 'tools\control\static-gates\pass1509_studio_construct_cutover.cmake'
+$builderSource = Join-Path $Root 'engine\src\ship_editor\ShipyardBuilderSystem.cpp'
+if (Test-Path -LiteralPath $pass1509 -PathType Leaf) {
+    if (-not (Test-Path -LiteralPath $builderSource -PathType Leaf)) {
+        throw 'PASS1509 is installed but ShipyardBuilderSystem.cpp is missing.'
+    }
+    $builderText = Get-Content -LiteralPath $builderSource -Raw -ErrorAction Stop
+    if ($builderText -notmatch 'ConstructionScalePivotSystem\.h' -or
+        $builderText -notmatch 'Modeled shape scaled / opposite face anchored') {
+        $migration = Join-Path $Root 'tools\studio\apply_studio_r23_r32_normalization.py'
+        $assertions = Join-Path $Root 'tools\studio\studio_r32_source_assertions.py'
+        if (-not (Test-Path -LiteralPath $migration -PathType Leaf)) {
+            throw 'PASS1509 is installed but the R32 source migration helper is missing.'
+        }
+        if (-not (Test-Path -LiteralPath $assertions -PathType Leaf)) {
+            throw 'PASS1509 is installed but the R32 source assertions helper is missing.'
+        }
+        $python = Get-Command python -ErrorAction SilentlyContinue
+        if (-not $python) { throw 'Python is required to close the approved R32 Studio source migration.' }
+        Emit '[R32R1] Pending approved Studio Construct source cutover detected; applying transaction before continuity/build.'
+        & $python.Source $migration --root $Root --apply
+        if ($LASTEXITCODE -ne 0) { throw 'R32 Studio Construct source migration failed.' }
+        & $python.Source $assertions --root $Root
+        if ($LASTEXITCODE -ne 0) { throw 'R32 Studio source assertions failed after migration.' }
+        $builderText = Get-Content -LiteralPath $builderSource -Raw -ErrorAction Stop
+        if ($builderText -notmatch 'ConstructionScalePivotSystem\.h' -or
+            $builderText -notmatch 'Modeled shape scaled / opposite face anchored') {
+            throw 'R32 migration reported success but required Construct source tokens remain absent.'
+        }
+        Emit '[PASS] R32 Studio Construct source migration closed before native build.'
+    }
+    else {
+        Emit '[PASS] R32 Studio Construct source cutover already present.'
+    }
+}
+
+
 if (-not (Test-Path -LiteralPath $CMakePath -PathType Leaf)) {
     $failures.Add("engine/CMakeLists.txt is missing.") | Out-Null
 }

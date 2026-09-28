@@ -84,6 +84,8 @@ enum class InputAction : std::size_t {
     DccConstraintY,
     DccConstraintZ,
     DccConstraintClear,
+    DccCycleTransformSpace,
+    DccDuplicateSelection,
     Count
 };
 

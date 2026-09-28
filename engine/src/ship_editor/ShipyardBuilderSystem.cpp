@@ -1,4 +1,6 @@
 #include "ship_editor/ShipyardBuilderSystem.h"
+#include "studio/StudioPlacementWorkflowPolicy.h"
+#include "ship_editor/ShipyardTransformSpacePolicy.h"
 #include "ship_editor/ShipyardDocumentStartupSystem.h"
 #include "ship_editor/ShipyardCatalogViewport.h"
 #include "ship_editor/ShipyardPanelCompositorSystem.h"
@@ -6,6 +8,7 @@
 #include "ship_editor/ShipyardSocketOverrideSystem.h"
 #include "ship_editor/ShipyardDefinitionOverrideSystem.h"
 #include "ship_editor/ShipyardKitbashTransformSystem.h"
+#include "editor/ConstructionScalePivotSystem.h"
 #include "ships/ShipPcgRuntimeClosureSystem.h"
 #include "ships/ShipClassGenerationAuthoritySystem.h"
 #include "ships/FactionShipDesignSystem.h"
@@ -840,6 +843,36 @@ bool ShipyardBuilderSystem::RemoveSelectedModule(){
     RefreshForwardAuthority();InvalidateRecipeMetadata();NormalizeSelections();model_.status="Removed "+CompactId(id)+" and attached descendants";return true;
 }
 
+
+bool ShipyardBuilderSystem::RemoveSelectedModulePreserveDescendants(){
+    if(model_.recipe.modules.empty())return false;
+    const std::size_t index=std::min(model_.selectedPlacedModule,model_.recipe.modules.size()-1);
+    const std::string id=model_.recipe.modules[index].moduleId;
+    std::size_t detachedChildren=0;for(const auto& e:model_.recipe.attachments)if(e.parentModuleIndex==index)++detachedChildren;
+    std::vector<std::size_t> remap(model_.recipe.modules.size(),static_cast<std::size_t>(-1));
+    std::vector<VisualModulePlacement> kept;kept.reserve(model_.recipe.modules.size()-1);
+    for(std::size_t i=0;i<model_.recipe.modules.size();++i)if(i!=index){remap[i]=kept.size();kept.push_back(model_.recipe.modules[i]);}
+    std::vector<ShipVisualAttachment> edges;edges.reserve(model_.recipe.attachments.size());
+    for(auto e:model_.recipe.attachments){
+        if(e.parentModuleIndex==index||e.childModuleIndex==index)continue;
+        if(e.parentModuleIndex>=remap.size()||e.childModuleIndex>=remap.size())continue;
+        if(remap[e.parentModuleIndex]==static_cast<std::size_t>(-1)||remap[e.childModuleIndex]==static_cast<std::size_t>(-1))continue;
+        e.parentModuleIndex=remap[e.parentModuleIndex];e.childModuleIndex=remap[e.childModuleIndex];edges.push_back(std::move(e));
+    }
+    std::vector<ConstructionSymmetryPair> symmetry;symmetry.reserve(model_.symmetryPairs.size());
+    for(auto pair:model_.symmetryPairs){
+        if(pair.first==index||pair.second==index)continue;
+        if(pair.first>=remap.size()||pair.second>=remap.size())continue;
+        if(remap[pair.first]==static_cast<std::size_t>(-1)||remap[pair.second]==static_cast<std::size_t>(-1))continue;
+        pair.first=remap[pair.first];pair.second=remap[pair.second];symmetry.push_back(pair);
+    }
+    model_.recipe.modules=std::move(kept);model_.recipe.attachments=std::move(edges);model_.symmetryPairs=std::move(symmetry);
+    ShipArticulationSystem::ReindexAfterModuleRemoval(model_.recipe,remap);
+    model_.selectedPlacedModule=StudioPlacementWorkflowPolicy::SelectionAfterRemoval(index,model_.recipe.modules.size());
+    RefreshForwardAuthority();InvalidateRecipeMetadata();NormalizeSelections();SyncCatalogSelectionToPlaced();model_.validation=Validate();
+    model_.status="Deleted selected "+CompactId(id)+(detachedChildren?" / preserved "+std::to_string(detachedChildren)+" child module(s) as detached drafts":"");return true;
+}
+
 bool ShipyardBuilderSystem::DetachSelectedModule(){
     if(model_.recipe.modules.empty())return false;
     const std::size_t index=std::min(model_.selectedPlacedModule,model_.recipe.modules.size()-1);
@@ -1154,6 +1187,8 @@ bool ShipyardBuilderSystem::RecordsAuthoringHistory(ShipyardBuilderCommand comma
     case ShipyardBuilderCommand::AddModule:
     case ShipyardBuilderCommand::ReplaceModule:
     case ShipyardBuilderCommand::RemoveModule:
+    case ShipyardBuilderCommand::DuplicateSelection:
+    case ShipyardBuilderCommand::DeleteSelectionSafe:
     case ShipyardBuilderCommand::DetachModule:
     case ShipyardBuilderCommand::ReattachNearest:
     case ShipyardBuilderCommand::ArticulationToggle:
@@ -1301,7 +1336,10 @@ bool ShipyardBuilderSystem::RedoAuthoring(){
 bool ShipyardBuilderSystem::Activate(ShipyardBuilderCommand command,int value){
     if(command==ShipyardBuilderCommand::UndoAuthoring)return UndoAuthoring();
     if(command==ShipyardBuilderCommand::RedoAuthoring)return RedoAuthoring();
-    const bool record=RecordsAuthoringHistory(command);
+    const bool deferredDuplicate=command==ShipyardBuilderCommand::DuplicateSelection&&
+        model_.workspaceMode!=ShipyardWorkspaceMode::Model;
+    const bool stagedAddCommit=command==ShipyardBuilderCommand::AddModule&&model_.dragPreview.staged;
+    const bool record=RecordsAuthoringHistory(command)&&!deferredDuplicate&&!stagedAddCommit;
     ShipyardBuilderRuntimeModel before;
     if(record)before=model_;
     const bool ok=ActivateInternal(command,value);
@@ -1340,6 +1378,17 @@ bool ShipyardBuilderSystem::ActivateInternal(ShipyardBuilderCommand command,int 
         case ShipyardBuilderCommand::PreviousPlaced:if(!model_.recipe.modules.empty()){model_.selectedPlacedModule=(model_.selectedPlacedModule+model_.recipe.modules.size()-1)%model_.recipe.modules.size();SyncCatalogSelectionToPlaced();changed=true;}break;
         case ShipyardBuilderCommand::NextPlaced:if(!model_.recipe.modules.empty()){model_.selectedPlacedModule=(model_.selectedPlacedModule+1)%model_.recipe.modules.size();SyncCatalogSelectionToPlaced();changed=true;}break;
         case ShipyardBuilderCommand::AddModule:changed=model_.dragPreview.staged?CommitCatalogDrag():AddSelectedModule();break;
+        case ShipyardBuilderCommand::DuplicateSelection:{
+            if(model_.inspectorTab==ShipyardInspectorTab::Sockets){model_.status="Duplicate is unavailable in SOCKETS; return to CONSTRUCT to duplicate the module";return false;}
+            if(model_.workspaceMode==ShipyardWorkspaceMode::Model){if(model_.modeling.recipe.primitives.empty())return false;const auto index=std::min(model_.modeling.selectedPrimitiveIndex,model_.modeling.recipe.primitives.size()-1);const bool ok=ShipyardModelingSystem::DuplicatePrimitive(model_.modeling.recipe,index);if(ok){model_.modeling.selectedPrimitiveIndex=model_.modeling.recipe.primitives.size()-1;model_.dirty=true;model_.status="Duplicated modeled shape";}return ok;}
+            if(model_.workspaceMode!=ShipyardWorkspaceMode::Build){model_.status="Duplicate is available in CONSTRUCT or GEOMETRY";return false;}
+            return BeginDuplicateSelectedPlacement();}
+        case ShipyardBuilderCommand::DeleteSelectionSafe:{
+            if(model_.inspectorTab==ShipyardInspectorTab::Sockets)return RemoveSocket();
+            if(model_.workspaceMode==ShipyardWorkspaceMode::Interior){if(ShipInteriorStructureAuthoringSystem::RemoveSelected(model_.interiorStructure)){model_.dirty=true;model_.status=model_.interiorStructure.status;return true;}return false;}
+            if(model_.workspaceMode==ShipyardWorkspaceMode::Model){if(model_.modeling.recipe.primitives.empty())return false;const auto index=std::min(model_.modeling.selectedPrimitiveIndex,model_.modeling.recipe.primitives.size()-1);const bool ok=ShipyardModelingSystem::RemovePrimitive(model_.modeling.recipe,index);if(ok){model_.modeling.selectedPrimitiveIndex=model_.modeling.recipe.primitives.empty()?0:std::min(index,model_.modeling.recipe.primitives.size()-1);model_.dirty=true;model_.status="Deleted selected modeled shape";}return ok;}
+            if(model_.workspaceMode!=ShipyardWorkspaceMode::Build){model_.status="Delete Selected has no destructive target in this workspace";return false;}
+            return RemoveSelectedModulePreserveDescendants();}
         case ShipyardBuilderCommand::ReplaceModule:changed=ReplaceSelectedModule();break;
         case ShipyardBuilderCommand::RemoveModule:changed=RemoveSelectedModule();break;
         case ShipyardBuilderCommand::DetachModule:return DetachSelectedModule();
@@ -1372,9 +1421,9 @@ bool ShipyardBuilderSystem::ActivateInternal(ShipyardBuilderCommand command,int 
         case ShipyardBuilderCommand::SaveDefinitionOverrides:definitionOverridesSaveRequested_=true;model_.status="Definition override save requested";return true;
         case ShipyardBuilderCommand::ToggleMirrorX:
         case ShipyardBuilderCommand::ToggleLiveSymmetry:model_.symmetryFrame.live=!model_.symmetryFrame.live;model_.mirrorX=model_.symmetryFrame.live&&model_.symmetryFrame.axis==ConstructionSymmetryAxis::PortStarboard;model_.status=std::string("LIVE SYMMETRY ")+(model_.symmetryFrame.live?"ON":"OFF");changed=true;break;
-        case ShipyardBuilderCommand::SymmetryAxisPortStarboard:model_.symmetryFrame.axis=ConstructionSymmetryAxis::PortStarboard;model_.mirrorX=model_.symmetryFrame.live;model_.status="Symmetry plane: PORT <-> STARBOARD";return true;
-        case ShipyardBuilderCommand::SymmetryAxisForeAft:model_.symmetryFrame.axis=ConstructionSymmetryAxis::ForeAft;model_.mirrorX=false;model_.status="Symmetry plane: FORE <-> AFT";return true;
-        case ShipyardBuilderCommand::SymmetryAxisDorsalVentral:model_.symmetryFrame.axis=ConstructionSymmetryAxis::DorsalVentral;model_.mirrorX=false;model_.status="Symmetry plane: DORSAL <-> VENTRAL";return true;
+        case ShipyardBuilderCommand::SymmetryAxisPortStarboard:model_.symmetryFrame.axis=ConstructionSymmetryAxis::PortStarboard;model_.mirrorX=model_.symmetryFrame.live;model_.status="Symmetry plane: MIRROR X / WIDTH";return true;
+        case ShipyardBuilderCommand::SymmetryAxisForeAft:model_.symmetryFrame.axis=ConstructionSymmetryAxis::ForeAft;model_.mirrorX=false;model_.status="Symmetry plane: MIRROR Y / LENGTH";return true;
+        case ShipyardBuilderCommand::SymmetryAxisDorsalVentral:model_.symmetryFrame.axis=ConstructionSymmetryAxis::DorsalVentral;model_.mirrorX=false;model_.status="Symmetry plane: MIRROR Z / HEIGHT";return true;
         case ShipyardBuilderCommand::SymmetryPlaneNegative:
         case ShipyardBuilderCommand::SymmetryPlanePositive:{
             const float d=command==ShipyardBuilderCommand::SymmetryPlanePositive?.25f:-.25f;
@@ -1411,10 +1460,10 @@ bool ShipyardBuilderSystem::ActivateInternal(ShipyardBuilderCommand command,int 
         case ShipyardBuilderCommand::NextDecalPreset:{const auto n=DecalPresets().size();if(n){model_.decalPreset=(model_.decalPreset+1)%n;model_.status="Decal preset: "+DecalPresets()[model_.decalPreset];changed=true;}}break;
         case ShipyardBuilderCommand::AddDecal:changed=AddSelectedDecal();break;
         case ShipyardBuilderCommand::RemoveDecal:changed=RemoveSelectedDecal();break;
-        case ShipyardBuilderCommand::ToolSelect:if(model_.inspectorTab!=ShipyardInspectorTab::Sockets&&model_.workspaceMode!=ShipyardWorkspaceMode::Model){model_.workspaceMode=ShipyardWorkspaceMode::Build;model_.inspectorTab=ShipyardInspectorTab::Transform;}model_.transformTool=ShipyardTransformTool::Select;CancelTransform();CancelSocketTransform();model_.status="Select tool";return true;
-        case ShipyardBuilderCommand::ToolMove:if(model_.inspectorTab!=ShipyardInspectorTab::Sockets&&model_.workspaceMode!=ShipyardWorkspaceMode::Model){model_.workspaceMode=ShipyardWorkspaceMode::Build;model_.inspectorTab=ShipyardInspectorTab::Transform;}model_.transformTool=ShipyardTransformTool::Move;CancelTransform();CancelSocketTransform();model_.status=model_.inspectorTab==ShipyardInspectorTab::Sockets?"Socket MOVE tool":"Move tool";return true;
-        case ShipyardBuilderCommand::ToolRotate:if(model_.inspectorTab!=ShipyardInspectorTab::Sockets&&model_.workspaceMode!=ShipyardWorkspaceMode::Model){model_.workspaceMode=ShipyardWorkspaceMode::Build;model_.inspectorTab=ShipyardInspectorTab::Transform;}model_.transformTool=ShipyardTransformTool::Rotate;CancelTransform();CancelSocketTransform();model_.status=model_.inspectorTab==ShipyardInspectorTab::Sockets?"Socket ROTATE tool":"Rotate tool";return true;
-        case ShipyardBuilderCommand::ToolScale:if(model_.workspaceMode!=ShipyardWorkspaceMode::Model){model_.workspaceMode=ShipyardWorkspaceMode::Build;model_.inspectorTab=ShipyardInspectorTab::Transform;}model_.transformTool=ShipyardTransformTool::Scale;CancelTransform();model_.status="Scale tool";return true;
+        case ShipyardBuilderCommand::ToolSelect:if(model_.inspectorTab!=ShipyardInspectorTab::Sockets&&model_.workspaceMode!=ShipyardWorkspaceMode::Model){model_.workspaceMode=ShipyardWorkspaceMode::Build;model_.inspectorTab=ShipyardInspectorTab::Transform;}model_.transformTool=ShipyardTransformTool::Select;CancelTransform();CancelSocketTransform();ClearTransformConstraint();model_.status="Select tool";return true;
+        case ShipyardBuilderCommand::ToolMove:if(model_.inspectorTab!=ShipyardInspectorTab::Sockets&&model_.workspaceMode!=ShipyardWorkspaceMode::Model){model_.workspaceMode=ShipyardWorkspaceMode::Build;model_.inspectorTab=ShipyardInspectorTab::Transform;}model_.transformTool=ShipyardTransformTool::Move;CancelTransform();CancelSocketTransform();ClearTransformConstraint();model_.status=model_.inspectorTab==ShipyardInspectorTab::Sockets?"Socket MOVE tool":"Move tool";return true;
+        case ShipyardBuilderCommand::ToolRotate:if(model_.inspectorTab!=ShipyardInspectorTab::Sockets&&model_.workspaceMode!=ShipyardWorkspaceMode::Model){model_.workspaceMode=ShipyardWorkspaceMode::Build;model_.inspectorTab=ShipyardInspectorTab::Transform;}model_.transformTool=ShipyardTransformTool::Rotate;CancelTransform();CancelSocketTransform();ClearTransformConstraint();model_.status=model_.inspectorTab==ShipyardInspectorTab::Sockets?"Socket ROTATE tool":"Rotate tool";return true;
+        case ShipyardBuilderCommand::ToolScale:if(model_.workspaceMode!=ShipyardWorkspaceMode::Model){model_.workspaceMode=ShipyardWorkspaceMode::Build;model_.inspectorTab=ShipyardInspectorTab::Transform;}model_.transformTool=ShipyardTransformTool::Scale;CancelTransform();ClearTransformConstraint();model_.status="Scale tool / OBJECT W-L-H";return true;
         case ShipyardBuilderCommand::ModelSelectPrimitive:{
             if(!model_.capabilities.model||value<0||static_cast<std::size_t>(value)>=model_.modeling.recipe.primitives.size())return false;
             model_.modeling.selectedPrimitiveIndex=static_cast<std::size_t>(value);
@@ -1468,10 +1517,10 @@ bool ShipyardBuilderSystem::ActivateInternal(ShipyardBuilderCommand command,int 
         case ShipyardBuilderCommand::ScalePlayerDown:model_.worldScale=WorldScaleAuthoritySystem::WithPlayerHeight(std::max(1.20f,model_.worldScale.referencePlayerHeightMeters-.05f));model_.devWorld=ShipyardDevWorldSystem::CreateDefault(model_.worldScale);model_.devWorld.enabled=true;model_.status="Reference player height: "+std::to_string(model_.worldScale.referencePlayerHeightMeters)+" m";return true;
         case ShipyardBuilderCommand::ScalePlayerUp:model_.worldScale=WorldScaleAuthoritySystem::WithPlayerHeight(std::min(2.40f,model_.worldScale.referencePlayerHeightMeters+.05f));model_.devWorld=ShipyardDevWorldSystem::CreateDefault(model_.worldScale);model_.devWorld.enabled=true;model_.status="Reference player height: "+std::to_string(model_.worldScale.referencePlayerHeightMeters)+" m";return true;
         case ShipyardBuilderCommand::ToggleTransformSpace:
-            if(model_.transformSpace==ShipyardTransformSpace::View)model_.transformSpace=ShipyardTransformSpace::Ship;
-            else if(model_.transformSpace==ShipyardTransformSpace::Ship)model_.transformSpace=ShipyardTransformSpace::Local;
-            else model_.transformSpace=ShipyardTransformSpace::View;
-            model_.status=model_.transformSpace==ShipyardTransformSpace::View?"TRANSFORM SPACE: CAMERA":(model_.transformSpace==ShipyardTransformSpace::Ship?"TRANSFORM SPACE: SHIP":"TRANSFORM SPACE: LOCAL");return true;
+            ClearTransformConstraint();
+            model_.transformSpace=ShipyardTransformSpacePolicy::Next(model_.transformSpace);
+            model_.status=std::string("TRANSFORM SPACE: ")+ShipyardTransformSpacePolicy::Name(model_.transformSpace)+
+                " / Transform space changed; transient axis/local constraint cleared";return true;
         case ShipyardBuilderCommand::ToggleTransformSnap:model_.transformSnap=!model_.transformSnap;if(model_.transform.active)model_.transform.snap=model_.transformSnap;model_.status=std::string("TRANSFORM SNAP ")+(model_.transformSnap?"ON":"OFF");return true;
         case ShipyardBuilderCommand::NudgePort:{model_.transformTool=ShipyardTransformTool::Move;if(model_.dragPreview.staged)return TranslateStagedPlacement({-.10f,0,0});if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!TranslateSelectedSocket({-.10f,0,0}))return false;return CommitSocketTransform();}if(!TranslateSelected({-.10f,0,0}))return false;return CommitTransform();}
         case ShipyardBuilderCommand::NudgeStarboard:{model_.transformTool=ShipyardTransformTool::Move;if(model_.dragPreview.staged)return TranslateStagedPlacement({.10f,0,0});if(model_.inspectorTab==ShipyardInspectorTab::Sockets){if(!TranslateSelectedSocket({.10f,0,0}))return false;return CommitSocketTransform();}if(!TranslateSelected({.10f,0,0}))return false;return CommitTransform();}
@@ -1644,9 +1693,15 @@ Vector3 ShipyardBuilderSystem::ApplyTransformConstraint(const Vector3& v,Shipyar
 bool ShipyardBuilderSystem::SetTransformConstraint(ShipyardTransformConstraint c,bool toggleLocalOnRepeat){
     if(c==ShipyardTransformConstraint::Free){ClearTransformConstraint();return true;}
     if(model_.transformConstraint==c&&toggleLocalOnRepeat){
+        if(model_.transformTool!=ShipyardTransformTool::Move){
+            model_.transformConstraint=ShipyardTransformConstraint::Free;
+            model_.transformConstraintLocal=false;
+            model_.status="Transform constraint cleared";
+            return true;
+        }
         if(!model_.transformConstraintLocal){
             model_.transformConstraintLocal=true;
-            model_.status=std::string("Constraint ")+TransformConstraintName(c)+" / LOCAL";
+            model_.status=std::string("Constraint ")+TransformConstraintName(c)+" / OBJECT";
         }else{
             model_.transformConstraint=ShipyardTransformConstraint::Free;
             model_.transformConstraintLocal=false;
@@ -1656,7 +1711,12 @@ bool ShipyardBuilderSystem::SetTransformConstraint(ShipyardTransformConstraint c
     }
     model_.transformConstraint=c;
     model_.transformConstraintLocal=false;
-    model_.status=std::string("Constraint ")+TransformConstraintName(c)+" / GLOBAL-SHIP (press again for LOCAL)";
+    if(model_.transformTool==ShipyardTransformTool::Move)
+        model_.status=std::string("Constraint ")+TransformConstraintName(c)+" / PARENT (press again for OBJECT)";
+    else if(model_.transformTool==ShipyardTransformTool::Rotate)
+        model_.status=std::string("Constraint ")+TransformConstraintName(c)+" / EULER (press again to clear)";
+    else
+        model_.status=std::string("Constraint ")+TransformConstraintName(c)+" / OBJECT W-L-H (press again to clear)";
     return true;
 }
 
@@ -1678,9 +1738,12 @@ bool ShipyardBuilderSystem::BeginSelectedTransform(){
     model_.transform.snap=model_.transformSnap;
     model_.transform.rotationSnapDegrees=model_.rotationStepDegrees;
     model_.transform.scaleSnap=.05f;
-    if(model_.transformTool==ShipyardTransformTool::Move)model_.status="MOVE / arrows follow camera; SHIFT = 0.1x precision";
-    else if(model_.transformTool==ShipyardTransformTool::Rotate)model_.status="ROTATE / drag yaw+pitch; CTRL-drag roll; SHIFT = 0.1x";
-    else model_.status="SCALE / drag for uniform scale; SHIFT = 0.1x precision";
+    const auto effectiveSpace=ShipyardTransformSpacePolicy::Effective(
+        model_.transformTool,model_.transformSpace,model_.transformConstraintLocal);
+    const std::string orientation=ShipyardTransformSpacePolicy::Name(effectiveSpace);
+    if(model_.transformTool==ShipyardTransformTool::Move)model_.status="MOVE / "+orientation+" axes / SHIFT = 0.1x precision";
+    else if(model_.transformTool==ShipyardTransformTool::Rotate)model_.status="ROTATE / EULER components / SHIFT = 0.1x precision";
+    else model_.status="SCALE / OBJECT W-L-H / SHIFT = 0.1x precision";
     return true;
 }
 
@@ -1709,6 +1772,28 @@ bool ShipyardBuilderSystem::TranslateSelected(const Vector3& delta,bool fine){
     model_.dirty=true;InvalidateRecipeMetadata();return true;
 }
 
+bool ShipyardBuilderSystem::TranslateSelectedResolvedParent(const Vector3& delta){
+    // Used only after Studio has resolved PARENT/OBJECT/VIEW into the document's
+    // authored parent coordinates. Do not re-apply an axis constraint or local basis.
+    if(model_.workspaceMode==ShipyardWorkspaceMode::Model){
+        if(model_.modeling.recipe.primitives.empty())return false;
+        if(!modelTransformActive_&&!BeginSelectedTransform())return false;
+        const auto index=std::min(model_.modeling.selectedPrimitiveIndex,model_.modeling.recipe.primitives.size()-1);
+        const bool ok=ShipyardModelingSystem::TranslatePrimitive(model_.modeling.recipe,index,delta);
+        if(ok){model_.dirty=true;model_.status="Modeled shape moved / resolved transform orientation";}
+        return ok;
+    }
+    if(!model_.transform.active&&!BeginSelectedTransform())return false;
+    if(model_.transform.tool!=ShipyardTransformTool::Move)return false;
+    const auto savedSpace=model_.transform.space;const bool savedSnap=model_.transform.snap;
+    model_.transform.space=ShipyardTransformSpace::Ship;model_.transform.snap=false;
+    ShipyardTransformSystem::Translate(model_.transform,delta,false);
+    model_.transform.space=savedSpace;model_.transform.snap=savedSnap;
+    if(model_.transform.moduleIndex<model_.recipe.modules.size())
+        model_.recipe.modules[model_.transform.moduleIndex]=model_.transform.working;
+    model_.dirty=true;InvalidateRecipeMetadata();return true;
+}
+
 bool ShipyardBuilderSystem::RotateSelected(const Vector3& deltaDegrees,bool fine){
     if(model_.workspaceMode==ShipyardWorkspaceMode::Model&&!model_.modeling.recipe.primitives.empty()){
         const auto index=std::min(model_.modeling.selectedPrimitiveIndex,model_.modeling.recipe.primitives.size()-1);
@@ -1730,15 +1815,36 @@ bool ShipyardBuilderSystem::RotateSelected(const Vector3& deltaDegrees,bool fine
 bool ShipyardBuilderSystem::ScaleSelected(const Vector3& deltaScale,bool fine){
     if(model_.workspaceMode==ShipyardWorkspaceMode::Model&&!model_.modeling.recipe.primitives.empty()){
         const auto index=std::min(model_.modeling.selectedPrimitiveIndex,model_.modeling.recipe.primitives.size()-1);
+        const auto before=model_.modeling.recipe.primitives[index];
         Vector3 d=ApplyTransformConstraint(deltaScale,model_.transformConstraint);if(model_.transformConstraint==ShipyardTransformConstraint::Free)d=deltaScale;if(fine)d=d*.1f;
-        const bool ok=ShipyardModelingSystem::ScalePrimitive(model_.modeling.recipe,index,d);if(ok){model_.dirty=true;model_.status=std::string("Modeled shape scaled / ")+TransformConstraintName(model_.transformConstraint);}return ok;
+        const bool anchored=model_.transformConstraint!=ShipyardTransformConstraint::Free;
+        const bool ok=ShipyardModelingSystem::ScalePrimitive(model_.modeling.recipe,index,d);
+        if(ok){
+            if(anchored){
+                auto& after=model_.modeling.recipe.primitives[index];
+                const auto basis=ConstructionTransformBasisSystem::ModelLocal(before.rotationDegrees);
+                const auto shift=ConstructionScalePivotSystem::OppositeFaceShift(before.size,after.size,basis);
+                after.position=before.position+shift;
+            }
+            model_.dirty=true;model_.status=anchored?"Modeled shape scaled / opposite face anchored":std::string("Modeled shape scaled / ")+TransformConstraintName(model_.transformConstraint);
+        }
+        return ok;
     }
     if(!model_.transform.active && !BeginSelectedTransform()) return false;
     if(model_.transform.tool!=ShipyardTransformTool::Scale) return false;
     ShipyardTransformSystem::Scale(model_.transform,ApplyTransformConstraint(deltaScale,model_.transformConstraint),fine);
     if(model_.transform.moduleIndex<model_.recipe.modules.size()){
-        if(const auto* record=FindRecord(model_.recipe.modules[model_.transform.moduleIndex].moduleId))
+        if(const auto* record=FindRecord(model_.recipe.modules[model_.transform.moduleIndex].moduleId)){
             ClampPlacementToMorphProfile(*record,model_.transform.before,model_.transform.working);
+            const auto profile=UniversalKitbashAuthority::BuildProfile(*record,KitbashMaterialCertification::NormalizedFallback);
+            const bool anchored=model_.transformConstraint!=ShipyardTransformConstraint::Free&&
+                profile.morph.policy!=KitbashScalingPolicy::DiscreteFamily&&
+                profile.morph.policy!=KitbashScalingPolicy::FixedReference;
+            if(anchored){
+                const auto position=ConstructionScalePivotSystem::AnchoredModulePosition(record->source,model_.transform.before,model_.transform.working);
+                model_.transform.working.x=position.x;model_.transform.working.y=position.y;model_.transform.working.z=position.z;
+            }
+        }
         model_.recipe.modules[model_.transform.moduleIndex]=model_.transform.working;
     }
     model_.dirty=true;InvalidateRecipeMetadata();return true;
@@ -1796,7 +1902,7 @@ bool ShipyardBuilderSystem::MirrorSelectedSubtreeX(){
     ConstructionSymmetryFrame frame=model_.symmetryFrame;frame.axis=ConstructionSymmetryAxis::PortStarboard;
     if(!ShipyardKitbashTransformSystem::MirrorRecipeSubtree(model_.recipe,root,frame))return false;
     model_.dirty=true;RefreshForwardAuthority();InvalidateRecipeMetadata();model_.validation=Validate();
-    model_.status="Reflected selected module/subassembly in place across PORT <-> STARBOARD";
+    model_.status="Reflected selected module/subassembly in place across MIRROR X / WIDTH";
     return true;
 }
 
@@ -1854,7 +1960,7 @@ bool ShipyardBuilderSystem::BreakSelectedSymmetryPair(){
 
 void ShipyardBuilderSystem::RefreshDragSymmetryPreview(){
     model_.dragPreview.mirroredPreviewActive=false;model_.dragPreview.mirroredValid=false;
-    if(!model_.dragPreview.active||!model_.symmetryFrame.live)return;
+    if(!model_.dragPreview.active||!model_.symmetryFrame.live||model_.dragPreview.suppressLiveSymmetry)return;
     const auto mirrored=ConstructionSymmetrySystem::ReflectPlacement(model_.dragPreview.ghost,model_.symmetryFrame);
     const Vector3 a{model_.dragPreview.ghost.x,model_.dragPreview.ghost.y,model_.dragPreview.ghost.z},b{mirrored.x,mirrored.y,mirrored.z};
     if((a-b).length()<.02f)return;
@@ -1920,8 +2026,25 @@ bool ShipyardBuilderSystem::HandleAssetSearchInput(const std::string& text){
 }
 
 bool ShipyardBuilderSystem::BeginCatalogDrag(int filteredIndex){
+    const auto filtered=FilteredCatalogIndices();if(filteredIndex<0||static_cast<std::size_t>(filteredIndex)>=filtered.size())return false;
     if(!pendingDragHistory_)pendingDragHistory_=model_;
-    const auto filtered=FilteredCatalogIndices();if(filteredIndex<0||static_cast<std::size_t>(filteredIndex)>=filtered.size())return false;model_.selectedFilteredModule=static_cast<std::size_t>(filteredIndex);const auto& child=model_.catalog[filtered[model_.selectedFilteredModule]];model_.dragPreview=ShipyardDragDropSystem::Begin(child,model_.catalog,model_.recipe,model_.targetModuleSize);model_.status=model_.dragPreview.status;return model_.dragPreview.active;
+    model_.selectedFilteredModule=static_cast<std::size_t>(filteredIndex);const auto& child=model_.catalog[filtered[model_.selectedFilteredModule]];model_.dragPreview=ShipyardDragDropSystem::Begin(child,model_.catalog,model_.recipe,model_.targetModuleSize);model_.status=model_.dragPreview.status;return model_.dragPreview.active;
+}
+
+
+bool ShipyardBuilderSystem::BeginDuplicateSelectedPlacement(){
+    if(model_.workspaceMode==ShipyardWorkspaceMode::Model||model_.recipe.modules.empty()||model_.dragPreview.active)return false;
+    const std::size_t index=std::min(model_.selectedPlacedModule,model_.recipe.modules.size()-1);
+    const auto* record=FindRecord(model_.recipe.modules[index].moduleId);if(!record)return false;
+    if(pendingDragHistory_)return false;
+    pendingDragHistory_=model_;
+    auto preview=ShipyardDragDropSystem::Begin(*record,model_.catalog,model_.recipe,model_.targetModuleSize);
+    preview.ghost=model_.recipe.modules[index];
+    preview.ghost.x+=StudioPlacementWorkflowPolicy::DuplicateOffset(model_.transformSnap);
+    preview.active=true;preview.valid=true;preview.staged=true;preview.snapped=false;preview.freePlacement=true;preview.selectedCandidate=-1;preview.suppressLiveSymmetry=true;
+    preview.resolvedUniformScale=(preview.ghost.scaleX+preview.ghost.scaleY+preview.ghost.scaleZ)/3.0f;
+    preview.status="DUPLICATE STAGED / MOVE - ROTATE - SCALE / ENTER CONFIRMS / ESC CANCELS";
+    model_.dragPreview=std::move(preview);RefreshDragSymmetryPreview();model_.status=model_.dragPreview.status;return true;
 }
 
 bool ShipyardBuilderSystem::UpdateCatalogDrag(const Vector3& shipLocalPointer){
@@ -1936,8 +2059,12 @@ bool ShipyardBuilderSystem::UpdateCatalogDrag(const Vector3& shipLocalPointer){
     }
     const bool canSnap=bestIndex>=0&&best<=model_.dragPreview.snapRadius;
     if(canSnap){
+        const bool preserveDuplicateTraits=model_.dragPreview.suppressLiveSymmetry;
+        const auto authoredBeforeSnap=model_.dragPreview.ghost;
         model_.dragPreview.selectedCandidate=bestIndex;
         model_.dragPreview.ghost=model_.dragPreview.candidates[static_cast<std::size_t>(bestIndex)].placement;
+        if(preserveDuplicateTraits)
+            StudioPlacementWorkflowPolicy::PreserveDuplicateAuthoredTraits(authoredBeforeSnap,model_.dragPreview.ghost);
         model_.dragPreview.valid=!model_.dragPreview.candidates[static_cast<std::size_t>(bestIndex)].collisionRisk;
         model_.dragPreview.snapped=true;model_.dragPreview.freePlacement=false;
         model_.dragPreview.status=model_.dragPreview.valid?"SNAP READY / RELEASE TO ATTACH":"INVALID / COLLISION";
@@ -1958,7 +2085,11 @@ bool ShipyardBuilderSystem::StageCatalogDrag(){
 }
 
 bool ShipyardBuilderSystem::CycleStagedSnapCandidate(int delta){
+    const bool preserveDuplicateTraits=model_.dragPreview.suppressLiveSymmetry;
+    const auto authoredBeforeSnap=model_.dragPreview.ghost;
     if(!ShipyardDragDropSystem::CycleCandidate(model_.dragPreview,delta))return false;
+    if(preserveDuplicateTraits)
+        StudioPlacementWorkflowPolicy::PreserveDuplicateAuthoredTraits(authoredBeforeSnap,model_.dragPreview.ghost);
     RefreshDragSymmetryPreview();model_.status=model_.dragPreview.status;return true;
 }
 
@@ -1990,7 +2121,10 @@ bool ShipyardBuilderSystem::CommitCatalogDrag(){
     std::size_t primaryParent=static_cast<std::size_t>(-1);std::string primaryParentSocket,primaryChildSocket;
     if(preview.snapped&&preview.selectedCandidate>=0){
         const auto c=preview.candidates[static_cast<std::size_t>(preview.selectedCandidate)];
-        model_.recipe.modules.push_back(c.placement);
+        // The staged ghost is the WYSIWYG placement authority. Candidate metadata
+        // still owns the socket edge, but commit must not discard preview-owned
+        // material/source-material state or any solver-normalized geometry.
+        model_.recipe.modules.push_back(preview.ghost);
         model_.recipe.attachments.push_back({c.parentModuleIndex,childIndex,c.parentSocket,c.childSocket,0.0f,true});
         primaryParent=c.parentModuleIndex;primaryParentSocket=c.parentSocket;primaryChildSocket=c.childSocket;
         model_.status="Module dropped onto compatible socket";
@@ -2210,8 +2344,7 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
     // runtime Dev Mode unlock native modeling, PCG, world, socket, and raw
     // authoring capabilities over the same runtime data.
     std::vector<std::tuple<ShipyardBuilderCommand,std::string,bool,bool>> workspaceTabs;
-    workspaceTabs.push_back({ShipyardBuilderCommand::WorkspaceBuild,"BUILD",effectiveMode==ShipyardWorkspaceMode::Build,true});
-    if(model.capabilities.model)workspaceTabs.push_back({ShipyardBuilderCommand::WorkspaceModel,"MODEL",effectiveMode==ShipyardWorkspaceMode::Model,true});
+    workspaceTabs.push_back({ShipyardBuilderCommand::WorkspaceBuild,"CONSTRUCT",effectiveMode==ShipyardWorkspaceMode::Build||effectiveMode==ShipyardWorkspaceMode::Model,true});
     if(model.capabilities.interior)workspaceTabs.push_back({ShipyardBuilderCommand::WorkspaceInterior,"INTERIOR",effectiveMode==ShipyardWorkspaceMode::Interior,true});
     if(model.capabilities.sockets)workspaceTabs.push_back({ShipyardBuilderCommand::InspectorSockets,"SOCKETS",model.inspectorTab==ShipyardInspectorTab::Sockets,true});
     workspaceTabs.push_back({ShipyardBuilderCommand::WorkspaceAppearance,"APPEARANCE",effectiveMode==ShipyardWorkspaceMode::Appearance,true});
@@ -2255,7 +2388,7 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
     add(ShipyardBuilderCommand::InspectorAppearance,0,-100,-100,0,0,"",false,false);
 
     if(effectiveMode==ShipyardWorkspaceMode::Build){
-        const std::string spaceLabel=model.transformSpace==ShipyardTransformSpace::View?"CAMERA":(model.transformSpace==ShipyardTransformSpace::Ship?"SHIP":"LOCAL");
+        const std::string spaceLabel=ShipyardTransformSpacePolicy::Name(model.transformSpace);
         row(l.editRowY,{
             {ShipyardBuilderCommand::ToolSelect,"[Q] SELECT",model.transformTool==ShipyardTransformTool::Select,true},
             {ShipyardBuilderCommand::ToolMove,"[W] MOVE",model.transformTool==ShipyardTransformTool::Move,hasTransformSubject},
@@ -2268,18 +2401,19 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
             {ShipyardBuilderCommand::PreviousPlaced,"PREV",false,hasPlaced},
             {ShipyardBuilderCommand::NextPlaced,"NEXT",false,hasPlaced},
             {ShipyardBuilderCommand::FrameSelected,"[F] FRAME PART",false,hasPlaced},
-            {ShipyardBuilderCommand::FrameShip,"[HOME] FRAME SHIP",false,hasPlaced}
+            {ShipyardBuilderCommand::FrameShip,"[HOME] FRAME SHIP",false,hasPlaced},
+            {ShipyardBuilderCommand::WorkspaceModel,"EDIT GEOMETRY",false,model.capabilities.model}
         });
         if(model.transformTool==ShipyardTransformTool::Move){
             row(l.moveRowY,{
-                {ShipyardBuilderCommand::NudgePort,"PORT",false,hasTransformSubject},
-                {ShipyardBuilderCommand::NudgeStarboard,"STARBOARD",false,hasTransformSubject},
-                {ShipyardBuilderCommand::NudgeForward,"FORWARD",false,hasTransformSubject}
+                {ShipyardBuilderCommand::NudgePort,"X -",false,hasTransformSubject},
+                {ShipyardBuilderCommand::NudgeStarboard,"X +",false,hasTransformSubject},
+                {ShipyardBuilderCommand::NudgeForward,"Y +",false,hasTransformSubject}
             });
             row(l.moveRow2Y,{
-                {ShipyardBuilderCommand::NudgeAft,"AFT",false,hasTransformSubject},
-                {ShipyardBuilderCommand::NudgeDorsal,"UP",false,hasTransformSubject},
-                {ShipyardBuilderCommand::NudgeVentral,"DOWN",false,hasTransformSubject}
+                {ShipyardBuilderCommand::NudgeAft,"Y -",false,hasTransformSubject},
+                {ShipyardBuilderCommand::NudgeDorsal,"Z +",false,hasTransformSubject},
+                {ShipyardBuilderCommand::NudgeVentral,"Z -",false,hasTransformSubject}
             });
         }else if(model.transformTool==ShipyardTransformTool::Rotate){
             row(l.moveRowY,{
@@ -2314,9 +2448,9 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
             });
         }else{ // Select tool: symmetry is a first-class construction workflow.
             row(l.moveRowY,{
-                {ShipyardBuilderCommand::SymmetryAxisPortStarboard,"PORT <-> STARBOARD",model.symmetryFrame.axis==ConstructionSymmetryAxis::PortStarboard,true},
-                {ShipyardBuilderCommand::SymmetryAxisForeAft,"FORE <-> AFT",model.symmetryFrame.axis==ConstructionSymmetryAxis::ForeAft,true},
-                {ShipyardBuilderCommand::SymmetryAxisDorsalVentral,"DORSAL <-> VENTRAL",model.symmetryFrame.axis==ConstructionSymmetryAxis::DorsalVentral,true}
+                {ShipyardBuilderCommand::SymmetryAxisPortStarboard,"MIRROR X",model.symmetryFrame.axis==ConstructionSymmetryAxis::PortStarboard,true},
+                {ShipyardBuilderCommand::SymmetryAxisForeAft,"MIRROR Y",model.symmetryFrame.axis==ConstructionSymmetryAxis::ForeAft,true},
+                {ShipyardBuilderCommand::SymmetryAxisDorsalVentral,"MIRROR Z",model.symmetryFrame.axis==ConstructionSymmetryAxis::DorsalVentral,true}
             });
             row(l.moveRow2Y,{
                 {ShipyardBuilderCommand::SymmetryPlaneNegative,"PLANE -",false,true},
@@ -2340,7 +2474,8 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         });
         row(l.focusRowY,{
             {ShipyardBuilderCommand::ModelCycleSelectionMode,std::string("SELECT ")+selection,true,true},
-            {ShipyardBuilderCommand::ModelToggleSymmetricStretch,model.modeling.symmetricStretch?"STRETCH SYM":"STRETCH ONE SIDE",model.modeling.symmetricStretch,true}
+            {ShipyardBuilderCommand::ModelToggleSymmetricStretch,model.modeling.symmetricStretch?"STRETCH SYM":"STRETCH ONE SIDE",model.modeling.symmetricStretch,true},
+            {ShipyardBuilderCommand::WorkspaceBuild,"ASSEMBLY",false,true}
         });
         const bool hasShape=!model.modeling.recipe.primitives.empty();
         row(l.moveRowY,{
@@ -2435,7 +2570,7 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         row(l.moveRowY,{
             {ShipyardBuilderCommand::ToolMove,"MOVE",model.transformTool==ShipyardTransformTool::Move,hasSocket},
             {ShipyardBuilderCommand::ToolRotate,"ROTATE",model.transformTool==ShipyardTransformTool::Rotate,hasSocket},
-            {ShipyardBuilderCommand::ToggleTransformSpace,model.transformSpace==ShipyardTransformSpace::View?"CAMERA":(model.transformSpace==ShipyardTransformSpace::Ship?"SHIP":"LOCAL"),false,hasSocket},
+            {ShipyardBuilderCommand::ToggleTransformSpace,ShipyardTransformSpacePolicy::Name(model.transformSpace),false,hasSocket},
             {ShipyardBuilderCommand::ToggleTransformSnap,model.transformSnap?"SNAP":"FREE",model.transformSnap,hasSocket}
         });
         row(l.moveRow2Y,{

@@ -8,6 +8,7 @@
 #include "procedural/ProceduralEncounterGenerator.h"
 #include "world/WorldScaleAuthoritySystem.h"
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <string>
@@ -95,10 +96,20 @@ int main(){
     Check(builder.Activate(ShipyardBuilderCommand::WorkspacePcg)&&builder.Model().workspaceMode==ShipyardWorkspaceMode::Pcg,"735-744 existing PCG lane remains available after cumulative workspace expansion");
     Check(builder.Activate(ShipyardBuilderCommand::WorkspaceWorld)&&builder.Model().workspaceMode==ShipyardWorkspaceMode::World,"735-744 existing WORLD lane remains available after cumulative workspace expansion");
 
-    auto controls=ShipyardBuilderSystem::BuildControls(builder.Model(),1920,1080);
-    bool interiorButton=false,characterButton=false,devWorldButton=false;
-    for(const auto& c:controls){interiorButton|=c.command==ShipyardBuilderCommand::WorkspaceInterior;characterButton|=c.command==ShipyardBuilderCommand::WorkspaceCharacter;devWorldButton|=c.command==ShipyardBuilderCommand::WorkspaceDevWorld;}
-    Check(interiorButton&&characterButton&&devWorldButton,"735-744 visible Shipyard Dev Studio controls expose INTERIOR, CHARACTER and DEV WORLD");
+    // R32/Pass1509 replaced the historical primary/developer *menu membership*
+    // with one Construct/Geometry strip and a contextual DEV gateway. Preserve
+    // the real commands/capabilities rather than requiring obsolete lists.
+    // The earlier assertions above already exercise Interior, Character,
+    // Dev World, Model, PCG and World through their actual builder commands.
+    const bool systemsReachable=builder.Activate(ShipyardBuilderCommand::WorkspaceSystems)&&
+        builder.Model().workspaceMode==ShipyardWorkspaceMode::Systems;
+    const bool appearanceReachable=builder.Activate(ShipyardBuilderCommand::WorkspaceAppearance)&&
+        builder.Model().workspaceMode==ShipyardWorkspaceMode::Appearance;
+    const bool constructReachable=builder.Activate(ShipyardBuilderCommand::WorkspaceBuild)&&
+        builder.Model().workspaceMode==ShipyardWorkspaceMode::Build;
+    Check(systemsReachable&&appearanceReachable&&constructReachable&&
+          devCaps.model&&devCaps.interior&&devCaps.character&&devCaps.devWorld&&devCaps.rawAuthoring,
+          "735-744 functional authoring workspaces remain reachable after single-strip normalization");
 
     std::cout<<"Pass735-744 assertions: "<<passed<<" passed / "<<failed<<" failed\n";
     return failed==0?0:1;

@@ -3661,8 +3661,8 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
     const float propertyTextX=right+54.0f*s;
     const float propertyWidth=rightW-64.0f*s;
     if(m.workspaceMode==ShipyardWorkspaceMode::Model&&!m.testWorkspaceActive){
-        section("MODEL DRAFT",propertyTextX,layout.editLabelY,propertyWidth);
-        ShipyardText("Shape recipe only - 3D preview / publish not wired",
+        section("GEOMETRY DRAFT",propertyTextX,layout.editLabelY,propertyWidth);
+        ShipyardText("Live geometry preview - catalog publish pending",
             propertyTextX,layout.moveRowY+34.0f*s,.43f,muted);
     }else if(m.inspectorTab==ShipyardInspectorTab::Transform){
         section("TRANSFORM",propertyTextX,layout.editLabelY,propertyWidth);
@@ -3806,7 +3806,7 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
     // is clipped before it can collide with contextual help.
     if(m.dcc.showStatusBar)FilledRect(0,layout.statusY,0,w,h-layout.statusY,R(forgePalette.status));
     std::string help=m.workspaceMode==ShipyardWorkspaceMode::Model?
-        "MODEL DRAFT: Add Box/Wedge/Door on left. Shape preview and publish are not yet wired.":
+        "GEOMETRY: live canonical preview. Validate or BAKE DRAFT; catalog publication remains pending.":
         (m.guidedWorkflow?"START: 1 Select asset  2 Drag into ship  3 Snap  4 Confirm  5 Save; use mouse wheel over Assets to browse":"G Move  R Rotate  S Scale  Mouse wheel over Assets to browse");
     if(hovered){
         switch(hovered->command){
@@ -3839,7 +3839,7 @@ void DrawShipBuilderOverlay(const NativeBattlefieldFrame& frame,const NativeBatt
             case ShipyardBuilderCommand::NextTrimPaint:help="Accent Paint: cycle trim/decal accent color.";break;
             case ShipyardBuilderCommand::FrameSelected:help="Frame Part: focus closely on the selected module.";break;
             case ShipyardBuilderCommand::FrameShip:help="Frame Ship: restore a useful whole-ship view.";break;
-            case ShipyardBuilderCommand::ToggleTransformSpace:help="Transform Space: cycle CAMERA, SHIP, and LOCAL movement axes.";break;
+            case ShipyardBuilderCommand::ToggleTransformSpace:help="Transform Space: cycle PARENT, OBJECT, and VIEW orientations. Scale always uses OBJECT W/L/H.";break;
             case ShipyardBuilderCommand::ToggleTransformSnap:help="Snap: toggle snapped transform increments.";break;
             case ShipyardBuilderCommand::CycleRotationStep:help="Rotation Step: cycle 15, 5, and 1 degree increments; Shift gives 0.1x precision.";break;
             case ShipyardBuilderCommand::ToolScale:help="Scale: drag in the viewport or use precise part/assembly scale controls.";break;

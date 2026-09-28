@@ -42,6 +42,7 @@ struct ShipyardDragPreview {
     // optionally renders an exact reflected partner before commit.
     bool mirroredPreviewActive = false;
     bool mirroredValid = false;
+    bool suppressLiveSymmetry = false;
     VisualModulePlacement mirroredGhost{};
     std::string status;
 };

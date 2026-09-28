@@ -304,7 +304,11 @@ void NativeWindow::ApplyKey(unsigned long long virtualKey, bool down)
         case 'W': _inputState.SetAction(InputAction::ThrustForward, down); _inputState.SetAction(InputAction::EditorToolMove, down); break;
         case 'S': _inputState.SetAction(InputAction::ThrustReverse, down); _inputState.SetAction(InputAction::EditorToolScale, down); break;
         case 'A': _inputState.SetAction(InputAction::StrafeLeft, down); break;
-        case 'D': _inputState.SetAction(InputAction::StrafeRight, down); break;
+        case 'D':
+            _inputState.SetAction(InputAction::StrafeRight, down);
+            if(down&&_shiftDown)_inputState.SetAction(InputAction::DccDuplicateSelection,true);
+            else if(!down)_inputState.SetAction(InputAction::DccDuplicateSelection,false);
+            break;
         case 'Q': _inputState.SetAction(InputAction::TurnLeft, down); _inputState.SetAction(InputAction::EditorToolSelect, down); break;
         case 'E': _inputState.SetAction(InputAction::TurnRight, down); _inputState.SetAction(InputAction::EditorToolRotate, down); break;
         case 'X':
@@ -364,6 +368,7 @@ void NativeWindow::ApplyKey(unsigned long long virtualKey, bool down)
         case VK_F6: _inputState.SetAction(InputAction::ToggleShipInspection, down); break;
         case VK_OEM_4: _inputState.SetAction(InputAction::DccWorkspacePrevious, down); break;
         case VK_OEM_6: _inputState.SetAction(InputAction::DccWorkspaceNext, down); break;
+        case VK_OEM_COMMA: _inputState.SetAction(InputAction::DccCycleTransformSpace, down); break;
         case VK_RETURN: _inputState.SetAction(InputAction::MenuAccept, down); break;
         case VK_DOWN: _inputState.SetAction(InputAction::MenuNext, down); _inputState.SetAction(InputAction::EditorNudgeAft, down); break;
         case VK_UP: _inputState.SetAction(InputAction::MenuPrevious, down); _inputState.SetAction(InputAction::EditorNudgeForward, down); break;

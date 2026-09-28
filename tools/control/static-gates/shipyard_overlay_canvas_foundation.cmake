@@ -30,9 +30,17 @@ foreach(SOS1_ASSERT IN ITEMS
         message(FATAL_ERROR "Overlay-first canvas contract changed: ${SOS1_ASSERT}")
     endif()
 endforeach()
-string(FIND "${SOS1_WORKSPACE}" "add(\"tool_rail\",\"Tools\",\"tool_left\",true,1.0f,48,420,true,true,true)" SOS1_INDEX)
+# R82R9: R32/PASS1509 established the fixed, non-floatable tool-rail owner.
+# Preserve overlay layout, pointer snapshot, persistence and CTest checks.
+set(SOS1_FIXED_RAIL "add(\"tool_rail\",\"Tools\",\"tool_left\",true,1.0f,48,420,false,false,false)")
+set(SOS1_RETIRED_RAIL "add(\"tool_rail\",\"Tools\",\"tool_left\",true,1.0f,48,420,true,true,true)")
+string(FIND "${SOS1_WORKSPACE}" "${SOS1_FIXED_RAIL}" SOS1_INDEX)
 if(SOS1_INDEX EQUAL -1)
-    message(FATAL_ERROR "Tool rail must remain moveable and floatable")
+    message(FATAL_ERROR "Tool rail must use the current fixed/non-floatable PASS1509 contract")
+endif()
+string(FIND "${SOS1_WORKSPACE}" "${SOS1_RETIRED_RAIL}" SOS1_RETIRED_INDEX)
+if(NOT SOS1_RETIRED_INDEX EQUAL -1)
+    message(FATAL_ERROR "Retired movable/floatable tool rail must not be reintroduced")
 endif()
 foreach(SOS1_ASSERT IN ITEMS
     "ShipyardPanelCompositorSystem::Snapshot(w,width,height,topInset)"
@@ -54,4 +62,4 @@ string(FIND "${SOS1_CMAKE}" "SubspaceShipyardOverlayFoundationTests" SOS1_INDEX)
 if(SOS1_INDEX EQUAL -1)
     message(FATAL_ERROR "Shipyard overlay CTest must be registered")
 endif()
-message(STATUS "Shipyard overlay-first canvas, movable rail, drag snapshot and layout persistence PASS")
+message(STATUS "Shipyard overlay-first canvas, fixed rail, drag snapshot and layout persistence PASS")

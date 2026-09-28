@@ -49,13 +49,13 @@ int main(){
     VisualModulePlacement b;b.moduleId="hull_b";b.x=1.0f;b.scaleX=b.scaleY=b.scaleZ=1.0f;
     recipe.modules={a,b};
     ShipyardBuilderSystem builder;builder.Initialize(catalog,recipe);
-    Check(builder.Model().transformSpace==ShipyardTransformSpace::View,"player-friendly camera transform space is the default");
+    Check(builder.Model().transformSpace==ShipyardTransformSpace::Ship,"PARENT/assembly transform space is the safe authoring default");
     builder.Activate(ShipyardBuilderCommand::ToggleTransformSpace);
-    Check(builder.Model().transformSpace==ShipyardTransformSpace::Ship,"transform space cycles camera to ship");
+    Check(builder.Model().transformSpace==ShipyardTransformSpace::Local,"transform space cycles PARENT to explicit OBJECT");
     builder.Activate(ShipyardBuilderCommand::ToggleTransformSpace);
-    Check(builder.Model().transformSpace==ShipyardTransformSpace::Local,"transform space cycles ship to local");
+    Check(builder.Model().transformSpace==ShipyardTransformSpace::View,"transform space cycles OBJECT to explicit VIEW");
     builder.Activate(ShipyardBuilderCommand::ToggleTransformSpace);
-    Check(builder.Model().transformSpace==ShipyardTransformSpace::View,"transform space cycles local back to camera");
+    Check(builder.Model().transformSpace==ShipyardTransformSpace::Ship,"transform space cycles VIEW back to PARENT");
 
     Check(builder.Activate(ShipyardBuilderCommand::ToolScale)&&builder.Model().transformTool==ShipyardTransformTool::Scale,"R-scale tool is a first-class builder mode");
     Check(builder.Activate(ShipyardBuilderCommand::ScaleUniformPositive),"selected part scale command applies");

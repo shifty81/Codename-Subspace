@@ -1,5 +1,8 @@
 #include "studio/StudioAxisGizmo.h"
 #include "studio/StudioGizmoProjectionPolicy.h"
+#include "studio/StudioTransformViewBasis.h"
+#include "ship_editor/ShipyardTransformSpacePolicy.h"
+#include "studio/StudioTransformStatusPolicy.h"
 #include "application/NativeBattlefieldRenderer.h"
 #include "editor/ConstructionTransformBasisSystem.h"
 #include "editor/EditorTransformSpaceSystem.h"
@@ -65,6 +68,12 @@ void PopulateHandles(StudioGizmoSnapshot& snapshot,const StrategicCamera& camera
 StudioGizmoSnapshot StudioAxisGizmo::Build(const ShipyardBuilderRuntimeModel& model,
                                           const StrategicCamera& camera,int width,int height) {
     StudioGizmoSnapshot out;
+    out.selectedSpace=model.transformSpace;
+    out.transformTool=model.transformTool;
+    out.effectiveSpace=ShipyardTransformSpacePolicy::Effective(
+        model.transformTool,model.transformSpace,model.transformConstraintLocal);
+    out.effectiveSpaceOverride=StudioTransformStatusPolicy::HasEffectiveOverride(
+        model.transformTool,model.transformSpace,model.transformConstraintLocal);
     const bool modelMode=model.workspaceMode==ShipyardWorkspaceMode::Model&&!model.modeling.recipe.primitives.empty();
     const bool assemblyMode=model.workspaceMode==ShipyardWorkspaceMode::Build&&!model.recipe.modules.empty();
     if(width<=0||height<=0||(!modelMode&&!assemblyMode)||!model.dcc.showGizmos||model.testWorkspaceActive||
@@ -86,8 +95,12 @@ StudioGizmoSnapshot StudioAxisGizmo::Build(const ShipyardBuilderRuntimeModel& mo
         // ALWAYS presents local object axes. Move/Rotate retain world axes
         // unless the user explicitly toggled the local constraint.
         ConstructionTransformBasis basis{};
-        if(model.transformTool==ShipyardTransformTool::Scale||model.transformConstraintLocal)
+        const auto effectiveSpace=ShipyardTransformSpacePolicy::Effective(
+            model.transformTool,model.transformSpace,model.transformConstraintLocal);
+        if(effectiveSpace==ShipyardTransformSpace::Local)
             basis=ConstructionTransformBasisSystem::ModelLocal(p.rotationDegrees);
+        else if(effectiveSpace==ShipyardTransformSpace::View)
+            basis=StudioTransformViewBasis::Build(camera);
         const float probe=std::clamp(p.size.length()*.12f,0.35f,2.0f);
         PopulateHandles(out,camera,width,height,p.position,basis,probe,center);
         return out;
@@ -117,10 +130,13 @@ StudioGizmoSnapshot StudioAxisGizmo::Build(const ShipyardBuilderRuntimeModel& mo
     // gizmo must follow the selected module's actual rotated/mirrored basis.
     // This closes the "drag Y, get width / drag X, get length" presentation
     // mismatch on rotated kitbash pieces without swapping serialized X and Y.
+    const auto effectiveSpace=ShipyardTransformSpacePolicy::Effective(
+        model.transformTool,model.transformSpace,model.transformConstraintLocal);
     ConstructionTransformBasis basis=ConstructionTransformBasisSystem::ShipWorld(yaw,rootScale);
-    if(model.transformTool==ShipyardTransformTool::Scale||
-       model.transformSpace==ShipyardTransformSpace::Local||model.transformConstraintLocal)
+    if(effectiveSpace==ShipyardTransformSpace::Local)
         basis=ConstructionTransformBasisSystem::AssemblyWorld(part,yaw,rootScale,true);
+    else if(effectiveSpace==ShipyardTransformSpace::View)
+        basis=StudioTransformViewBasis::Build(camera);
     PopulateHandles(out,camera,width,height,origin,basis,3.0f,center);
     return out;
 }

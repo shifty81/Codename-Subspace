@@ -30,7 +30,12 @@ p1505_require("engine/src/platform/NativeWindow.cpp" "InputAction::DccConstraint
 p1505_require("engine/include/input/InputState.h" "DccConstraintClear")
 
 # Transform/pivot/articulation authoring and runtime consumption.
-p1505_require("engine/src/ship_editor/ShipyardBuilderSystem.cpp" "GLOBAL-SHIP (press again for LOCAL)")
+# The old GLOBAL-SHIP/LOCAL presentation was replaced by PARENT/OBJECT/EULER.
+# Certify the retained functional constraint state and clearing API, not a
+# retired status-string literal from the previous toolbar generation.
+p1505_require("engine/src/ship_editor/ShipyardBuilderSystem.cpp" "bool ShipyardBuilderSystem::SetTransformConstraint(")
+p1505_require("engine/src/ship_editor/ShipyardBuilderSystem.cpp" "model_.transformConstraintLocal=true;")
+p1505_require("engine/src/ship_editor/ShipyardBuilderSystem.cpp" "void ShipyardBuilderSystem::ClearTransformConstraint()")
 p1505_require("engine/src/ship_editor/ShipyardBuilderSystem.cpp" "UseSelectedSocketAsArticulationPivot")
 p1505_require("engine/include/rendering/ProceduralVisualVariantSystem.h" "ScanSweep")
 p1505_require("engine/src/application/NativeBattlefieldRenderer.cpp" "ShipArticulationSystem::Apply")
@@ -75,8 +80,13 @@ p1505_require("engine/src/ship_editor/ShipyardWorkspaceSystem.cpp" "Attachments 
 
 # Workflow/navigation hierarchy and global-menu normalization.
 p1505_require("engine/src/ship_editor/ShipyardWorkflowSystem.cpp" "3. Author attachments")
-p1505_require("engine/src/ship_editor/ShipyardProfessionalVisibleCutover.cpp" "ASSEMBLY")
-p1505_require("engine/src/ship_editor/ShipyardProfessionalVisibleCutover.cpp" "MODEL")
+# The 2026-09-23 R32 single-strip cutover retired ASSEMBLY/MODEL as
+# public visible tabs. Verify the single-strip shell plus the authoritative
+# workspace-name adapter instead of demanding obsolete literals in the UI.
+# The historical pass narrative remains preserved in docs/design below.
+p1505_require("engine/src/ship_editor/ShipyardProfessionalVisibleCutover.cpp" "one authoritative workspace strip")
+p1505_require("engine/src/ship_editor/ShipyardWorkspaceSystem.cpp" "case ShipyardWorkspaceMode::Build:return\"CONSTRUCT\";")
+p1505_require("engine/src/ship_editor/ShipyardWorkspaceSystem.cpp" "case ShipyardWorkspaceMode::Model:return\"GEOMETRY\";")
 p1505_require("engine/src/ship_editor/ShipyardProfessionalUiSystem.cpp" "File")
 p1505_require("engine/src/ship_editor/ShipyardProfessionalUiSystem.cpp" "Help")
 p1505_require("docs/design/SHIPYARD_FOUNDRY_PASS1466_1505.md" "ASSEMBLY → MODEL → ATTACHMENTS")

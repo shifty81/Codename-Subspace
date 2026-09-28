@@ -1,0 +1,7 @@
+cmake_minimum_required(VERSION 3.20)
+project(subspace_studio_r32_contract LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+get_filename_component(ROOT "${CMAKE_CURRENT_LIST_DIR}/../../.." ABSOLUTE)
+add_executable(subspace_studio_r32_contract studio_r32_contract_tests.cpp)
+target_include_directories(subspace_studio_r32_contract PRIVATE "${ROOT}/engine/include")

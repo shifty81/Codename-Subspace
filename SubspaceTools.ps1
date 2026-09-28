@@ -1382,6 +1382,15 @@ function Invoke-BuildHeadless {
     Clear-Logs -PreserveCurrent
     $Global:StepResults.Clear()
     Invoke-UtilityStep -Name "Pending-update non-mutating guard before build" -ScriptBlock { Invoke-AutoApplyUpdateInbox -Reason "headless build" }
+    Invoke-UtilityStep -Name "Studio Construct source cutover" -ScriptBlock { Invoke-StudioConstructSourceCutoverIfRequired }
+    Invoke-UtilityStep -Name "Studio bulk polish normalization" -ScriptBlock { Invoke-StudioBulkPolishNormalizationIfRequired }
+    Invoke-UtilityStep -Name "Studio transform-space authority" -ScriptBlock { Invoke-StudioTransformAuthorityNormalizationIfRequired }
+    Invoke-UtilityStep -Name "Studio transform UI/state hygiene" -ScriptBlock { Invoke-StudioTransformUiHygieneNormalizationIfRequired }
+    Invoke-UtilityStep -Name "Studio selection/placement ergonomics" -ScriptBlock { Invoke-StudioSelectionPlacementNormalizationIfRequired }
+    Invoke-UtilityStep -Name "Studio convergence audit normalization" -ScriptBlock { Invoke-StudioConvergenceAuditNormalizationIfRequired }
+    Invoke-UtilityStep -Name "Studio R82R1 corrective audit" -ScriptBlock { Invoke-StudioR82R1CorrectionsIfRequired }
+    Invoke-UtilityStep -Name "Studio R82R2 gate repair" -ScriptBlock { Invoke-StudioR82R2GateRepairIfRequired }
+    Invoke-UtilityStep -Name "Pass/source continuity audit" -ScriptBlock { Invoke-PassContinuityAudit }
     Invoke-UtilityStep -Name "Headless C++ configure/build/test" -ScriptBlock { Invoke-CMakeBuild -Headless -CleanFirst:$Clean }
     [void](Write-StepSummary)
 }
@@ -1391,6 +1400,14 @@ function Invoke-BuildRender {
     Clear-Logs -PreserveCurrent
     $Global:StepResults.Clear()
     Invoke-UtilityStep -Name "Pending-update non-mutating guard before build" -ScriptBlock { Invoke-AutoApplyUpdateInbox -Reason "render build" }
+    Invoke-UtilityStep -Name "Studio Construct source cutover" -ScriptBlock { Invoke-StudioConstructSourceCutoverIfRequired }
+    Invoke-UtilityStep -Name "Studio bulk polish normalization" -ScriptBlock { Invoke-StudioBulkPolishNormalizationIfRequired }
+    Invoke-UtilityStep -Name "Studio transform-space authority" -ScriptBlock { Invoke-StudioTransformAuthorityNormalizationIfRequired }
+    Invoke-UtilityStep -Name "Studio transform UI/state hygiene" -ScriptBlock { Invoke-StudioTransformUiHygieneNormalizationIfRequired }
+    Invoke-UtilityStep -Name "Studio selection/placement ergonomics" -ScriptBlock { Invoke-StudioSelectionPlacementNormalizationIfRequired }
+    Invoke-UtilityStep -Name "Studio convergence audit normalization" -ScriptBlock { Invoke-StudioConvergenceAuditNormalizationIfRequired }
+    Invoke-UtilityStep -Name "Studio R82R1 corrective audit" -ScriptBlock { Invoke-StudioR82R1CorrectionsIfRequired }
+    Invoke-UtilityStep -Name "Studio R82R2 gate repair" -ScriptBlock { Invoke-StudioR82R2GateRepairIfRequired }
     Invoke-UtilityStep -Name "Pass/source continuity audit" -ScriptBlock { Invoke-PassContinuityAudit }
     Invoke-UtilityStep -Name "Render C++ configure/build/test" -ScriptBlock { Invoke-CMakeBuild -CleanFirst:$Clean }
     if ($IsWindows -or $env:OS -eq "Windows_NT") {
@@ -1405,8 +1422,26 @@ function Invoke-BuildRender {
 
 function Invoke-TestsOnly {
     Write-Header
+    Invoke-UtilityStep -Name "Studio Construct source cutover" -ScriptBlock { Invoke-StudioConstructSourceCutoverIfRequired }
+    Invoke-UtilityStep -Name "Studio bulk polish normalization" -ScriptBlock { Invoke-StudioBulkPolishNormalizationIfRequired }
+    Invoke-UtilityStep -Name "Studio transform-space authority" -ScriptBlock { Invoke-StudioTransformAuthorityNormalizationIfRequired }
+    Invoke-UtilityStep -Name "Studio transform UI/state hygiene" -ScriptBlock { Invoke-StudioTransformUiHygieneNormalizationIfRequired }
+    Invoke-UtilityStep -Name "Studio selection/placement ergonomics" -ScriptBlock { Invoke-StudioSelectionPlacementNormalizationIfRequired }
+    Invoke-UtilityStep -Name "Studio convergence audit normalization" -ScriptBlock { Invoke-StudioConvergenceAuditNormalizationIfRequired }
+    Invoke-UtilityStep -Name "Studio R82R1 corrective audit" -ScriptBlock { Invoke-StudioR82R1CorrectionsIfRequired }
+    Invoke-UtilityStep -Name "Studio R82R2 gate repair" -ScriptBlock { Invoke-StudioR82R2GateRepairIfRequired }
+    Invoke-UtilityStep -Name "Pass/source continuity audit" -ScriptBlock { Invoke-PassContinuityAudit }
     $headlessBuild = Get-BuildDirectory -Headless
     $renderBuild = Get-BuildDirectory
+    foreach ($candidate in @($headlessBuild,$renderBuild)) {
+        if (-not (Test-Path -LiteralPath $candidate -PathType Container)) { continue }
+        $graphFiles = @(Get-ChildItem -LiteralPath $candidate -Filter 'CTestTestfile.cmake' -File -Recurse -ErrorAction SilentlyContinue)
+        $current = $false
+        foreach ($graph in $graphFiles) {
+            if ((Get-Content -LiteralPath $graph.FullName -Raw -ErrorAction SilentlyContinue) -match 'SubspaceStudioR82R2GateRepairSourceGate') { $current = $true; break }
+        }
+        if (-not $current) { throw "Tests Only blocked: $candidate predates the R82R2 CTest graph. Run Headless Build or Render Build once to reconfigure before tests-only." }
+    }
 
     if (Test-Path -LiteralPath $headlessBuild) {
         Invoke-CTestWithoutCrashDialogs -Label "CTest headless" -BuildDirectory $headlessBuild -ContinueOnError | Out-Null
@@ -2474,6 +2509,121 @@ function Invoke-RecoverPass655674 {
     if ($LASTEXITCODE -ne 0) { throw "Pass655-674 recovery failed." }
 }
 
+function Invoke-StudioConstructSourceCutoverIfRequired {
+    $pass1509 = Join-Path $Global:SubspaceRoot 'tools\control\static-gates\pass1509_studio_construct_cutover.cmake'
+    if (-not (Test-Path -LiteralPath $pass1509 -PathType Leaf)) {
+        return
+    }
+
+    $builder = Join-Path $Global:SubspaceRoot 'engine\src\ship_editor\ShipyardBuilderSystem.cpp'
+    if (-not (Test-Path -LiteralPath $builder -PathType Leaf)) {
+        throw 'Studio Construct cutover cannot inspect ShipyardBuilderSystem.cpp.'
+    }
+    $builderText = Get-Content -LiteralPath $builder -Raw -ErrorAction Stop
+    if ($builderText -match 'ConstructionScalePivotSystem\.h' -and
+        $builderText -match 'Modeled shape scaled / opposite face anchored') {
+        Write-Log 'Studio Construct source cutover already present; no migration required.' 'PASS'
+        return
+    }
+
+    $migration = Join-Path $Global:SubspaceRoot 'tools\studio\apply_studio_r23_r32_normalization.py'
+    $assertions = Join-Path $Global:SubspaceRoot 'tools\studio\studio_r32_source_assertions.py'
+    if (-not (Test-Path -LiteralPath $migration -PathType Leaf)) {
+        throw 'PASS1509 is installed but its required R32 source migration helper is missing.'
+    }
+    if (-not (Test-Path -LiteralPath $assertions -PathType Leaf)) {
+        throw 'PASS1509 is installed but its required R32 source assertions helper is missing.'
+    }
+
+    Write-Log 'PASS1509 requires the pending Studio Construct source cutover; applying it transactionally before native build.' 'INFO'
+    Invoke-ProjectOpsPythonTool -RelativePath 'tools\studio\apply_studio_r23_r32_normalization.py' `
+        -Arguments @('--root',$Global:SubspaceRoot,'--apply')
+    Invoke-ProjectOpsPythonTool -RelativePath 'tools\studio\studio_r32_source_assertions.py' `
+        -Arguments @('--root',$Global:SubspaceRoot)
+
+    $builderText = Get-Content -LiteralPath $builder -Raw -ErrorAction Stop
+    if ($builderText -notmatch 'ConstructionScalePivotSystem\.h' -or
+        $builderText -notmatch 'Modeled shape scaled / opposite face anchored') {
+        throw 'Studio Construct migration returned success without establishing the required source cutover.'
+    }
+    Write-Log 'Studio Construct source cutover applied and source assertions passed.' 'PASS'
+}
+
+function Invoke-StudioBulkPolishNormalizationIfRequired {
+    $migration = Join-Path $Global:SubspaceRoot 'tools\studio\apply_studio_r33_r42_bulk_polish.py'
+    if (-not (Test-Path -LiteralPath $migration -PathType Leaf)) {
+        return
+    }
+    Write-Log 'R33-R42 Studio bulk polish: validating/applying guarded source normalization.' 'INFO'
+    Invoke-ProjectOpsPythonTool -RelativePath 'tools\studio\apply_studio_r33_r42_bulk_polish.py' `
+        -Arguments @('--root',$Global:SubspaceRoot,'--apply')
+    Write-Log 'R33-R42 Studio bulk polish source contract is present.' 'PASS'
+}
+
+function Invoke-StudioTransformAuthorityNormalizationIfRequired {
+    $migration = Join-Path $Global:SubspaceRoot 'tools\studio\apply_studio_r43_r52_transform_authority.py'
+    if (-not (Test-Path -LiteralPath $migration -PathType Leaf)) {
+        return
+    }
+    Write-Log 'R43-R52 Studio transform authority: validating/applying guarded source normalization.' 'INFO'
+    Invoke-ProjectOpsPythonTool -RelativePath 'tools\studio\apply_studio_r43_r52_transform_authority.py' `
+        -Arguments @('--root',$Global:SubspaceRoot,'--apply')
+    Write-Log 'R43-R52 Studio transform-space authority is present.' 'PASS'
+}
+
+function Invoke-StudioTransformUiHygieneNormalizationIfRequired {
+    $migration = Join-Path $Global:SubspaceRoot 'tools\studio\apply_studio_r53_r62_transform_ui_hygiene.py'
+    if (-not (Test-Path -LiteralPath $migration -PathType Leaf)) {
+        return
+    }
+    Write-Log 'R53-R62 Studio transform UI/state hygiene: validating/applying guarded source normalization.' 'INFO'
+    Invoke-ProjectOpsPythonTool -RelativePath 'tools\studio\apply_studio_r53_r62_transform_ui_hygiene.py' `
+        -Arguments @('--root',$Global:SubspaceRoot,'--apply')
+    Write-Log 'R53-R62 Studio transform UI/state hygiene source contract is present.' 'PASS'
+}
+
+function Invoke-StudioSelectionPlacementNormalizationIfRequired {
+    $migration = Join-Path $Global:SubspaceRoot 'tools\studio\apply_studio_r63_r72_selection_placement.py'
+    if (-not (Test-Path -LiteralPath $migration -PathType Leaf)) {
+        return
+    }
+    Write-Log 'R63-R72 Studio selection/placement ergonomics: validating/applying guarded source normalization.' 'INFO'
+    Invoke-ProjectOpsPythonTool -RelativePath 'tools\studio\apply_studio_r63_r72_selection_placement.py' `
+        -Arguments @('--root',$Global:SubspaceRoot,'--apply')
+    Write-Log 'R63-R72 Studio selection/placement ergonomics source contract is present.' 'PASS'
+}
+
+
+function Invoke-StudioConvergenceAuditNormalizationIfRequired {
+    $migration = Join-Path $Global:SubspaceRoot 'tools\studio\apply_studio_r73_r82_convergence_audit.py'
+    if (-not (Test-Path -LiteralPath $migration -PathType Leaf)) {
+        return
+    }
+    Write-Log 'R73-R82 Studio convergence audit: validating/applying guarded source normalization.' 'INFO'
+    Invoke-ProjectOpsPythonTool -RelativePath 'tools\studio\apply_studio_r73_r82_convergence_audit.py' `
+        -Arguments @('--root',$Global:SubspaceRoot,'--apply')
+    Write-Log 'R73-R82 Studio convergence-audit source contract is present.' 'PASS'
+}
+
+
+function Invoke-StudioR82R1CorrectionsIfRequired {
+    $migration = Join-Path $Global:SubspaceRoot 'tools\studio\apply_studio_r82r1_corrective_audit.py'
+    if (-not (Test-Path -LiteralPath $migration -PathType Leaf)) { return }
+    Write-Log 'Studio R82R1 corrective audit: validating/applying guarded source normalization.' 'INFO'
+    Invoke-ProjectOpsPythonTool -RelativePath 'tools\studio\apply_studio_r82r1_corrective_audit.py' `
+        -Arguments @('--root',$Global:SubspaceRoot,'--apply')
+    Write-Log 'Studio R82R1 corrective source contract is present.' 'PASS'
+}
+
+function Invoke-StudioR82R2GateRepairIfRequired {
+    $migration = Join-Path $Global:SubspaceRoot 'tools\studio\apply_studio_r82r2_gate_repair.py'
+    if (-not (Test-Path -LiteralPath $migration -PathType Leaf)) { return }
+    Write-Log 'Studio R82R2 gate repair: validating/applying WYSIWYG snap commit normalization.' 'INFO'
+    Invoke-ProjectOpsPythonTool -RelativePath 'tools\studio\apply_studio_r82r2_gate_repair.py' `
+        -Arguments @('--root',$Global:SubspaceRoot,'--apply')
+    Write-Log 'Studio R82R2 gate-repair source contract is present.' 'PASS'
+}
+
 function Invoke-FullGate {
     param([switch]$CleanRoom)
 
@@ -2536,6 +2686,14 @@ function Invoke-FullGate {
     Invoke-UtilityStep -Name "Root cleanliness audit" -ScriptBlock { Invoke-ProjectScript -RelativePath "scripts\subspace_root_cleanliness_audit.ps1" -Arguments @("-Root", $Global:SubspaceRoot) } -ContinueOnError
     Invoke-UtilityStep -Name "C++ conversion status" -ScriptBlock { Invoke-ProjectScript -RelativePath "scripts\subspace_cpp_conversion_status.ps1" -Arguments @("-Root", $Global:SubspaceRoot) } -ContinueOnError
     Invoke-UtilityStep -Name "Native runtime regression guard" -ScriptBlock { Invoke-ProjectScript -RelativePath "scripts\subspace_native_runtime_guard.ps1" -Arguments @("-Root", $Global:SubspaceRoot) }
+    Invoke-UtilityStep -Name "Studio Construct source cutover" -ScriptBlock { Invoke-StudioConstructSourceCutoverIfRequired }
+    Invoke-UtilityStep -Name "Studio bulk polish normalization" -ScriptBlock { Invoke-StudioBulkPolishNormalizationIfRequired }
+    Invoke-UtilityStep -Name "Studio transform-space authority" -ScriptBlock { Invoke-StudioTransformAuthorityNormalizationIfRequired }
+    Invoke-UtilityStep -Name "Studio transform UI/state hygiene" -ScriptBlock { Invoke-StudioTransformUiHygieneNormalizationIfRequired }
+    Invoke-UtilityStep -Name "Studio selection/placement ergonomics" -ScriptBlock { Invoke-StudioSelectionPlacementNormalizationIfRequired }
+    Invoke-UtilityStep -Name "Studio convergence audit normalization" -ScriptBlock { Invoke-StudioConvergenceAuditNormalizationIfRequired }
+    Invoke-UtilityStep -Name "Studio R82R1 corrective audit" -ScriptBlock { Invoke-StudioR82R1CorrectionsIfRequired }
+    Invoke-UtilityStep -Name "Studio R82R2 gate repair" -ScriptBlock { Invoke-StudioR82R2GateRepairIfRequired }
     Invoke-UtilityStep -Name "Pass/source continuity audit" -ScriptBlock { Invoke-PassContinuityAudit }
     if ($CleanRoom) {
         Write-Log "Clean-room Full Gate requested; rebuilding the native object graph from an empty build directory." "INFO"
@@ -2624,6 +2782,14 @@ function Invoke-FastDevelopmentGate {
         Invoke-UtilityStep -Name "Supply-chain verification (offline-safe)" -ScriptBlock { Invoke-SupplyChainGate -Mode "VERIFY_ONLY" }
         Invoke-UtilityStep -Name "Planet texture/cloud fidelity verification" -ScriptBlock { Invoke-EnsurePlanetVisualAssets -VerifyOnly }
         Invoke-UtilityStep -Name "Native runtime regression guard" -ScriptBlock { Invoke-NativeRuntimeGuard }
+        Invoke-UtilityStep -Name "Studio Construct source cutover" -ScriptBlock { Invoke-StudioConstructSourceCutoverIfRequired }
+        Invoke-UtilityStep -Name "Studio bulk polish normalization" -ScriptBlock { Invoke-StudioBulkPolishNormalizationIfRequired }
+    Invoke-UtilityStep -Name "Studio transform-space authority" -ScriptBlock { Invoke-StudioTransformAuthorityNormalizationIfRequired }
+    Invoke-UtilityStep -Name "Studio transform UI/state hygiene" -ScriptBlock { Invoke-StudioTransformUiHygieneNormalizationIfRequired }
+    Invoke-UtilityStep -Name "Studio selection/placement ergonomics" -ScriptBlock { Invoke-StudioSelectionPlacementNormalizationIfRequired }
+    Invoke-UtilityStep -Name "Studio convergence audit normalization" -ScriptBlock { Invoke-StudioConvergenceAuditNormalizationIfRequired }
+    Invoke-UtilityStep -Name "Studio R82R1 corrective audit" -ScriptBlock { Invoke-StudioR82R1CorrectionsIfRequired }
+    Invoke-UtilityStep -Name "Studio R82R2 gate repair" -ScriptBlock { Invoke-StudioR82R2GateRepairIfRequired }
         Invoke-UtilityStep -Name "Pass/source continuity audit" -ScriptBlock { Invoke-PassContinuityAudit }
         Invoke-UtilityStep -Name "Incremental native configure/build/test" -ScriptBlock { Invoke-CMakeBuild }
     }

@@ -41,9 +41,9 @@ assets::CanonicalMesh MakeBox(const ModelingPrimitiveDefinition& d){
 assets::CanonicalMesh MakeWedge(const ModelingPrimitiveDefinition& d){
     assets::CanonicalMesh mesh;mesh.name=d.id;assets::MeshPrimitive p;p.hasNormals=true;p.hasUv0=true;
     const float x=std::max(.005f,d.size.x)*.5f,y=std::max(.005f,d.size.y)*.5f,z=std::max(.005f,d.size.z)*.5f;
-    // A useful ship-authoring wedge: full-height aft edge (+Y), tapered to the
-    // centerline at the forward edge (-Y).
-    const Vector3 a{-x,-y,0},b{x,-y,0},c{x,y,-z},dd{-x,y,-z},e{x,y,z},f{-x,y,z};
+    // Coordinate contract is context-neutral +Y forward.  Keep the full-height
+    // aft edge on -Y and taper toward the forward edge on +Y.
+    const Vector3 a{-x,y,0},b{x,y,0},c{x,-y,-z},dd{-x,-y,-z},e{x,-y,z},f{-x,-y,z};
     AppendQuad(p,a,b,c,dd,{0,0,-1});
     AppendQuad(p,f,e,b,a,{0,0,1});
     AppendQuad(p,dd,c,e,f,{0,1,0});

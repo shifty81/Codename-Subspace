@@ -1062,3 +1062,142 @@ if(SUBSPACE_BUILD_TESTS)
     target_compile_features(subspace_studio_gui_interaction_r6_tests PRIVATE cxx_std_17)
     add_test(NAME SubspaceStudioGuiInteractionR6Tests COMMAND subspace_studio_gui_interaction_r6_tests)
 endif()
+
+# R33-R42: post-Construct Studio polish. These are deliberately split into
+# small executable contracts so GUI/layout/axis regressions identify their
+# authority directly rather than failing only in a Windows visual smoke.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_studio_overlay_placement_r33_tests
+        tests/studio_overlay_placement_r33_tests.cpp)
+    target_include_directories(subspace_studio_overlay_placement_r33_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_compile_features(subspace_studio_overlay_placement_r33_tests PRIVATE cxx_std_17)
+    add_test(NAME SubspaceStudioOverlayPlacementR33Tests COMMAND subspace_studio_overlay_placement_r33_tests)
+
+    add_executable(subspace_studio_axis_contract_r34_tests
+        tests/studio_axis_contract_r34_tests.cpp)
+    target_link_libraries(subspace_studio_axis_contract_r34_tests PRIVATE subspace_engine)
+    add_test(NAME SubspaceStudioAxisContractR34Tests COMMAND subspace_studio_axis_contract_r34_tests)
+
+    add_executable(subspace_studio_layout_stress_r35_tests
+        tests/studio_layout_stress_r35_tests.cpp
+        src/editor/EditorDccShellLayoutSystem.cpp
+        src/editor/EditorForgeGuiStyleSystem.cpp)
+    target_include_directories(subspace_studio_layout_stress_r35_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_compile_features(subspace_studio_layout_stress_r35_tests PRIVATE cxx_std_17)
+    add_test(NAME SubspaceStudioLayoutStressR35Tests COMMAND subspace_studio_layout_stress_r35_tests)
+
+    add_test(NAME SubspaceStudioBulkPolishR42SourceGate COMMAND ${CMAKE_COMMAND}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/../tools/control/static-gates/pass1511_1520_studio_bulk_polish.cmake)
+endif()
+
+# R43-R52: deterministic transform-space authority. PARENT is the startup
+# authoring frame; OBJECT is explicit/local; SCALE uses OBJECT W/L/H; VIEW has
+# a certified camera basis. These tests are GUI-free and run in normal CTest.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_studio_transform_space_policy_r43_tests
+        tests/studio_transform_space_policy_r43_tests.cpp)
+    target_include_directories(subspace_studio_transform_space_policy_r43_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_compile_features(subspace_studio_transform_space_policy_r43_tests PRIVATE cxx_std_17)
+    add_test(NAME SubspaceStudioTransformSpacePolicyR43Tests COMMAND subspace_studio_transform_space_policy_r43_tests)
+
+    add_executable(subspace_studio_parent_object_basis_r45_tests
+        tests/studio_parent_object_basis_r45_tests.cpp)
+    target_include_directories(subspace_studio_parent_object_basis_r45_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_compile_features(subspace_studio_parent_object_basis_r45_tests PRIVATE cxx_std_17)
+    add_test(NAME SubspaceStudioParentObjectBasisR45Tests COMMAND subspace_studio_parent_object_basis_r45_tests)
+
+    add_executable(subspace_studio_local_move_semantics_r47_tests
+        tests/studio_local_move_semantics_r47_tests.cpp)
+    target_link_libraries(subspace_studio_local_move_semantics_r47_tests PRIVATE subspace_engine)
+    add_test(NAME SubspaceStudioLocalMoveSemanticsR47Tests COMMAND subspace_studio_local_move_semantics_r47_tests)
+
+    add_executable(subspace_studio_view_basis_r48_tests
+        tests/studio_view_basis_r48_tests.cpp)
+    target_link_libraries(subspace_studio_view_basis_r48_tests PRIVATE subspace_engine)
+    add_test(NAME SubspaceStudioViewBasisR48Tests COMMAND subspace_studio_view_basis_r48_tests)
+
+    add_executable(subspace_studio_view_move_delta_r48b_tests
+        tests/studio_view_move_delta_r48b_tests.cpp)
+    target_link_libraries(subspace_studio_view_move_delta_r48b_tests PRIVATE subspace_engine)
+    add_test(NAME SubspaceStudioViewMoveDeltaR48BTests COMMAND subspace_studio_view_move_delta_r48b_tests)
+
+    add_test(NAME SubspaceStudioTransformAuthorityR52SourceGate COMMAND ${CMAKE_COMMAND}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/../tools/control/static-gates/pass1521_1530_studio_transform_authority.cmake)
+endif()
+
+
+# R53-R62: visible transform-orientation truth + transient constraint hygiene.
+# The comma shortcut is platform-bound in NativeWindow; GUI-free policy/tests
+# certify the shared vocabulary and builder state invariants in normal CTest.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_studio_transform_status_r53_tests
+        tests/studio_transform_status_r53_tests.cpp)
+    target_include_directories(subspace_studio_transform_status_r53_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_compile_features(subspace_studio_transform_status_r53_tests PRIVATE cxx_std_17)
+    add_test(NAME SubspaceStudioTransformStatusR53Tests COMMAND subspace_studio_transform_status_r53_tests)
+
+    add_executable(subspace_studio_transform_constraint_hygiene_r55_tests
+        tests/studio_transform_constraint_hygiene_r55_tests.cpp)
+    target_link_libraries(subspace_studio_transform_constraint_hygiene_r55_tests PRIVATE subspace_engine)
+    add_test(NAME SubspaceStudioTransformConstraintHygieneR55Tests COMMAND subspace_studio_transform_constraint_hygiene_r55_tests)
+
+    add_test(NAME SubspaceStudioTransformUiHygieneR62SourceGate COMMAND ${CMAKE_COMMAND}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/../tools/control/static-gates/pass1531_1540_studio_transform_ui_hygiene.cmake)
+endif()
+
+# R63-R72: selection, staged duplication and safe normal Delete.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_studio_placement_workflow_r63_tests
+        tests/studio_placement_workflow_r63_tests.cpp)
+    target_include_directories(subspace_studio_placement_workflow_r63_tests PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
+    target_compile_features(subspace_studio_placement_workflow_r63_tests PRIVATE cxx_std_17)
+    add_test(NAME SubspaceStudioPlacementWorkflowR63Tests COMMAND subspace_studio_placement_workflow_r63_tests)
+
+    add_executable(subspace_studio_duplicate_staged_r64_tests
+        tests/studio_duplicate_staged_r64_tests.cpp)
+    target_link_libraries(subspace_studio_duplicate_staged_r64_tests PRIVATE subspace_engine)
+    add_test(NAME SubspaceStudioDuplicateStagedR64Tests COMMAND subspace_studio_duplicate_staged_r64_tests)
+
+    add_executable(subspace_studio_safe_delete_r67_tests
+        tests/studio_safe_delete_r67_tests.cpp)
+    target_link_libraries(subspace_studio_safe_delete_r67_tests PRIVATE subspace_engine)
+    add_test(NAME SubspaceStudioSafeDeleteR67Tests COMMAND subspace_studio_safe_delete_r67_tests)
+
+    add_test(NAME SubspaceStudioSelectionPlacementR72SourceGate COMMAND ${CMAKE_COMMAND}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/../tools/control/static-gates/pass1541_1550_studio_selection_placement.cmake)
+endif()
+
+# R73-R82: convergence audit. Duplicate snap must preserve authored traits,
+# and source truth must distinguish live Geometry preview from still-pending
+# reusable catalog publication.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_studio_duplicate_snap_r73_tests
+        tests/studio_duplicate_snap_preservation_r73_tests.cpp)
+    target_link_libraries(subspace_studio_duplicate_snap_r73_tests PRIVATE subspace_engine)
+    add_test(NAME SubspaceStudioDuplicateSnapR73Tests COMMAND subspace_studio_duplicate_snap_r73_tests)
+
+    add_executable(subspace_studio_context_selection_r78_tests
+        tests/studio_context_selection_r78_tests.cpp)
+    target_link_libraries(subspace_studio_context_selection_r78_tests PRIVATE subspace_engine)
+    add_test(NAME SubspaceStudioContextSelectionR78Tests COMMAND subspace_studio_context_selection_r78_tests)
+
+    add_test(NAME SubspaceStudioConvergenceR82SourceGate COMMAND ${CMAKE_COMMAND}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/../tools/control/static-gates/pass1551_1560_studio_convergence_audit.cmake)
+endif()
+
+
+# R82R1: second convergence audit corrections.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_studio_mirrored_local_move_r82r1_tests
+        tests/studio_mirrored_local_move_r82r1_tests.cpp)
+    target_link_libraries(subspace_studio_mirrored_local_move_r82r1_tests PRIVATE subspace_engine)
+    add_test(NAME SubspaceStudioMirroredLocalMoveR82R1Tests COMMAND subspace_studio_mirrored_local_move_r82r1_tests)
+
+    add_test(NAME SubspaceStudioR82R1CorrectiveSourceGate COMMAND ${CMAKE_COMMAND}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/../tools/control/static-gates/pass1561_1564_studio_r82r1_corrective.cmake)
+
+    add_test(NAME SubspaceStudioR82R2GateRepairSourceGate COMMAND ${CMAKE_COMMAND}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/../tools/control/static-gates/pass1565_1566_studio_r82r2_gate_repair.cmake)
+    add_test(NAME SubspaceStudioR82R4FourFailureRecoverySourceGate COMMAND ${CMAKE_COMMAND}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/../tools/control/static-gates/pass1567_1568_studio_r82r4_four_failure_recovery.cmake)
+endif()

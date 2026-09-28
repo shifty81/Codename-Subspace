@@ -2,6 +2,7 @@
 #include "ship_editor/ShipyardCatalogViewport.h"
 #include "content/ShipyardPartTaxonomySystem.h"
 #include "editor/EditorDccShellLayoutSystem.h"
+#include "editor/ConstructionUiLayoutPolicy.h"
 #include "editor/EditorForgeGuiStyleSystem.h"
 #include "ship_editor/ShipyardPanelCompositorSystem.h"
 
@@ -289,6 +290,7 @@ bool ShipyardBuilderSystem::Activate(ShipyardBuilderCommand command,int value){
     // Preserve intentional Cutaway and X-Ray; never alter a failed action.
     const bool revealExterior=command==ShipyardBuilderCommand::AddModule||
         command==ShipyardBuilderCommand::ConfirmPlacement||
+        command==ShipyardBuilderCommand::DuplicateSelection||
         command==ShipyardBuilderCommand::SelectPlaced||
         command==ShipyardBuilderCommand::FrameSelected||
         command==ShipyardBuilderCommand::FrameShip||
@@ -496,28 +498,42 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
     for(int i=0;i<4;++i)
         add(menus[i],0,(180.0f+i*58.0f)*s,l.top+2.0f*s,54.0f*s,
             std::max(16.0f,l.workspaceBarY-l.top-4.0f*s),menuNames[i],model.openMenu==i,true);
-    // First-class authoring flow: assembly -> model -> interior -> systems ->
-    // paint -> test. Developer-only workspaces remain under DEV.
-    float bx=8.0f*s;const float tabW=82.0f*s,tabGap=2.0f*s;
-    auto tab=[&](ShipyardBuilderCommand c,const char* label,bool active,bool enabled=true){add(c,0,bx,l.workspaceBarY,tabW,l.workspaceBarHeight,label,active,enabled);bx+=tabW+tabGap;};
-    tab(ShipyardBuilderCommand::WorkspaceBuild,"ASSEMBLY",!model.testWorkspaceActive&&model.workspaceMode==ShipyardWorkspaceMode::Build);
-    tab(ShipyardBuilderCommand::WorkspaceModel,"MODEL",!model.testWorkspaceActive&&model.workspaceMode==ShipyardWorkspaceMode::Model,model.capabilities.model);
-    tab(ShipyardBuilderCommand::WorkspaceInterior,"INTERIOR",!model.testWorkspaceActive&&model.workspaceMode==ShipyardWorkspaceMode::Interior,model.capabilities.interior);
-    tab(ShipyardBuilderCommand::WorkspaceSystems,"SYSTEMS",!model.testWorkspaceActive&&model.workspaceMode==ShipyardWorkspaceMode::Systems);
-    tab(ShipyardBuilderCommand::WorkspaceAppearance,"PAINT",!model.testWorkspaceActive&&model.workspaceMode==ShipyardWorkspaceMode::Appearance);
-    tab(ShipyardBuilderCommand::WorkspaceDevWorld,"TEST",model.testWorkspaceActive,true);out.back().value=-1268;
-    add(ShipyardBuilderCommand::WorkspaceAuthoring,-1268,std::max(bx,static_cast<float>(w)-70.0f*s),l.workspaceBarY,62.0f*s,l.workspaceBarHeight,"DEV",model.developerWorkspacesVisible||IsAdvancedWorkspace(model.workspaceMode),true);
-    if(model.developerWorkspacesVisible){
-        float dx=8.0f*s;const float y=l.workspaceBarY+l.workspaceBarHeight+3.0f*s;const float dw=84.0f*s;
-        const std::vector<std::tuple<ShipyardBuilderCommand,const char*,bool,bool>> dev={
-            {ShipyardBuilderCommand::InspectorSockets,"SOCKETS",model.inspectorTab==ShipyardInspectorTab::Sockets,model.capabilities.sockets},
-            {ShipyardBuilderCommand::WorkspacePcg,"PCG",model.workspaceMode==ShipyardWorkspaceMode::Pcg,model.capabilities.pcgStudio},
-            {ShipyardBuilderCommand::WorkspaceWorld,"WORLD",model.workspaceMode==ShipyardWorkspaceMode::World,model.capabilities.world},
-            {ShipyardBuilderCommand::WorkspaceCharacter,"CHAR",model.workspaceMode==ShipyardWorkspaceMode::Character,model.capabilities.character},
-            {ShipyardBuilderCommand::WorkspaceDevWorld,"DEV WORLD",model.workspaceMode==ShipyardWorkspaceMode::DevWorld,model.capabilities.devWorld},
-            {ShipyardBuilderCommand::WorkspaceProjectTools,"PROJECT",model.workspaceMode==ShipyardWorkspaceMode::ProjectTools,true},
-            {ShipyardBuilderCommand::WorkspaceAuthoring,"AUTHOR",model.workspaceMode==ShipyardWorkspaceMode::Authoring,model.capabilities.rawAuthoring}};
-        for(const auto& d:dev){add(std::get<0>(d),0,dx,y,dw,24.0f*s,std::get<1>(d),std::get<2>(d),std::get<3>(d));dx+=dw+3.0f*s;}
+    // R25-R27: one authoritative workspace strip; DEV replaces the row instead of stacking over the viewport.
+    const float stripX=8.0f*s;
+    const float stripW=std::max(1.0f,static_cast<float>(w)-16.0f*s);
+    const float stripGap=2.0f*s;
+    if(!model.developerWorkspacesVisible){
+        struct PrimaryTab { ShipyardBuilderCommand command; const char* label; bool active; bool enabled; };
+        const PrimaryTab tabs[]={
+            {ShipyardBuilderCommand::WorkspaceBuild,"CONSTRUCT",!model.testWorkspaceActive&&(model.workspaceMode==ShipyardWorkspaceMode::Build||model.workspaceMode==ShipyardWorkspaceMode::Model),true},
+            {ShipyardBuilderCommand::WorkspaceInterior,"INTERIOR",!model.testWorkspaceActive&&model.workspaceMode==ShipyardWorkspaceMode::Interior,model.capabilities.interior},
+            {ShipyardBuilderCommand::WorkspaceSystems,"SYSTEMS",!model.testWorkspaceActive&&model.workspaceMode==ShipyardWorkspaceMode::Systems,true},
+            {ShipyardBuilderCommand::WorkspaceAppearance,"APPEARANCE",!model.testWorkspaceActive&&model.workspaceMode==ShipyardWorkspaceMode::Appearance,true},
+            {ShipyardBuilderCommand::WorkspaceDevWorld,"TEST",model.testWorkspaceActive,true}
+        };
+        const std::size_t count=sizeof(tabs)/sizeof(tabs[0]);
+        const float devW=64.0f*s;
+        const float primaryW=std::max(1.0f,stripW-devW-stripGap);
+        const float tabW=ConstructionUiLayoutPolicy::TabWidth(primaryW,count,stripGap);
+        float x=stripX;
+        for(const auto& t:tabs){add(t.command,0,x,l.workspaceBarY,tabW,l.workspaceBarHeight,t.label,t.active,t.enabled);x+=tabW+stripGap;}
+        add(ShipyardBuilderCommand::WorkspaceAuthoring,-1268,stripX+primaryW+stripGap,l.workspaceBarY,devW,l.workspaceBarHeight,"DEV",false,true);
+    }else{
+        struct DevTab { ShipyardBuilderCommand command; const char* label; bool active; bool enabled; int value; };
+        const DevTab tabs[]={
+            {ShipyardBuilderCommand::WorkspaceAuthoring,"BACK",true,true,-1268},
+            {ShipyardBuilderCommand::InspectorSockets,"SOCKETS",model.inspectorTab==ShipyardInspectorTab::Sockets,model.capabilities.sockets,0},
+            {ShipyardBuilderCommand::WorkspacePcg,"PCG",model.workspaceMode==ShipyardWorkspaceMode::Pcg,model.capabilities.pcgStudio,0},
+            {ShipyardBuilderCommand::WorkspaceWorld,"WORLD",model.workspaceMode==ShipyardWorkspaceMode::World,model.capabilities.world,0},
+            {ShipyardBuilderCommand::WorkspaceCharacter,"CHAR",model.workspaceMode==ShipyardWorkspaceMode::Character,model.capabilities.character,0},
+            {ShipyardBuilderCommand::WorkspaceDevWorld,"DEV WORLD",model.workspaceMode==ShipyardWorkspaceMode::DevWorld,model.capabilities.devWorld,0},
+            {ShipyardBuilderCommand::WorkspaceProjectTools,"PROJECT",model.workspaceMode==ShipyardWorkspaceMode::ProjectTools,true,0},
+            {ShipyardBuilderCommand::WorkspaceAuthoring,"AUTHOR",model.workspaceMode==ShipyardWorkspaceMode::Authoring,model.capabilities.rawAuthoring,0}
+        };
+        const std::size_t count=sizeof(tabs)/sizeof(tabs[0]);
+        const float tabW=ConstructionUiLayoutPolicy::TabWidth(stripW,count,stripGap);
+        float x=stripX;
+        for(const auto& t:tabs){add(t.command,t.value,x,l.workspaceBarY,tabW,l.workspaceBarHeight,t.label,t.active,t.enabled);x+=tabW+stripGap;}
     }
 
     if(maximized){
@@ -567,29 +583,35 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
         // Every editor area owns the same compact panel controls: collapse,
         // float/dock, pin and close. The global menu is the only fixed chrome.
         const float hb=std::max(24.0f,22.0f*s),hgap=2.0f*s;
-        add(ShipyardBuilderCommand::DccPanelToggleCollapse,0,ax+aw-(hb*4+hgap*3)-5*s,ay+4*s,hb,hb,"-",DockPanelCollapsed(model,"asset_browser"),true);
-        add(ShipyardBuilderCommand::DccPanelToggleFloat,0,ax+aw-(hb*3+hgap*2)-5*s,ay+4*s,hb,hb,"[]",false,true);
-        add(ShipyardBuilderCommand::DccPanelTogglePin,0,ax+aw-(hb*2+hgap)-5*s,ay+4*s,hb,hb,"P",DockPanelPinned(model,"asset_browser"),true);
-        add(ShipyardBuilderCommand::DccPanelToggleVisible,0,ax+aw-hb-5*s,ay+4*s,hb,hb,"X",false,true);
+        const float panelButtonsLeft=ax+aw-(hb*4+hgap*3)-5*s;
+        add(ShipyardBuilderCommand::DccPanelToggleCollapse,0,panelButtonsLeft,ay+4*s,hb,hb,"-",DockPanelCollapsed(model,"asset_browser"),true);
+        add(ShipyardBuilderCommand::DccPanelToggleFloat,0,panelButtonsLeft+(hb+hgap),ay+4*s,hb,hb,"[]",false,true);
+        add(ShipyardBuilderCommand::DccPanelTogglePin,0,panelButtonsLeft+2*(hb+hgap),ay+4*s,hb,hb,"P",DockPanelPinned(model,"asset_browser"),true);
+        add(ShipyardBuilderCommand::DccPanelToggleVisible,0,panelButtonsLeft+3*(hb+hgap),ay+4*s,hb,hb,"X",false,true);
         if(assetBrowserContent){
-        // The search field is clickable and keeps native keyboard focus until
-        // Enter/Escape or clicking the canvas. It filters the existing catalog.
-        if(aw>350*s){
-            const float searchW=std::min(230*s,std::max(90*s,aw-205*s));
-            add(ShipyardBuilderCommand::DccAssetFocusSearch,0,ax+75*s,ay+4*s,searchW,24*s,
+        // Reserve the panel-management buttons before sizing search.  The old
+        // aw-205 formula overlapped the clear-X with Collapse at mid widths.
+        const float searchX=ax+75*s;
+        const float searchAvailable=panelButtonsLeft-searchX-30*s;
+        if(searchAvailable>=90*s){
+            const float searchW=std::min(230*s,searchAvailable);
+            add(ShipyardBuilderCommand::DccAssetFocusSearch,0,searchX,ay+4*s,searchW,24*s,
                 std::string(model.assetSearchFocused?"SEARCH> ":"SEARCH: ")+
                 (model.dcc.assetBrowser.search.empty()?"type to filter":model.dcc.assetBrowser.search),
                 model.assetSearchFocused,true);
             if(!model.dcc.assetBrowser.search.empty())
-                add(ShipyardBuilderCommand::DccAssetClearSearch,0,ax+75*s+searchW+3*s,ay+4*s,24*s,24*s,"x",false,true);
+                add(ShipyardBuilderCommand::DccAssetClearSearch,0,searchX+searchW+3*s,ay+4*s,24*s,24*s,"x",false,true);
         }
         // Bottom Asset Browser shelf: the central viewport keeps its width while
         // all ship/module assets remain one click away, matching a modern DCC.
         add(ShipyardBuilderCommand::DccPreviousAssetPreset,0,ax+72*s,actionY,24*s,24*s,"<",false,true);
         add(ShipyardBuilderCommand::DccNextAssetPreset,0,ax+99*s,actionY,144*s,24*s,ShipyardDccUiSystem::AssetPresetName(model.dcc.assetPreset),true,true);
-        add(ShipyardBuilderCommand::DccCycleAssetDensity,0,ax+246*s,actionY,82*s,24*s,ShipyardDccUiSystem::AssetDensityName(model.dcc.assetBrowser.density),false,true);
-        add(ShipyardBuilderCommand::DccToggleFavoriteSelected,0,ax+aw-270*s,actionY,52*s,24*s,"FAV",false,!model.catalog.empty());
-        add(ShipyardBuilderCommand::DccClearAssetFilters,0,ax+aw-215*s,actionY,54*s,24*s,"CLEAR",false,true);
+        if(ConstructionUiLayoutPolicy::ShowAssetDensity(aw,s))
+            add(ShipyardBuilderCommand::DccCycleAssetDensity,0,ax+246*s,actionY,82*s,24*s,ShipyardDccUiSystem::AssetDensityName(model.dcc.assetBrowser.density),false,true);
+        if(ConstructionUiLayoutPolicy::ShowAssetSecondaryActions(aw,s)){
+            add(ShipyardBuilderCommand::DccToggleFavoriteSelected,0,ax+aw-270*s,actionY,52*s,24*s,"FAV",false,!model.catalog.empty());
+            add(ShipyardBuilderCommand::DccClearAssetFilters,0,ax+aw-215*s,actionY,54*s,24*s,"CLEAR",false,true);
+        }
         add(ShipyardBuilderCommand::AddModule,0,ax+aw-158*s,actionY,72*s,24*s,"PLACE",false,!model.catalog.empty());
         add(ShipyardBuilderCommand::Validate,0,ax+aw-83*s,actionY,76*s,24*s,"CHECK",false,true);
 
@@ -632,7 +654,8 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
             add(ShipyardBuilderCommand::ToolRotate,0,tx,railButtonsY+2*(th+gap),tw,th,"ROTATE",model.transformTool==ShipyardTransformTool::Rotate,hasShape);
             add(ShipyardBuilderCommand::ToolScale,0,tx,railButtonsY+3*(th+gap),tw,th,"SCALE",model.transformTool==ShipyardTransformTool::Scale,hasShape);
             add(ShipyardBuilderCommand::ModelAddBox,0,tx,railButtonsY+4*(th+gap),tw,th,"ADD BOX",false,model.capabilities.model);
-            add(ShipyardBuilderCommand::ModelRemovePrimitive,0,tx,railButtonsY+5*(th+gap),tw,th,"DEL",false,hasShape);
+            add(ShipyardBuilderCommand::DeleteSelectionSafe,0,tx,railButtonsY+5*(th+gap),tw,th,"DEL",false,hasShape);
+            add(ShipyardBuilderCommand::WorkspaceBuild,0,tx,railButtonsY+6*(th+gap),tw,th,"ASSEMBLY",false,true);
         }else if(model.workspaceMode==ShipyardWorkspaceMode::Interior&&!model.testWorkspaceActive){
             add(ShipyardBuilderCommand::GenerateInteriorProgram,0,tx,railButtonsY,tw,th,"GENERATE",false,HasPlaced(model));
             add(ShipyardBuilderCommand::InteriorAddFloor,0,tx,railButtonsY+(th+gap),tw,th,"FLOOR",false,model.interiorProgram.valid);
@@ -654,6 +677,8 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
             add(ShipyardBuilderCommand::ToolScale,0,tx,railButtonsY+3*(th+gap),tw,th,model.standaloneDesign?"SCALE":"S",model.transformTool==ShipyardTransformTool::Scale,HasPlaced(model));
             add(ShipyardBuilderCommand::ToggleTransformSnap,0,tx,railButtonsY+4*(th+gap),tw,th,model.standaloneDesign?(model.transformSnap?"SNAP ON":"SNAP OFF"):"SNAP",model.transformSnap,HasPlaced(model));
             add(ShipyardBuilderCommand::FrameSelected,0,tx,railButtonsY+5*(th+gap),tw,th,model.standaloneDesign?"FRAME":"F",false,HasPlaced(model));
+            if(model.standaloneDesign&&model.capabilities.model)
+                add(ShipyardBuilderCommand::WorkspaceModel,0,tx,railButtonsY+6*(th+gap),tw,th,"GEOMETRY",false,true);
         }
     }
 
@@ -732,7 +757,7 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
                     ShipyardBuilderCommand::ModelNextPrimitive,"NEXT SHAPE",false,model.capabilities.model,ay);
                 ay+=rowH+rowGap;
                 two(ShipyardBuilderCommand::ModelAddShape,"CREATE SHAPE",false,model.capabilities.model,
-                    ShipyardBuilderCommand::ModelDuplicatePrimitive,"DUPLICATE",false,hasShape,ay);
+                    ShipyardBuilderCommand::DuplicateSelection,"DUPLICATE",false,hasShape,ay);
                 ay+=rowH+rowGap;
                 two(ShipyardBuilderCommand::ModelStretchXNegative,"WIDTH -",false,hasShape,
                     ShipyardBuilderCommand::ModelStretchXPositive,"WIDTH +",false,hasShape,ay);
@@ -744,7 +769,7 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
                     ShipyardBuilderCommand::ModelStretchZPositive,"HEIGHT +",false,hasShape,ay);
                 ay+=rowH+rowGap;
                 two(ShipyardBuilderCommand::ModelValidate,"VALIDATE DRAFT",false,model.capabilities.model,
-                    ShipyardBuilderCommand::ModelPublishCanonical,"PUBLISH UNWIRED",false,false,ay);
+                    ShipyardBuilderCommand::ModelPublishCanonical,"BAKE DRAFT",false,hasShape&&model.capabilities.publishCanonicalAsset,ay);
             }else if(model.workspaceMode==ShipyardWorkspaceMode::Interior&&!model.testWorkspaceActive){
                 add(ShipyardBuilderCommand::GenerateInteriorProgram,0,px,ay,pw,rowH,"GENERATE INTERIOR",false,HasPlaced(model));
                 ay+=rowH+rowGap;
@@ -820,9 +845,14 @@ std::vector<ShipyardBuilderControl> ShipyardBuilderSystem::BuildControls(const S
             menuRow(ShipyardBuilderCommand::SaveBlueprint,"SAVE BLUEPRINT",HasPlaced(model),1);
             menuRow(ShipyardBuilderCommand::GenerateVariant,"GENERATE SHIP",model.standaloneDesign,2);
         }else if(model.openMenu==1){
+            const bool geometrySelection=model.workspaceMode==ShipyardWorkspaceMode::Model&&!model.modeling.recipe.primitives.empty();
+            const bool socketSelection=model.inspectorTab==ShipyardInspectorTab::Sockets&&HasPlaced(model);
+            const bool interiorSelection=model.workspaceMode==ShipyardWorkspaceMode::Interior&&!model.interiorStructure.elements.empty();
+            const bool constructSelection=model.workspaceMode==ShipyardWorkspaceMode::Build&&model.inspectorTab!=ShipyardInspectorTab::Sockets&&HasPlaced(model);
             menuRow(ShipyardBuilderCommand::UndoAuthoring,"UNDO",true,0);
             menuRow(ShipyardBuilderCommand::RedoAuthoring,"REDO",true,1);
-            menuRow(ShipyardBuilderCommand::RemoveModule,"DELETE MODULE",HasPlaced(model),2);
+            menuRow(ShipyardBuilderCommand::DuplicateSelection,"DUPLICATE",geometrySelection||constructSelection,2);
+            menuRow(ShipyardBuilderCommand::DeleteSelectionSafe,"DELETE SELECTED",geometrySelection||socketSelection||interiorSelection||constructSelection,3);
         }else if(model.openMenu==2){
             menuRow(ShipyardBuilderCommand::DccCycleStudioView,"CYCLE VIEW",true,0);
             menuRow(ShipyardBuilderCommand::DccToggleGrid,"TOGGLE GRID",true,1);

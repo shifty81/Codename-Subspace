@@ -1,5 +1,6 @@
 #include "studio/StudioGizmoOverlay.h"
 #include "studio/StudioMeasurementFormat.h"
+#include "studio/StudioTransformStatusPolicy.h"
 #include <algorithm>
 #include <cmath>
 #include <iomanip>
@@ -66,6 +67,14 @@ void Glyph(char ch,float x,float y){
         case 'L':Line(x,y,x,y+13);Line(x,y+13,x+8,y+13);break;
         case 'I':Line(x,y,x+8,y);Line(x+4,y,x+4,y+13);Line(x,y+13,x+8,y+13);break;
         case 'M':Line(x,y+13,x,y);Line(x,y,x+4,y+6);Line(x+4,y+6,x+8,y);Line(x+8,y,x+8,y+13);break;
+        case 'A':Line(x,y+13,x+4,y);Line(x+4,y,x+8,y+13);Line(x+2,y+7,x+6,y+7);break;
+        case 'B':Line(x,y,x,y+13);Line(x,y,x+6,y);Line(x+6,y,x+8,y+3);Line(x+8,y+3,x+6,y+6);Line(x+6,y+6,x,y+6);Line(x+6,y+6,x+8,y+10);Line(x+8,y+10,x+6,y+13);Line(x+6,y+13,x,y+13);break;
+        case 'E':Line(x+8,y,x,y);Line(x,y,x,y+13);Line(x,y+6,x+7,y+6);Line(x,y+13,x+8,y+13);break;
+        case 'J':Line(x,y,x+8,y);Line(x+5,y,x+5,y+11);Line(x+5,y+11,x+3,y+13);Line(x+3,y+13,x,y+11);break;
+        case 'N':Line(x,y+13,x,y);Line(x,y,x+8,y+13);Line(x+8,y+13,x+8,y);break;
+        case 'U':Line(x,y,x,y+10);Line(x,y+10,x+3,y+13);Line(x+3,y+13,x+5,y+13);Line(x+5,y+13,x+8,y+10);Line(x+8,y+10,x+8,y);break;
+        case 'V':Line(x,y,x+4,y+13);Line(x+4,y+13,x+8,y);break;
+        case 'W':Line(x,y,x+2,y+13);Line(x+2,y+13,x+4,y+7);Line(x+4,y+7,x+6,y+13);Line(x+6,y+13,x+8,y);break;
         default:break;
     }
 }
@@ -97,11 +106,11 @@ void DrawNumber(float x,float y,float value,int decimals,bool degrees=false,bool
 void TransformHud(const StudioGizmoSnapshot& snapshot){
     const float availableWidth=snapshot.viewportRight-snapshot.viewportLeft;
     const float availableHeight=snapshot.viewportBottom-snapshot.viewportTop;
-    if(availableWidth<455.0f||availableHeight<145.0f)return;
-    const float x=snapshot.viewportLeft+9.0f,y=snapshot.viewportTop+9.0f;
+    if(availableWidth<455.0f||availableHeight<169.0f)return;
+    const float x=snapshot.readoutLeft,y=snapshot.readoutTop;
     glColor4f(.012f,.023f,.038f,.83f);
     glBegin(GL_QUADS);glVertex2f(x,y);glVertex2f(x+435,y);
-       glVertex2f(x+435,y+106);glVertex2f(x,y+106);glEnd();
+       glVertex2f(x+435,y+130);glVertex2f(x,y+130);glEnd();
     const float fieldStarts[3]={x+57.0f,x+181.0f,x+305.0f};
     const std::array<std::array<float,3>,4> rows={{snapshot.readout.position,
         snapshot.readout.rotationDegrees,snapshot.readout.scalePercent,
@@ -126,6 +135,14 @@ void TransformHud(const StudioGizmoSnapshot& snapshot){
     }
     // DIM is NOMINAL catalog-space W/L/H in meters. It is not mesh-exact,
     // a rotated world AABB, a Boolean result, or a promise of interior volume.
+    glColor4f(.76f,.86f,.94f,.98f);glLineWidth(1.6f);
+    Label("SPACE",x+8,y+108);
+    glColor4f(.93f,.96f,1.0f,1.0f);
+    Label(StudioTransformStatusPolicy::SpaceName(snapshot.selectedSpace),x+70,y+108);
+    if(snapshot.effectiveSpaceOverride){
+        glColor4f(.72f,.78f,.86f,.94f);Label("USE",x+194,y+108);
+        glColor4f(.93f,.96f,1.0f,1.0f);Label(StudioTransformStatusPolicy::EffectiveSpaceName(snapshot.transformTool,snapshot.effectiveSpace),x+235,y+108);
+    }
 }
 void AngleGauge(float x,float y,float value,int axis){
     Color(axis,.93f);glLineWidth(2.2f);

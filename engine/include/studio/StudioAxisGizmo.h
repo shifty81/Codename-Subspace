@@ -11,6 +11,11 @@ struct StudioGizmoSnapshot {
     float viewportLeft=0,viewportTop=0,viewportRight=0,viewportBottom=0;
     bool visible=false;
     bool readoutVisible=false;
+    float readoutLeft=0.0f,readoutTop=0.0f;
+    ShipyardTransformSpace selectedSpace=ShipyardTransformSpace::Ship;
+    ShipyardTransformSpace effectiveSpace=ShipyardTransformSpace::Ship;
+    ShipyardTransformTool transformTool=ShipyardTransformTool::Select;
+    bool effectiveSpaceOverride=false;
     StudioTransformReadout readout{};
     const StudioAxisHandle* Handle(StudioAxis axis) const noexcept {
         const int index=static_cast<int>(axis);

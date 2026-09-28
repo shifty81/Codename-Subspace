@@ -11,7 +11,9 @@
 #include "studio/StudioOverlayProgramScope.h"
 #include "studio/StudioGizmoMath.h"
 #include "studio/StudioGizmoDragPolicy.h"
+#include "studio/StudioTransformMoveDelta.h"
 #include "studio/StudioGuiInteractionPolicy.h"
+#include "studio/StudioOverlayPlacementPolicy.h"
 #include "studio/StudioGizmoProjectionPolicy.h"
 #include "studio/StudioInteriorPreviewKey.h"
 #include "studio/StudioToolInteractionPolicy.h"
@@ -102,7 +104,7 @@ void StudioApplication::SyncConstructionCamera(){
 
 int StudioApplication::Run(const std::filesystem::path& openFile,std::uint64_t maxFrames){
     NativeWindowConfig config;
-    config.title="Null Harbor Studio - Ship Authoring";
+    config.title="Null Harbor Studio - Construct";
     config.width=1600;config.height=900;
     if(!window_.Initialize(config)){std::cerr<<"Studio window initialization failed\n";return 2;}
     if(!renderer_.Initialize()){
@@ -327,10 +329,12 @@ void StudioApplication::RenderFrame(float elapsed){
         const auto layers=ShipyardPanelCompositorSystem::Snapshot(
             builder_.Model().dockWorkspace,window_.GetWidth(),
             std::max(1,static_cast<int>(layout.statusY)),layout.viewportTop);
-        // The native HUD currently measures 435x106px. Check its ENTIRE area
-        // against real floating geometry: point sampling missed thin panels.
-        const SubspaceUiRect hud{gizmo.viewportLeft+9.0f,gizmo.viewportTop+9.0f,435.0f,106.0f};
-        gizmo.readoutVisible=StudioGuiInteractionPolicy::ClearOverlayArea(layers,hud);
+        // Prefer a clear viewport corner instead of simply hiding the readout
+        // whenever a floating panel occupies the historical top-left slot.
+        const auto placement=StudioOverlayPlacementPolicy::Choose(layers,
+            gizmo.viewportLeft,gizmo.viewportTop,gizmo.viewportRight,gizmo.viewportBottom);
+        gizmo.readoutVisible=placement.visible;
+        gizmo.readoutLeft=placement.rect.x;gizmo.readoutTop=placement.rect.y;
     }
     const auto hovered=gizmo.Pick(window_.GetPointerX(),window_.GetPointerY());
     // The material renderer can leave a GLSL program bound.  Traditional
@@ -546,7 +550,7 @@ void StudioApplication::HandleInput(){
     if(input_.WasPressed(InputAction::SaveBlueprint)&&
        documentShortcut!=StudioDocumentShortcut::Save&&
        documentShortcut!=StudioDocumentShortcut::SaveAs)SaveDocument();
-    if(input_.WasPressed(InputAction::MenuAccept))RouteControl(ShipyardBuilderCommand::AddModule);
+    if(input_.WasPressed(InputAction::MenuAccept))RouteControl(builder_.Model().dragPreview.staged?ShipyardBuilderCommand::ConfirmPlacement:ShipyardBuilderCommand::AddModule);
     if(input_.WasPressed(InputAction::EditorFrameShip)){
         float radius=6.0f;Vector3 center{};
         if(builder_.Model().workspaceMode==ShipyardWorkspaceMode::Model&&!builder_.Model().modeling.recipe.primitives.empty()){
@@ -577,6 +581,8 @@ void StudioApplication::HandleInput(){
         if(input_.WasPressed(InputAction::DccWorkspacePrevious))
             RouteControl(ShipyardBuilderCommand::DccWorkspacePrevious);
         if(!ctrl){
+            if(input_.WasPressed(InputAction::DccCycleTransformSpace))RouteControl(ShipyardBuilderCommand::ToggleTransformSpace);
+            if(input_.WasPressed(InputAction::DccDuplicateSelection))RouteControl(ShipyardBuilderCommand::DuplicateSelection);
             if(input_.WasPressed(InputAction::EditorToolSelect))RouteControl(ShipyardBuilderCommand::ToolSelect);
             if(input_.WasPressed(InputAction::EditorToolMove))RouteControl(ShipyardBuilderCommand::ToolMove);
             if(input_.WasPressed(InputAction::EditorToolRotate))RouteControl(ShipyardBuilderCommand::ToolRotate);
@@ -589,9 +595,9 @@ void StudioApplication::HandleInput(){
             if(input_.WasPressed(InputAction::DccConstraintZ))RouteControl(ShipyardBuilderCommand::TransformConstraintZ);
             if(input_.WasPressed(InputAction::EditorFrameSelected))RouteControl(ShipyardBuilderCommand::FrameSelected);
             if(input_.WasPressed(InputAction::EditorDeleteModule)){
-                switch(builder_.Model().workspaceMode){
-                case ShipyardWorkspaceMode::Build:RouteControl(ShipyardBuilderCommand::RemoveModule);break;
-                case ShipyardWorkspaceMode::Model:RouteControl(ShipyardBuilderCommand::ModelRemovePrimitive);break;
+                if(builder_.Model().inspectorTab==ShipyardInspectorTab::Sockets)RouteControl(ShipyardBuilderCommand::RemoveSocket);
+                else switch(builder_.Model().workspaceMode){
+                case ShipyardWorkspaceMode::Build:case ShipyardWorkspaceMode::Model:RouteControl(ShipyardBuilderCommand::DeleteSelectionSafe);break;
                 case ShipyardWorkspaceMode::Interior:RouteControl(ShipyardBuilderCommand::InteriorRemoveElement);break;
                 default:break;
                 }
@@ -720,7 +726,9 @@ void StudioApplication::HandleInput(){
                             if(tool==ShipyardTransformTool::Move){
                                 const float amount=StudioGizmoDragPolicy::MoveUnits(gizmoStartHandle_,
                                     {window_.GetPointerX()-gizmoPressX_,window_.GetPointerY()-gizmoPressY_},fine);
-                                builder_.TranslateSelected({axis==StudioAxis::X?amount:0,axis==StudioAxis::Y?amount:0,axis==StudioAxis::Z?amount:0},false);
+                                const auto resolved=StudioTransformMoveDelta::ModelAuthored(
+                                    builder_.Model(),camera_,axis,amount);
+                                builder_.TranslateSelectedResolvedParent(resolved);
                             }else if(tool==ShipyardTransformTool::Rotate){
                                 const float amount=gizmoPixelAccum_*(fine?.035f:.35f);
                                 builder_.RotateSelected({axis==StudioAxis::X?amount:0,axis==StudioAxis::Y?amount:0,axis==StudioAxis::Z?amount:0},false);
@@ -756,15 +764,15 @@ void StudioApplication::HandleInput(){
                         gizmoAngleDelta_=StudioGizmoMath::RotationComponent(axis,applied.working.pitchDegrees,
                             applied.working.yawDegrees,applied.working.rollDegrees)-before;
                     }else if(builder_.Model().transformTool==ShipyardTransformTool::Move){
-                        const float before=StudioGizmoMath::Component(axis,tx.before.x,tx.before.y,tx.before.z);
-                        const float working=StudioGizmoMath::Component(axis,tx.working.x,tx.working.y,tx.working.z);
-                        const float desired=before+StudioGizmoDragPolicy::MoveUnits(gizmoStartHandle_,
+                        float amount=StudioGizmoDragPolicy::MoveUnits(gizmoStartHandle_,
                             {window_.GetPointerX()-gizmoPressX_,window_.GetPointerY()-gizmoPressY_},fine);
-                        const float delta=desired-working;
-                        const float sourceDelta=fine?delta*10.0f:delta;
-                        const Vector3 translation{axis==StudioAxis::X?sourceDelta:0,
-                            axis==StudioAxis::Y?sourceDelta:0,axis==StudioAxis::Z?sourceDelta:0};
-                        if(std::fabs(delta)>1e-6f)builder_.TranslateSelected(translation,fine);
+                        if(tx.snap&&!fine&&tx.translationSnap>0.0f)
+                            amount=std::round(amount/tx.translationSnap)*tx.translationSnap;
+                        if(builder_.ResetSelectedTransformPreview()){
+                            const auto resolved=StudioTransformMoveDelta::AssemblyAuthored(
+                                builder_.Model(),camera_,axis,amount);
+                            if(resolved.length()>1e-6f)builder_.TranslateSelectedResolvedParent(resolved);
+                        }
                     }else if(builder_.Model().transformTool==ShipyardTransformTool::Scale){
                         const float before=StudioGizmoMath::Component(axis,tx.before.scaleX,tx.before.scaleY,tx.before.scaleZ);
                         const float working=StudioGizmoMath::Component(axis,tx.working.scaleX,tx.working.scaleY,tx.working.scaleZ);

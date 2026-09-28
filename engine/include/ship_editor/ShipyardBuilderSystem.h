@@ -299,7 +299,9 @@ enum class ShipyardBuilderCommand {
     MenuFile,
     MenuEdit,
     MenuView,
-    MenuHelp
+    MenuHelp,
+    DuplicateSelection,
+    DeleteSelectionSafe
 };
 
 struct ShipyardBuilderControl {
@@ -464,7 +466,7 @@ struct ShipyardBuilderRuntimeModel {
     std::string trimPaintName = "AMBER";
     ShipAppearanceState appearance{};
     ShipyardTransformTool transformTool = ShipyardTransformTool::Select;
-    ShipyardTransformSpace transformSpace = ShipyardTransformSpace::View;
+    ShipyardTransformSpace transformSpace = ShipyardTransformSpace::Ship; // PARENT is the safe DCC default
     ShipyardTransformConstraint transformConstraint = ShipyardTransformConstraint::Free;
     bool transformConstraintLocal = false;
     bool transformSnap = true;
@@ -529,6 +531,8 @@ public:
     bool ResetSelectedTransformPreview();
     bool BeginSelectedSocketTransform();
     bool TranslateSelected(const Vector3& delta,bool fine=false);
+    // Delta is already resolved into authored parent coordinates by the Studio gizmo.
+    bool TranslateSelectedResolvedParent(const Vector3& delta);
     bool TranslateSelectedSocket(const Vector3& delta,bool fine=false);
     bool RotateSelected(const Vector3& deltaDegrees,bool fine=false);
     bool RotateSelectedSocket(const Vector3& deltaDegrees,bool fine=false);
@@ -554,6 +558,7 @@ public:
     bool LoadDefinitionOverrides(const std::string& path,std::string* error=nullptr,std::size_t* appliedModules=nullptr);
     bool SaveDefinitionOverrides(const std::string& path,std::string* error=nullptr,std::size_t* changedModules=nullptr) const;
     bool BeginCatalogDrag(int filteredIndex);
+    bool BeginDuplicateSelectedPlacement();
     bool HandleWheel(float pointerX,float pointerY,float wheelDelta,int viewportWidth,int viewportHeight);
     bool HandleAssetSearchInput(const std::string& text);
     void BlurAssetSearch() { model_.assetSearchFocused=false; }
@@ -622,6 +627,7 @@ private:
     void SyncSocketSelection();
     void ReflowRecipeAttachments();
     bool RemoveSelectedModule();
+    bool RemoveSelectedModulePreserveDescendants();
     bool DetachSelectedModule();
     bool ReattachSelectedModuleToNearest();
     bool ToggleSelectedArticulation();
