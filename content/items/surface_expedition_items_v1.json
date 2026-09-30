@@ -1,0 +1,76 @@
+{
+  "schema": "subspace.item-registry.v1",
+  "id": "items.surface_expedition.v1",
+  "items": [
+    {
+      "id": "item.survey_beacon",
+      "name": "Survey Beacon",
+      "massKg": 4.0,
+      "stack": 4,
+      "tags": [
+        "survey",
+        "deployable"
+      ]
+    },
+    {
+      "id": "item.black_box",
+      "name": "Recovered Black Box",
+      "massKg": 7.5,
+      "stack": 1,
+      "tags": [
+        "salvage",
+        "data"
+      ]
+    },
+    {
+      "id": "item.power_cell",
+      "name": "Industrial Power Cell",
+      "massKg": 9.0,
+      "stack": 8,
+      "tags": [
+        "power",
+        "salvage"
+      ]
+    },
+    {
+      "id": "item.electronics_bundle",
+      "name": "Electronics Bundle",
+      "massKg": 3.0,
+      "stack": 12,
+      "tags": [
+        "electronics",
+        "salvage"
+      ]
+    },
+    {
+      "id": "item.artifact_fragment",
+      "name": "Unknown Artifact Fragment",
+      "massKg": 1.2,
+      "stack": 6,
+      "tags": [
+        "artifact",
+        "survey"
+      ]
+    },
+    {
+      "id": "item.geology_sample",
+      "name": "Geology Sample Case",
+      "massKg": 2.0,
+      "stack": 10,
+      "tags": [
+        "science",
+        "ore"
+      ]
+    },
+    {
+      "id": "item.repair_compound",
+      "name": "Field Repair Compound",
+      "massKg": 2.5,
+      "stack": 8,
+      "tags": [
+        "repair",
+        "consumable"
+      ]
+    }
+  ]
+}

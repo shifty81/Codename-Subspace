@@ -1,0 +1,71 @@
+{
+  "schema": "subspace.npc-archetype-registry.v1",
+  "id": "npc.frontier_archetypes.v1",
+  "archetypes": [
+    {
+      "id": "npc.station_mechanic",
+      "namePool": "mechanic",
+      "role": "repair",
+      "faction": "wayline_services",
+      "schedule": [
+        "repair_bay",
+        "break",
+        "concourse"
+      ],
+      "services": [
+        "repair",
+        "module_assessment"
+      ]
+    },
+    {
+      "id": "npc.survey_broker",
+      "namePool": "surveyor",
+      "role": "survey_broker",
+      "faction": "frontier_survey_union",
+      "schedule": [
+        "mission_kiosk",
+        "concourse"
+      ],
+      "services": [
+        "buy_survey_data",
+        "contracts"
+      ]
+    },
+    {
+      "id": "npc.crew_broker",
+      "namePool": "crew",
+      "role": "crew_broker",
+      "faction": "independent",
+      "schedule": [
+        "crew_exchange",
+        "concourse"
+      ],
+      "services": [
+        "hire_crew"
+      ]
+    },
+    {
+      "id": "npc.salvager",
+      "namePool": "salvager",
+      "role": "salvager",
+      "faction": "independent",
+      "schedule": [
+        "hangar",
+        "market"
+      ],
+      "services": [
+        "salvage_trade"
+      ]
+    },
+    {
+      "id": "npc.scavenger_hostile",
+      "namePool": "scavenger",
+      "role": "hostile_scavenger",
+      "faction": "ash_jacks",
+      "schedule": [
+        "surface_site"
+      ],
+      "services": []
+    }
+  ]
+}

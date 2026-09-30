@@ -1,0 +1,84 @@
+{
+  "schema": "subspace.planet-biome-registry.v1",
+  "id": "planet.biomes.cinderwake.v1",
+  "planet": "planet.archetype.cinderwake.v1",
+  "biomes": [
+    {
+      "id": "basalt_flats",
+      "weight": 28,
+      "elevation": [
+        0.0,
+        0.35
+      ],
+      "roughness": 0.18,
+      "landingSuitability": 0.92,
+      "materials": [
+        "basalt",
+        "regolith_dark"
+      ]
+    },
+    {
+      "id": "regolith_basin",
+      "weight": 24,
+      "elevation": [
+        0.0,
+        0.28
+      ],
+      "roughness": 0.1,
+      "landingSuitability": 0.98,
+      "materials": [
+        "regolith_red",
+        "dust"
+      ]
+    },
+    {
+      "id": "fractured_highlands",
+      "weight": 20,
+      "elevation": [
+        0.35,
+        0.78
+      ],
+      "roughness": 0.72,
+      "landingSuitability": 0.3,
+      "materials": [
+        "basalt",
+        "ironstone"
+      ]
+    },
+    {
+      "id": "canyon_network",
+      "weight": 16,
+      "elevation": [
+        0.1,
+        0.7
+      ],
+      "roughness": 0.8,
+      "landingSuitability": 0.18,
+      "materials": [
+        "sedimentary_rock",
+        "dust"
+      ]
+    },
+    {
+      "id": "crater_field",
+      "weight": 12,
+      "elevation": [
+        0.05,
+        0.55
+      ],
+      "roughness": 0.55,
+      "landingSuitability": 0.45,
+      "materials": [
+        "impact_glass",
+        "regolith_dark"
+      ]
+    }
+  ],
+  "detailRules": [
+    "boulders",
+    "rock_spires",
+    "dust_drifts",
+    "impact_shards",
+    "mineral_exposure"
+  ]
+}

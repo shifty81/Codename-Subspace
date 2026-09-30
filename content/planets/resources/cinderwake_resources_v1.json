@@ -1,0 +1,85 @@
+{
+  "schema": "subspace.planet-resource-registry.v1",
+  "id": "planet.resources.cinderwake.v1",
+  "planet": "planet.archetype.cinderwake.v1",
+  "resources": [
+    {
+      "id": "iron_ore",
+      "rarity": "common",
+      "biomes": [
+        "basalt_flats",
+        "fractured_highlands"
+      ],
+      "forms": [
+        "surface_node",
+        "vein"
+      ]
+    },
+    {
+      "id": "nickel_ore",
+      "rarity": "common",
+      "biomes": [
+        "basalt_flats",
+        "crater_field"
+      ],
+      "forms": [
+        "surface_node",
+        "vein"
+      ]
+    },
+    {
+      "id": "copper_ore",
+      "rarity": "uncommon",
+      "biomes": [
+        "fractured_highlands",
+        "canyon_network"
+      ],
+      "forms": [
+        "vein"
+      ]
+    },
+    {
+      "id": "cobalt_ore",
+      "rarity": "uncommon",
+      "biomes": [
+        "crater_field",
+        "fractured_highlands"
+      ],
+      "forms": [
+        "vein"
+      ]
+    },
+    {
+      "id": "water_ice",
+      "rarity": "uncommon",
+      "biomes": [
+        "regolith_basin",
+        "canyon_network"
+      ],
+      "forms": [
+        "buried_pocket"
+      ]
+    },
+    {
+      "id": "titanium_trace",
+      "rarity": "rare",
+      "biomes": [
+        "crater_field"
+      ],
+      "forms": [
+        "impact_deposit"
+      ]
+    },
+    {
+      "id": "salvage_alloy",
+      "rarity": "site",
+      "biomes": [
+        "any"
+      ],
+      "forms": [
+        "derelict",
+        "ruin"
+      ]
+    }
+  ]
+}

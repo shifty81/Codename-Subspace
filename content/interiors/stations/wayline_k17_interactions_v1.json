@@ -1,0 +1,67 @@
+{
+  "schema": "subspace.station-interactions.v1",
+  "id": "interactions.station.wayline_k17.v1",
+  "layout": "interior.station.wayline_k17_hangar.v1",
+  "interactions": [
+    {
+      "id": "customs_terminal",
+      "action": "terminal",
+      "service": "customs",
+      "position": [
+        0,
+        34,
+        1
+      ]
+    },
+    {
+      "id": "market_terminal",
+      "action": "terminal",
+      "service": "market",
+      "position": [
+        -18,
+        63,
+        1
+      ]
+    },
+    {
+      "id": "repair_desk",
+      "action": "talk",
+      "service": "repair",
+      "position": [
+        18,
+        63,
+        1
+      ]
+    },
+    {
+      "id": "mission_kiosk",
+      "action": "terminal",
+      "service": "missions",
+      "position": [
+        -5,
+        48,
+        1
+      ]
+    },
+    {
+      "id": "crew_broker",
+      "action": "talk",
+      "service": "crew",
+      "position": [
+        0,
+        63,
+        1
+      ]
+    },
+    {
+      "id": "shipyard_lift",
+      "action": "use",
+      "service": "shipyard_access",
+      "position": [
+        26,
+        48,
+        0
+      ]
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "schema": "subspace.interior-module.v1",
+  "id": "interior.module.corridor_straight_01",
+  "displayName": "Straight Corridor",
+  "sizeMeters": {
+    "width": 2.2,
+    "length": 4.0,
+    "height": 2.5
+  },
+  "ports": [
+    {
+      "id": "fore",
+      "kind": "portal"
+    },
+    {
+      "id": "aft",
+      "kind": "portal"
+    }
+  ],
+  "interactionSlots": [],
+  "geometryBinding": "pending-governed-kitbash-or-generated-shell",
+  "reusable": true
+}

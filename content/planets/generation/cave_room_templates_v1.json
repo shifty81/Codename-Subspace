@@ -1,0 +1,90 @@
+{
+  "schema": "subspace.cave-room-registry.v1",
+  "id": "generation.cave_rooms.v1",
+  "rooms": [
+    {
+      "id": "cave.entry",
+      "sizeMeters": [
+        18,
+        24,
+        8
+      ],
+      "ports": [
+        "deep"
+      ],
+      "features": [
+        "daylight",
+        "loose_rock"
+      ]
+    },
+    {
+      "id": "cave.tunnel",
+      "sizeMeters": [
+        8,
+        24,
+        6
+      ],
+      "ports": [
+        "a",
+        "b"
+      ],
+      "features": [
+        "ore_chance"
+      ]
+    },
+    {
+      "id": "cave.chamber",
+      "sizeMeters": [
+        30,
+        34,
+        14
+      ],
+      "ports": [
+        "a",
+        "b",
+        "branch"
+      ],
+      "features": [
+        "ore_high",
+        "beacon_site"
+      ]
+    },
+    {
+      "id": "cave.vertical_drop",
+      "sizeMeters": [
+        14,
+        16,
+        24
+      ],
+      "ports": [
+        "upper",
+        "lower"
+      ],
+      "features": [
+        "ledge",
+        "climb_route"
+      ]
+    },
+    {
+      "id": "cave.collapsed_end",
+      "sizeMeters": [
+        16,
+        14,
+        7
+      ],
+      "ports": [
+        "a"
+      ],
+      "features": [
+        "salvage_chance",
+        "rare_ore_chance"
+      ]
+    }
+  ],
+  "generation": {
+    "minRooms": 7,
+    "maxRooms": 22,
+    "requiresReachableObjective": true,
+    "loopsChance": 0.18
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "schema": "subspace.planet-landing-site-registry.v1",
+  "id": "planet.landing_sites.cinderwake.v1",
+  "planet": "planet.archetype.cinderwake.v1",
+  "templates": [
+    {
+      "id": "safe_basin",
+      "displayName": "Survey Basin",
+      "biome": "regolith_basin",
+      "clearRadiusMeters": 70,
+      "maxSlopeDegrees": 8,
+      "nearbyPoiBudget": [
+        1,
+        3
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "mining_shelf",
+      "displayName": "Mining Shelf",
+      "biome": "basalt_flats",
+      "clearRadiusMeters": 65,
+      "maxSlopeDegrees": 10,
+      "nearbyPoiBudget": [
+        2,
+        4
+      ],
+      "risk": "low"
+    },
+    {
+      "id": "ruin_approach",
+      "displayName": "Ruin Approach",
+      "biome": "fractured_highlands",
+      "clearRadiusMeters": 55,
+      "maxSlopeDegrees": 12,
+      "nearbyPoiBudget": [
+        2,
+        5
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "salvage_field",
+      "displayName": "Debris Field Landing",
+      "biome": "crater_field",
+      "clearRadiusMeters": 60,
+      "maxSlopeDegrees": 10,
+      "nearbyPoiBudget": [
+        3,
+        6
+      ],
+      "risk": "medium"
+    },
+    {
+      "id": "outpost_pad",
+      "displayName": "Frontier Outpost Pad",
+      "biome": "basalt_flats",
+      "clearRadiusMeters": 80,
+      "maxSlopeDegrees": 5,
+      "nearbyPoiBudget": [
+        2,
+        4
+      ],
+      "risk": "variable"
+    }
+  ],
+  "validation": {
+    "shipClearanceRequired": true,
+    "terrainIntersectionForbidden": true,
+    "takeoffCorridorRequired": true
+  }
+}

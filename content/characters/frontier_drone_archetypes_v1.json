@@ -1,0 +1,27 @@
+{
+  "schema": "subspace.drone-archetype-registry.v1",
+  "id": "drone.frontier.v1",
+  "drones": [
+    {
+      "id": "drone.station_utility",
+      "role": "maintenance",
+      "hostile": false,
+      "movement": "hover",
+      "use": "ambient_repair"
+    },
+    {
+      "id": "drone.surface_survey",
+      "role": "survey",
+      "hostile": false,
+      "movement": "hover",
+      "use": "poi_marker"
+    },
+    {
+      "id": "drone.scavenger_sentry",
+      "role": "security",
+      "hostile": true,
+      "movement": "hover",
+      "use": "surface_encounter"
+    }
+  ]
+}

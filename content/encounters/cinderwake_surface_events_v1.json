@@ -1,0 +1,47 @@
+{
+  "schema": "subspace.surface-event-registry.v1",
+  "id": "encounters.cinderwake_surface.v1",
+  "events": [
+    {
+      "id": "dust_front_arrives",
+      "kind": "weather",
+      "weight": 18,
+      "effects": [
+        "planet.hazards.cinderwake.v1:dust_front"
+      ]
+    },
+    {
+      "id": "survey_drone_ping",
+      "kind": "ambient",
+      "weight": 12,
+      "effects": [
+        "spawn:drone.surface_survey"
+      ]
+    },
+    {
+      "id": "scavenger_sentry",
+      "kind": "hostile",
+      "weight": 5,
+      "effects": [
+        "spawn:drone.scavenger_sentry"
+      ]
+    },
+    {
+      "id": "distant_lander",
+      "kind": "ambient",
+      "weight": 6,
+      "effects": [
+        "sky_event",
+        "optional_poi_hint"
+      ]
+    },
+    {
+      "id": "rockfall",
+      "kind": "cave",
+      "weight": 8,
+      "effects": [
+        "temporary_route_block"
+      ]
+    }
+  ]
+}

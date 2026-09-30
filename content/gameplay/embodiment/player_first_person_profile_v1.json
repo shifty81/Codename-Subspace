@@ -1,0 +1,48 @@
+{
+  "schema": "subspace.player-embodiment-profile.v1",
+  "id": "player.human.standard.v1",
+  "displayName": "Standard Human Embodiment",
+  "scale": {
+    "heightMeters": 1.8,
+    "eyeHeightMeters": 1.68,
+    "capsuleRadiusMeters": 0.32,
+    "standingCapsuleHeightMeters": 1.8,
+    "crouchedCapsuleHeightMeters": 1.2
+  },
+  "locomotion": {
+    "walkMetersPerSecond": 3.2,
+    "sprintMetersPerSecond": 5.6,
+    "crouchMetersPerSecond": 1.6,
+    "accelerationMetersPerSecond2": 18.0,
+    "decelerationMetersPerSecond2": 22.0,
+    "airControl": 0.15,
+    "stepHeightMeters": 0.32,
+    "maxWalkableSlopeDegrees": 46.0
+  },
+  "look": {
+    "pitchMinDegrees": -88.0,
+    "pitchMaxDegrees": 88.0,
+    "cockpitHeadlook": {
+      "holdBinding": "Alt",
+      "decouplesSteering": true,
+      "yawLimitDegrees": 105.0,
+      "pitchLimitDegrees": 75.0,
+      "recenterOnRelease": true
+    }
+  },
+  "gravityContexts": {
+    "ship": "localArtificialGravity",
+    "station": "localArtificialGravity",
+    "planet": "worldGravity"
+  },
+  "spawnPolicies": [
+    "cockpit_seated",
+    "ship_interior",
+    "station_hangar",
+    "planet_surface"
+  ],
+  "notes": [
+    "One controller is reused across ship, station, outpost and planetary surfaces.",
+    "Cockpit headlook never changes ship steering while Alt is held."
+  ]
+}

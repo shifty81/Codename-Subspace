@@ -1,0 +1,22 @@
+{
+  "schema": "subspace.interior-module.v1",
+  "id": "interior.module.crew_bunk_01",
+  "displayName": "Crew Bunk",
+  "sizeMeters": {
+    "width": 4.5,
+    "length": 3.8,
+    "height": 2.6
+  },
+  "ports": [
+    {
+      "id": "fore",
+      "kind": "portal"
+    }
+  ],
+  "interactionSlots": [
+    "bed",
+    "locker"
+  ],
+  "geometryBinding": "pending-governed-kitbash-or-generated-shell",
+  "reusable": true
+}

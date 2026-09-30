@@ -1,0 +1,41 @@
+{
+  "schema": "subspace.vertical-slice-content.v1",
+  "id": "vertical_slice.embodied_exploration.v1",
+  "displayName": "Embodied Exploration Slice",
+  "shipInterior": "interior.ship.pioneer_frigate.v1",
+  "stationInterior": "interior.station.wayline_k17_hangar.v1",
+  "planet": "planet.archetype.cinderwake.v1",
+  "requiredTransitions": [
+    "transition.station_undocking.v1",
+    "transition.space_to_planet_landing.v1",
+    "transition.planet_to_space_takeoff.v1",
+    "transition.station_docking.v1"
+  ],
+  "loop": [
+    "spawn seated in Pioneer cockpit at Wayline K-17",
+    "stand and walk ship interior",
+    "exit through docking collar into station hangar",
+    "return and take controls",
+    "undock",
+    "orbital scan Cinderwake",
+    "select Survey Basin",
+    "cinematic descent",
+    "stand and exit ship",
+    "scan abandoned survey outpost",
+    "salvage derelict lander",
+    "mine one surface deposit",
+    "enter fractured cave mine",
+    "return to ship",
+    "take off",
+    "dock at Wayline K-17",
+    "sell survey data and recovered material"
+  ],
+  "acceptance": [
+    "same player controller survives all handoffs",
+    "same ship identity persists through dock/land/takeoff",
+    "ship interior position persists across transitions",
+    "landing site persists after leaving orbit",
+    "at least one recovered intact module can enter cargo",
+    "surface modifications persist after takeoff and return"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "schema": "subspace.planet-poi-archetype.v1",
+  "id": "planet.poi.derelict_lander.v1",
+  "planetCompatibility": [
+    "planet.archetype.cinderwake.v1"
+  ],
+  "displayName": "Derelict Lander",
+  "kind": "salvage",
+  "footprintMeters": [
+    22,
+    18
+  ],
+  "encounter": "salvage",
+  "features": [
+    "hull",
+    "cockpit",
+    "service_panels",
+    "cargo_compartment",
+    "detachable_module"
+  ],
+  "loot": [
+    "salvage_alloy",
+    "electronics",
+    "intact_ship_module"
+  ],
+  "hooks": [
+    "cut_panel",
+    "detach_module",
+    "recover_black_box"
+  ]
+}

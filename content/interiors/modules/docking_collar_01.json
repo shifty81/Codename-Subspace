@@ -1,0 +1,25 @@
+{
+  "schema": "subspace.interior-module.v1",
+  "id": "interior.module.docking_collar_01",
+  "displayName": "Docking Collar",
+  "sizeMeters": {
+    "width": 2.8,
+    "length": 3.0,
+    "height": 2.8
+  },
+  "ports": [
+    {
+      "id": "inboard",
+      "kind": "portal"
+    },
+    {
+      "id": "dock",
+      "kind": "portal"
+    }
+  ],
+  "interactionSlots": [
+    "dock_panel"
+  ],
+  "geometryBinding": "pending-governed-kitbash-or-generated-shell",
+  "reusable": true
+}

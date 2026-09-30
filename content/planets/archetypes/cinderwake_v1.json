@@ -1,0 +1,52 @@
+{
+  "schema": "subspace.landable-planet-archetype.v1",
+  "id": "planet.archetype.cinderwake.v1",
+  "displayName": "Cinderwake",
+  "bodyType": "rocky",
+  "landable": true,
+  "radiusKilometers": 4870,
+  "gravityG": 0.82,
+  "dayLengthHours": 31.5,
+  "atmosphere": {
+    "class": "thin",
+    "breathable": false,
+    "pressureAtm": 0.24,
+    "dominant": "CO2/N2",
+    "suitRequired": true
+  },
+  "temperatureC": {
+    "min": -48,
+    "mean": -12,
+    "max": 18
+  },
+  "weather": [
+    "clear",
+    "dust_haze",
+    "abrasive_dust_front"
+  ],
+  "surfaceStreaming": {
+    "cellSizeMeters": 64,
+    "regionCells": [
+      32,
+      32
+    ],
+    "activeRadiusMeters": 4096,
+    "recenterThresholdMeters": 1024,
+    "persistentModification": true
+  },
+  "strategicTerritory": {
+    "grid": "hex",
+    "hexDiameterMeters": 4000,
+    "claimable": true
+  },
+  "biomeRegistry": "planet.biomes.cinderwake.v1",
+  "resourceRegistry": "planet.resources.cinderwake.v1",
+  "landingSites": "planet.landing_sites.cinderwake.v1",
+  "surfaceVehicleSupport": [
+    "on_foot",
+    "rover",
+    "hover_bike",
+    "mech_late_game",
+    "atmospheric_craft_late_game"
+  ]
+}

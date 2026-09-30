@@ -1,0 +1,26 @@
+{
+  "schema": "subspace.interior-module.v1",
+  "id": "interior.module.airlock_side_01",
+  "displayName": "Side Airlock",
+  "sizeMeters": {
+    "width": 3.4,
+    "length": 3.0,
+    "height": 2.6
+  },
+  "ports": [
+    {
+      "id": "inboard",
+      "kind": "portal"
+    },
+    {
+      "id": "outboard",
+      "kind": "portal"
+    }
+  ],
+  "interactionSlots": [
+    "airlock_panel",
+    "suit_locker"
+  ],
+  "geometryBinding": "pending-governed-kitbash-or-generated-shell",
+  "reusable": true
+}

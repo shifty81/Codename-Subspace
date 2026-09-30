@@ -1,0 +1,45 @@
+{
+  "schema": "subspace.transition-sequence.v1",
+  "id": "transition.station_docking.v1",
+  "displayName": "Station Docking",
+  "from": "space_flight",
+  "to": "docked_cockpit",
+  "phases": [
+    {
+      "id": "request_clearance",
+      "playerControl": "full"
+    },
+    {
+      "id": "approach",
+      "playerControl": "full",
+      "autopilotAvailable": true
+    },
+    {
+      "id": "capture",
+      "durationSeconds": 3.0,
+      "playerControl": "none"
+    },
+    {
+      "id": "hangar_mask",
+      "durationSeconds": 1.0,
+      "playerControl": "none"
+    },
+    {
+      "id": "hangar_materialize",
+      "playerControl": "none",
+      "requirements": [
+        "assigned_pad_ready",
+        "station_hangar_ready"
+      ]
+    },
+    {
+      "id": "docked_handoff",
+      "playerControl": "cockpit",
+      "events": [
+        "anchor_ship_to_pad",
+        "enable_stand_up_interaction",
+        "enable_ship_exit"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "schema": "subspace.interior-portal-graph.v1",
+  "id": "portal_graph.ship.pioneer_frigate.v1",
+  "layout": "interior.ship.pioneer_frigate.v1",
+  "portals": [
+    {
+      "id": "p01",
+      "a": "cockpit",
+      "b": "fore_corridor",
+      "kind": "open_frame",
+      "width": 1.4
+    },
+    {
+      "id": "p02",
+      "a": "fore_corridor",
+      "b": "utility_core",
+      "kind": "sliding_door",
+      "width": 1.25
+    },
+    {
+      "id": "p03",
+      "a": "utility_core",
+      "b": "port_bunk",
+      "kind": "sliding_door",
+      "width": 1.1
+    },
+    {
+      "id": "p04",
+      "a": "utility_core",
+      "b": "starboard_airlock",
+      "kind": "pressure_door",
+      "width": 1.1
+    },
+    {
+      "id": "p05",
+      "a": "utility_core",
+      "b": "cargo_bay",
+      "kind": "sliding_door",
+      "width": 1.4
+    },
+    {
+      "id": "p06",
+      "a": "cargo_bay",
+      "b": "engineering",
+      "kind": "pressure_door",
+      "width": 1.25
+    },
+    {
+      "id": "p07",
+      "a": "cargo_bay",
+      "b": "ventral_docking",
+      "kind": "ladder_hatch",
+      "width": 1.0
+    },
+    {
+      "id": "p08",
+      "a": "starboard_airlock",
+      "b": "EXTERIOR",
+      "kind": "airlock_outer",
+      "transitionAnchor": "ship_starboard_airlock"
+    },
+    {
+      "id": "p09",
+      "a": "ventral_docking",
+      "b": "DOCKED_TARGET",
+      "kind": "docking_collar",
+      "transitionAnchor": "ship_ventral_dock"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "schema": "subspace.transition-sequence.v1",
+  "id": "transition.station_undocking.v1",
+  "displayName": "Station Undocking",
+  "from": "docked_cockpit",
+  "to": "space_flight",
+  "phases": [
+    {
+      "id": "preflight",
+      "playerControl": "cockpit",
+      "requirements": [
+        "player_seated",
+        "clearance_granted"
+      ]
+    },
+    {
+      "id": "release_pad",
+      "durationSeconds": 2.0,
+      "playerControl": "none"
+    },
+    {
+      "id": "hangar_departure",
+      "durationSeconds": 5.0,
+      "playerControl": "limited"
+    },
+    {
+      "id": "space_handoff",
+      "playerControl": "full",
+      "events": [
+        "release_station_frame",
+        "resume_space_flight"
+      ]
+    }
+  ]
+}

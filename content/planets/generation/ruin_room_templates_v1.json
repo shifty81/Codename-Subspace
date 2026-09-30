@@ -1,0 +1,87 @@
+{
+  "schema": "subspace.ruin-room-registry.v1",
+  "id": "generation.ruin_rooms.v1",
+  "rooms": [
+    {
+      "id": "ruin.surface_entry",
+      "sizeMeters": [
+        16,
+        14,
+        6
+      ],
+      "ports": [
+        "down"
+      ],
+      "features": [
+        "marker",
+        "scan_target"
+      ]
+    },
+    {
+      "id": "ruin.hall",
+      "sizeMeters": [
+        10,
+        26,
+        7
+      ],
+      "ports": [
+        "a",
+        "b"
+      ],
+      "features": [
+        "debris"
+      ]
+    },
+    {
+      "id": "ruin.gallery",
+      "sizeMeters": [
+        26,
+        22,
+        9
+      ],
+      "ports": [
+        "a",
+        "b",
+        "side"
+      ],
+      "features": [
+        "artifact_chance"
+      ]
+    },
+    {
+      "id": "ruin.sealed_chamber",
+      "sizeMeters": [
+        18,
+        18,
+        8
+      ],
+      "ports": [
+        "locked"
+      ],
+      "features": [
+        "artifact_guaranteed",
+        "puzzle_terminal"
+      ]
+    },
+    {
+      "id": "ruin.service_void",
+      "sizeMeters": [
+        12,
+        20,
+        10
+      ],
+      "ports": [
+        "a",
+        "b"
+      ],
+      "features": [
+        "alternate_route"
+      ]
+    }
+  ],
+  "generation": {
+    "minRooms": 5,
+    "maxRooms": 14,
+    "sealedObjectiveRequired": true
+  }
+}

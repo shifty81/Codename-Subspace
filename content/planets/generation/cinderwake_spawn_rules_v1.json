@@ -1,0 +1,71 @@
+{
+  "schema": "subspace.planet-spawn-rules.v1",
+  "id": "generation.cinderwake_spawns.v1",
+  "planet": "planet.archetype.cinderwake.v1",
+  "rules": [
+    {
+      "content": "planet.poi.abandoned_survey_outpost.v1",
+      "densityPer100Km2": [
+        0.3,
+        0.8
+      ],
+      "biomes": [
+        "regolith_basin",
+        "basalt_flats"
+      ],
+      "minDistanceFromLandingMeters": 350
+    },
+    {
+      "content": "planet.poi.fractured_cave_mine.v1",
+      "densityPer100Km2": [
+        0.8,
+        2.0
+      ],
+      "biomes": [
+        "fractured_highlands",
+        "canyon_network"
+      ],
+      "minDistanceFromLandingMeters": 250
+    },
+    {
+      "content": "planet.poi.derelict_lander.v1",
+      "densityPer100Km2": [
+        0.4,
+        1.2
+      ],
+      "biomes": [
+        "crater_field",
+        "basalt_flats"
+      ],
+      "minDistanceFromLandingMeters": 180
+    },
+    {
+      "content": "planet.poi.buried_precursor_ruin.v1",
+      "densityPer100Km2": [
+        0.05,
+        0.2
+      ],
+      "biomes": [
+        "fractured_highlands",
+        "canyon_network"
+      ],
+      "minDistanceFromLandingMeters": 900
+    },
+    {
+      "content": "settlement.cinderwake.frontier_outpost.v1",
+      "densityPer100Km2": [
+        0.08,
+        0.25
+      ],
+      "biomes": [
+        "basalt_flats",
+        "regolith_basin"
+      ],
+      "minDistanceFromLandingMeters": 700
+    }
+  ],
+  "exclusion": {
+    "poiOverlapForbidden": true,
+    "landingClearanceMeters": 120
+  }
+}

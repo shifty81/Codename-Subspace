@@ -1,0 +1,37 @@
+{
+  "schema": "subspace.settlement-template.v1",
+  "id": "settlement.cinderwake.frontier_outpost.v1",
+  "displayName": "Cinderwake Frontier Outpost",
+  "scale": "field_outpost",
+  "populationRange": [
+    6,
+    28
+  ],
+  "structures": [
+    "landing_pad",
+    "operations_hab",
+    "power_shed",
+    "resource_store",
+    "repair_shelter",
+    "communications_mast"
+  ],
+  "services": [
+    "repair_light",
+    "trade_basic",
+    "contracts",
+    "storage"
+  ],
+  "infrastructure": {
+    "power": "compact_fission_or_solar",
+    "lifeSupport": "sealed_local",
+    "roadLinks": false,
+    "landingFacilities": true
+  },
+  "states": [
+    "operational",
+    "shortage",
+    "damaged",
+    "abandoned",
+    "occupied"
+  ]
+}

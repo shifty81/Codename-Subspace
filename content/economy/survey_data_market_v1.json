@@ -1,0 +1,56 @@
+{
+  "schema": "subspace.survey-economy.v1",
+  "id": "economy.survey_data.v1",
+  "qualityLevels": [
+    "detected",
+    "orbital",
+    "mapped",
+    "ground_verified",
+    "scientific",
+    "industrial"
+  ],
+  "valueFactors": [
+    "novelty",
+    "quality",
+    "distance",
+    "danger",
+    "rarity",
+    "freshness",
+    "resource_potential",
+    "strategic_importance",
+    "buyer_demand"
+  ],
+  "buyers": [
+    {
+      "id": "frontier_survey_union",
+      "bias": [
+        "quality",
+        "novelty",
+        "geology"
+      ]
+    },
+    {
+      "id": "industrial_consortium",
+      "bias": [
+        "resource_potential",
+        "routes",
+        "landing_sites"
+      ]
+    },
+    {
+      "id": "security_office",
+      "bias": [
+        "hazards",
+        "settlements",
+        "hostile_activity"
+      ]
+    }
+  ],
+  "dispositions": [
+    "sell",
+    "license",
+    "share_with_faction",
+    "retain_private",
+    "use_for_claim"
+  ]
+}

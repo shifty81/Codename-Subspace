@@ -1,0 +1,22 @@
+{
+  "schema": "subspace.interior-module.v1",
+  "id": "interior.module.engineering_small_01",
+  "displayName": "Engineering Compartment",
+  "sizeMeters": {
+    "width": 5.0,
+    "length": 4.5,
+    "height": 2.8
+  },
+  "ports": [
+    {
+      "id": "fore",
+      "kind": "portal"
+    }
+  ],
+  "interactionSlots": [
+    "power_panel",
+    "repair_console"
+  ],
+  "geometryBinding": "pending-governed-kitbash-or-generated-shell",
+  "reusable": true
+}

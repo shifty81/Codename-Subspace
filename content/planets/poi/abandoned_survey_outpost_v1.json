@@ -1,0 +1,31 @@
+{
+  "schema": "subspace.planet-poi-archetype.v1",
+  "id": "planet.poi.abandoned_survey_outpost.v1",
+  "planetCompatibility": [
+    "planet.archetype.cinderwake.v1"
+  ],
+  "displayName": "Abandoned Survey Outpost",
+  "kind": "outpost",
+  "footprintMeters": [
+    34,
+    28
+  ],
+  "encounter": "environmental",
+  "features": [
+    "sealed_hab",
+    "power_shed",
+    "antenna",
+    "storage",
+    "data_terminal"
+  ],
+  "loot": [
+    "survey_data",
+    "power_cells",
+    "salvage_alloy"
+  ],
+  "hooks": [
+    "restore_power",
+    "download_logs",
+    "claim_site"
+  ]
+}

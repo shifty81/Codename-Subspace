@@ -1,0 +1,63 @@
+{
+  "schema": "subspace.transition-sequence.v1",
+  "id": "transition.space_to_planet_landing.v1",
+  "displayName": "Planetary Descent",
+  "from": "space_flight",
+  "to": "landed_cockpit",
+  "phases": [
+    {
+      "id": "select_site",
+      "authority": "orbital_navigation",
+      "playerControl": "full",
+      "requirements": [
+        "landable_body",
+        "valid_landing_site"
+      ]
+    },
+    {
+      "id": "approach_commit",
+      "durationSeconds": 3.0,
+      "playerControl": "limited",
+      "canAbort": true
+    },
+    {
+      "id": "descent_mask",
+      "durationSeconds": 1.2,
+      "playerControl": "none",
+      "presentation": "cockpit/cinematic transition mask"
+    },
+    {
+      "id": "surface_stream",
+      "playerControl": "none",
+      "requirements": [
+        "surface_region_ready",
+        "landing_pad_collision_ready"
+      ]
+    },
+    {
+      "id": "final_descent",
+      "durationSeconds": 8.0,
+      "playerControl": "none",
+      "presentation": "ship exterior/cockpit descent"
+    },
+    {
+      "id": "touchdown",
+      "durationSeconds": 2.0,
+      "playerControl": "none",
+      "events": [
+        "anchor_ship_to_surface_frame",
+        "enable_local_gravity",
+        "persist_landing_site"
+      ]
+    },
+    {
+      "id": "landed_handoff",
+      "playerControl": "cockpit",
+      "events": [
+        "spawn_in_cockpit",
+        "enable_stand_up_interaction"
+      ]
+    }
+  ],
+  "failurePolicy": "abort back to orbital flight before touchdown; after touchdown recover to landed cockpit"
+}

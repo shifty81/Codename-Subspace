@@ -1,0 +1,48 @@
+{
+  "schema": "subspace.surface-vehicle-registry.v1",
+  "id": "vehicles.surface_exploration.v1",
+  "vehicles": [
+    {
+      "id": "vehicle.rover_mule",
+      "name": "Mule Survey Rover",
+      "unlock": "early",
+      "crew": 1,
+      "cargoKg": 850,
+      "speedMps": 18,
+      "capabilities": [
+        "storage",
+        "survey",
+        "portable_workbench"
+      ],
+      "nestedHangarRequired": false
+    },
+    {
+      "id": "vehicle.hoverbike_wisp",
+      "name": "Wisp Hover Bike",
+      "unlock": "mid",
+      "crew": 1,
+      "cargoKg": 90,
+      "speedMps": 34,
+      "capabilities": [
+        "fast_travel",
+        "survey"
+      ],
+      "nestedHangarRequired": false
+    },
+    {
+      "id": "vehicle.mech_pathfinder",
+      "name": "Pathfinder Exploration Mech",
+      "unlock": "late",
+      "crew": 1,
+      "cargoKg": 1200,
+      "speedMps": 12,
+      "capabilities": [
+        "mining",
+        "salvage",
+        "boosters",
+        "heavy_carry"
+      ],
+      "nestedHangarRequired": true
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "schema": "subspace.interior-module.v1",
+  "id": "interior.module.cockpit_small_01",
+  "displayName": "Compact Cockpit",
+  "sizeMeters": {
+    "width": 4.8,
+    "length": 4.2,
+    "height": 2.6
+  },
+  "ports": [
+    {
+      "id": "aft",
+      "kind": "portal"
+    }
+  ],
+  "interactionSlots": [
+    "pilot_seat",
+    "nav_console",
+    "flight_console"
+  ],
+  "geometryBinding": "pending-governed-kitbash-or-generated-shell",
+  "reusable": true
+}

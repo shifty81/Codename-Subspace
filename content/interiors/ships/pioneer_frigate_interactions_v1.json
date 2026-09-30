@@ -1,0 +1,106 @@
+{
+  "schema": "subspace.interior-interaction-layout.v1",
+  "id": "interactions.ship.pioneer_frigate.v1",
+  "layout": "interior.ship.pioneer_frigate.v1",
+  "interactions": [
+    {
+      "id": "pilot_seat",
+      "room": "cockpit",
+      "action": "sit_pilot",
+      "position": [
+        0,
+        8.0,
+        0.72
+      ],
+      "result": "CockpitControl"
+    },
+    {
+      "id": "nav_console",
+      "room": "cockpit",
+      "action": "terminal",
+      "position": [
+        -1.1,
+        7.4,
+        1.0
+      ],
+      "service": "navigation"
+    },
+    {
+      "id": "ship_status",
+      "room": "cockpit",
+      "action": "terminal",
+      "position": [
+        1.1,
+        7.4,
+        1.0
+      ],
+      "service": "ship_status"
+    },
+    {
+      "id": "life_support",
+      "room": "utility_core",
+      "action": "terminal",
+      "position": [
+        -1.2,
+        0.0,
+        1.0
+      ],
+      "service": "life_support"
+    },
+    {
+      "id": "cargo_terminal",
+      "room": "cargo_bay",
+      "action": "terminal",
+      "position": [
+        2.1,
+        -4.8,
+        1.0
+      ],
+      "service": "cargo"
+    },
+    {
+      "id": "salvage_bench",
+      "room": "cargo_bay",
+      "action": "use",
+      "position": [
+        -2.1,
+        -4.8,
+        0.9
+      ],
+      "service": "field_salvage"
+    },
+    {
+      "id": "engineering_panel",
+      "room": "engineering",
+      "action": "terminal",
+      "position": [
+        0,
+        -10.5,
+        1.0
+      ],
+      "service": "repair_power"
+    },
+    {
+      "id": "airlock_panel",
+      "room": "starboard_airlock",
+      "action": "airlock",
+      "position": [
+        3.0,
+        0.1,
+        1.0
+      ],
+      "transitionAnchor": "ship_starboard_airlock"
+    },
+    {
+      "id": "dock_panel",
+      "room": "ventral_docking",
+      "action": "dock_exit",
+      "position": [
+        0,
+        -5.0,
+        -0.7
+      ],
+      "transitionAnchor": "ship_ventral_dock"
+    }
+  ]
+}

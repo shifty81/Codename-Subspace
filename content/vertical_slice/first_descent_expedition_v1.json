@@ -1,0 +1,69 @@
+{
+  "schema": "subspace.expedition-chain.v1",
+  "id": "expedition.first_descent.v1",
+  "title": "First Descent",
+  "startLocation": "station.wayline_k17",
+  "targetPlanet": "planet.archetype.cinderwake.v1",
+  "steps": [
+    {
+      "id": "walk_ship",
+      "objective": "Stand from the cockpit and inspect the Pioneer interior.",
+      "completeOn": "visit_room:engineering"
+    },
+    {
+      "id": "leave_station",
+      "objective": "Return to the pilot seat and undock from Wayline K-17.",
+      "completeOn": "transition:station_undocking"
+    },
+    {
+      "id": "scan_planet",
+      "objective": "Perform an orbital survey of Cinderwake.",
+      "completeOn": "survey_quality:orbital"
+    },
+    {
+      "id": "land",
+      "objective": "Land at Survey Basin.",
+      "completeOn": "transition:space_to_planet_landing"
+    },
+    {
+      "id": "survey_outpost",
+      "objective": "Ground-scan the abandoned survey outpost.",
+      "completeOn": "interaction:scan:planet.poi.abandoned_survey_outpost.v1"
+    },
+    {
+      "id": "salvage_lander",
+      "objective": "Recover the derelict lander black box and one intact module.",
+      "completeOn": "loot:intact_ship_module"
+    },
+    {
+      "id": "mine_sample",
+      "objective": "Recover an ore sample from Cinderwake.",
+      "completeOn": "inventory:any_ore"
+    },
+    {
+      "id": "cave",
+      "objective": "Enter the fractured cave mine and place a survey beacon.",
+      "completeOn": "hook:place_beacon"
+    },
+    {
+      "id": "return_orbit",
+      "objective": "Return to the Pioneer and take off.",
+      "completeOn": "transition:planet_to_space_takeoff"
+    },
+    {
+      "id": "sell_data",
+      "objective": "Dock at Wayline K-17 and sell or retain the survey package.",
+      "completeOn": "survey_disposition:selected"
+    }
+  ],
+  "rewards": {
+    "credits": 35000,
+    "reputation": {
+      "frontier_survey_union": 5
+    },
+    "unlock": [
+      "surface_rover_contracts",
+      "planetary_salvage_contracts"
+    ]
+  }
+}

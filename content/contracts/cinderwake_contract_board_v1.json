@@ -1,0 +1,70 @@
+{
+  "schema": "subspace.contract-board.v1",
+  "id": "contracts.cinderwake.v1",
+  "contracts": [
+    {
+      "id": "contract.surface_survey",
+      "type": "survey",
+      "target": "random_unverified_hex",
+      "objectives": [
+        "orbital_scan",
+        "ground_verify"
+      ],
+      "rewardCredits": [
+        9000,
+        18000
+      ]
+    },
+    {
+      "id": "contract.derelict_recovery",
+      "type": "salvage",
+      "target": "planet.poi.derelict_lander.v1",
+      "objectives": [
+        "locate",
+        "recover_black_box"
+      ],
+      "rewardCredits": [
+        12000,
+        26000
+      ]
+    },
+    {
+      "id": "contract.cave_sample",
+      "type": "mining",
+      "target": "planet.poi.fractured_cave_mine.v1",
+      "objectives": [
+        "enter_cave",
+        "recover_sample"
+      ],
+      "rewardCredits": [
+        10000,
+        22000
+      ]
+    },
+    {
+      "id": "contract.outpost_assist",
+      "type": "logistics",
+      "target": "settlement.cinderwake.frontier_outpost.v1",
+      "objectives": [
+        "deliver_supplies"
+      ],
+      "rewardCredits": [
+        8000,
+        20000
+      ]
+    },
+    {
+      "id": "contract.ruin_record",
+      "type": "exploration",
+      "target": "planet.poi.buried_precursor_ruin.v1",
+      "objectives": [
+        "scan",
+        "record_artifact_site"
+      ],
+      "rewardCredits": [
+        18000,
+        42000
+      ]
+    }
+  ]
+}

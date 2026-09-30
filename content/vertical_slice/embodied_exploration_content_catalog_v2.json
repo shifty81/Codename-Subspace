@@ -1,0 +1,48 @@
+{
+  "schema": "subspace.content-catalog.v2",
+  "id": "content.embodied_exploration.r83_r112.v2",
+  "passes": "R83-R112",
+  "buildRequired": false,
+  "runtimeWiring": "pending",
+  "domains": {
+    "embodiment": [
+      "player.human.standard.v1",
+      "interaction.standard.v1",
+      "movement.environments.v1"
+    ],
+    "shipInterior": [
+      "interior.ship.pioneer_frigate.v1",
+      "portal_graph.ship.pioneer_frigate.v1",
+      "interactions.ship.pioneer_frigate.v1"
+    ],
+    "station": [
+      "interior.station.wayline_k17_hangar.v1",
+      "interactions.station.wayline_k17.v1",
+      "population.station.wayline_k17.v1"
+    ],
+    "planet": [
+      "planet.archetype.cinderwake.v1",
+      "planet.biomes.cinderwake.v1",
+      "planet.resources.cinderwake.v1",
+      "planet.landing_sites.cinderwake.v1",
+      "planet.hazards.cinderwake.v1"
+    ],
+    "surfaceGameplay": [
+      "items.surface_expedition.v1",
+      "loot.cinderwake.v1",
+      "salvage.modules.frontier.v1",
+      "vehicles.surface_exploration.v1",
+      "generation.cinderwake_spawns.v1",
+      "encounters.cinderwake_surface.v1"
+    ],
+    "economy": [
+      "economy.survey_data.v1",
+      "contracts.cinderwake.v1"
+    ],
+    "verticalSlice": [
+      "vertical_slice.embodied_exploration.v1",
+      "expedition.first_descent.v1"
+    ]
+  },
+  "nextRuntimeMilestone": "load catalog -> spawn Pioneer interior -> same controller transitions cockpit/interior/station/surface -> persist ship and landing site identity"
+}

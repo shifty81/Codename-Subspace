@@ -1,0 +1,30 @@
+{
+  "schema": "subspace.planet-poi-archetype.v1",
+  "id": "planet.poi.buried_precursor_ruin.v1",
+  "planetCompatibility": [
+    "planet.archetype.cinderwake.v1"
+  ],
+  "displayName": "Buried Ruin Complex",
+  "kind": "ruin",
+  "footprintMeters": [
+    120,
+    96
+  ],
+  "encounter": "exploration",
+  "features": [
+    "surface_marker",
+    "collapsed_entry",
+    "subsurface_hall",
+    "sealed_chamber",
+    "artifact_plinth"
+  ],
+  "loot": [
+    "artifact_fragment",
+    "survey_data"
+  ],
+  "hooks": [
+    "scan_structure",
+    "open_sealed_chamber",
+    "record_discovery"
+  ]
+}

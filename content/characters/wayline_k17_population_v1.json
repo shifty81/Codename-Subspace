@@ -1,0 +1,31 @@
+{
+  "schema": "subspace.population-layout.v1",
+  "id": "population.station.wayline_k17.v1",
+  "interior": "interior.station.wayline_k17_hangar.v1",
+  "placements": [
+    {
+      "archetype": "npc.station_mechanic",
+      "count": 2,
+      "zone": "repair"
+    },
+    {
+      "archetype": "npc.survey_broker",
+      "count": 1,
+      "zone": "concourse"
+    },
+    {
+      "archetype": "npc.crew_broker",
+      "count": 1,
+      "zone": "crew_exchange"
+    },
+    {
+      "archetype": "npc.salvager",
+      "count": 2,
+      "zone": "hangar_floor"
+    }
+  ],
+  "ambientPopulationRange": [
+    8,
+    18
+  ]
+}

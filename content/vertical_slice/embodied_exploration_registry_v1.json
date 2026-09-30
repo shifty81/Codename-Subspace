@@ -1,0 +1,36 @@
+{
+  "schema": "subspace.content-registry.v1",
+  "id": "content.embodied_exploration.r83_r97.v1",
+  "passes": "R83-R97",
+  "runtimeWiring": "pending",
+  "entries": [
+    "player.human.standard.v1",
+    "interaction.standard.v1",
+    "movement.environments.v1",
+    "interior.ship.pioneer_frigate.v1",
+    "portal_graph.ship.pioneer_frigate.v1",
+    "interactions.ship.pioneer_frigate.v1",
+    "interior.station.wayline_k17_hangar.v1",
+    "interactions.station.wayline_k17.v1",
+    "planet.archetype.cinderwake.v1",
+    "planet.biomes.cinderwake.v1",
+    "planet.resources.cinderwake.v1",
+    "planet.landing_sites.cinderwake.v1",
+    "planet.poi.abandoned_survey_outpost.v1",
+    "planet.poi.fractured_cave_mine.v1",
+    "planet.poi.derelict_lander.v1",
+    "planet.poi.buried_precursor_ruin.v1",
+    "planet.poi.frontier_drill_site.v1",
+    "transition.space_to_planet_landing.v1",
+    "transition.planet_to_space_takeoff.v1",
+    "transition.station_docking.v1",
+    "transition.station_undocking.v1",
+    "vertical_slice.embodied_exploration.v1",
+    "expedition.first_descent.v1"
+  ],
+  "principles": [
+    "content-first; no build required for this tranche",
+    "data is additive and does not replace existing Studio implementation",
+    "runtime integration must consume these IDs rather than duplicate hardcoded content"
+  ]
+}

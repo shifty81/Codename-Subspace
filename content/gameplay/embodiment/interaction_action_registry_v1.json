@@ -1,0 +1,79 @@
+{
+  "schema": "subspace.interaction-action-registry.v1",
+  "id": "interaction.standard.v1",
+  "defaultBinding": "F",
+  "actions": [
+    {
+      "id": "use",
+      "prompt": "F: Use",
+      "rangeMeters": 2.2
+    },
+    {
+      "id": "sit_pilot",
+      "prompt": "F: Take Controls",
+      "rangeMeters": 1.5
+    },
+    {
+      "id": "stand_cockpit",
+      "prompt": "F: Stand Up",
+      "rangeMeters": 1.0
+    },
+    {
+      "id": "open",
+      "prompt": "F: Open",
+      "rangeMeters": 2.0
+    },
+    {
+      "id": "airlock",
+      "prompt": "F: Cycle Airlock",
+      "rangeMeters": 2.0
+    },
+    {
+      "id": "dock_exit",
+      "prompt": "F: Exit Ship",
+      "rangeMeters": 2.2
+    },
+    {
+      "id": "board",
+      "prompt": "F: Board",
+      "rangeMeters": 2.2
+    },
+    {
+      "id": "salvage",
+      "prompt": "F: Salvage",
+      "rangeMeters": 2.3
+    },
+    {
+      "id": "cut",
+      "prompt": "F: Cut Panel",
+      "rangeMeters": 1.8
+    },
+    {
+      "id": "mine",
+      "prompt": "F: Mine",
+      "rangeMeters": 2.5
+    },
+    {
+      "id": "scan",
+      "prompt": "F: Scan",
+      "rangeMeters": 3.0
+    },
+    {
+      "id": "loot",
+      "prompt": "F: Loot",
+      "rangeMeters": 2.0
+    },
+    {
+      "id": "talk",
+      "prompt": "F: Talk",
+      "rangeMeters": 2.2
+    },
+    {
+      "id": "terminal",
+      "prompt": "F: Access Terminal",
+      "rangeMeters": 2.0
+    }
+  ],
+  "selection": "nearest visible compatible target with center-screen bias",
+  "worldSpacePrompt": true
+}

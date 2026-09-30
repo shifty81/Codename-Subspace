@@ -1,0 +1,125 @@
+{
+  "schema": "subspace.station-interior-layout.v1",
+  "id": "interior.station.wayline_k17_hangar.v1",
+  "displayName": "Wayline K-17 Service Hangar",
+  "stationClass": "frontier-service-station",
+  "dimensionsMeters": [
+    96,
+    72,
+    28
+  ],
+  "zones": [
+    {
+      "id": "hangar_floor",
+      "kind": "hangar",
+      "bounds": [
+        -42,
+        -28,
+        0,
+        42,
+        28,
+        18
+      ]
+    },
+    {
+      "id": "customs",
+      "kind": "service",
+      "bounds": [
+        -12,
+        29,
+        0,
+        12,
+        39,
+        6
+      ]
+    },
+    {
+      "id": "concourse",
+      "kind": "public",
+      "bounds": [
+        -30,
+        40,
+        0,
+        30,
+        58,
+        6
+      ]
+    },
+    {
+      "id": "market",
+      "kind": "service",
+      "bounds": [
+        -30,
+        59,
+        0,
+        -8,
+        69,
+        6
+      ]
+    },
+    {
+      "id": "repair",
+      "kind": "service",
+      "bounds": [
+        8,
+        59,
+        0,
+        30,
+        69,
+        6
+      ]
+    },
+    {
+      "id": "crew_exchange",
+      "kind": "service",
+      "bounds": [
+        -6,
+        59,
+        0,
+        6,
+        69,
+        6
+      ]
+    }
+  ],
+  "pads": [
+    {
+      "id": "pad_a",
+      "sizeClass": "frigate-cruiser",
+      "center": [
+        -22,
+        -5,
+        0
+      ],
+      "exitAnchor": "pad_a_walkway"
+    },
+    {
+      "id": "pad_b",
+      "sizeClass": "frigate-cruiser",
+      "center": [
+        22,
+        -5,
+        0
+      ],
+      "exitAnchor": "pad_b_walkway"
+    }
+  ],
+  "services": [
+    "refuel",
+    "repair",
+    "market",
+    "missions",
+    "crew",
+    "storage",
+    "shipyard_access"
+  ],
+  "playerSpawn": {
+    "id": "hangar_arrival",
+    "position": [
+      0,
+      31,
+      0
+    ],
+    "yawDegrees": 0
+  }
+}

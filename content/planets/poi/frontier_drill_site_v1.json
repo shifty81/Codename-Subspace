@@ -1,0 +1,32 @@
+{
+  "schema": "subspace.planet-poi-archetype.v1",
+  "id": "planet.poi.frontier_drill_site.v1",
+  "planetCompatibility": [
+    "planet.archetype.cinderwake.v1"
+  ],
+  "displayName": "Frontier Drill Site",
+  "kind": "industry",
+  "footprintMeters": [
+    54,
+    44
+  ],
+  "encounter": "service_or_conflict",
+  "features": [
+    "landing_pad",
+    "drill_rig",
+    "processor",
+    "storage",
+    "crew_hab"
+  ],
+  "loot": [
+    "refined_ore",
+    "fuel",
+    "industrial_parts"
+  ],
+  "hooks": [
+    "trade",
+    "repair",
+    "contract",
+    "capture_or_assist"
+  ]
+}

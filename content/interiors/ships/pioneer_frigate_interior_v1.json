@@ -1,0 +1,167 @@
+{
+  "schema": "subspace.ship-interior-layout.v1",
+  "id": "interior.ship.pioneer_frigate.v1",
+  "displayName": "Pioneer Frigate Interior",
+  "shipRole": "starter-frigate",
+  "axisContract": {
+    "x": "width",
+    "y": "length-forward",
+    "z": "height"
+  },
+  "decks": [
+    {
+      "index": 0,
+      "name": "Main Deck",
+      "floorZ": 0.0,
+      "ceilingZ": 2.6
+    },
+    {
+      "index": -1,
+      "name": "Docking Well",
+      "floorZ": -1.6,
+      "ceilingZ": 0.6
+    }
+  ],
+  "rooms": [
+    {
+      "id": "cockpit",
+      "module": "interior.module.cockpit_small_01",
+      "center": [
+        0,
+        7.2,
+        1.3
+      ],
+      "deck": 0
+    },
+    {
+      "id": "fore_corridor",
+      "module": "interior.module.corridor_straight_01",
+      "center": [
+        0,
+        3.4,
+        1.25
+      ],
+      "deck": 0
+    },
+    {
+      "id": "utility_core",
+      "module": "interior.module.utility_core_01",
+      "center": [
+        0,
+        0.0,
+        1.4
+      ],
+      "deck": 0
+    },
+    {
+      "id": "port_bunk",
+      "module": "interior.module.crew_bunk_01",
+      "center": [
+        -3.0,
+        -0.1,
+        1.3
+      ],
+      "deck": 0,
+      "yawDegrees": 90
+    },
+    {
+      "id": "starboard_airlock",
+      "module": "interior.module.airlock_side_01",
+      "center": [
+        3.1,
+        0.1,
+        1.3
+      ],
+      "deck": 0,
+      "yawDegrees": -90
+    },
+    {
+      "id": "cargo_bay",
+      "module": "interior.module.cargo_salvage_01",
+      "center": [
+        0,
+        -4.7,
+        1.6
+      ],
+      "deck": 0
+    },
+    {
+      "id": "engineering",
+      "module": "interior.module.engineering_small_01",
+      "center": [
+        0,
+        -9.4,
+        1.4
+      ],
+      "deck": 0
+    },
+    {
+      "id": "ventral_docking",
+      "module": "interior.module.docking_collar_01",
+      "center": [
+        0,
+        -5.0,
+        -0.1
+      ],
+      "deck": -1
+    }
+  ],
+  "spawnPoints": [
+    {
+      "id": "cockpit_seated",
+      "mode": "CockpitControl",
+      "position": [
+        0,
+        8.0,
+        0.72
+      ],
+      "yawDegrees": 180
+    },
+    {
+      "id": "cockpit_standing",
+      "mode": "InteriorOnFoot",
+      "position": [
+        0,
+        6.15,
+        0.0
+      ],
+      "yawDegrees": 180
+    },
+    {
+      "id": "airlock_inboard",
+      "mode": "InteriorOnFoot",
+      "position": [
+        2.2,
+        0.1,
+        0.0
+      ],
+      "yawDegrees": -90
+    },
+    {
+      "id": "dock_inboard",
+      "mode": "InteriorOnFoot",
+      "position": [
+        0,
+        -4.9,
+        -0.8
+      ],
+      "yawDegrees": 180
+    }
+  ],
+  "requiredCapabilities": [
+    "pilot",
+    "sleep",
+    "cargo",
+    "salvage",
+    "repair",
+    "life_support",
+    "airlock",
+    "docking"
+  ],
+  "certification": {
+    "cockpitReachableFromEveryWalkableRoom": true,
+    "airlockReachableFromCockpit": true,
+    "dockingCollarReachableFromCockpit": true,
+    "disconnectedWalkableCavityForbidden": true
+  }
+}

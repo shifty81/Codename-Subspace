@@ -1,0 +1,48 @@
+{
+  "schema": "subspace.transition-sequence.v1",
+  "id": "transition.planet_to_space_takeoff.v1",
+  "displayName": "Planetary Ascent",
+  "from": "landed_cockpit",
+  "to": "space_flight",
+  "phases": [
+    {
+      "id": "preflight",
+      "playerControl": "cockpit",
+      "requirements": [
+        "player_seated",
+        "ship_flightworthy",
+        "takeoff_corridor_clear"
+      ]
+    },
+    {
+      "id": "launch",
+      "durationSeconds": 4.0,
+      "playerControl": "limited",
+      "events": [
+        "close_external_access",
+        "release_surface_anchor"
+      ]
+    },
+    {
+      "id": "ascent_mask",
+      "durationSeconds": 8.0,
+      "playerControl": "none",
+      "presentation": "cockpit/cinematic ascent"
+    },
+    {
+      "id": "space_prefetch",
+      "playerControl": "none",
+      "requirements": [
+        "orbital_frame_ready"
+      ]
+    },
+    {
+      "id": "orbital_handoff",
+      "playerControl": "full",
+      "events": [
+        "attach_ship_to_system_frame",
+        "resume_space_flight"
+      ]
+    }
+  ]
+}

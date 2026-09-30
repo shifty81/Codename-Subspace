@@ -1,0 +1,32 @@
+{
+  "schema": "subspace.planet-poi-archetype.v1",
+  "id": "planet.poi.fractured_cave_mine.v1",
+  "planetCompatibility": [
+    "planet.archetype.cinderwake.v1"
+  ],
+  "displayName": "Fractured Cave Mine",
+  "kind": "cave",
+  "footprintMeters": [
+    180,
+    140
+  ],
+  "encounter": "exploration",
+  "features": [
+    "surface_mouth",
+    "branching_tunnels",
+    "vertical_drop",
+    "ore_chambers",
+    "collapsed_section"
+  ],
+  "loot": [
+    "iron_ore",
+    "copper_ore",
+    "cobalt_ore",
+    "rare_mineral_sample"
+  ],
+  "hooks": [
+    "scan_geology",
+    "mine_vein",
+    "place_beacon"
+  ]
+}

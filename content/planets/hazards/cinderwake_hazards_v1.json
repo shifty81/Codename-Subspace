@@ -1,0 +1,52 @@
+{
+  "schema": "subspace.planet-hazard-registry.v1",
+  "id": "planet.hazards.cinderwake.v1",
+  "planet": "planet.archetype.cinderwake.v1",
+  "hazards": [
+    {
+      "id": "thin_atmosphere",
+      "severity": "constant",
+      "effects": [
+        "suit_required",
+        "reduced_audio_propagation"
+      ]
+    },
+    {
+      "id": "dust_front",
+      "severity": "dynamic",
+      "effects": [
+        "visibility_reduction",
+        "sensor_noise",
+        "abrasion"
+      ],
+      "durationMinutes": [
+        4,
+        18
+      ]
+    },
+    {
+      "id": "thermal_night",
+      "severity": "regional",
+      "effects": [
+        "suit_power_drain"
+      ],
+      "temperatureThresholdC": -35
+    },
+    {
+      "id": "unstable_cave",
+      "severity": "local",
+      "effects": [
+        "rockfall",
+        "navigation_blockage"
+      ]
+    },
+    {
+      "id": "industrial_leak",
+      "severity": "poi",
+      "effects": [
+        "toxic_zone",
+        "equipment_damage"
+      ]
+    }
+  ]
+}

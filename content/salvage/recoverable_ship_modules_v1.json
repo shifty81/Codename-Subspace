@@ -1,0 +1,58 @@
+{
+  "schema": "subspace.recoverable-module-registry.v1",
+  "id": "salvage.modules.frontier.v1",
+  "modules": [
+    {
+      "id": "salvage.module.compact_sensor",
+      "name": "Compact Survey Sensor",
+      "condition": [
+        0.25,
+        0.85
+      ],
+      "installClass": "sensor",
+      "repairable": true
+    },
+    {
+      "id": "salvage.module.utility_battery",
+      "name": "Utility Battery Bank",
+      "condition": [
+        0.2,
+        0.75
+      ],
+      "installClass": "power",
+      "repairable": true
+    },
+    {
+      "id": "salvage.module.rcs_cluster",
+      "name": "RCS Cluster",
+      "condition": [
+        0.15,
+        0.7
+      ],
+      "installClass": "maneuvering",
+      "repairable": true
+    },
+    {
+      "id": "salvage.module.cargo_controller",
+      "name": "Cargo Controller",
+      "condition": [
+        0.3,
+        0.9
+      ],
+      "installClass": "cargo",
+      "repairable": true
+    },
+    {
+      "id": "salvage.module.mining_laser_emitter",
+      "name": "Mining Laser Emitter",
+      "condition": [
+        0.1,
+        0.65
+      ],
+      "installClass": "mining",
+      "repairable": true
+    }
+  ],
+  "provenanceRequired": true,
+  "conditionAffectsPerformance": true
+}
