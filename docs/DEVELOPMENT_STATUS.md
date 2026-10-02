@@ -1,4 +1,4 @@
-> **HISTORICAL DEVELOPMENT SNAPSHOT:** This file is retained for lineage only. It is not current status authority. See `docs/STATUS.md`.
+> **HISTORICAL DEVELOPMENT SNAPSHOT:** This file is retained for lineage only. Current source authority is GitHub `main`; use `docs/STATUS.md` plus `content/architecture/nullharbor_convergence_authority_v1.json` for the active R178/NullHarbor convergence line.
 
 <!-- PASS245_AUTHORITY -->
 > **Current authority (2026-08-31):** The active shipping runtime is native C++ and the current development baseline is Pass245 on top of Windows-certified Pass225R. Some older sections below document retired C#/Silk.NET or earlier roadmap states and are historical only. Use `docs/passes/PASS226_245_PRODUCTION_SANDBOX_VERTICALS.md`, `docs/SUBSPACE_SANDBOX_AUTHORITY_2026-08-31.md`, and `docs/NATIVE_ACCEPTANCE_PASS245.md` for current implementation authority.

@@ -20,6 +20,11 @@
 #include "interior/InteriorInteractionSystem.h"
 #include "audio/ProductionAudioCueSystem.h"
 #include "input/InputBindingProfile.h"
+#include "input/ControlIntentRouterSystem.h"
+#include "fleet/FleetCommandSystem.h"
+#include "fleet/FleetStrategyControlSystem.h"
+#include "interior/InteriorKitRegistrySystem.h"
+#include "runtime/PlayerController.h"
 #include "core/persistence/SaveRecoverySystem.h"
 #include "core/persistence/RuntimeSaveGame.h"
 #include "procedural/GalaxyGenerator.h"
@@ -165,6 +170,51 @@ static void TestPass333ProductionAudio(){std::cout<<"[Pass333ProductionAudio]\n"
 static void TestPass334RecoveryAndInput(){std::cout<<"[Pass334RecoveryAndInput]\n";InputBindingProfile b=InputBindingProfile::Defaults();TEST("Pass334 defaults expose core flight/navigation bindings",b.KeyFor(InputAction::ThrustForward)=="W"&&b.KeyFor(InputAction::OpenGalaxyMap)=="M");TEST("Pass334 clean defaults have no conflicts",!b.HasConflicts());b.Rebind(InputAction::RequestDock,"M");TEST("Pass334 conflicting rebinding is detectable",b.HasConflicts());RuntimeSaveGameSnapshot snap;snap.saveId="rc0";snap.sectorId="2:3";snap.credits=99;auto payload=SerializeRuntimeSaveGameSnapshot(snap);SaveRecoverySystem r;auto e=r.Wrap(payload,"autosave-a");TEST("Pass334 save recovery envelope validates",r.Validate(e));e.payload+="corrupt";TEST("Pass334 corrupted recovery payload fails closed",!r.Validate(e));}
 static void TestPass335Rc0Acceptance(){std::cout<<"[Pass335Rc0Acceptance]\n";ProductionPerformanceSystem perf;perf.RecordFrame({16,7,4,1,1024,500,250,2});ForwardSpacePresentationSystem visual;auto ship=visual.ForShip("Industrial",true,.2f);auto sector=MakeStabilizationSector();SystemMapSystem maps;auto map=maps.Build(sector);StationActivityPresentationSystem activity;auto station=activity.Build(2500,true,DockingExperienceStage::Docked);ProductionAudioCueSystem audio;auto cue=audio.ForVector(VectorTravelStage::Cruise,.5);TEST("Pass335 RC0 performance authority is healthy",perf.Snapshot().health==FrameHealth::Good);TEST("Pass335 RC0 ship presentation is production refined",ship.hullCohesion>.9f&&ship.lod==0);TEST("Pass335 RC0 navigation has real destinations",!maps.WarpableKnown(map).empty());TEST("Pass335 RC0 station presentation is alive",station.cargoCraft>0&&station.serviceDrones>0);TEST("Pass335 RC0 feedback layer is available",!cue.cueId.empty());}
 
+
+static void TestR178ControlFleetInteriorConvergence(){
+    std::cout<<"[R178ControlFleetInteriorConvergence]\n";
+
+    InputState input;
+    input.SetAction(InputAction::ThrustForward,true);
+    input.SetAction(InputAction::FirePrimary,true);
+    auto strategy=ControlIntentRouterSystem::Build(input,ControlDomain::FleetStrategy);
+    TEST("R178 fleet strategy maps legacy W to camera, not thrust",strategy.cameraForward>0.9f&&strategy.forward==0.0f&&!strategy.firePrimary&&!strategy.AllowsShipThrust());
+    auto pilot=ControlIntentRouterSystem::Build(input,ControlDomain::Pilot);
+    TEST("R178 pilot retains compatible legacy flight input",pilot.forward>0.9f&&pilot.firePrimary&&pilot.AllowsShipThrust());
+
+    PlayerController controller;
+    controller.SetControlDomain(ControlDomain::FirstPerson);
+    controller.RouteInput(input);
+    TEST("R178 PlayerController is a context facade",controller.CanControlAvatar()&&!controller.CanDirectlyPilot()&&!controller.CanIssueFleetOrders());
+
+    FleetCommandComponent fleet("R178 Fleet");
+    fleet.AddMember(11,"Miner",FleetRole::Mining);
+    fleet.AddMember(12,"Escort",FleetRole::Combat);
+    FleetStrategyControlSystem strategyControl;
+    strategyControl.SelectMany({11,12});
+    FleetStrategyOrderDraft draft;draft.type=FleetOrderType::Mine;draft.targetEntityId=9001;draft.queue=true;draft.priority=4;
+    TEST("R178 strategy selection emits assigned fleet members",strategyControl.Issue(fleet,draft)&&fleet.GetAllOrders().size()==1&&fleet.GetAllOrders().front().assignedMembers.size()==2);
+    TEST("R178 expanded order vocabulary includes salvage/dock/warp",FleetOrder::GetOrderTypeName(FleetOrderType::Salvage)=="Salvage"&&FleetOrder::GetOrderTypeName(FleetOrderType::Dock)=="Dock"&&FleetOrder::GetOrderTypeName(FleetOrderType::Warp)=="Warp");
+
+    InteriorModuleKit kit=MakeKit();
+    kit.kitId="industrial_test";kit.family="industrial_modular";kit.fineSnapMeters=0.25;kit.structuralGridMeters=1.0;kit.planningCellMeters=2.0;kit.hydrated=true;
+    ModularInteriorKitSystem kitSystem;
+    auto normalized=kitSystem.Normalize(kit.modules[2],kit);
+    TEST("R178 kit normalization carries three-level grid",normalized.fineSnapMeters==0.25&&normalized.structuralGridMeters==1.0&&normalized.planningCellMeters==2.0);
+    InteriorKitRegistrySystem registry;InteriorKitRecord kitRecord;kitRecord.kit=kit;kitRecord.priority=10;kitRecord.contexts={"ship_interior","station_interior"};registry.Register(kitRecord);
+    InteriorKitSelectionRequest query;query.context="ship_interior";query.preferredFamily="industrial_modular";query.requireHydrated=true;query.requiredKinds={InteriorModuleKind::Door};
+    auto resolved=registry.Resolve(query);
+    TEST("R178 kit registry resolves capability/family instead of pack name",resolved.valid&&resolved.kit&&resolved.kit->kitId=="industrial_test");
+
+    InteriorInteractionSystem interactions;
+    InteriorFixtureState refinery;refinery.fixtureId=1001;refinery.kind=InteriorFixtureKind::RefineryConsole;refinery.linkedSystemId="ship-refinery";refinery.powered=true;
+    InteriorInteractionContext context;context.actorId=42;context.distanceMeters=1.0f;context.hasAccess=true;
+    auto options=interactions.ActionsFor(refinery,context);
+    TEST("R178 physical workstation exposes structured domain action",!options.empty()&&options.front().actionId=="refinery");
+    auto result=interactions.Execute(refinery,options.front().actionId,context);
+    TEST("R178 workstation dispatch preserves linked authoritative system",result.success&&result.linkedSystemId=="ship-refinery"&&result.fixtureId==1001);
+}
+
 int main(){
     TestPass316ProductionProfiling();
     TestPass317BudgetedStreaming();
@@ -174,6 +224,7 @@ int main(){
     TestPass321ShipCohesion();TestPass322ShipMaterialLod();TestPass323FunctionalShipFx();TestPass324CelestialPolish();TestPass325VectorPolish();
     TestPass326PoiContinuity();TestPass327DockingPolish();TestPass328StationActivity();TestPass329HudLayout();TestPass330ContextUx();
     TestPass331SystemMapUx();TestPass332InteriorEngineeringUx();TestPass333ProductionAudio();TestPass334RecoveryAndInput();TestPass335Rc0Acceptance();
+    TestR178ControlFleetInteriorConvergence();
     std::cout << "\n=== Pass316-335 Stabilization Summary: " << testsPassed << " passed, " << testsFailed << " failed ===\n";
     return testsFailed ? 1 : 0;
 }

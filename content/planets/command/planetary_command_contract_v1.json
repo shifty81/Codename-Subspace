@@ -1,0 +1,48 @@
+{
+  "schema": "subspace.planetary-command.contract.v1",
+  "id": "planetary_command.contract.v1",
+  "displayName": "Planetary Command",
+  "worldRule": "Hexes are persistent physical surface sectors, not abstract PI nodes.",
+  "stableSectorKey": "planetId + axial(q,r)",
+  "visibilityStates": {
+    "unknown": "planet remains visible; no sector overlay",
+    "frontier": "faint edge-adjacent expansion candidate",
+    "surveyed": "known resource/hazard intelligence",
+    "claimed": "player/corporation controlled sector",
+    "developed": "claimed sector with active infrastructure"
+  },
+  "claimRules": {
+    "firstClaim": "any surveyed buildable sector",
+    "laterClaims": "must share an edge with an existing controlled sector",
+    "surveyDoesNotEqualOwnership": true,
+    "ownershipDoesNotEqualDevelopment": true
+  },
+  "overlays": [
+    "territory",
+    "resources",
+    "hazards",
+    "logistics",
+    "landing",
+    "development"
+  ],
+  "controls": {
+    "lmb": "select projected sector",
+    "rmbDrag": "orbit planet",
+    "wheel": "zoom",
+    "upDown": "cycle visible sectors",
+    "f5": "cycle overlay",
+    "enter": "survey / claim / focus",
+    "shiftEnter": "advance tether/elevator industrialization"
+  },
+  "surfaceBridge": {
+    "flow": [
+      "planetary_command",
+      "selected_sector",
+      "landing_candidate",
+      "descent",
+      "landed_cockpit",
+      "streamed_surface_sector"
+    ],
+    "mustShareIdentityWithLanding": true
+  }
+}

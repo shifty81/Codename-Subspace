@@ -19,7 +19,7 @@ CommandRailRuntimeModel PlayerFacingIntegrationSystem::BuildCommandRail(SandboxW
     const struct Entry{const char*id;const char*label;const char*shortLabel;SandboxWorkspaceMode mode;} entries[]={
         {"flight","FLIGHT","FLT",SandboxWorkspaceMode::Flight},{"galaxy","GALAXY","GAL",SandboxWorkspaceMode::GalaxyMap},
         {"system","SYSTEM","SYS",SandboxWorkspaceMode::SystemMap},{"fleet","FLEET","FLE",SandboxWorkspaceMode::FleetCorporation},
-        {"fitting","FITTING","FIT",SandboxWorkspaceMode::HangarFitting},{"industry","INDUSTRY","IND",SandboxWorkspaceMode::PlanetaryManufacturing},
+        {"fitting","FITTING","FIT",SandboxWorkspaceMode::HangarFitting},{"planetary_command","PLANETARY","PLC",SandboxWorkspaceMode::PlanetaryManufacturing},
         {"station","STATION","STA",SandboxWorkspaceMode::StationBuilder},{"market","MARKET","MKT",SandboxWorkspaceMode::MarketContracts},
         {"explore","EXPLORE","EXP",SandboxWorkspaceMode::Exploration},{"ship","SHIP","SHP",SandboxWorkspaceMode::ShipBuilder}};
     for(const auto&e:entries)r.items.push_back({e.id,e.label,e.shortLabel,e.mode,e.mode==current});return r;
@@ -320,19 +320,117 @@ PlanetIndustryRuntimeModel PlayerFacingIntegrationSystem::BuildPlanetIndustry(
     PlanetaryIndustrySystem pi;
     PlanetIndustryRuntimeModel model;
     model.planetName = planet.name;
+    model.legacyPlacementCompatibility = planet.planetId.empty();
+    model.planetId = !planet.planetId.empty() ? planet.planetId : planet.name;
     model.industry = pi.Generate(planet, radius, seed);
     model.selectedHex = {0,0};
+    model.overlay = PiOverlayMode::Resources;
+    model.projection = PiProjectionMode::Globe;
     auto it = model.industry.hexes.find(model.selectedHex);
-    if (it != model.industry.hexes.end()) it->second.surveyed = true;
+    if (it != model.industry.hexes.end()) pi.SurveySector(model.industry,model.selectedHex);
+    model.commandStatus = "ORIGIN SURVEYED - ENTER TO CLAIM";
     return model;
+}
+
+PlanetaryCommandLayout PlayerFacingIntegrationSystem::LayoutPlanetaryCommand(
+    int viewportWidth,int viewportHeight) const {
+    PlanetaryCommandLayout layout;
+    const float w=static_cast<float>(std::max(640,viewportWidth));
+    const float h=static_cast<float>(std::max(480,viewportHeight));
+    layout.left=64.0f;layout.top=62.0f;layout.right=w-64.0f;layout.bottom=h-58.0f;
+    const float inspectorWidth=std::clamp(w*.22f,280.0f,380.0f);
+    layout.mapRight=layout.right-inspectorWidth-14.0f;
+    layout.inspectorLeft=layout.mapRight+14.0f;
+    layout.centerX=(layout.left+layout.mapRight)*.5f;
+    layout.centerY=(layout.top+layout.bottom)*.53f;
+    const float mapW=std::max(300.0f,layout.mapRight-layout.left);
+    const float mapH=std::max(260.0f,layout.bottom-layout.top);
+    layout.hexSize=std::clamp(std::min(mapW/26.0f,mapH/18.0f),18.0f,34.0f);
+    layout.globeRadius=std::max(110.0f,std::min(mapW*.36f,mapH*.42f));
+    return layout;
+}
+
+PlanetaryCommandScreenPoint PlayerFacingIntegrationSystem::ProjectPlanetaryHex(
+    const PlanetIndustryRuntimeModel& model,HexCoord coord,int viewportWidth,int viewportHeight) const {
+    const auto layout=LayoutPlanetaryCommand(viewportWidth,viewportHeight);
+    PlanetaryCommandScreenPoint out;
+    if(model.projection==PiProjectionMode::Sector){
+        out.x=layout.centerX+layout.hexSize*1.5f*static_cast<float>(coord.q);
+        out.y=layout.centerY+layout.hexSize*.8660254f*static_cast<float>(2*coord.r+coord.q);
+        out.depth=0.0f;out.visible=true;return out;
+    }
+    int radius=1;
+    for(const auto&kv:model.industry.hexes)radius=std::max(radius,PlanetaryIndustrySystem::HexDistance(kv.first,{}));
+    const float planarX=1.5f*static_cast<float>(coord.q);
+    const float planarY=.8660254f*static_cast<float>(2*coord.r+coord.q);
+    const float lon=std::clamp(planarX/(1.5f*static_cast<float>(radius)+.001f),-1.0f,1.0f)*1.18f;
+    const float lat=std::clamp(planarY/(1.7320508f*static_cast<float>(radius)+.001f),-1.0f,1.0f)*1.02f;
+    const float cosLat=std::cos(lat),sinLat=std::sin(lat),sinLon=std::sin(lon),cosLon=std::cos(lon);
+    out.x=layout.centerX+layout.globeRadius*cosLat*sinLon;
+    out.y=layout.centerY-layout.globeRadius*sinLat;
+    out.depth=cosLat*cosLon;
+    out.visible=out.depth>=-.08f;
+    return out;
+}
+
+bool PlayerFacingIntegrationSystem::HitTestPlanetaryHex(const PlanetIndustryRuntimeModel& model,
+    int viewportWidth,int viewportHeight,float screenX,float screenY,HexCoord& hit) const {
+    const auto layout=LayoutPlanetaryCommand(viewportWidth,viewportHeight);
+    if(!layout.ContainsMap(screenX,screenY))return false;
+    float best=1.0e30f;bool found=false;
+    for(const auto&kv:model.industry.hexes){
+        const auto p=ProjectPlanetaryHex(model,kv.first,viewportWidth,viewportHeight);
+        if(!p.visible)continue;
+        const float dx=screenX-p.x,dy=screenY-p.y;
+        const float d=dx*dx+dy*dy;
+        const float pickRadius=(model.projection==PiProjectionMode::Globe?layout.hexSize*.62f:layout.hexSize*.88f);
+        if(d<=pickRadius*pickRadius&&d<best){best=d;hit=kv.first;found=true;}
+    }
+    return found;
+}
+
+bool PlayerFacingIntegrationSystem::SelectPlanetCommandHex(PlanetIndustryRuntimeModel& model,HexCoord coord) const {
+    if(model.industry.hexes.find(coord)==model.industry.hexes.end())return false;
+    model.selectedHex=coord;model.inspectorPinned=false;
+    PlanetaryIndustrySystem pi;model.commandStatus=pi.Identity(model.industry,coord).StableId();
+    return true;
+}
+
+void PlayerFacingIntegrationSystem::CyclePlanetaryOverlay(PlanetIndustryRuntimeModel& model,int direction) const {
+    constexpr int count=6;
+    int value=static_cast<int>(model.overlay);
+    value=(value+(direction>=0?1:-1)+count)%count;
+    model.overlay=static_cast<PiOverlayMode>(value);
+    model.commandStatus=std::string("OVERLAY: ")+PlanetaryIndustrySystem::OverlayName(model.overlay);
+}
+
+void PlayerFacingIntegrationSystem::TogglePlanetaryProjection(PlanetIndustryRuntimeModel& model) const {
+    model.projection=model.projection==PiProjectionMode::Globe?PiProjectionMode::Sector:PiProjectionMode::Globe;
+    model.commandStatus=std::string("PROJECTION: ")+PlanetaryIndustrySystem::ProjectionName(model.projection);
+}
+
+PiSectorCommandResult PlayerFacingIntegrationSystem::AdvancePlanetarySector(PlanetIndustryRuntimeModel& model) const {
+    PlanetaryIndustrySystem pi;
+    auto result=pi.AdvanceSector(model.industry,model.selectedHex,model.ownerId);
+    model.commandStatus=result.status;
+    return result;
+}
+
+PiInstallationKind PlayerFacingIntegrationSystem::RecommendedIndustryKind(const PlanetIndustryRuntimeModel& model) const {
+    bool power=false,storage=false,logistics=false,extractor=false;
+    for(const auto&i:model.industry.installations){if(!i.active)continue;power|=i.kind==PiInstallationKind::Power;storage|=i.kind==PiInstallationKind::Storage;logistics|=i.kind==PiInstallationKind::Logistics;extractor|=i.kind==PiInstallationKind::Extractor||i.kind==PiInstallationKind::AtmosphericCollector;}
+    if(!power)return PiInstallationKind::Power;
+    if(!storage)return PiInstallationKind::Storage;
+    if(!logistics)return PiInstallationKind::Logistics;
+    if(!extractor)return model.industry.representation==PlanetIndustryRepresentation::AtmosphericCollectorRing?PiInstallationKind::AtmosphericCollector:PiInstallationKind::Extractor;
+    return PiInstallationKind::Factory;
 }
 
 bool PlayerFacingIntegrationSystem::PlaceIndustry(PlanetIndustryRuntimeModel& model,
     PiInstallationKind kind, PowerTechnology tech) const {
     PlanetaryIndustrySystem pi;
     auto it = model.industry.hexes.find(model.selectedHex);
-    if (it == model.industry.hexes.end()) return false;
-    it->second.surveyed = true;
+    if (it == model.industry.hexes.end()) {model.commandStatus="SECTOR NOT FOUND";return false;}
     PiInstallation installation;
     installation.id = static_cast<std::uint64_t>(model.industry.installations.size() + 1);
     installation.hex = model.selectedHex;
@@ -341,8 +439,19 @@ bool PlayerFacingIntegrationSystem::PlaceIndustry(PlanetIndustryRuntimeModel& mo
     installation.power = kind == PiInstallationKind::Power ? 16.0 : 3.0;
     installation.outputPerHour = kind == PiInstallationKind::Extractor || kind == PiInstallationKind::AtmosphericCollector ? 20.0 : 0.0;
     installation.storage = kind == PiInstallationKind::Storage ? 120.0 : 0.0;
-    const bool placed = pi.Place(model.industry, installation);
+    bool placed=false;
+    if(model.legacyPlacementCompatibility){
+        // Pass401-410 compatibility: pre-R179 ad-hoc PI callers built PlanetData
+        // without a stable planetId and expected PlaceIndustry to survey/place
+        // directly. Keep that narrow contract without weakening real planets.
+        pi.SurveySector(model.industry,model.selectedHex);
+        placed=pi.Place(model.industry,installation);
+    }else{
+        placed=pi.PlaceGoverned(model.industry,installation,model.ownerId);
+    }
     if (placed && (kind == PiInstallationKind::Logistics || kind == PiInstallationKind::Storage)) model.tetherAvailable = true;
+    model.commandStatus=placed?"INSTALLATION DEPLOYED":
+        (model.legacyPlacementCompatibility?"LEGACY PLACEMENT BLOCKED":"DEVELOP AND OWN SECTOR BEFORE PLACEMENT");
     return placed;
 }
 

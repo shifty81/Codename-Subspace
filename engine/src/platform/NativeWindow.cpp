@@ -365,6 +365,7 @@ void NativeWindow::ApplyKey(unsigned long long virtualKey, bool down)
         case VK_CONTROL: _controlDown=down; break;
         case VK_MENU: _altDown=down; break;
         case VK_F3: _inputState.SetAction(InputAction::DccCommandSearch, down); break;
+        case VK_F5: _inputState.SetAction(InputAction::PlanetaryCommandCycleOverlay, down); break;
         case VK_F6: _inputState.SetAction(InputAction::ToggleShipInspection, down); break;
         case VK_OEM_4: _inputState.SetAction(InputAction::DccWorkspacePrevious, down); break;
         case VK_OEM_6: _inputState.SetAction(InputAction::DccWorkspaceNext, down); break;

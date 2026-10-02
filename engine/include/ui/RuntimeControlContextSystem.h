@@ -1,6 +1,7 @@
 #pragma once
 #include "hangar/DockingExperienceSystem.h"
 #include "fleet/FleetCommandSeatSystem.h"
+#include "input/ControlIntentRouterSystem.h"
 #include "interior/ShipEmbodimentSystem.h"
 #include "rendering/EnvironmentPresentationSystem.h"
 #include "ui/SandboxWorkspaceSystem.h"
@@ -10,6 +11,7 @@ enum class RuntimeViewAuthority { CockpitFirstPerson, OnFootFirstPerson, RemoteF
 struct RuntimeControlContext {
     CameraMode cameraMode=CameraMode::ShipFlight;
     RuntimeViewAuthority viewAuthority=RuntimeViewAuthority::CockpitFirstPerson;
+    ControlDomain controlDomain=ControlDomain::Pilot;
     bool firstPerson=true;
     bool mouseLook=true;
     bool sixDofFlight=true;

@@ -1,4 +1,4 @@
-> **HISTORICAL ROADMAP SNAPSHOT:** Percentages/checkmarks below predate the current native C++ architecture and evidence-backed completion model. They are not current completion claims. Use `docs/ROADMAP.md` and `docs/STATUS.md`.
+> **HISTORICAL ROADMAP SNAPSHOT:** This file is retained for lineage only. Current source authority is GitHub `main`; use `docs/STATUS.md` plus `content/architecture/nullharbor_convergence_authority_v1.json` for the active R178/NullHarbor convergence line.
 
 # Codename:Subspace - Roadmap Status Report
 

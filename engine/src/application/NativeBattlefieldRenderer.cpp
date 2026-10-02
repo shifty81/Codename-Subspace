@@ -3934,9 +3934,74 @@ void DrawWorkspaceOverlay(const NativeBattlefieldFrame& frame,const NativeBattle
             for(std::size_t i=0;i<g.catalog.size();i+=step){const auto&r=g.catalog[i];const float rx=r.x-g.camera.focusX,ry=r.y-g.camera.focusY,rz=r.z-g.camera.focusZ;const float x1=rx*cyaw-rz*syaw,z1=rx*syaw+rz*cyaw;const float y1=ry*cp-z1*sp;const float sxp=gcx+x1*scale,syp=gcy-y1*scale;if(sxp<left+8||sxp>right-8||syp<top+68||syp>bottom-34)continue;const bool sel=r.id==g.selectedSystem;FilledCircle(sxp,syp,0,sel?3.8f:1.35f,sel?Rgba{1.0f,.66f,.18f,.96f}:Rgba{.38f,.64f,.78f,.54f},sel?16:8);}
             DrawText5x7("RMB DRAG ORBIT   WHEEL ZOOM   UP/DOWN SELECT   ENTER ROUTE",left+22,bottom-30,.82f,{.46f,.66f,.70f,.74f});
         }else if(frame.workspaceMode==SandboxWorkspaceMode::PlanetaryManufacturing&&frame.planetIndustryRuntime){
-            const float left=64,top=62,right=w-64,bottom=h-58;FilledRect(left,top,0,right-left,bottom-top,{0.004f,0.016f,0.026f,0.95f});DrawText5x7("PLANETARY INDUSTRY - "+frame.planetIndustryRuntime->planetName,left+22,top+20,1.35f,{.72f,.88f,.92f,.96f});
-            const float hx=(left+right)*.5f,hy=(top+bottom)*.52f,hs=28.0f;for(const auto&kv:frame.planetIndustryRuntime->industry.hexes){const auto&hdata=kv.second;const float x=hx+hs*1.5f*hdata.coord.q;const float y=hy+hs*0.8660254f*(2*hdata.coord.r+hdata.coord.q);const bool selected=hdata.coord.q==frame.planetIndustryRuntime->selectedHex.q&&hdata.coord.r==frame.planetIndustryRuntime->selectedHex.r;Ring(x,y,0,hs*.82f,selected?Rgba{1.0f,.68f,.18f,.94f}:Rgba{.22f,.58f,.62f,.60f},selected?2.2f:1.0f,6);if(hdata.surveyed)FilledCircle(x,y,0,3.0f,{.30f,.78f,.58f,.80f},10);}
-            std::ostringstream pi;pi<<"TETHER STORAGE "<<static_cast<int>(frame.planetIndustryRuntime->tetherStored)<<"   INSTALLATIONS "<<frame.planetIndustryRuntime->industry.installations.size();DrawText5x7(pi.str(),left+22,bottom-32,.90f,{.52f,.74f,.78f,.82f});
+            const auto& model=*frame.planetIndustryRuntime;
+            PlayerFacingIntegrationSystem piUi;
+            PlanetaryIndustrySystem piSystem;
+            const auto layout=piUi.LayoutPlanetaryCommand(w,h);
+            const float left=layout.left,top=layout.top,right=layout.right,bottom=layout.bottom;
+            FilledRect(left,top,0,right-left,bottom-top,{0.004f,0.016f,0.026f,0.96f});
+            Line(left,top,0,right,top,0,{0.16f,0.62f,0.70f,0.76f},1.5f);
+            DrawText5x7("PLANETARY COMMAND - "+model.planetName,left+22,top+18,1.35f,{.72f,.88f,.92f,.96f});
+            DrawText5x7(std::string("PROJECTION ")+PlanetaryIndustrySystem::ProjectionName(model.projection)+"   OVERLAY "+PlanetaryIndustrySystem::OverlayName(model.overlay),left+22,top+48,.80f,{.46f,.72f,.76f,.86f});
+
+            if(model.projection==PiProjectionMode::Globe){
+                FilledCircle(layout.centerX,layout.centerY,0,layout.globeRadius,{.025f,.075f,.095f,.94f},72);
+                Ring(layout.centerX,layout.centerY,0,layout.globeRadius,{.18f,.58f,.68f,.78f},1.6f,72);
+            }
+
+            auto overlayColor=[&](const PiHexData& hdata)->Rgba{
+                switch(model.overlay){
+                    case PiOverlayMode::Resources:{const float v=std::clamp(hdata.resource,0.0f,1.0f);return {.16f+.55f*v,.30f+.54f*v,.18f+.18f*v,.78f};}
+                    case PiOverlayMode::Ownership:
+                        if(hdata.ownerId==model.ownerId&&(hdata.claimState==PiClaimState::Claimed||hdata.claimState==PiClaimState::Developed))return {.18f,.78f,.90f,.88f};
+                        if(hdata.claimState>=PiClaimState::Surveyed)return {.38f,.50f,.54f,.66f};
+                        return {.16f,.22f,.25f,.42f};
+                    case PiOverlayMode::Industry:{
+                        const bool occupied=std::any_of(model.industry.installations.begin(),model.industry.installations.end(),[&](const PiInstallation&i){return i.hex==hdata.coord;});
+                        return occupied?Rgba{.96f,.60f,.18f,.90f}:Rgba{.24f,.34f,.38f,.54f};}
+                    case PiOverlayMode::Logistics:{
+                        bool logistics=false,storage=false;for(const auto&i:model.industry.installations)if(i.hex==hdata.coord){logistics|=i.kind==PiInstallationKind::Logistics;storage|=i.kind==PiInstallationKind::Storage;}
+                        return logistics?Rgba{.22f,.72f,.98f,.92f}:storage?Rgba{.36f,.56f,.88f,.82f}:Rgba{.18f,.28f,.38f,.48f};}
+                    case PiOverlayMode::Power:{
+                        bool power=false;for(const auto&i:model.industry.installations)if(i.hex==hdata.coord)power|=i.kind==PiInstallationKind::Power;
+                        return power?Rgba{.42f,.92f,.46f,.92f}:Rgba{.28f,.34f,.24f,.50f};}
+                    case PiOverlayMode::Hazard:{const float v=std::clamp(hdata.hazard,0.0f,1.0f);return {.32f+.62f*v,.54f*(1.0f-v),.14f,.82f};}
+                }
+                return {.22f,.58f,.62f,.60f};
+            };
+
+            std::vector<std::pair<float,HexCoord>> drawOrder;
+            drawOrder.reserve(model.industry.hexes.size());
+            for(const auto&kv:model.industry.hexes){const auto pt=piUi.ProjectPlanetaryHex(model,kv.first,w,h);if(pt.visible)drawOrder.push_back({pt.depth,kv.first});}
+            std::sort(drawOrder.begin(),drawOrder.end(),[](const auto&a,const auto&b){return a.first<b.first;});
+            for(const auto&entry:drawOrder){
+                const auto it=model.industry.hexes.find(entry.second);if(it==model.industry.hexes.end())continue;const auto&hdata=it->second;
+                const auto pt=piUi.ProjectPlanetaryHex(model,hdata.coord,w,h);const bool selected=hdata.coord==model.selectedHex;
+                const float depthScale=model.projection==PiProjectionMode::Globe?std::clamp(.72f+pt.depth*.28f,.55f,1.0f):1.0f;
+                const float radius=layout.hexSize*.72f*depthScale;const auto c=overlayColor(hdata);
+                Ring(pt.x,pt.y,0,radius,c,selected?2.5f:1.2f,6);
+                if(hdata.claimState==PiClaimState::Surveyed)FilledCircle(pt.x,pt.y,0,2.8f*depthScale,{.52f,.72f,.72f,.78f},10);
+                if(hdata.claimState==PiClaimState::Claimed)FilledCircle(pt.x,pt.y,0,4.0f*depthScale,{.18f,.72f,.90f,.86f},10);
+                if(hdata.claimState==PiClaimState::Developed)FilledCircle(pt.x,pt.y,0,5.0f*depthScale,{.96f,.64f,.18f,.92f},10);
+                const bool installed=std::any_of(model.industry.installations.begin(),model.industry.installations.end(),[&](const PiInstallation&i){return i.hex==hdata.coord;});
+                if(installed){Line(pt.x-5,pt.y,0,pt.x+5,pt.y,0,{1.0f,.88f,.48f,.94f},1.6f);Line(pt.x,pt.y-5,0,pt.x,pt.y+5,0,{1.0f,.88f,.48f,.94f},1.6f);}
+                if(selected)Ring(pt.x,pt.y,0,radius+5.0f,{1.0f,.82f,.26f,.98f},2.2f,18);
+            }
+
+            Line(layout.inspectorLeft-7,top+70,0,layout.inspectorLeft-7,bottom-16,0,{.10f,.34f,.40f,.56f},1.0f);
+            float iy=top+82;const float ix=layout.inspectorLeft+8;
+            DrawText5x7("SECTOR INSPECTOR",ix,iy,1.0f,{.68f,.88f,.92f,.96f});iy+=30;
+            const auto selected=model.industry.hexes.find(model.selectedHex);
+            if(selected!=model.industry.hexes.end()){
+                const auto&id=selected->second;DrawText5x7(piSystem.Identity(model.industry,model.selectedHex).StableId(),ix,iy,.66f,{.84f,.90f,.90f,.92f});iy+=24;
+                DrawText5x7(PlanetaryIndustrySystem::ClaimStateName(id.claimState),ix,iy,.90f,id.claimState>=PiClaimState::Claimed?Rgba{.34f,.86f,.72f,.94f}:Rgba{.62f,.76f,.78f,.88f});iy+=26;
+                std::ostringstream row;row<<"RESOURCE "<<static_cast<int>(id.resource*100)<<"%";DrawText5x7(row.str(),ix,iy,.74f,{.60f,.82f,.62f,.88f});iy+=22;row.str("");row.clear();row<<"HAZARD "<<static_cast<int>(id.hazard*100)<<"%";DrawText5x7(row.str(),ix,iy,.74f,id.hazard>.55f?Rgba{.96f,.42f,.22f,.94f}:Rgba{.62f,.78f,.66f,.86f});iy+=22;row.str("");row.clear();row<<"BUILDABILITY "<<static_cast<int>(id.buildability*100)<<"%";DrawText5x7(row.str(),ix,iy,.74f,{.64f,.76f,.80f,.86f});iy+=28;
+                const auto frontier=piSystem.ClaimFrontier(model.industry,model.ownerId);row.str("");row.clear();row<<"CLAIM FRONTIER "<<frontier.size();DrawText5x7(row.str(),ix,iy,.70f,{.50f,.70f,.74f,.82f});iy+=26;
+                std::size_t localInstall=0;for(const auto&i:model.industry.installations)localInstall+=i.hex==model.selectedHex?1u:0u;row.str("");row.clear();row<<"INSTALLATIONS "<<localInstall;DrawText5x7(row.str(),ix,iy,.70f,{.86f,.70f,.46f,.86f});iy+=30;
+            }
+            DrawText5x7(model.commandStatus,ix,std::min(iy+10,bottom-112),.66f,{.90f,.76f,.44f,.90f});
+            std::ostringstream pi;pi<<"TETHER "<<static_cast<int>(model.tetherStored)<<"   TOTAL INSTALLATIONS "<<model.industry.installations.size();DrawText5x7(pi.str(),left+22,bottom-55,.78f,{.52f,.74f,.78f,.82f});
+            DrawText5x7("P CLOSE   LMB SELECT   RMB INSPECT / EMPTY=PROJECTION   F5 OVERLAY   ENTER ADVANCE   SHIFT+ENTER DEPLOY",left+22,bottom-28,.68f,{.46f,.66f,.70f,.78f});
         }else if(frame.workspaceMode==SandboxWorkspaceMode::SystemMap&&frame.systemMap){
             PlayerFacingIntegrationSystem mapUi;
             const auto layout=mapUi.LayoutSystemMap(*frame.systemMap,frame.universeSystemMap,w,h,frame.systemMapZoom,frame.systemMapPan);

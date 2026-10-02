@@ -1620,7 +1620,16 @@ std::vector<std::string> NativeGameApplication::BuildWorkspaceLines() const
         text.str("");text.clear();text<<"Gravity "<<std::fixed<<std::setprecision(2)<<survey.gravityG<<"g   Radiation "<<std::setprecision(0)<<survey.radiation*100<<"%";lines.push_back(text.str());
         PlanetSurveySystem surveySystem;text.str("");text.clear();text<<"Industrial score "<<std::fixed<<std::setprecision(2)<<surveySystem.IndustrialValue(survey);lines.push_back(text.str());
         if(mode==SandboxWorkspaceMode::PlanetSurvey)lines.push_back("ENTER advances orbital survey; seamless surface landing is current architecture but not yet runtime-wired");
-        else {auto pit=_planetProjects.find(planetIndex);lines.push_back(pit==_planetProjects.end()?"Planetary Manufacturing locked: certify survey then deploy tether":"Tether / elevator project registered");}
+        else if(_activePiPlanet==planetIndex){
+            PlanetaryIndustrySystem pi;
+            const auto hit=_activePiRuntime.industry.hexes.find(_activePiRuntime.selectedHex);
+            lines.push_back(std::string("Planetary Command: ")+PlanetaryIndustrySystem::ProjectionName(_activePiRuntime.projection)+" / "+PlanetaryIndustrySystem::OverlayName(_activePiRuntime.overlay));
+            if(hit!=_activePiRuntime.industry.hexes.end()){
+                lines.push_back("Sector: "+pi.Identity(_activePiRuntime.industry,_activePiRuntime.selectedHex).StableId()+" / "+PlanetaryIndustrySystem::ClaimStateName(hit->second.claimState));
+            }
+            lines.push_back(_activePiRuntime.commandStatus);
+            lines.push_back("LMB select  RMB inspect/projection  F5 overlay  ENTER advance  SHIFT+ENTER deploy");
+        }else lines.push_back("Planetary Command initializing...");
         return lines;
     }
     if(mode==SandboxWorkspaceMode::FleetCorporation){
@@ -1835,11 +1844,39 @@ void NativeGameApplication::HandleGlobalActions()
 
     if (inGame) {
         bool contextCommandConsumed = false;
+
+        // R179 Planetary Command owns pointer clicks while its workspace is open.
+        // LMB selects a stable planetId+axial sector. RMB pins the sector inspector;
+        // RMB on empty map space toggles globe/sector projection.
+        if(_workspace.Mode()==SandboxWorkspaceMode::PlanetaryManufacturing &&
+           _activePiPlanet!=static_cast<std::size_t>(-1)){
+            float px=0.0f,py=0.0f;HexCoord hit{};
+            if(_window.ConsumePrimaryClick(px,py)){
+                if(_playerFacing.HitTestPlanetaryHex(_activePiRuntime,_window.GetWidth(),_window.GetHeight(),px,py,hit)){
+                    _activePiRuntime.selectedHex=hit;
+                    _activePiRuntime.inspectorPinned=false;
+                    const PlanetaryIndustrySystem pi;
+                    _activePiRuntime.commandStatus=pi.Identity(_activePiRuntime.industry,hit).StableId();
+                }
+            }
+            if(_window.ConsumeSecondaryClick(px,py)){
+                if(_playerFacing.HitTestPlanetaryHex(_activePiRuntime,_window.GetWidth(),_window.GetHeight(),px,py,hit)){
+                    _activePiRuntime.selectedHex=hit;
+                    _activePiRuntime.inspectorPinned=true;
+                    const PlanetaryIndustrySystem pi;
+                    _activePiRuntime.commandStatus=std::string("INSPECT ")+pi.Identity(_activePiRuntime.industry,hit).StableId();
+                }else{
+                    _playerFacing.TogglePlanetaryProjection(_activePiRuntime);
+                }
+                contextCommandConsumed=true;
+            }
+        }
+
         // Pass402: RMB short-click is a universal context request in flight.
         // RMB drag remains inspection orbit; normal flight no longer consumes
         // a right drag as an implicit camera command.
         float contextX=0.0f,contextY=0.0f;
-        if(_workspace.Mode()==SandboxWorkspaceMode::SystemMap && _window.ConsumeSecondaryClick(contextX,contextY)) {
+        if(!contextCommandConsumed && _workspace.Mode()==SandboxWorkspaceMode::SystemMap && _window.ConsumeSecondaryClick(contextX,contextY)) {
             const int hit=_playerFacing.HitTestSystemMapNode(_systemMap,&_universeSystemMap,
                 _window.GetWidth(),_window.GetHeight(),_systemMapRuntime.zoom,_systemMapRuntime.pan,contextX,contextY);
             if(hit>=0){
@@ -1944,6 +1981,12 @@ void NativeGameApplication::HandleGlobalActions()
         toggle(InputAction::OpenExploration,SandboxWorkspaceMode::Exploration);
         toggle(InputAction::OpenFleetCorporation,SandboxWorkspaceMode::FleetCorporation);
 
+        if(_workspace.Mode()==SandboxWorkspaceMode::PlanetaryManufacturing &&
+           _activePiPlanet!=static_cast<std::size_t>(-1) &&
+           input.WasPressed(InputAction::PlanetaryCommandCycleOverlay)){
+            _playerFacing.CyclePlanetaryOverlay(_activePiRuntime,+1);
+        }
+
         if (_workspace.Mode()==SandboxWorkspaceMode::PlanetSurvey ||
             _workspace.Mode()==SandboxWorkspaceMode::PlanetaryManufacturing) {
             const auto index=ActivePlanetIndex();
@@ -1993,14 +2036,24 @@ void NativeGameApplication::HandleGlobalActions()
             const auto index=ActivePlanetIndex();
             if(index<_sector.planets.size()){
                 EnsurePlanetSurvey(index);
-                const auto& record=_planetSurveys[index];
-                if(record.stage>=PlanetSurveyStage::Detailed){
-                    PlanetaryIndustrializationSystem industrial;
-                    auto& project=_planetProjects[index];
-                    if(project.stage==PlanetaryDevelopmentStage::Unsurveyed)industrial.BindSurvey(project,record);
-                    else if(project.stage==PlanetaryDevelopmentStage::Surveyed)industrial.SelectAnchor(project,record.elevatorAnchorScore);
-                    else if(project.stage==PlanetaryDevelopmentStage::SiteSelected)industrial.DeployTether(project);
-                    else if(project.stage==PlanetaryDevelopmentStage::ElevatorOnline)industrial.UnlockManufacturing(project);
+                if(_activePiPlanet!=index){
+                    _activePiRuntime=_playerFacing.BuildPlanetIndustry(_sector.planets[index],3,static_cast<std::uint32_t>(index*97+31));
+                    _activePiPlanet=index;
+                }
+                if(_window.IsShiftDown()){
+                    const auto kind=_playerFacing.RecommendedIndustryKind(_activePiRuntime);
+                    _playerFacing.PlaceIndustry(_activePiRuntime,kind,PowerTechnology::Burner);
+                }else{
+                    const auto result=_playerFacing.AdvancePlanetarySector(_activePiRuntime);
+                    // Keep the older planet-scale industrialization authority synchronized
+                    // without making it a second claim/sector owner.
+                    const auto& record=_planetSurveys[index];
+                    if(result.changed && result.after==PiClaimState::Developed &&
+                       record.stage>=PlanetSurveyStage::Detailed){
+                        PlanetaryIndustrializationSystem industrial;
+                        auto& project=_planetProjects[index];
+                        if(project.stage==PlanetaryDevelopmentStage::Unsurveyed)industrial.BindSurvey(project,record);
+                    }
                 }
             }
         }

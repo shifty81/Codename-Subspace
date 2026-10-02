@@ -22,6 +22,8 @@ InputBindingProfile InputBindingProfile::Defaults(){
     p.Rebind(InputAction::RequestDock,"J");
     p.Rebind(InputAction::OpenGalaxyMap,"M");
     p.Rebind(InputAction::OpenSystemMap,"N");
+    p.Rebind(InputAction::OpenPlanetaryManufacturing,"P");
+    p.Rebind(InputAction::PlanetaryCommandCycleOverlay,"F5");
     p.Rebind(InputAction::ToggleShipInspection,"F6");
     p.Rebind(InputAction::Undo,"Ctrl+Z");
     p.Rebind(InputAction::Redo,"Ctrl+Y / Ctrl+Shift+Z");

@@ -114,12 +114,43 @@ struct GalaxyRuntimeModel {
     bool initialized = false;
 };
 
+struct PlanetaryCommandScreenPoint {
+    float x=0.0f;
+    float y=0.0f;
+    float depth=0.0f;
+    bool visible=true;
+};
+
+struct PlanetaryCommandLayout {
+    float left=64.0f;
+    float top=62.0f;
+    float right=1536.0f;
+    float bottom=842.0f;
+    float mapRight=1196.0f;
+    float centerX=630.0f;
+    float centerY=452.0f;
+    float hexSize=28.0f;
+    float globeRadius=285.0f;
+    float inspectorLeft=1210.0f;
+    bool ContainsMap(float x,float y) const {return x>=left&&x<=mapRight&&y>=top&&y<=bottom;}
+};
+
 struct PlanetIndustryRuntimeModel {
     std::string planetName;
+    std::string planetId;
     PlanetaryIndustryState industry{};
     HexCoord selectedHex{};
+    PiOverlayMode overlay=PiOverlayMode::Resources;
+    PiProjectionMode projection=PiProjectionMode::Globe;
+    std::uint64_t ownerId=1;
+    bool inspectorPinned=false;
+    // Compatibility mode is limited to ad-hoc legacy PlanetData without a
+    // canonical planetId. Generated runtime planets always carry a stable ID
+    // and therefore remain under R179 claim/develop placement authority.
+    bool legacyPlacementCompatibility=false;
     bool tetherAvailable = false;
     double tetherStored = 0.0;
+    std::string commandStatus="SELECT A SECTOR";
 };
 
 struct FleetRuntimeShip {
@@ -227,6 +258,18 @@ public:
 
     PlanetIndustryRuntimeModel BuildPlanetIndustry(const PlanetData& planet,
                                                    int radius, std::uint32_t seed) const;
+    PlanetaryCommandLayout LayoutPlanetaryCommand(int viewportWidth,int viewportHeight) const;
+    PlanetaryCommandScreenPoint ProjectPlanetaryHex(const PlanetIndustryRuntimeModel& model,
+                                                     HexCoord coord,int viewportWidth,int viewportHeight) const;
+    bool HitTestPlanetaryHex(const PlanetIndustryRuntimeModel& model,int viewportWidth,int viewportHeight,
+                             float screenX,float screenY,HexCoord& hit) const;
+    // Historical R158-R177 public API retained as a semantic alias over the
+    // R179 stable-sector selection model.
+    bool SelectPlanetCommandHex(PlanetIndustryRuntimeModel& model,HexCoord coord) const;
+    void CyclePlanetaryOverlay(PlanetIndustryRuntimeModel& model,int direction=1) const;
+    void TogglePlanetaryProjection(PlanetIndustryRuntimeModel& model) const;
+    PiSectorCommandResult AdvancePlanetarySector(PlanetIndustryRuntimeModel& model) const;
+    PiInstallationKind RecommendedIndustryKind(const PlanetIndustryRuntimeModel& model) const;
     bool PlaceIndustry(PlanetIndustryRuntimeModel& model, PiInstallationKind kind,
                        PowerTechnology tech = PowerTechnology::Burner) const;
     double TickIndustryToTether(PlanetIndustryRuntimeModel& model, double produced, double hours) const;

@@ -14096,19 +14096,36 @@ static void TestFleetCommandSystemOrderProgress() {
     fc->AddMember(100, "Fighter A", FleetRole::Combat);
     fc->IssueOrder(FleetOrderType::Patrol, 100.0f, 200.0f, 300.0f);
 
-    // First update: Pending -> Active
+    // R178: time is never proof that gameplay work completed. A missing domain
+    // executor must block visibly instead of running a synthetic 15-second timer.
     sys.Update(0.1f);
     const FleetOrder* o = fc->GetOrder(1);
-    TEST("Order activated", o && o->state == FleetOrderState::Active);
-
-    // Update for 15+ seconds to complete (base order time is 15s)
-    for (int i = 0; i < 160; ++i) {
-        sys.Update(0.1f);
-    }
-
+    TEST("Order blocks without domain executor", o && o->state == FleetOrderState::Blocked);
+    TEST("Blocked order explains missing executor", o && o->status.find("WAITING FOR DOMAIN EXECUTOR") != std::string::npos);
+    const float blockedProgress = o ? o->progress : -1.0f;
+    for (int i = 0; i < 160; ++i) sys.Update(0.1f);
     o = fc->GetOrder(1);
-    TEST("Order completed", o && o->state == FleetOrderState::Completed);
-    TEST("Order progress at 1.0", o && ApproxEq(o->progress, 1.0f));
+    TEST("Elapsed time cannot fake order completion", o && o->state == FleetOrderState::Blocked && ApproxEq(o->progress, blockedProgress));
+
+    // A real executor owns progress and completion.
+    sys.RegisterExecutor(FleetOrderType::Patrol,
+        [](FleetCommandComponent&, FleetOrder& order, float dt) {
+            FleetOrderExecutionResult result;
+            result.progress = std::min(1.0f, order.progress + dt);
+            result.status = result.progress >= 1.0f ? "PATROL ROUTE COMPLETE" : "PATROLLING";
+            result.disposition = result.progress >= 1.0f
+                ? FleetOrderExecutionDisposition::Completed
+                : FleetOrderExecutionDisposition::Running;
+            return result;
+        });
+    TEST("Blocked order can be requeued after executor arrives", fc->ResumeOrder(1));
+    sys.Update(0.5f);
+    o = fc->GetOrder(1);
+    TEST("Executor activates and reports real progress", o && o->state == FleetOrderState::Active && o->progress > 0.0f && o->progress < 1.0f);
+    sys.Update(0.6f);
+    o = fc->GetOrder(1);
+    TEST("Executor completes order", o && o->state == FleetOrderState::Completed);
+    TEST("Executor completion sets progress to 1.0", o && ApproxEq(o->progress, 1.0f));
 }
 
 // ===================================================================

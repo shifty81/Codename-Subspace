@@ -15,7 +15,7 @@ InteriorPortalKind MergeKind(InteriorPortalKind a,InteriorPortalKind b){if(a==In
 const char* ShipModuleInteriorLinkSystem::CapabilityName(ExteriorInteriorCapability c){switch(c){case ExteriorInteriorCapability::None:return "NONE";case ExteriorInteriorCapability::WalkableRoom:return "ROOM";case ExteriorInteriorCapability::Corridor:return "CORRIDOR";case ExteriorInteriorCapability::Cockpit:return "COCKPIT";case ExteriorInteriorCapability::Bridge:return "BRIDGE";case ExteriorInteriorCapability::Engineering:return "ENGINEERING";case ExteriorInteriorCapability::Cargo:return "CARGO";case ExteriorInteriorCapability::Habitation:return "HABITATION";case ExteriorInteriorCapability::Airlock:return "AIRLOCK";case ExteriorInteriorCapability::Hangar:return "HANGAR";case ExteriorInteriorCapability::ServiceAccess:return "SERVICE ACCESS";}return "NONE";}
 
 ShipModuleInteriorBinding ShipModuleInteriorLinkSystem::InferBinding(const ShipyardModuleRecord&m,const WorldScaleProfile&scale){
-    ShipModuleInteriorBinding b;b.moduleId=m.source.moduleId;b.preferredInteriorKitId="quaternius.ultimate_modular_scifi.2021";const auto n=Lower(m.source.moduleId);
+    ShipModuleInteriorBinding b;b.moduleId=m.source.moduleId;b.preferredInteriorKitId.clear();b.preferredInteriorFamily="industrial_modular";const auto n=Lower(m.source.moduleId);
     switch(m.semantic){
         case ShipyardModuleSemantic::CommandCockpit:b.capability=ExteriorInteriorCapability::Cockpit;b.walkable=true;break;
         case ShipyardModuleSemantic::CommandBridge:b.capability=ExteriorInteriorCapability::Bridge;b.walkable=true;break;
@@ -40,6 +40,12 @@ ShipModuleInteriorBinding ShipModuleInteriorLinkSystem::InferBinding(const Shipy
     else if(Has(n,"cargo")||Has(n,"storage")){b.capability=ExteriorInteriorCapability::Cargo;b.walkable=true;}
     else if(Has(n,"hab")||Has(n,"crew")){b.capability=ExteriorInteriorCapability::Habitation;b.walkable=true;}
     else if(Has(n,"corridor")||Has(n,"connector")||Has(n,"adapter")){b.capability=ExteriorInteriorCapability::Corridor;b.walkable=true;}
+    if(b.walkable)b.requiredInteriorCapabilities.push_back("walkable");
+    if(b.capability==ExteriorInteriorCapability::Corridor)b.requiredInteriorCapabilities.push_back("corridor");
+    if(b.capability==ExteriorInteriorCapability::Cockpit||b.capability==ExteriorInteriorCapability::Bridge)b.requiredInteriorCapabilities.push_back("command");
+    if(b.capability==ExteriorInteriorCapability::Airlock)b.requiredInteriorCapabilities.push_back("pressure_portal");
+    if(b.capability==ExteriorInteriorCapability::Hangar)b.requiredInteriorCapabilities.push_back("vehicle_clearance");
+    if(b.capability==ExteriorInteriorCapability::Engineering||b.capability==ExteriorInteriorCapability::ServiceAccess)b.requiredInteriorCapabilities.push_back("service_mount");
     b.deckCount=(m.size==ShipyardModuleSize::L||m.size==ShipyardModuleSize::XL)?2:1;
     b.footprintWidthCells=(m.size==ShipyardModuleSize::XS?1:m.size==ShipyardModuleSize::S?2:m.size==ShipyardModuleSize::M?3:m.size==ShipyardModuleSize::L?5:7);
     b.footprintLengthCells=b.footprintWidthCells;

@@ -1,0 +1,51 @@
+{
+  "schema": "subspace.planetary-command.overlays.v1",
+  "id": "planetary_command.overlays.v1",
+  "profiles": [
+    {
+      "id": "territory",
+      "shows": [
+        "claims",
+        "development",
+        "frontier"
+      ]
+    },
+    {
+      "id": "resources",
+      "shows": [
+        "resourceRichness",
+        "surveyConfidence"
+      ]
+    },
+    {
+      "id": "hazards",
+      "shows": [
+        "hazard",
+        "buildability"
+      ]
+    },
+    {
+      "id": "logistics",
+      "shows": [
+        "controlledAdjacency",
+        "storage",
+        "logistics"
+      ]
+    },
+    {
+      "id": "landing",
+      "shows": [
+        "landingCandidates",
+        "hazards",
+        "buildability"
+      ]
+    },
+    {
+      "id": "development",
+      "shows": [
+        "developmentTier",
+        "installations"
+      ]
+    }
+  ]
+}

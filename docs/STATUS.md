@@ -1,5 +1,32 @@
 # Codename Subspace Status
 
+## Current source authority — 2026-10-01
+
+- Repository: `shifty81/Codename-Subspace`
+- Branch: `main`
+- R178 audit baseline: `8484a081f8d60be980d3aac300ba2f1f9397cd75`
+- Certified gate at that baseline: `QG-20260930-143924-full-53697b5b`
+- Development identity: **Codename Subspace**
+- Destination product identity: **NullHarbor**
+
+The active implementation lane is **R178 — FPS, Universal Interiors and Strategic Command Convergence**. Current GitHub source is authoritative. Uploaded Subspace snapshots are regression/preimage material, while original NullHarbor SourceWork and NovaForge are selective donors only.
+
+### Current implementation priorities
+
+1. Contextual Pilot / First Person / Fleet Strategy / Authoring controls with stable historical input IDs.
+2. First-person locomotion and interaction built on the current derived-shell collision authority.
+3. Physical ship/station interiors using one normalized module/socket/portal contract and governed kit hydration.
+4. Fleet Command as RTS/strategy control: camera, selection, groups, queued orders, formations and real domain executors rather than WASD ship steering or timer-completed orders.
+5. Follow with a large mining/salvage/processing/manufacturing donor-harvest milestone, using physical interior workstations and the same authoritative backend systems.
+
+See `content/architecture/nullharbor_convergence_authority_v1.json`, `docs/audits/NULLHARBOR_PROJECT_WIDE_RECONCILIATION_R178.md`, and `docs/development/NULLHARBOR_R178_CONVERGENCE_MILESTONE.md`.
+
+---
+
+## Historical status snapshot retained for lineage
+
+The remainder of this file predates the 2026-10-01 authority normalization. Pass/version statements below are historical and do not override the source authority above.
+
 ## Current source line
 
 **Pass1202R1 — PCC Commit/Push Idempotency Repair candidate** on top of certified GitHub commit `7e9fda2e19b436d7f9cde90175a1dcc69615fba5` (Pass1163-1202 Embodied Authoring Foundation).

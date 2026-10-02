@@ -1,0 +1,107 @@
+{
+  "schema": "subspace.nullharbor-convergence-authority.v1",
+  "milestone": "R178 FPS + INTERIORS + STRATEGIC COMMAND FOUNDATION",
+  "baseline": {
+    "repository": "shifty81/Codename-Subspace",
+    "branch": "main",
+    "gitCommit": "8484a081f8d60be980d3aac300ba2f1f9397cd75",
+    "qualityGate": "QG-20260930-143924-full-53697b5b",
+    "authority": "live GitHub main"
+  },
+  "identity": {
+    "developmentIdentity": "Codename Subspace",
+    "destinationProductIdentity": "NullHarbor",
+    "policy": "Do not create new gameplay architecture that depends on the temporary codename. Do not perform an unsafe global rename until the governed rebrand milestone. Donor project names never become runtime authority."
+  },
+  "donors": [
+    {
+      "id": "original-nullharbor-sourcework",
+      "role": "behavior, data, content-contract and acceptance-scenario donor",
+      "authority": false,
+      "rule": "Harvest selected mature behavior into current owners; never restore Gameplay/Runtime/Server donor trees wholesale."
+    },
+    {
+      "id": "novaforge-unified-r1",
+      "role": "locomotion, state-machine and historic implementation donor",
+      "authority": false,
+      "rule": "Use only where it improves the current Subspace owner and passes current certification."
+    },
+    {
+      "id": "subspace-source-snapshots",
+      "role": "history, preimage and regression evidence",
+      "authority": false,
+      "rule": "GitHub main outranks uploaded snapshots whenever they differ."
+    }
+  ],
+  "canonicalOwners": {
+    "physicalInputState": "InputState",
+    "inputContextRouting": "ControlIntentRouterSystem",
+    "playerControlFacade": "PlayerController",
+    "directShipFlight": "PlayerControlSystem",
+    "runtimeControlContext": "RuntimeControlContextSystem",
+    "firstPersonEmbodiment": "ShipEmbodimentSystem",
+    "firstPersonInteriorCollision": "ShipInteriorShellTraversalSystem",
+    "interiorGameplayLayout": "ShipInteriorSystem + ShipInteriorLayoutSystem",
+    "interiorVisualModuleContract": "ModularInteriorKitSystem",
+    "interiorKitResolution": "InteriorKitRegistrySystem",
+    "interiorInteractions": "InteriorInteractionSystem",
+    "shipExteriorToInteriorRequirements": "ShipModuleInteriorLinkSystem",
+    "fleetSeatAuthorization": "FleetCommandSeatSystem",
+    "fleetOrderAuthority": "FleetCommandSystem",
+    "fleetStrategyInputSelectionCamera": "FleetStrategyControlSystem",
+    "shipyardAuthoring": "current Subspace Studio / Shipyard systems",
+    "assetSourceAndHydration": "FoundrySourcePackSystem + PCC governed content pipeline",
+    "resourceIdentity": "ResourceMaterialSystem (requires later versioned NullHarbor vocabulary migration)"
+  },
+  "controlDomains": {
+    "Pilot": "Direct vessel controls only.",
+    "FirstPerson": "Character locomotion and world/interior interaction only.",
+    "FleetStrategy": "Strategic camera, selection and order issue only; WASD must never produce vessel thrust.",
+    "Authoring": "Studio/editor navigation and manipulation only.",
+    "DockedService": "Docked/hangar interaction context; direct flight suppressed.",
+    "Transit": "Cinematic/vector transit; direct player movement suppressed.",
+    "Disabled": "No direct gameplay authority."
+  },
+  "fleetCommandPolicy": {
+    "oldBehaviorRetired": "generic timer-driven order completion",
+    "newBehavior": "orders remain blocked/pending/active until an authoritative domain executor reports real progress/completion/failure",
+    "executorExamples": {
+      "Mine": "MiningSystem adapter",
+      "Salvage": "SalvageSystem adapter",
+      "Attack": "combat/AI adapter",
+      "Escort": "formation/navigation adapter",
+      "Dock": "docking authority adapter",
+      "Trade": "economy/logistics adapter",
+      "Patrol": "navigation + threat response adapter"
+    }
+  },
+  "interiorGridContract": {
+    "planningCellMeters": 2.0,
+    "structuralGridMeters": 1.0,
+    "fineSnapMeters": 0.25,
+    "rule": "Room planning, structural modules and detailed kitbash placement are separate layers. Free placement is opt-in for tagged props/greebles."
+  },
+  "kitbashPolicy": {
+    "sharedLibrary": true,
+    "shipStationHangarDerelictShareContract": true,
+    "hardCodedSourceKitGameplayDependenciesAllowed": false,
+    "rawDonorMeshesCommittedToSource": false,
+    "donorMetadataRegistry": "content/interiors/nullharbor_donor_kitbash_harvest_v1.json",
+    "promotion": "source intake -> provenance -> normalized derivative -> sockets/collision -> visual review -> runtime proof -> promoted runtime asset"
+  },
+  "migrationDebt": {
+    "resourceVocabulary": "Legacy Avorion-era material IDs still require versioned compatibility mapping; do not search/replace save IDs.",
+    "projectStatusMetadata": "Legacy pass/version prose is historical and must not outrank Git HEAD + quality gate + generated project status.",
+    "liveApplicationIntegration": "NativeGameApplication must consume the contextual router and authoritative fleet adapters without reintroducing duplicate control lanes."
+  },
+  "invariants": [
+    "Donor behavior may be absorbed; donor architecture may not become a parallel authority.",
+    "Historical InputAction numeric indices remain stable; new semantic actions append only.",
+    "FleetStrategy never writes vessel thrust/fire intent.",
+    "First-person interior collision remains derived from the current certified interior shell.",
+    "Source art never decides gameplay room semantics directly.",
+    "Ship and station interiors share the module/socket/portal vocabulary while retaining different layout grammars.",
+    "No content pack name is hard-coded as the only valid interior implementation.",
+    "A fleet order cannot complete solely because elapsed time passed."
+  ]
+}

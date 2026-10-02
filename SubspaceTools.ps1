@@ -1328,8 +1328,23 @@ function Invoke-CMakeBuildWithNativeLinkRetry {
     }
 }
 
+function Invoke-PlanetaryCommandCanonicalVerification {
+    $verifier = Join-Path $Global:SubspaceRoot 'scripts\subspace_planetary_command_r158_r177_apply.ps1'
+    if (-not (Test-Path -LiteralPath $verifier -PathType Leaf)) { return }
+
+    # R184: R158-R177 is historical migration lineage only. Modern trees are
+    # verified semantically by the R179/R183 compatibility entrypoint; the PCC
+    # must never replay exact/indent-normalized text transforms over newer source.
+    Write-Log 'Planetary Command canonical source verification before native build.' 'INFO'
+    Invoke-ProjectScript -RelativePath 'scripts\subspace_planetary_command_r158_r177_apply.ps1' `
+        -Arguments @('-Root', $Global:SubspaceRoot)
+    Write-Log 'Planetary Command canonical source verification passed; historical text replay is retired.' 'PASS'
+}
+
 function Invoke-CMakeBuild {
     param([switch]$Headless, [switch]$CleanFirst, [switch]$TestsOnly)
+
+    Invoke-PlanetaryCommandCanonicalVerification
 
     if (-not (Test-Path -LiteralPath $Global:EngineRoot)) {
         throw "Engine folder missing: $Global:EngineRoot"

@@ -6,14 +6,16 @@
 #include "core/ecs/EntityManager.h"
 #include "core/persistence/SaveGameManager.h"
 
+#include <cstdint>
+#include <functional>
+#include <map>
 #include <string>
 #include <vector>
-#include <unordered_map>
-#include <cstdint>
 
 namespace subspace {
 
-/// Type of order that can be issued to a fleet.
+/// Type of order that can be issued to a fleet. Historical values are kept in
+/// place; strategy-game orders are append-only for save compatibility.
 enum class FleetOrderType {
     Idle,
     Patrol,
@@ -22,19 +24,27 @@ enum class FleetOrderType {
     Attack,
     Escort,
     Defend,
-    Scout
+    Scout,
+    Move,
+    Approach,
+    Orbit,
+    Hold,
+    Salvage,
+    Dock,
+    Warp,
+    Repair,
+    Resupply
 };
 
-/// State of a fleet order.
 enum class FleetOrderState {
     Pending,
     Active,
     Paused,
     Completed,
-    Failed
+    Failed,
+    Blocked
 };
 
-/// Role of a fleet member.
 enum class FleetRole {
     Flagship,
     Combat,
@@ -44,92 +54,89 @@ enum class FleetRole {
     Scout
 };
 
-/// A single order assigned to a fleet.
+struct FleetOrderRequest {
+    FleetOrderType type = FleetOrderType::Idle;
+    std::uint64_t targetEntityId = 0;
+    float targetX = 0.0f, targetY = 0.0f, targetZ = 0.0f;
+    int priority = 0;
+    bool queue = false;
+    float acceptanceRadius = 5.0f;
+    float orbitRadius = 0.0f;
+    std::vector<std::uint64_t> assignedMembers;
+};
+
 struct FleetOrder {
     int orderId = 0;
     FleetOrderType type = FleetOrderType::Idle;
     FleetOrderState state = FleetOrderState::Pending;
-    uint64_t targetEntityId = 0;
+    std::uint64_t targetEntityId = 0;
     float targetX = 0.0f, targetY = 0.0f, targetZ = 0.0f;
     int priority = 0;
-    float progress = 0.0f;   ///< 0 to 1
+    float progress = 0.0f;
 
-    /// Get the display name for an order type.
+    // R178 strategy authority fields. They are append-only in serialized data.
+    std::uint64_t sequence = 0;
+    float acceptanceRadius = 5.0f;
+    float orbitRadius = 0.0f;
+    std::vector<std::uint64_t> assignedMembers;
+    std::string status;
+
     static std::string GetOrderTypeName(FleetOrderType type);
-
-    /// Get the display name for an order state.
     static std::string GetOrderStateName(FleetOrderState state);
-
-    /// Get the display name for a fleet role.
     static std::string GetRoleName(FleetRole role);
 };
 
-/// A ship that is a member of a fleet.
 struct FleetMember {
-    uint64_t entityId = 0;
+    std::uint64_t entityId = 0;
     std::string shipName;
     FleetRole role = FleetRole::Combat;
-    float morale = 1.0f;   ///< 0 to 1
+    float morale = 1.0f;
     bool isActive = true;
 };
 
-/// ECS component that gives an entity fleet command capabilities.
 class FleetCommandComponent : public IComponent {
 public:
     explicit FleetCommandComponent(const std::string& fleetName = "Fleet");
 
     const std::string& GetFleetName() const;
     void SetFleetName(const std::string& name);
-
     int GetMaxMembers() const;
     void SetMaxMembers(int max);
-
+    int GetMaxOrders() const { return _maxOrders; }
+    void SetMaxOrders(int max);
     int GetMemberCount() const;
     int GetActiveMemberCount() const;
 
-    /// Add a ship to the fleet. Returns false if at capacity.
-    bool AddMember(uint64_t entityId, const std::string& shipName,
+    bool AddMember(std::uint64_t entityId, const std::string& shipName,
                    FleetRole role = FleetRole::Combat);
-
-    /// Remove a ship from the fleet. Returns false if not found.
-    bool RemoveMember(uint64_t entityId);
-
-    /// Get a specific member by entity ID.
-    const FleetMember* GetMember(uint64_t entityId) const;
-
-    /// Get all fleet members.
+    bool RemoveMember(std::uint64_t entityId);
+    const FleetMember* GetMember(std::uint64_t entityId) const;
     const std::vector<FleetMember>& GetAllMembers() const;
 
-    /// Issue an order to the fleet. Returns false if order queue is full.
+    /// Historical API preserved as a non-queued request.
     bool IssueOrder(FleetOrderType type, float targetX = 0.0f,
                     float targetY = 0.0f, float targetZ = 0.0f,
-                    uint64_t targetEntityId = 0, int priority = 0);
+                    std::uint64_t targetEntityId = 0, int priority = 0);
+    bool IssueOrder(const FleetOrderRequest& request);
 
-    /// Cancel an order by ID. Returns false if not found.
     bool CancelOrder(int orderId);
+    bool PauseOrder(int orderId);
+    bool ResumeOrder(int orderId);
+    bool CompleteOrder(int orderId, const std::string& status = "COMPLETED");
+    bool FailOrder(int orderId, const std::string& status);
+    bool BlockOrder(int orderId, const std::string& status);
 
-    /// Get a specific order by ID.
     const FleetOrder* GetOrder(int orderId) const;
-
-    /// Get all orders.
+    FleetOrder* GetMutableOrder(int orderId);
     const std::vector<FleetOrder>& GetAllOrders() const;
-
-    /// Get number of active orders.
     int GetActiveOrderCount() const;
+    int GetPendingOrderCount() const;
 
-    /// Get the fleet's average morale (0 to 1).
     float GetAverageMorale() const;
+    bool SetMemberMorale(std::uint64_t entityId, float morale);
+    bool SetMemberRole(std::uint64_t entityId, FleetRole role);
 
-    /// Set a member's morale. Returns false if member not found.
-    bool SetMemberMorale(uint64_t entityId, float morale);
-
-    /// Set a member's role. Returns false if member not found.
-    bool SetMemberRole(uint64_t entityId, FleetRole role);
-
-    /// Serialize for save-game persistence.
     ComponentData Serialize() const;
-
-    /// Restore from previously serialized data.
     void Deserialize(const ComponentData& data);
 
 private:
@@ -139,22 +146,38 @@ private:
     std::vector<FleetMember> _members;
     std::vector<FleetOrder> _orders;
     int _nextOrderId = 1;
+    std::uint64_t _nextSequence = 1;
 
     friend class FleetCommandSystem;
 };
 
-/// System that updates fleet orders and member states each frame.
+enum class FleetOrderExecutionDisposition { Running, Completed, Failed, Blocked };
+struct FleetOrderExecutionResult {
+    FleetOrderExecutionDisposition disposition = FleetOrderExecutionDisposition::Running;
+    float progress = -1.0f; // <0 = executor did not update progress
+    std::string status;
+};
+using FleetOrderExecutor = std::function<FleetOrderExecutionResult(FleetCommandComponent&, FleetOrder&, float)>;
+
+/// Fleet order scheduler. It no longer simulates success with an arbitrary
+/// timer. Domain systems register executors; orders without an executor remain
+/// blocked/pending with an explicit status instead of falsely completing.
 class FleetCommandSystem : public SystemBase {
 public:
     FleetCommandSystem();
     explicit FleetCommandSystem(EntityManager& entityManager);
 
     void Update(float deltaTime) override;
-
     void SetEntityManager(EntityManager* em);
 
+    void RegisterExecutor(FleetOrderType type, FleetOrderExecutor executor);
+    void ClearExecutor(FleetOrderType type);
+    bool HasExecutor(FleetOrderType type) const;
+
 private:
+    static FleetOrder* SelectNextPending(FleetCommandComponent& fleet);
     EntityManager* _entityManager = nullptr;
+    std::map<FleetOrderType, FleetOrderExecutor> _executors;
 };
 
 } // namespace subspace

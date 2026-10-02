@@ -1,10 +1,18 @@
 # Current Project Status
 
-`docs/STATUS.md` is the current status authority. This compatibility entry exists so historical links do not point at stale Pass746-era promotion instructions.
+## Current authority — 2026-10-01
 
-Current line: **Pass1466–1505 Shipyard Foundry cumulative authoring normalization**, layered on the PASS1454–1465 first-class DCC work and certified repository baseline `751474f` / `QG-20260915-212247-full-f8b89ec5`.
+The current source authority is GitHub `shifty81/Codename-Subspace` `main`, anchored for the R178 convergence milestone at commit `8484a081f8d60be980d3aac300ba2f1f9397cd75` / `QG-20260930-143924-full-53697b5b`. **Codename Subspace** remains the development/repository identity; **NullHarbor** is the destination product identity.
 
-Certification state: repository baseline `751474f` is Windows PCC-certified GREEN and pushed to `origin/main`. PASS1454–1505 is the current cumulative working line and requires the next Windows PCC Full Gate + rendered Shipyard workflow review before promotion.
+Active development is now the milestone-sized **R178 FPS + Universal Interiors + Strategic Command Convergence**. Its architecture authority is `content/architecture/nullharbor_convergence_authority_v1.json`; its audit is `docs/audits/NULLHARBOR_PROJECT_WIDE_RECONCILIATION_R178.md`. Donor SourceWork/NovaForge packages are reference/behavior sources only and never outrank GitHub main.
+
+Older pass notes below are retained as lineage and must not be interpreted as newer than the Git commit/quality-gate authority above.
+
+## R179 — Planetary Command preimage reconciliation and gameplay convergence
+
+R179 supersedes the pending R158-R177 text-transform materializer after R178 legitimately changed `InputState.h`. Planetary Command is now materialized directly in current native source: stable planet+axial sector identities, surveyed/claimed/developed territory, contiguous owner claims, governed construction, globe/sector projections, six strategic overlays, shared render/hit-test projection, and live P/LMB/RMB/F5/Enter/Shift+Enter command flow. The historical migration entrypoint is retained only as a semantic verifier so future input/control milestones no longer need an expanding list of textual preimages.
+
+R179 preserves R178 FPS/fleet/interior authorities and keeps the internal `PlanetaryManufacturing` workspace enum as a compatibility ID while presenting **PLANETARY COMMAND** to the player. See `docs/audits/NULLHARBOR_R179_PLANETARY_COMMAND_PREIMAGE_RECONCILIATION.md`.
 
 
 Active visible corrective tranche: **Pass1338 / BLENDER-DCC-001** rebases the standalone Shipyard onto a Blender-derived DCC shell and adds a real `--shipyard-smoke` Full-Gate stage. State: **CERTIFIED** in baseline `cf3c620`.

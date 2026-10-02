@@ -21,6 +21,7 @@
 #include "economy/PlanetaryIndustrySystem.h"
 #include "fleet/FleetIntentSystem.h"
 #include "runtime/ShipOnlyVerticalAcceptanceSystem.h"
+#include "integration/PlayerFacingIntegrationSystem.h"
 #include <cmath>
 #include <iostream>
 #include <set>
@@ -123,8 +124,34 @@ static void Pass397_400_PiFleetAcceptance(){
     ShipOnlyVerticalAcceptanceSystem accept;ShipOnlyAcceptanceState state;state.stationDocked=state.fittedShipVisible=state.strategicFlight=state.contextOrders=state.hotbarReady=state.galaxyMapReady=state.orbitalSystemReady=state.planetaryIndustryReady=state.fleetWingReady=state.persistenceReady=true;auto report=accept.Evaluate(state);TEST("Pass400 unified ship-only vertical acceptance closes at 100 with no on-foot dependency",report.pass&&report.score==100&&report.blockers.empty());state.onFootPathExposed=true;TEST("Pass400 on-foot path is explicitly rejected by current production direction",!accept.Evaluate(state).pass);
 }
 
+static void R179_PlanetaryCommandConvergence(){
+    PlanetData p;p.planetId="r179-world";p.name="R179 World";p.type=PlanetType::Rocky;p.resourceRichness=.82f;p.hazardLevel=.25f;p.industryRepresentation=PlanetIndustryRepresentation::SurfaceHexGrid;
+    PlanetaryIndustrySystem pi;auto state=pi.Generate(p,3,9127);const std::uint64_t owner=77;
+    const HexCoord origin{0,0};const HexCoord adjacent{1,0};const HexCoord remoteCoord{3,0};const HexCoord identityCoord{2,-1};
+    TEST("R179 sector identity is planetId plus axial coordinate",pi.Identity(state,identityCoord).StableId()=="r179-world:q2:r-1");
+    TEST("R179 origin starts surveyed but not magically claimed",state.hexes[origin].claimState==PiClaimState::Surveyed&&state.hexes[origin].ownerId==0);
+    TEST("R179 first surveyed sector can establish a claim",pi.ClaimSector(state,origin,owner)&&state.hexes[origin].claimState==PiClaimState::Claimed);
+    TEST("R179 claimed sector can be developed by its owner",pi.DevelopSector(state,origin,owner)&&state.hexes[origin].claimState==PiClaimState::Developed);
+    pi.SurveySector(state,adjacent);pi.SurveySector(state,remoteCoord);
+    TEST("R179 territorial claims are contiguous",pi.CanClaim(state,adjacent,owner)&&!pi.CanClaim(state,remoteCoord,owner));
+    TEST("R179 adjacent surveyed sector joins territory",pi.ClaimSector(state,adjacent,owner));
+    TEST("R179 foreign owner cannot develop another corporation claim",!pi.DevelopSector(state,adjacent,owner+1));
+    TEST("R179 owner can develop contiguous claimed sector",pi.DevelopSector(state,adjacent,owner));
+    PiInstallation power;power.hex={1,0};power.kind=PiInstallationKind::Power;power.power=16;
+    TEST("R179 governed industry requires developed owned sector",pi.PlaceGoverned(state,power,owner));
+    PiInstallation remote;remote.hex={2,0};remote.kind=PiInstallationKind::Storage;state.hexes[{2,0}].surveyed=true;state.hexes[{2,0}].claimState=PiClaimState::Surveyed;
+    TEST("R179 governed placement rejects merely surveyed territory",!pi.PlaceGoverned(state,remote,owner));
+    auto frontier=pi.ClaimFrontier(state,owner);TEST("R179 claim frontier is derived from contiguous surveyed neighbors",!frontier.empty());
+
+    PlayerFacingIntegrationSystem ui;auto model=ui.BuildPlanetIndustry(p,3,9127);TEST("R179 Planetary Command defaults to globe resource view",model.projection==PiProjectionMode::Globe&&model.overlay==PiOverlayMode::Resources);
+    ui.CyclePlanetaryOverlay(model);TEST("R179 F5 overlay cycle advances through six semantic overlays",model.overlay==PiOverlayMode::Ownership);
+    ui.TogglePlanetaryProjection(model);TEST("R179 command view toggles globe and sector projections",model.projection==PiProjectionMode::Sector);
+    HexCoord hit{};auto center=ui.ProjectPlanetaryHex(model,origin,1600,900);TEST("R179 LMB hit test uses the same projected sector geometry",ui.HitTestPlanetaryHex(model,1600,900,center.x,center.y,hit)&&hit==origin);
+    TEST("R179 input action is append-only after R178 fleet controls",static_cast<std::size_t>(InputAction::PlanetaryCommandCycleOverlay)>static_cast<std::size_t>(InputAction::FleetCommandCancel));
+}
+
 int main(){
-    Pass361_362_Attachments();Pass363_364_Inspection();Pass365_368_Orbits();Pass369_371_StationsAndMap();Pass372_378_ShipProfiles();Pass379_385_CommandUi();Pass386_391_DocksInfrastructure();Pass392_396_Galaxy();Pass397_400_PiFleetAcceptance();
+    Pass361_362_Attachments();Pass363_364_Inspection();Pass365_368_Orbits();Pass369_371_StationsAndMap();Pass372_378_ShipProfiles();Pass379_385_CommandUi();Pass386_391_DocksInfrastructure();Pass392_396_Galaxy();Pass397_400_PiFleetAcceptance();R179_PlanetaryCommandConvergence();
     std::cout<<"\n=== Pass361-400 Command Galaxy Summary: "<<testsPassed<<" passed, "<<testsFailed<<" failed ===\n";
     return testsFailed?1:0;
 }

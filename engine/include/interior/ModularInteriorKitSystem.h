@@ -6,29 +6,10 @@
 namespace subspace {
 
 enum class InteriorModuleKind {
-    Floor,
-    Wall,
-    Door,
-    CorridorStraight,
-    CorridorCorner,
-    CorridorTJunction,
-    CorridorCross,
-    RoomShell,
-    Airlock,
-    MachineryMount,
-    PropMount,
-    Ceiling,
-    Window,
-    Stair,
-    Ladder,
-    Bulkhead,
-    DoorFrame,
-    CorridorEnd,
-    Console,
-    Furniture,
-    Pipe,
-    Cable,
-    Light
+    Floor, Wall, Door, CorridorStraight, CorridorCorner, CorridorTJunction,
+    CorridorCross, RoomShell, Airlock, MachineryMount, PropMount, Ceiling,
+    Window, Stair, Ladder, Bulkhead, DoorFrame, CorridorEnd, Console,
+    Furniture, Pipe, Cable, Light
 };
 
 enum class InteriorSocketDirection { North, East, South, West, Up, Down };
@@ -40,6 +21,15 @@ struct InteriorSnapSocket {
     int gridY = 0;
     int deckOffset = 0;
     std::string compatibility = "interior";
+
+    // R178 fine-placement metadata. Grid coordinates remain authoritative for
+    // macro layout; local metre offsets allow imported doors/pipes/details to
+    // retain 0.25 m snap fidelity.
+    double localX = 0.0;
+    double localY = 0.0;
+    double localZ = 0.0;
+    double snapIncrementMeters = 0.25;
+    std::string socketClass = "structural";
 };
 
 struct InteriorModuleAssetDef {
@@ -52,19 +42,37 @@ struct InteriorModuleAssetDef {
     double deckHeightMeters = 3.0;
     bool collisionEnabled = true;
     bool gameplayMount = false;
-    // Keep sockets in the original aggregate-initializer position used by the
-    // Pass316+ runtime/test contract. New provenance and semantic fields are
-    // append-only so older authored data remains source-compatible.
+    // Historical aggregate-initializer order remains intact through sockets.
     std::vector<InteriorSnapSocket> sockets;
     std::string sourcePackId;
     std::string sourceObjectName;
     bool walkableSurface = false;
     bool portalCapable = false;
+
+    // Canonical import/hydration contract.
+    double widthMeters = 0.0;
+    double lengthMeters = 0.0;
+    double heightMeters = 0.0;
+    double fineSnapMeters = 0.25;
+    double structuralGridMeters = 1.0;
+    double planningCellMeters = 2.0;
+    double minimumTraversalClearanceMeters = 0.75;
+    std::string collisionProfile = "solid";
+    std::string visualStyleFamily = "industrial_modular";
+    std::vector<std::string> compatibleContexts;
+    std::vector<std::string> tags;
+    std::string sourceLicense;
+    std::string sourceAuthor;
+    std::string sourceUri;
+    bool requiresHydration = false;
+    bool supportsSkins = true;
+    bool supportsDamageStates = true;
 };
 
 struct InteriorKitValidation {
     bool valid = false;
     std::vector<std::string> errors;
+    std::vector<std::string> warnings;
 };
 
 struct InteriorModuleKit {
@@ -72,10 +80,20 @@ struct InteriorModuleKit {
     double cellSizeMeters = 2.0;
     double deckHeightMeters = 3.0;
     std::vector<InteriorModuleAssetDef> modules;
+
+    // Three-level authoring grid: room planning -> structure -> detail.
+    double planningCellMeters = 2.0;
+    double structuralGridMeters = 1.0;
+    double fineSnapMeters = 0.25;
+    std::string family = "industrial_modular";
+    std::string sourceLicense;
+    std::string sourceAuthor;
+    bool hydrated = false;
 };
 
-/// Pass319 normalizes imported modular art into Subspace-owned snapping and
-/// gameplay contracts. The source mesh never decides room semantics directly.
+/// Normalizes imported modular art into one project-owned snapping/gameplay
+/// contract. Source meshes provide geometry and provenance, never gameplay
+/// authority.
 class ModularInteriorKitSystem {
 public:
     InteriorModuleAssetDef Normalize(InteriorModuleAssetDef module, const InteriorModuleKit& kit) const;

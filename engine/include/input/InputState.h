@@ -86,6 +86,42 @@ enum class InputAction : std::size_t {
     DccConstraintClear,
     DccCycleTransformSpace,
     DccDuplicateSelection,
+
+    // R178 convergence: context-specific semantic actions are append-only.
+    // Legacy physical mappings continue to work through ControlIntentRouterSystem,
+    // so serialized historical action indices remain stable.
+    PilotForward,
+    PilotReverse,
+    PilotStrafeLeft,
+    PilotStrafeRight,
+    PilotThrustUp,
+    PilotThrustDown,
+    PilotBoost,
+    PilotBrake,
+    PilotFirePrimary,
+    PilotFireSecondary,
+    CharacterMoveForward,
+    CharacterMoveBackward,
+    CharacterMoveLeft,
+    CharacterMoveRight,
+    CharacterSprint,
+    CharacterCrouch,
+    CharacterJump,
+    CharacterInteract,
+    FleetCameraForward,
+    FleetCameraBackward,
+    FleetCameraLeft,
+    FleetCameraRight,
+    FleetCameraUp,
+    FleetCameraDown,
+    FleetQueueModifier,
+    FleetAddSelection,
+    FleetCommandConfirm,
+    FleetCommandCancel,
+
+    // R179 Planetary Command. Appended after R178 so all historical and R178
+    // serialized action indices remain stable.
+    PlanetaryCommandCycleOverlay,
     Count
 };
 

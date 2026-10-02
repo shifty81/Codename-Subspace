@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Prove the already-migrated R82R1 source, without replaying older preimages.
+"""Prove R82R1 Studio source after R182 certified-baseline gameplay recovery.
 
-This is an additive migration re-entry guard, not a bypass of source gates.
-A partial/older tree follows the original guarded migration chain unchanged.
-A tree claiming the final milestone must pass ALL historical static source gates.
+R182 verifies Studio authority in its actual owner files, then rebuilds only the
+seven known R178/R179 overlay-regression files from certified 8484a08 source plus
+explicit gameplay deltas. R186 treats that completed repair as a one-time migration:
+later governed descendants are accepted when the receipt and semantic authorities
+remain valid. Historical Studio gates remain authoritative and unchanged.
 """
 from __future__ import annotations
 import argparse
@@ -12,7 +14,10 @@ import shutil
 import subprocess
 import sys
 
+from studio_r180_overlay_repair import repair_known_overlay_regression
+
 GATES = (
+    'nullharbor_r182_certified_baseline_recovery.cmake',
     'pass1511_1520_studio_bulk_polish.cmake',
     'pass1521_1530_studio_transform_authority.cmake',
     'pass1531_1540_studio_transform_ui_hygiene.cmake',
@@ -20,8 +25,6 @@ GATES = (
     'pass1551_1560_studio_convergence_audit.cmake',
     'pass1561_1564_studio_r82r1_corrective.cmake',
 )
-# Actual final-state signatures, not a migration receipt or an unrelated file.
-# R82R2 may be present or pending; its own guarded migration still runs.
 MILESTONE = {
     'engine/src/ship_editor/ShipyardBuilderSystem.cpp': (
         'BeginDuplicateSelectedPlacement()',
@@ -41,13 +44,9 @@ MILESTONE = {
 }
 
 def verify_complete_r82r1(root: Path, *, cmake: str | None = None) -> bool:
-    """True only for a complete, source-gate-proven later state; never modifies files.
-
-    Missing final-milestone signatures means an earlier/partial tree: let the
-    original sequential exact-preimage migrations decide what is applicable.
-    Present signatures but failing historical gates is drift: fail closed.
-    """
     root = Path(root).resolve()
+    repair_known_overlay_regression(root)
+
     for relative, signatures in MILESTONE.items():
         path = root / relative
         if not path.is_file():
@@ -71,15 +70,13 @@ def verify_complete_r82r1(root: Path, *, cmake: str | None = None) -> bool:
     return True
 
 if __name__=='__main__':
-    ap=argparse.ArgumentParser()
-    ap.add_argument('--root', required=True)
-    args=ap.parse_args()
+    ap=argparse.ArgumentParser(); ap.add_argument('--root', required=True); args=ap.parse_args()
     try:
         if verify_complete_r82r1(Path(args.root)):
-            print('PASS: R33-R82R1 already-normalized source proven by all six source gates')
+            print('PASS: R33-R82R1 normalized source proven after R182 certified-baseline recovery')
             raise SystemExit(0)
         print('EARLIER/PARTIAL: normal guarded migration chain remains authoritative')
         raise SystemExit(3)
     except Exception as exc:
-        print(f'R82R3 NORMALIZED-STATE PROOF BLOCKED: {exc}',file=sys.stderr)
+        print(f'R182 NORMALIZED-STATE PROOF BLOCKED: {exc}',file=sys.stderr)
         raise SystemExit(2)

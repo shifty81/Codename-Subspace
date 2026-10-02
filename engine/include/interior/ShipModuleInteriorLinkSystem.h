@@ -45,7 +45,11 @@ struct ShipModuleInteriorBinding {
     int footprintLengthCells = 1;
     bool walkable = false;
     bool interactionOnly = false;
+    // Deprecated compatibility hint. Runtime selection must resolve through the
+    // InteriorKitRegistrySystem rather than hard-coding a donor/source pack.
     std::string preferredInteriorKitId;
+    std::string preferredInteriorFamily = "industrial_modular";
+    std::vector<std::string> requiredInteriorCapabilities;
     std::vector<ShipModuleInteriorPortal> portals;
 };
 
