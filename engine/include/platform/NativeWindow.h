@@ -6,6 +6,9 @@
 
 namespace subspace {
 
+enum class NativeInputProfile { Legacy, OnFoot, Pilot, FleetCommand, Authoring };
+enum class NativePointerPolicy { AbsoluteVisible, RelativeCaptured };
+
 struct NativeWindowConfig {
     std::string title = "Codename: Subspace";
     int width = 1600;
@@ -57,6 +60,11 @@ public:
     bool IsControlDown() const { return _controlDown; }
     bool IsShiftDown() const { return _shiftDown; }
     bool IsAltDown() const { return _altDown; }
+    void SetInputProfile(NativeInputProfile profile);
+    NativeInputProfile InputProfile() const { return _inputProfile; }
+    void SetPointerPolicy(NativePointerPolicy policy);
+    NativePointerPolicy PointerPolicy() const { return _pointerPolicy; }
+    bool ConsumeRelativeMouseDelta(float& deltaX,float& deltaY);
     void SetEditorNavigationMode(bool enabled) { _editorNavigationMode = enabled; _cameraOrbitDragging = false; _cameraPanDragging = false; _cameraOrbitDeltaX = _cameraOrbitDeltaY = _cameraPanDeltaX = _cameraPanDeltaY = 0.0f; }
     bool EditorNavigationMode() const { return _editorNavigationMode; }
 
@@ -88,6 +96,8 @@ private:
     long long WindowProc(void* hwnd, unsigned int message,
                          unsigned long long wParam, long long lParam);
     void ApplyKey(unsigned long long virtualKey, bool down);
+    void ApplyPointerPolicy();
+    void ReleasePointerCapture();
     bool CreateOpenGLContext();
     void DestroyOpenGLContext();
 
@@ -128,6 +138,12 @@ private:
     bool _controlDown = false;
     bool _shiftDown = false;
     bool _altDown = false;
+    NativeInputProfile _inputProfile = NativeInputProfile::Legacy;
+    NativePointerPolicy _pointerPolicy = NativePointerPolicy::AbsoluteVisible;
+    float _relativeMouseDeltaX = 0.0f;
+    float _relativeMouseDeltaY = 0.0f;
+    bool _cursorHiddenByWindow = false;
+    bool _rawMouseRegistered = false;
     bool _secondaryClickPending = false;
     float _pendingSecondaryX = 0.0f;
     float _pendingSecondaryY = 0.0f;

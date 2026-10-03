@@ -28,12 +28,15 @@ bool ShipEmbodimentSystem::ExitCockpit(std::uint64_t shipId) {
     commandSeatInteractionReady_=true;commandSeatDeparted_=false;
     mode_ = ShipEmbodimentMode::InteriorOnFoot; return true;
 }
-bool ShipEmbodimentSystem::TakeControls() {
-    if (mode_ != ShipEmbodimentMode::InteriorOnFoot || avatar_.shipId == 0) return false;
+bool ShipEmbodimentSystem::CanTakeControls() const {
+    if(mode_!=ShipEmbodimentMode::InteriorOnFoot||avatar_.shipId==0||!commandSeatInteractionReady_)return false;
     const float seatDistance=std::sqrt(avatar_.localPosition.x*avatar_.localPosition.x +
         (avatar_.localPosition.y-kCommandSeatY)*(avatar_.localPosition.y-kCommandSeatY));
-    if(!commandSeatInteractionReady_||seatDistance>kCommandSeatInteractionRadius)return false;
-    StopLocomotion();mode_ = ShipEmbodimentMode::CockpitControl; return true;
+    return seatDistance<=kCommandSeatInteractionRadius;
+}
+bool ShipEmbodimentSystem::TakeControls() {
+    if(!CanTakeControls())return false;
+    StopLocomotion();ResetHeadLook();mode_ = ShipEmbodimentMode::CockpitControl; return true;
 }
 bool ShipEmbodimentSystem::EnterDockedHangar(std::uint64_t shipId) { if(shipId==0)return false;avatar_.shipId=shipId;commandSeatInteractionReady_=false;commandSeatDeparted_=true;StopLocomotion();mode_=ShipEmbodimentMode::DockedHangar;return true; }
 bool ShipEmbodimentSystem::BoardInterior(std::uint64_t shipId) { if(shipId==0)return false;avatar_.shipId=shipId;avatar_.localPosition={0.0f,-1.55f,0.0f};avatar_.lookPitchRadians=0.0f;avatar_.grounded=true;commandSeatInteractionReady_=false;commandSeatDeparted_=true;ConfigureLocomotion(false,false);StopLocomotion();mode_=ShipEmbodimentMode::InteriorOnFoot;return true; }
@@ -54,6 +57,23 @@ void ShipEmbodimentSystem::Look(float yawDeltaRadians,float pitchDeltaRadians){
     avatar_.lookPitchRadians=std::clamp(avatar_.lookPitchRadians+pitchDeltaRadians,-kHalfPi+0.035f,kHalfPi-0.035f);
     avatar_.facingRadians=avatar_.lookYawRadians;
 }
+void ShipEmbodimentSystem::HeadLook(float yawDeltaRadians,float pitchDeltaRadians){
+    if(mode_!=ShipEmbodimentMode::InteriorOnFoot)return;
+    constexpr float kHeadYaw=1.4835298641951802f; // 85 degrees
+    constexpr float kHeadPitch=1.2217304763960306f; // 70 degrees
+    avatar_.headLookYawOffsetRadians=std::clamp(avatar_.headLookYawOffsetRadians+yawDeltaRadians,-kHeadYaw,kHeadYaw);
+    const float minOffset=std::max(-kHeadPitch,(-kHalfPi+0.035f)-avatar_.lookPitchRadians);
+    const float maxOffset=std::min(kHeadPitch,( kHalfPi-0.035f)-avatar_.lookPitchRadians);
+    avatar_.headLookPitchOffsetRadians=std::clamp(avatar_.headLookPitchOffsetRadians+pitchDeltaRadians,minOffset,maxOffset);
+}
+void ShipEmbodimentSystem::UpdateHeadLook(bool active,double seconds){
+    if(mode_!=ShipEmbodimentMode::InteriorOnFoot||active)return;
+    const float step=static_cast<float>(std::clamp(seconds,0.0,0.1))*6.5f;
+    const auto relax=[step](float v){return v>0.0f?std::max(0.0f,v-step):std::min(0.0f,v+step);};
+    avatar_.headLookYawOffsetRadians=relax(avatar_.headLookYawOffsetRadians);
+    avatar_.headLookPitchOffsetRadians=relax(avatar_.headLookPitchOffsetRadians);
+}
+void ShipEmbodimentSystem::ResetHeadLook(){avatar_.headLookYawOffsetRadians=0.0f;avatar_.headLookPitchOffsetRadians=0.0f;}
 void ShipEmbodimentSystem::ConfigureLocomotion(bool sprintRequested,bool crouchRequested){
     if(mode_!=ShipEmbodimentMode::InteriorOnFoot)return;
     avatar_.stance=crouchRequested?InteriorAvatarStance::Crouched:InteriorAvatarStance::Standing;

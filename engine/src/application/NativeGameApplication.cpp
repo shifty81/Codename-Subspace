@@ -275,6 +275,7 @@ int NativeGameApplication::Run(const NativeGameRunOptions& options)
             UpdateStrategicAutopilot();
             UpdateDocking();
             UpdateEmbodiment();
+            UpdateFleetStrategyControl();
             UpdateCameraAndSelection();
             RefreshPlayerFacingModels();
             UpdateFleetCaptains();
@@ -565,7 +566,7 @@ void NativeGameApplication::UpdateConstructionCameraKeyboard()
         ConstructionEditorCameraSystem::BeginFreeFly(_constructionCamera);
         const float forward=(input.IsDown(InputAction::ThrustForward)?1.0f:0.0f)-(input.IsDown(InputAction::ThrustReverse)?1.0f:0.0f);
         const float right=(input.IsDown(InputAction::StrafeRight)?1.0f:0.0f)-(input.IsDown(InputAction::StrafeLeft)?1.0f:0.0f);
-        const float up=(input.IsDown(InputAction::FirePrimary)?1.0f:0.0f)-(_window.IsControlDown()?1.0f:0.0f);
+        const float up=((input.IsDown(InputAction::PilotFirePrimary)||input.IsDown(InputAction::FirePrimary))?1.0f:0.0f)-(_window.IsControlDown()?1.0f:0.0f);
         ConstructionEditorCameraSystem::MoveFree(_constructionCamera,forward,right,up,dt);
         const float roll=(input.IsDown(InputAction::TurnRight)?1.0f:0.0f)-(input.IsDown(InputAction::TurnLeft)?1.0f:0.0f);
         if(std::fabs(roll)>0.001f)ConstructionEditorCameraSystem::Roll(_constructionCamera,roll*70.0f*dt);
@@ -1121,9 +1122,15 @@ void NativeGameApplication::BootstrapPlayableSlice()
         RebuildPlayerInterior(_renderer.ShipyardCatalog());
     }
 
-    if (auto* controls=_engine.GetPlayerControlSystem()) controls->SetControlledShip(_playerEntity);
+    // R191_PRIMARY_FPS_BOOT: the player exists physically before taking helm or command authority.
+    if (auto* controls=_engine.GetPlayerControlSystem()) controls->ClearControlledShip();
     _embodiment = ShipEmbodimentSystem{};
+    _embodiment.ExitCockpit(_playerEntity);
     _docking = DockingExperienceState{};
+    _gameplayMode = GameplayControlMode::OnFoot;
+    _strategicFlight.SetMode(FlightControlMode::Manual);
+    _playerController.SetActorId(_playerEntity);
+    _playerController.SetControlledEntity(std::to_string(_playerEntity));
     _miningLoop.Initialize(_sector);
     _engine.GetStrategicCamera().SetZoomLimits(0.12f,28.0f);
     // Pass191 strategic view: the camera is physically presented above and
@@ -1133,6 +1140,12 @@ void NativeGameApplication::BootstrapPlayableSlice()
     _engine.GetStrategicCamera().SetVisualTilt(0.46f);
     _engine.GetStrategicCamera().SetVisualHeight(0.68f);
     _engine.GetStrategicCamera().SetVelocityLookAhead(0.24f);
+    if(auto* playerPhysics=_engine.GetEntityManager().GetComponent<PhysicsComponent>(_playerEntity)){
+        _fleetStrategy.Focus(playerPhysics->position);
+        _engine.GetStrategicCamera().SetCenter(playerPhysics->position);
+        _engine.GetStrategicCamera().SetTargetCenter(playerPhysics->position);
+    }
+    RefreshRuntimeControlContext();
 
     // Pass404/405: the first playable system owns an explicit station ecology
     // profile so the same station identity drives flight-space presence and
@@ -1535,34 +1548,95 @@ void NativeGameApplication::RebuildPlayerInterior(const std::vector<ShipyardModu
     for(const auto& error:_playerInteriorLayout.shell.errors)Logger::Instance().Warning("Interior",error);
 }
 
+void NativeGameApplication::RefreshRuntimeControlContext()
+{
+    RuntimeControlContextSystem contexts;
+    _controlContext=contexts.BuildForMode(_workspace.Mode(),_gameplayMode,_embodiment.Mode(),_docking.stage,_vectorTravelSystem.InTransit(_vectorTravel));
+    _playerController.SetActorId(_playerEntity);if(_playerEntity!=InvalidEntityId)_playerController.SetControlledEntity(std::to_string(_playerEntity));
+    _playerController.SetControlDomain(_controlContext.controlDomain);_playerController.RouteInput(_engine.GetInputState());
+
+    // Pointer and physical-key ownership follow the gameplay authority. Non-flight
+    // workspaces stay absolute-pointer so overlays/editors never inherit FPS capture.
+    if(_standaloneShipyard||_workspace.Mode()==SandboxWorkspaceMode::ShipBuilder){
+        _window.SetInputProfile(NativeInputProfile::Authoring);_window.SetPointerPolicy(NativePointerPolicy::AbsoluteVisible);
+    }else if(_workspace.Mode()!=SandboxWorkspaceMode::Flight||_vectorTravelSystem.InTransit(_vectorTravel)){
+        _window.SetInputProfile(NativeInputProfile::Legacy);_window.SetPointerPolicy(NativePointerPolicy::AbsoluteVisible);
+    }else{
+        switch(_gameplayMode){
+            case GameplayControlMode::OnFoot:_window.SetInputProfile(NativeInputProfile::OnFoot);break;
+            case GameplayControlMode::Pilot:_window.SetInputProfile(NativeInputProfile::Pilot);break;
+            case GameplayControlMode::FleetCommand:_window.SetInputProfile(NativeInputProfile::FleetCommand);break;
+        }
+        _window.SetPointerPolicy(_controlContext.pointerPolicy==RuntimePointerPolicy::RelativeCaptured?NativePointerPolicy::RelativeCaptured:NativePointerPolicy::AbsoluteVisible);
+    }
+}
+
+void NativeGameApplication::SetGameplayControlMode(GameplayControlMode mode)
+{
+    if(_gameplayMode==mode){RefreshRuntimeControlContext();return;}
+    _engine.GetInputState().Clear();
+    _gameplayMode=mode;
+    if(mode==GameplayControlMode::Pilot){
+        if(auto* controls=_engine.GetPlayerControlSystem())controls->SetControlledShip(_playerEntity);
+    }else if(auto* controls=_engine.GetPlayerControlSystem())controls->ClearControlledShip();
+    if(mode!=GameplayControlMode::Pilot){_pilotHeadYawRadians=0.0f;_pilotHeadPitchRadians=0.0f;}
+    RefreshRuntimeControlContext();
+}
+
+void NativeGameApplication::UpdateModeMouseInput()
+{
+    if(_standaloneShipyard||_workspace.Mode()!=SandboxWorkspaceMode::Flight||_vectorTravelSystem.InTransit(_vectorTravel))return;
+    auto& input=_engine.GetInputState();
+    if(_gameplayMode==GameplayControlMode::Pilot){input.SetActionValue(InputAction::TurnLeft,0.0f);input.SetActionValue(InputAction::TurnRight,0.0f);input.SetActionValue(InputAction::FlightPitchUp,0.0f);input.SetActionValue(InputAction::FlightPitchDown,0.0f);}
+    const float dt=std::max(0.001f,_engine.GetLastDeltaTime());
+    float dx=0.0f,dy=0.0f;const bool moved=_window.ConsumeRelativeMouseDelta(dx,dy);
+    if(_gameplayMode==GameplayControlMode::OnFoot&&_embodiment.IsOnFoot()){
+        const bool headLook=_playerController.Intent().headLook;
+        if(moved){if(headLook)_embodiment.HeadLook(dx*0.0026f,-dy*0.0026f);else _embodiment.Look(dx*0.0026f,-dy*0.0026f);}
+        _embodiment.UpdateHeadLook(headLook,dt);return;
+    }
+    if(_gameplayMode==GameplayControlMode::Pilot){
+        const bool headLook=_playerController.Intent().headLook;
+        if(headLook){
+            if(moved){_pilotHeadYawRadians=std::clamp(_pilotHeadYawRadians+dx*0.0024f,-1.48353f,1.48353f);_pilotHeadPitchRadians=std::clamp(_pilotHeadPitchRadians-dy*0.0024f,-1.22173f,1.22173f);}
+        }else{
+            const float relax=dt*6.5f;const auto towardZero=[relax](float v){return v>0.0f?std::max(0.0f,v-relax):std::min(0.0f,v+relax);};
+            _pilotHeadYawRadians=towardZero(_pilotHeadYawRadians);_pilotHeadPitchRadians=towardZero(_pilotHeadPitchRadians);
+            if(moved){const float yaw=std::clamp(dx*0.025f,-1.0f,1.0f),pitch=std::clamp(dy*0.025f,-1.0f,1.0f);input.SetActionValue(InputAction::TurnRight,std::max(0.0f,yaw));input.SetActionValue(InputAction::TurnLeft,std::max(0.0f,-yaw));input.SetActionValue(InputAction::FlightPitchDown,std::max(0.0f,pitch));input.SetActionValue(InputAction::FlightPitchUp,std::max(0.0f,-pitch));}
+        }
+    }
+}
+
+bool NativeGameApplication::EnterFleetStrategy()
+{
+    if(_workspace.Mode()!=SandboxWorkspaceMode::Flight||_vectorTravelSystem.InTransit(_vectorTravel)||!_embodiment.IsOnFoot()||!_embodiment.CanTakeControls())return false;
+    if(auto* player=_engine.GetEntityManager().GetComponent<PhysicsComponent>(_playerEntity))_fleetStrategy.Focus(player->position);
+    SetGameplayControlMode(GameplayControlMode::FleetCommand);return _controlContext.controlDomain==ControlDomain::FleetStrategy;
+}
+
+bool NativeGameApplication::BoardPlayerShipFromStrategy()
+{
+    if(_gameplayMode!=GameplayControlMode::FleetCommand||_docking.stage!=DockingExperienceStage::Undocked||!_playerInteriorLayout.shell.ready)return false;
+    if(!_embodiment.IsOnFoot())return false;SetGameplayControlMode(GameplayControlMode::OnFoot);return true;
+}
+
+void NativeGameApplication::UpdateFleetStrategyControl()
+{
+    if(_gameplayMode!=GameplayControlMode::FleetCommand||_workspace.Mode()!=SandboxWorkspaceMode::Flight||_vectorTravelSystem.InTransit(_vectorTravel))return;RefreshRuntimeControlContext();
+    if(_controlContext.controlDomain!=ControlDomain::FleetStrategy)return;if(auto* controls=_engine.GetPlayerControlSystem())controls->ClearControlledShip();
+    const float dt=std::max(0.001f,_engine.GetLastDeltaTime());_fleetStrategy.TickCamera(_playerController.Intent(),dt);const auto& fc=_fleetStrategy.Camera();auto& camera=_engine.GetStrategicCamera();
+    camera.SetTargetCenter(fc.focus);camera.SetVisualYawDegrees(fc.yawDegrees);camera.SetElevationOverrideDegrees(fc.tiltDegrees);camera.SetTargetZoom(std::clamp(120.0f/std::max(12.0f,fc.distance),0.12f,8.0f));camera.Update(dt);
+}
+
 void NativeGameApplication::UpdateEmbodiment()
 {
-    if(!_embodiment.IsOnFoot())return;
-    auto* player=_engine.GetEntityManager().GetComponent<PhysicsComponent>(_playerEntity);
-    if(!player)return;
-
-    // Pass519: on-foot uses the same platform-independent movement actions but
-    // with the ship controller detached. The ship is held inert while the
-    // avatar walks its local deck, so WASD can never thrust the vessel through
-    // the station/world while the player is physically inside it.
-    if(auto* controls=_engine.GetPlayerControlSystem())controls->ClearControlledShip();
-    player->velocity={};player->angularVelocity={};
-    const auto& input=_engine.GetInputState();
-    const float forward=(input.IsDown(InputAction::ThrustForward)?1.0f:0.0f)-(input.IsDown(InputAction::ThrustReverse)?1.0f:0.0f);
-    const float strafe=(input.IsDown(InputAction::StrafeRight)?1.0f:0.0f)-(input.IsDown(InputAction::StrafeLeft)?1.0f:0.0f);
-    if(!_playerInteriorLayout.shell.ready)return; // invalid hull: no fake deck traversal
-    const auto original=_embodiment.Avatar().localPosition;
-    const float radius=_embodiment.Avatar().capsuleRadiusMeters;
-    const float height=_embodiment.Avatar().capsuleHeightMeters;
-    Vector3 certified=original;
-    if(!ShipInteriorShellTraversalSystem::Spawn(_playerInteriorLayout.carve,_playerInteriorLayout.shell,
-                                                radius,height,certified))return;
-    _embodiment.SetCertifiedFootPosition(certified);
-    _embodiment.SetTraversalBounds({{}, {}, false});
-    _embodiment.Move(forward,strafe,std::max(0.001f,_engine.GetLastDeltaTime()));
-    const auto intended=_embodiment.Avatar().localPosition;
-    _embodiment.SetCertifiedFootPosition(ShipInteriorShellTraversalSystem::Move(
-        _playerInteriorLayout.carve,_playerInteriorLayout.shell,certified,intended-certified,radius,height));
+    if(_gameplayMode!=GameplayControlMode::OnFoot||!_embodiment.IsOnFoot())return;auto* player=_engine.GetEntityManager().GetComponent<PhysicsComponent>(_playerEntity);if(!player)return;RefreshRuntimeControlContext();
+    if(_controlContext.controlDomain!=ControlDomain::FirstPerson&&_controlContext.controlDomain!=ControlDomain::DockedService)return;if(auto* controls=_engine.GetPlayerControlSystem())controls->ClearControlledShip();player->velocity={};player->angularVelocity={};
+    const auto& intent=_playerController.Intent();_embodiment.ConfigureLocomotion(intent.sprint,intent.crouch);if(!_playerInteriorLayout.shell.ready)return;
+    const auto original=_embodiment.Avatar().localPosition;const float radius=_embodiment.Avatar().capsuleRadiusMeters,height=_embodiment.Avatar().capsuleHeightMeters;Vector3 certified=original;
+    if(!ShipInteriorShellTraversalSystem::Spawn(_playerInteriorLayout.carve,_playerInteriorLayout.shell,radius,height,certified))return;_embodiment.SetCertifiedFootPosition(certified);_embodiment.SetTraversalBounds({{}, {}, false});
+    _embodiment.Move(intent.forward,intent.right,std::max(0.001f,_engine.GetLastDeltaTime()));const auto intended=_embodiment.Avatar().localPosition;
+    _embodiment.SetCertifiedFootPosition(ShipInteriorShellTraversalSystem::Move(_playerInteriorLayout.carve,_playerInteriorLayout.shell,certified,intended-certified,radius,height));
 }
 
 void NativeGameApplication::UpdateDocking()
@@ -1579,10 +1653,10 @@ void NativeGameApplication::UpdateDocking()
         player->velocity={};player->angularVelocity={};
         if(auto* controls=_engine.GetPlayerControlSystem())controls->ClearControlledShip();
         _embodiment.EnterDockedHangar(_playerEntity);
+        SetGameplayControlMode(GameplayControlMode::OnFoot);
         _workspace.Open(SandboxWorkspaceMode::HangarFitting);
     }else if(_docking.stage==DockingExperienceStage::Undocked){
-        if(auto* controls=_engine.GetPlayerControlSystem())controls->SetControlledShip(_playerEntity);
-        _embodiment=ShipEmbodimentSystem{};
+        _embodiment=ShipEmbodimentSystem{};SetGameplayControlMode(GameplayControlMode::Pilot);
     }
 }
 
@@ -1666,6 +1740,8 @@ void NativeGameApplication::HandleGlobalActions()
     auto& input = _engine.GetInputState();
     const bool inGame = _frontend.Screen()==FrontendScreen::InGame;
     if(!inGame)return; // frontend must be the sole pointer-input owner outside gameplay
+    RefreshRuntimeControlContext(); // R191 authoritative mode/profile refresh
+    UpdateModeMouseInput();
 
     // Only the focused editor search receives WM_CHAR data. Discard typed
     // characters elsewhere rather than replaying them after focus changes.
@@ -1951,15 +2027,10 @@ void NativeGameApplication::HandleGlobalActions()
             if(_contextMenu.open&&input.WasPressed(InputAction::MenuAccept)) executeContext(_contextMenu.selected);
         }
 
-        // Pass383 runtime refinement: Tab is the explicit Manual/Strategic
-        // flight-mode switch. Boost moved to Shift at the native window layer.
-        // Strategic mode currently preserves direct keys as an immediate
-        // override while the contextual/autopilot order layer remains active.
+        // R191: Fleet Command can only be entered while physically at the command/helm station.
         if(input.WasPressed(InputAction::ToggleFlightMode) && _docking.stage==DockingExperienceStage::Undocked && !_vectorTravelSystem.InTransit(_vectorTravel)){
-            _strategicFlight.ToggleMode();
-            auto& camera=_engine.GetStrategicCamera();
-            if(_strategicFlight.Mode()==FlightControlMode::Strategic){camera.SetTargetZoom(.43f);camera.SetVisualTilt(.50f);}
-            else {camera.SetTargetZoom(.56f);camera.SetVisualTilt(.46f);}
+            if(_gameplayMode==GameplayControlMode::FleetCommand)SetGameplayControlMode(GameplayControlMode::OnFoot);
+            else if(_gameplayMode==GameplayControlMode::OnFoot)EnterFleetStrategy();
         }
 
         const auto toggle=[&](InputAction action,SandboxWorkspaceMode mode){
@@ -2086,28 +2157,24 @@ void NativeGameApplication::HandleGlobalActions()
         }
     }
 
-    // Pass518: cockpit/interior transition is explicit. Camera zoom and F6 QA
-    // never enter the ship. I leaves/returns to the cockpit; while docked it
-    // boards/leaves the ship interior from the hangar instead.
+    // R191: F is the physical helm/command interaction. No global camera-mode magic.
+    if(!_workspace.IsOverlayOpen()&&_playerController.Intent().interact&&_docking.stage==DockingExperienceStage::Undocked&&!_vectorTravelSystem.InTransit(_vectorTravel)){
+        if(_gameplayMode==GameplayControlMode::OnFoot&&_embodiment.IsOnFoot()&&_embodiment.TakeControls()){SetGameplayControlMode(GameplayControlMode::Pilot);RestoreGameplayCameraLimits();}
+        else if(_gameplayMode==GameplayControlMode::Pilot&&_embodiment.IsPiloting()&&_embodiment.ExitCockpit(_playerEntity)){SetGameplayControlMode(GameplayControlMode::OnFoot);}
+        else if(_gameplayMode==GameplayControlMode::FleetCommand){SetGameplayControlMode(GameplayControlMode::OnFoot);}
+    }
+
+    // Legacy I bridge remains unreachable from the new gameplay profiles and is retained only for old/QA bindings.
     if(input.WasPressed(InputAction::ToggleInterior) && !_vectorTravelSystem.InTransit(_vectorTravel) && !_workspace.IsOverlayOpen()){
         if(_docking.stage==DockingExperienceStage::Docked){
-            if(_embodiment.IsOnFoot()){
-                _embodiment.EnterDockedHangar(_playerEntity);
-                _workspace.Open(SandboxWorkspaceMode::HangarFitting);
-            }else if(_embodiment.Mode()==ShipEmbodimentMode::DockedHangar){
-                if(_embodiment.BoardInterior(_playerEntity))_workspace.Close();
-            }
+            if(_embodiment.IsOnFoot()){_embodiment.EnterDockedHangar(_playerEntity);_workspace.Open(SandboxWorkspaceMode::HangarFitting);}
+            else if(_embodiment.Mode()==ShipEmbodimentMode::DockedHangar){if(_embodiment.BoardInterior(_playerEntity))_workspace.Close();}
         }else if(_docking.stage==DockingExperienceStage::Undocked){
-            if(_embodiment.IsPiloting()){
-                if(_embodiment.ExitCockpit(_playerEntity)){
-                    if(auto* controls=_engine.GetPlayerControlSystem())controls->ClearControlledShip();
-                    if(auto* player=_engine.GetEntityManager().GetComponent<PhysicsComponent>(_playerEntity)){player->velocity={};player->angularVelocity={};}
-                    auto& camera=_engine.GetStrategicCamera();camera.ClearPanOffset();camera.SetTargetZoom(1.12f);camera.SetVisualTilt(.72f);camera.SetVisualYawDegrees(0.0f);
-                }
+            if(_gameplayMode==GameplayControlMode::FleetCommand){BoardPlayerShipFromStrategy();}
+            else if(_embodiment.IsPiloting()){
+                if(_embodiment.ExitCockpit(_playerEntity)){if(auto* controls=_engine.GetPlayerControlSystem())controls->ClearControlledShip();if(auto* player=_engine.GetEntityManager().GetComponent<PhysicsComponent>(_playerEntity)){player->velocity={};player->angularVelocity={};}RefreshRuntimeControlContext();}
             }else if(_embodiment.IsOnFoot()&&_embodiment.TakeControls()){
-                if(auto* controls=_engine.GetPlayerControlSystem())controls->SetControlledShip(_playerEntity);
-                RestoreGameplayCameraLimits();
-                auto& camera=_engine.GetStrategicCamera();camera.SetTargetZoom(.56f);camera.SetVisualTilt(.46f);
+                SetGameplayControlMode(GameplayControlMode::Pilot);RestoreGameplayCameraLimits();
             }
         }
     }
@@ -2132,13 +2199,13 @@ void NativeGameApplication::HandleGlobalActions()
     // not exposed. Engineering, crew and cargo remain GUI/data systems.
 
     auto* player=_engine.GetEntityManager().GetComponent<PhysicsComponent>(_playerEntity);
-    if (player && _embodiment.IsPiloting() && _docking.stage==DockingExperienceStage::Undocked && !_workspace.IsOverlayOpen() && !_vectorTravelSystem.InTransit(_vectorTravel)) {
+    if (player && _gameplayMode==GameplayControlMode::Pilot && _embodiment.IsPiloting() && _docking.stage==DockingExperienceStage::Undocked && !_workspace.IsOverlayOpen() && !_vectorTravelSystem.InTransit(_vectorTravel)) {
         const float yaw=player->rotation.z;
         const Vector3 forward{-std::sin(yaw),std::cos(yaw),0.0f};
         Vector3 target=player->position+forward*24.0f;
         if (_selection.IsValid()) target=ContactWorldPosition(_sector,_selection,&_stationContacts);
 
-        if (input.IsDown(InputAction::FireMiningMissile) && !_miningFireConsumed) {
+        if ((input.IsDown(InputAction::PilotFireSecondary)||input.IsDown(InputAction::FireMiningMissile)) && !_miningFireConsumed) {
             if (_selection.kind==NativeContactKind::Site && _selection.index<_sector.pointsOfInterest.size()) {
                 const Vector3 site=ContactWorldPosition(_sector,_selection,&_stationContacts);
                 float best=std::numeric_limits<float>::max();
@@ -2151,23 +2218,23 @@ void NativeGameApplication::HandleGlobalActions()
             }
             _miningLoop.LaunchMiningMissile(player->position+forward*0.8f,player->velocity,forward,target);
             _miningFireConsumed=true;
-        } else if (!input.IsDown(InputAction::FireMiningMissile)) {
+        } else if (!(input.IsDown(InputAction::PilotFireSecondary)||input.IsDown(InputAction::FireMiningMissile))) {
             _miningFireConsumed=false;
         }
 
-        if (input.IsDown(InputAction::FirePrimary) && !_primaryFireConsumed) {
+        if ((input.IsDown(InputAction::PilotFirePrimary)||input.IsDown(InputAction::FirePrimary)) && !_primaryFireConsumed) {
             const bool locked=_selection.IsValid()&&TacticalTargetingSystem::IsLocked(_targeting,ToTargetReference(_selection));
-            const Vector3 pointerWorld=NativeBattlefieldRenderer::ScreenToWorld(_window.GetPointerX(),_window.GetPointerY(),_window.GetWidth(),_window.GetHeight(),_engine.GetStrategicCamera());
+            const Vector3 pointerWorld=_window.PointerPolicy()==NativePointerPolicy::RelativeCaptured?player->position+forward*1000.0f:NativeBattlefieldRenderer::ScreenToWorld(_window.GetPointerX(),_window.GetPointerY(),_window.GetWidth(),_window.GetHeight(),_engine.GetStrategicCamera());
             FireControlRequest req;req.mode=FireControlMode::LockedManualAim;req.targetLocked=locked;req.triggerHeld=true;req.muzzleWorld=player->position+forward*.8f;req.lockedTargetWorld=target;req.pointerWorld=pointerWorld;req.projectileSpeed=220.0f;
             const auto solution=FireControlSystem::Solve(WeaponType::SpinalRailgun,req);
             if(solution.mayFire)_miningLoop.GetMissileSystem().Launch(req.muzzleWorld,player->velocity,solution.aimDirection,solution.aimPoint,MissilePayloadType::HighExplosive,true);
             _primaryFireConsumed=true;
-        } else if (!input.IsDown(InputAction::FirePrimary)) {
+        } else if (!(input.IsDown(InputAction::PilotFirePrimary)||input.IsDown(InputAction::FirePrimary))) {
             _primaryFireConsumed=false;
         }
     } else {
-        if(!input.IsDown(InputAction::FireMiningMissile))_miningFireConsumed=false;
-        if(!input.IsDown(InputAction::FirePrimary))_primaryFireConsumed=false;
+        if(!(input.IsDown(InputAction::PilotFireSecondary)||input.IsDown(InputAction::FireMiningMissile)))_miningFireConsumed=false;
+        if(!(input.IsDown(InputAction::PilotFirePrimary)||input.IsDown(InputAction::FirePrimary)))_primaryFireConsumed=false;
     }
 
     // Camera orbit remains available in every runtime workspace. The gameplay
@@ -2197,7 +2264,8 @@ void NativeGameApplication::HandleGlobalActions()
             if(_window.IsAltDown())ConstructionEditorCameraSystem::AdjustSpeed(_constructionCamera,wheel);
             else ConstructionEditorCameraSystem::Dolly(_constructionCamera,wheel*(_window.IsShiftDown()?.25f:1.0f));
             ApplyConstructionCameraView();
-        } else activeCamera.ZoomBy(wheel);
+        } else if(_gameplayMode==GameplayControlMode::FleetCommand&&_workspace.Mode()==SandboxWorkspaceMode::Flight)_fleetStrategy.Zoom(wheel);
+        else if(_controlContext.controlDomain!=ControlDomain::FirstPerson)activeCamera.ZoomBy(wheel);
     }
     float orbitX=0.0f,orbitY=0.0f;
     if (_window.ConsumeCameraOrbitDelta(orbitX,orbitY)) {
@@ -2207,6 +2275,10 @@ void NativeGameApplication::HandleGlobalActions()
             if(_window.IsAltDown())ConstructionEditorCameraSystem::Look(_constructionCamera,orbitX*.30f*precision,-orbitY*.28f*precision);
             else ConstructionEditorCameraSystem::Orbit(_constructionCamera,orbitX*.30f*precision,-orbitY*.28f*precision);
             ApplyConstructionCameraView();
+        } else if(_controlContext.controlDomain==ControlDomain::FirstPerson){
+            _embodiment.Look(orbitX*0.0035f,-orbitY*0.0035f);
+        } else if(_gameplayMode==GameplayControlMode::FleetCommand&&_workspace.Mode()==SandboxWorkspaceMode::Flight){
+            _fleetStrategy.Orbit(orbitX*0.30f,-orbitY*0.28f);
         } else {
             const float currentPitch=activeCamera.HasElevationOverride()?activeCamera.GetElevationOverrideDegrees():34.0f;
             activeCamera.SetVisualYawDegrees(activeCamera.GetVisualYawDegrees()+orbitX*0.30f);
@@ -2221,9 +2293,12 @@ void NativeGameApplication::HandleGlobalActions()
             ConstructionEditorCameraSystem::PanPixels(_constructionCamera,panX,panY,
                 static_cast<float>(_window.GetHeight()),precision);
             ApplyConstructionCameraView();
-        } else if(_workspace.Mode()!=SandboxWorkspaceMode::GalaxyMap){
-            const float panScale=0.022f/std::max(.35f,activeCamera.GetZoom());
-            activeCamera.PanViewRelative(panX*panScale,panY*panScale);
+        } else if(_gameplayMode==GameplayControlMode::FleetCommand&&_workspace.Mode()==SandboxWorkspaceMode::Flight){
+            auto& fc=_fleetStrategy.Camera();const float yaw=fc.yawDegrees*0.01745329251994329577f;
+            const Vector3 forward{-std::sin(yaw),std::cos(yaw),0.0f},right{std::cos(yaw),std::sin(yaw),0.0f};
+            const float scale=0.010f*std::clamp(fc.distance/120.0f,0.25f,6.0f);fc.focus=fc.focus+right*(-panX*scale)+forward*(panY*scale);
+        } else if(_workspace.Mode()!=SandboxWorkspaceMode::GalaxyMap&&_controlContext.controlDomain!=ControlDomain::FirstPerson){
+            const float panScale=0.022f/std::max(.35f,activeCamera.GetZoom());activeCamera.PanViewRelative(panX*panScale,panY*panScale);
         }
     }
     if(_workspace.Mode()==SandboxWorkspaceMode::ShipBuilder)UpdateConstructionCameraKeyboard();
@@ -2379,34 +2454,14 @@ void NativeGameApplication::HandleGlobalActions()
 
 void NativeGameApplication::UpdateCameraAndSelection()
 {
-    UpdateVectorCamera();
-    auto* player = _engine.GetEntityManager().GetComponent<PhysicsComponent>(_playerEntity);
-    if (!player) return;
-    auto& camera=_engine.GetStrategicCamera();
-    if(_workspace.Mode()==SandboxWorkspaceMode::ShipBuilder){
-        // Shipyard owns its inspection pivot. Following the player every frame
-        // would immediately undo Frame Part, Frame Ship and MMB authoring pans.
-        camera.Update(_engine.GetLastDeltaTime());
-        return;
-    }
-    EnvironmentPresentationSystem environment;
-    RuntimeControlContextSystem controls;
-    const auto controlContext=controls.Build(_workspace.Mode(),_embodiment.Mode(),_docking.stage,
-        _vectorTravelSystem.InTransit(_vectorTravel),_strategicFlight.Mode()==FlightControlMode::Strategic);
-    const auto motion=environment.MotionFor(controlContext.cameraMode,player->velocity.length());
-    camera.SetFollowSmoothness(motion.followSmoothness);
-    camera.SetVelocityLookAhead(motion.velocityLookAhead);
-    if(_embodiment.IsOnFoot()){
-        const auto& avatar=_embodiment.Avatar();
-        const float yaw=player->rotation.z,cy=std::cos(yaw),sy=std::sin(yaw);
-        const Vector3 avatarWorld=player->position+Vector3{
-            (avatar.localPosition.x*cy-avatar.localPosition.y*sy)*.72f,
-            (avatar.localPosition.x*sy+avatar.localPosition.y*cy)*.72f,0.0f};
-        camera.FollowTarget(avatarWorld,{},_engine.GetLastDeltaTime());
-    }else{
-        camera.FollowTarget(player->position,player->velocity,_engine.GetLastDeltaTime());
-    }
+    UpdateVectorCamera();auto* player=_engine.GetEntityManager().GetComponent<PhysicsComponent>(_playerEntity);if(!player)return;auto& camera=_engine.GetStrategicCamera();
+    if(_workspace.Mode()==SandboxWorkspaceMode::ShipBuilder){camera.Update(_engine.GetLastDeltaTime());return;}RefreshRuntimeControlContext();
+    if(_gameplayMode==GameplayControlMode::FleetCommand&&_controlContext.controlDomain==ControlDomain::FleetStrategy){return;}
+    EnvironmentPresentationSystem environment;const auto motion=environment.MotionFor(_controlContext.cameraMode,player->velocity.length());camera.SetFollowSmoothness(motion.followSmoothness);camera.SetVelocityLookAhead(motion.velocityLookAhead);
+    if(_embodiment.IsOnFoot()){const auto& avatar=_embodiment.Avatar();const float yaw=player->rotation.z,cy=std::cos(yaw),sy=std::sin(yaw);const Vector3 avatarWorld=player->position+Vector3{(avatar.localPosition.x*cy-avatar.localPosition.y*sy)*.72f,(avatar.localPosition.x*sy+avatar.localPosition.y*cy)*.72f,avatar.localPosition.z*.72f};camera.SetCenter(avatarWorld);camera.SetTargetCenter(avatarWorld);}
+    else camera.FollowTarget(player->position,player->velocity,_engine.GetLastDeltaTime());
 }
+
 
 NativeBattlefieldFrame NativeGameApplication::BuildRenderFrame() const
 {
@@ -2429,6 +2484,7 @@ NativeBattlefieldFrame NativeGameApplication::BuildRenderFrame() const
     f.arrivalTitleAlpha=CinematicFlightPresentationSystem::Evaluate(_vectorTravel.stage,_vectorTravel.stageProgress,_vectorTravel.stageSeconds).arrivalTitleAlpha;
     f.shipInspection=_shipInspection;
     f.strategicFlightMode=_strategicFlight.Mode()==FlightControlMode::Strategic;
+    f.fleetStrategyActive=_gameplayMode==GameplayControlMode::FleetCommand;
     f.backdrop=_forwardPresentation.ForSector(_sector);
     f.embodimentMode=_embodiment.Mode();
     f.interiorAvatar=_embodiment.Avatar();
@@ -2450,15 +2506,18 @@ NativeBattlefieldFrame NativeGameApplication::BuildRenderFrame() const
     f.productionHud=_productionInterface.Build(context,_selection.id,_embodiment.Mode(),_docking.stage,_vectorTravelSystem.InTransit(_vectorTravel));
     f.flightHud=_flightHud;
     const auto* hudPlayer=const_cast<Engine&>(_engine).GetEntityManager().GetComponent<PhysicsComponent>(_playerEntity);
+    if(hudPlayer&&_gameplayMode==GameplayControlMode::OnFoot&&_embodiment.IsOnFoot()){const auto local=FirstPersonViewSystem::BuildOnFootLocal(_embodiment.Avatar());const float yaw=hudPlayer->rotation.z,cy=std::cos(yaw),sy=std::sin(yaw);const auto rotate=[&](const Vector3& v){return Vector3{v.x*cy-v.y*sy,v.x*sy+v.y*cy,v.z};};f.firstPersonPose=local;f.firstPersonPose.position=hudPlayer->position+rotate(local.position)*.72f;f.firstPersonPose.forward=rotate(local.forward).normalized();f.firstPersonPose.right=rotate(local.right).normalized();f.firstPersonPose.up=rotate(local.up).normalized();f.hasFirstPersonPose=true;} // R189_REAL_FPS_POSE
+    if(hudPlayer&&_gameplayMode==GameplayControlMode::Pilot&&_embodiment.IsPiloting()){const auto local=FirstPersonViewSystem::BuildCockpitLocal(_embodiment.EyeLocalPosition(),_pilotHeadYawRadians,_pilotHeadPitchRadians);const float yaw=hudPlayer->rotation.z,cy=std::cos(yaw),sy=std::sin(yaw);const auto rotate=[&](const Vector3& v){return Vector3{v.x*cy-v.y*sy,v.x*sy+v.y*cy,v.z};};f.firstPersonPose=local;f.firstPersonPose.position=hudPlayer->position+rotate(local.position)*.72f;f.firstPersonPose.forward=rotate(local.forward).normalized();f.firstPersonPose.right=rotate(local.right).normalized();f.firstPersonPose.up=rotate(local.up).normalized();f.hasFirstPersonPose=true;} // R191_REAL_COCKPIT_POSE
     const float hudSpeed=hudPlayer?hudPlayer->velocity.length():0.0f;
     bool hudDamp=true,hudBoost=false;if(const auto* controls=_engine.GetPlayerControlSystem()){hudDamp=controls->IsInertialDampeningEnabled();hudBoost=controls->IsBoostActive();}
     const auto* hudCombat=const_cast<Engine&>(_engine).GetEntityManager().GetComponent<CombatComponent>(_playerEntity);
     f.commandHud=ShipCommandHudSystem::Build(hudSpeed,hudDamp,hudBoost,{"PRIMARY","MINING","SCAN","DRONES","REPAIR","UTILITY"},hudCombat);
+    if(_gameplayMode==GameplayControlMode::FleetCommand){f.productionHud.modeLabel="FLEET COMMAND";f.productionHud.statusLines={"MOUSE COMMAND MODE","TAB/F RETURN TO FPS","RMB ORBIT / MMB PAN / WHEEL ZOOM"};f.productionHud.showScanner=false;f.productionHud.showModuleRack=false;}else if(_embodiment.IsOnFoot()){f.flightHud={};f.commandHud={};f.tacticalContacts={};}
     f.tacticalContacts=_tacticalContacts;
     f.targeting=_targeting;
     f.runtimeWindowLayout=&_runtimeWindowLayout;
     f.observableWarpEvents=&_observableWarpEvents;
-    f.commandRail=_standaloneShipyard?CommandRailRuntimeModel{}:_playerFacing.BuildCommandRail(_workspace.Mode());
+    f.commandRail=(_standaloneShipyard||_gameplayMode==GameplayControlMode::OnFoot)?CommandRailRuntimeModel{}:_playerFacing.BuildCommandRail(_workspace.Mode());
     f.contextMenu=_contextMenu;
     f.hangarRuntime=_hangarRuntime;
     f.stationContacts=&_stationContacts;

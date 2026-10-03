@@ -122,6 +122,13 @@ enum class InputAction : std::size_t {
     // R179 Planetary Command. Appended after R178 so all historical and R178
     // serialized action indices remain stable.
     PlanetaryCommandCycleOverlay,
+
+    // R191 explicit embodied/pilot mouse-action semantics. Appended only; do
+    // not reorder historical values used by serialized binding profiles.
+    CharacterPrimaryUse,
+    CharacterSecondaryUse,
+    CharacterHeadLook,
+    PilotHeadLook,
     Count
 };
 

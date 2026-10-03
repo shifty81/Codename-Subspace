@@ -3,15 +3,19 @@
 #include "fleet/FleetCommandSeatSystem.h"
 #include "input/ControlIntentRouterSystem.h"
 #include "interior/ShipEmbodimentSystem.h"
+#include "runtime/GameplayControlMode.h"
 #include "rendering/EnvironmentPresentationSystem.h"
 #include "ui/SandboxWorkspaceSystem.h"
 #include <string>
 namespace subspace {
 enum class RuntimeViewAuthority { CockpitFirstPerson, OnFootFirstPerson, RemoteFleetCommand, AuthoringDev, DockedService, Transit };
+enum class RuntimePointerPolicy { RelativeCaptured, AbsoluteVisible };
 struct RuntimeControlContext {
+    GameplayControlMode gameplayMode=GameplayControlMode::Pilot;
     CameraMode cameraMode=CameraMode::ShipFlight;
     RuntimeViewAuthority viewAuthority=RuntimeViewAuthority::CockpitFirstPerson;
     ControlDomain controlDomain=ControlDomain::Pilot;
+    RuntimePointerPolicy pointerPolicy=RuntimePointerPolicy::RelativeCaptured;
     bool firstPerson=true;
     bool mouseLook=true;
     bool sixDofFlight=true;
@@ -27,6 +31,7 @@ struct RuntimeControlContext {
 };
 class RuntimeControlContextSystem {
 public:
+    RuntimeControlContext BuildForMode(SandboxWorkspaceMode workspace,GameplayControlMode gameplayMode,ShipEmbodimentMode embodiment,DockingExperienceStage docking,bool vectorTransit) const;
     RuntimeControlContext Build(SandboxWorkspaceMode workspace,ShipEmbodimentMode embodiment,DockingExperienceStage docking,bool vectorTransit,bool strategicFlight) const;
     // Seat-aware path for the physical Fleet Command Terminal / compatible pilot seat.
     RuntimeControlContext BuildWithCommandSeat(SandboxWorkspaceMode workspace,ShipEmbodimentMode embodiment,

@@ -45,7 +45,23 @@ r178_require("${R178_INPUT}" "CharacterMoveForward" "first-person semantic input
 r178_require("${R178_INPUT}" "FleetCameraForward" "fleet camera semantic input missing")
 r178_require("${R178_ROUTER}" "ControlDomain::FleetStrategy" "context router lacks fleet strategy")
 r178_require("${R178_ROUTER}" "W/S/A/D are camera pan here, never ship thrust" "fleet-strategy input ownership is ambiguous")
-r178_require("${R178_CONTEXT}" "context.controlDomain=ControlDomain::FleetStrategy" "authorized command seat does not own FleetStrategy domain")
+# R178 originally certified the seat path by looking for the literal assignment
+# `context.controlDomain=ControlDomain::FleetStrategy`. R191 normalized control
+# authority through GameplayControlMode + BuildForMode, so certify either the
+# historical direct assignment or the forward-compatible mode path.
+file(READ "${R178_CONTEXT}" R178_CONTEXT_TEXT)
+string(FIND "${R178_CONTEXT_TEXT}" "context.controlDomain=ControlDomain::FleetStrategy" R178_LEGACY_SEAT_DOMAIN)
+string(FIND "${R178_CONTEXT_TEXT}" "gameplayMode==GameplayControlMode::FleetCommand" R178_MODE_BRANCH)
+string(FIND "${R178_CONTEXT_TEXT}" "c.controlDomain=ControlDomain::FleetStrategy" R178_MODE_DOMAIN)
+string(FIND "${R178_CONTEXT_TEXT}" "context=BuildForMode(workspace,GameplayControlMode::FleetCommand" R178_SEAT_MODE_ROUTE)
+if(R178_LEGACY_SEAT_DOMAIN EQUAL -1)
+  if(R178_MODE_BRANCH EQUAL -1 OR R178_MODE_DOMAIN EQUAL -1 OR R178_SEAT_MODE_ROUTE EQUAL -1)
+    message(FATAL_ERROR
+      "R178 authorized command seat does not own FleetStrategy domain: neither the "
+      "historical direct assignment nor the certified GameplayControlMode/BuildForMode "
+      "forward path is present in ${R178_CONTEXT}")
+  endif()
+endif()
 
 # Fleet orders require real domain executors. Timer-completion is retired.
 r178_require("${R178_FLEET_H}" "FleetOrderExecutor" "fleet executor contract missing")

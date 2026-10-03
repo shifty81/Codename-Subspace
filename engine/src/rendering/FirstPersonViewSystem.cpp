@@ -15,6 +15,6 @@ FirstPersonViewPose Build(FirstPersonViewKind kind,const Vector3&pos,float yaw,f
     ApplyRoll(p.right,p.up,roll);return p;
 }
 }
-FirstPersonViewPose FirstPersonViewSystem::BuildOnFootLocal(const InteriorAvatarState&a){return Build(FirstPersonViewKind::InteriorOnFoot,a.localPosition+Vector3{0,0,a.eyeHeightMeters},a.lookYawRadians,a.lookPitchRadians,0.0f);}
+FirstPersonViewPose FirstPersonViewSystem::BuildOnFootLocal(const InteriorAvatarState&a){return Build(FirstPersonViewKind::InteriorOnFoot,a.localPosition+Vector3{0,0,a.eyeHeightMeters},a.lookYawRadians+a.headLookYawOffsetRadians,a.lookPitchRadians+a.headLookPitchOffsetRadians,0.0f);}
 FirstPersonViewPose FirstPersonViewSystem::BuildCockpitLocal(const Vector3&eye,float yaw,float pitch,float roll){auto p=Build(FirstPersonViewKind::Cockpit,eye,yaw,pitch,roll);p.verticalFovDegrees=74.0f;return p;}
 } // namespace subspace

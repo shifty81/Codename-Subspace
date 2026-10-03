@@ -31,6 +31,9 @@ struct ControlIntent {
     bool crouch = false;
     bool jump = false;
     bool interact = false;
+    bool primaryUse = false;
+    bool secondaryUse = false;
+    bool headLook = false;
 
     // Direct-pilot state.  These remain false outside Pilot.
     bool boost = false;

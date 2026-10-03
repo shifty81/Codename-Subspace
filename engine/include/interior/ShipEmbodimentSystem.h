@@ -23,6 +23,8 @@ struct InteriorAvatarState {
     float facingRadians = 0.0f; // compatibility alias for lookYawRadians
     float lookYawRadians = 0.0f;
     float lookPitchRadians = 0.0f;
+    float headLookYawOffsetRadians = 0.0f;
+    float headLookPitchOffsetRadians = 0.0f;
     // Compatibility/current values consumed by shell traversal and camera code.
     float moveSpeed = 3.2f;
     float eyeHeightMeters = 1.68f;
@@ -54,6 +56,7 @@ public:
     ShipEmbodimentMode Mode() const { return mode_; }
     const InteriorAvatarState& Avatar() const { return avatar_; }
     bool ExitCockpit(std::uint64_t shipId);
+    bool CanTakeControls() const;
     bool TakeControls();
     bool EnterDockedHangar(std::uint64_t shipId);
     bool BoardInterior(std::uint64_t shipId);
@@ -71,6 +74,9 @@ public:
     // armed after the player has begun walking away.
     void SetCertifiedFootPosition(Vector3 position);
     void Look(float yawDeltaRadians,float pitchDeltaRadians);
+    void HeadLook(float yawDeltaRadians,float pitchDeltaRadians);
+    void UpdateHeadLook(bool active,double seconds);
+    void ResetHeadLook();
     void SetTraversalBounds(const InteriorTraversalBounds& bounds) { traversalBounds_=bounds; }
     const InteriorTraversalBounds& TraversalBounds() const { return traversalBounds_; }
     Vector3 EyeLocalPosition() const;

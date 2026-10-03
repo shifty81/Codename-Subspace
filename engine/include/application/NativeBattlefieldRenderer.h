@@ -15,6 +15,7 @@
 #include "navigation/VectorTravelSystem.h"
 #include "rendering/ForwardSpacePresentationSystem.h"
 #include "interior/ShipEmbodimentSystem.h"
+#include "rendering/FirstPersonViewSystem.h"
 #include "interior/ShipInteriorCarvingSystem.h"
 #include "interior/ShipInteriorDerivedShellSystem.h"
 #include "hangar/DockingExperienceSystem.h"
@@ -96,6 +97,9 @@ struct NativeBattlefieldFrame {
     float arrivalTitleAlpha = 0.0f;
     bool shipInspection = false;
     bool strategicFlightMode = false;
+    bool fleetStrategyActive = false;
+    bool hasFirstPersonPose = false;
+    FirstPersonViewPose firstPersonPose{};
     SpaceBackdropProfile backdrop{};
     ShipEmbodimentMode embodimentMode = ShipEmbodimentMode::CockpitControl;
     InteriorAvatarState interiorAvatar{};

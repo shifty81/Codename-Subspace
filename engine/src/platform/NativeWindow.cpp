@@ -82,6 +82,14 @@ bool NativeWindow::Initialize(const NativeWindowConfig& config)
 
     _window = hwnd;
 
+    // R191: native gameplay mouse-look is fed by relative raw mouse deltas.
+    RAWINPUTDEVICE rawMouse{};
+    rawMouse.usUsagePage = 0x01;
+    rawMouse.usUsage = 0x02;
+    rawMouse.dwFlags = 0;
+    rawMouse.hwndTarget = hwnd;
+    _rawMouseRegistered = RegisterRawInputDevices(&rawMouse,1,sizeof(rawMouse)) == TRUE;
+
     // PASS1454-1465 / ForgeGUI convergence: keep the standard Win32 window
     // behavior but opt into dark non-client chrome and rounded desktop corners
     // when the host OS supports those DWM attributes. Dynamic loading keeps the
@@ -123,6 +131,7 @@ bool NativeWindow::Initialize(const NativeWindowConfig& config)
 void NativeWindow::Shutdown()
 {
 #ifdef _WIN32
+    ReleasePointerCapture();
     DestroyOpenGLContext();
 
     if (_window) {
@@ -144,6 +153,10 @@ void NativeWindow::Shutdown()
 #endif
     _inputState.Clear();
     _inputCaptureLostPending=false;
+    _relativeMouseDeltaX=_relativeMouseDeltaY=0.0f;
+    _rawMouseRegistered=false;
+    _pointerPolicy=NativePointerPolicy::AbsoluteVisible;
+    _inputProfile=NativeInputProfile::Legacy;
     _open = false;
 }
 
@@ -190,6 +203,37 @@ bool NativeWindow::ConsumeSecondaryClick(float& x, float& y)
     y = _pendingSecondaryY;
     _secondaryClickPending = false;
     return true;
+}
+
+void NativeWindow::SetInputProfile(NativeInputProfile profile)
+{
+    if(_inputProfile==profile)return;
+    _inputState.Clear();
+    _inputProfile=profile;
+    _primaryClickPending=_primaryPressPending=_primaryReleasePending=false;
+    _secondaryClickPending=false;
+    _cameraOrbitDragging=_cameraPanDragging=false;
+    _relativeMouseDeltaX=_relativeMouseDeltaY=0.0f;
+}
+
+void NativeWindow::SetPointerPolicy(NativePointerPolicy policy)
+{
+    if(_pointerPolicy==policy)return;
+#ifdef _WIN32
+    ReleasePointerCapture();
+#endif
+    _pointerPolicy=policy;
+    _relativeMouseDeltaX=_relativeMouseDeltaY=0.0f;
+#ifdef _WIN32
+    ApplyPointerPolicy();
+#endif
+}
+
+bool NativeWindow::ConsumeRelativeMouseDelta(float& deltaX,float& deltaY)
+{
+    deltaX=_relativeMouseDeltaX;deltaY=_relativeMouseDeltaY;
+    _relativeMouseDeltaX=_relativeMouseDeltaY=0.0f;
+    return std::abs(deltaX)>0.001f||std::abs(deltaY)>0.001f;
 }
 
 std::string NativeWindow::ConsumeTextInput(){std::string result;result.swap(_pendingTextInput);return result;}
@@ -258,6 +302,29 @@ void NativeWindow::EndFrame()
 
 #ifdef _WIN32
 
+void NativeWindow::ReleasePointerCapture()
+{
+    ClipCursor(nullptr);
+    if(_cursorHiddenByWindow){
+        while(ShowCursor(TRUE)<0){}
+        _cursorHiddenByWindow=false;
+    }
+}
+
+void NativeWindow::ApplyPointerPolicy()
+{
+    if(!_window||_pointerPolicy!=NativePointerPolicy::RelativeCaptured)return;
+    HWND hwnd=static_cast<HWND>(_window);
+    if(GetFocus()!=hwnd&&GetForegroundWindow()!=hwnd)return;
+    RECT client{};if(GetClientRect(hwnd,&client)){
+        POINT tl{client.left,client.top},br{client.right,client.bottom};
+        ClientToScreen(hwnd,&tl);ClientToScreen(hwnd,&br);
+        RECT clip{tl.x,tl.y,br.x,br.y};ClipCursor(&clip);
+    }
+    if(!_cursorHiddenByWindow){while(ShowCursor(FALSE)>=0){} _cursorHiddenByWindow=true;}
+    SetCursor(nullptr);
+}
+
 bool NativeWindow::CreateOpenGLContext()
 {
     HDC hdc = static_cast<HDC>(_deviceContext);
@@ -300,7 +367,59 @@ void NativeWindow::DestroyOpenGLContext()
 
 void NativeWindow::ApplyKey(unsigned long long virtualKey, bool down)
 {
-    switch (static_cast<WPARAM>(virtualKey)) {
+    const auto key=static_cast<WPARAM>(virtualKey);
+    if(key==VK_SHIFT)_shiftDown=down;
+    if(key==VK_CONTROL)_controlDown=down;
+    if(key==VK_MENU)_altDown=down;
+
+    // R191: gameplay profiles own physical keys. These mappings return before
+    // the historical global bindings below, preventing control leakage.
+    if(_inputProfile==NativeInputProfile::OnFoot){
+        switch(key){
+            case 'W': _inputState.SetAction(InputAction::CharacterMoveForward,down); return;
+            case 'S': _inputState.SetAction(InputAction::CharacterMoveBackward,down); return;
+            case 'A': _inputState.SetAction(InputAction::CharacterMoveLeft,down); return;
+            case 'D': _inputState.SetAction(InputAction::CharacterMoveRight,down); return;
+            case VK_SHIFT: _inputState.SetAction(InputAction::CharacterSprint,down); return;
+            case VK_CONTROL: _inputState.SetAction(InputAction::CharacterCrouch,down); return;
+            case VK_SPACE: _inputState.SetAction(InputAction::CharacterJump,down); return;
+            case VK_MENU: _inputState.SetAction(InputAction::CharacterHeadLook,down); return;
+            case 'F': _inputState.SetAction(InputAction::CharacterInteract,down); return;
+            case VK_TAB: _inputState.SetAction(InputAction::ToggleFlightMode,down); return;
+            default: break;
+        }
+    }else if(_inputProfile==NativeInputProfile::Pilot){
+        switch(key){
+            case 'W': _inputState.SetAction(InputAction::PilotForward,down); return;
+            case 'S': _inputState.SetAction(InputAction::PilotReverse,down); return;
+            case 'A': _inputState.SetAction(InputAction::PilotStrafeLeft,down); return;
+            case 'D': _inputState.SetAction(InputAction::PilotStrafeRight,down); return;
+            case VK_SPACE: _inputState.SetAction(InputAction::PilotThrustUp,down); return;
+            case VK_CONTROL: _inputState.SetAction(InputAction::PilotThrustDown,down); return;
+            case 'Q': _inputState.SetAction(InputAction::FlightRollLeft,down); return;
+            case 'E': _inputState.SetAction(InputAction::FlightRollRight,down); return;
+            case VK_SHIFT: _inputState.SetAction(InputAction::PilotBoost,down); return;
+            case 'X': _inputState.SetAction(InputAction::PilotBrake,down); return;
+            case VK_MENU: _inputState.SetAction(InputAction::PilotHeadLook,down); return;
+            case 'F': _inputState.SetAction(InputAction::CharacterInteract,down); return;
+            default: break;
+        }
+    }else if(_inputProfile==NativeInputProfile::FleetCommand){
+        switch(key){
+            case 'W': _inputState.SetAction(InputAction::FleetCameraForward,down); return;
+            case 'S': _inputState.SetAction(InputAction::FleetCameraBackward,down); return;
+            case 'A': _inputState.SetAction(InputAction::FleetCameraLeft,down); return;
+            case 'D': _inputState.SetAction(InputAction::FleetCameraRight,down); return;
+            case VK_SHIFT:
+                _inputState.SetAction(InputAction::FleetAddSelection,down);
+                _inputState.SetAction(InputAction::FleetQueueModifier,down); return;
+            case 'F': _inputState.SetAction(InputAction::CharacterInteract,down); return;
+            case VK_TAB: _inputState.SetAction(InputAction::ToggleFlightMode,down); return;
+            default: break;
+        }
+    }
+
+    switch (key) {
         case 'W': _inputState.SetAction(InputAction::ThrustForward, down); _inputState.SetAction(InputAction::EditorToolMove, down); break;
         case 'S': _inputState.SetAction(InputAction::ThrustReverse, down); _inputState.SetAction(InputAction::EditorToolScale, down); break;
         case 'A': _inputState.SetAction(InputAction::StrafeLeft, down); break;
@@ -317,36 +436,22 @@ void NativeWindow::ApplyKey(unsigned long long virtualKey, bool down)
             else if(!down)_inputState.SetAction(InputAction::DccConstraintX,false);
             break;
         case 'Z':
-            if(down&&_controlDown){
-                if(_shiftDown)_inputState.SetAction(InputAction::Redo,true);
-                else _inputState.SetAction(InputAction::Undo,true);
-            } else if(down){
-                _inputState.SetAction(InputAction::DccConstraintZ,true);
-            } else {
-                _inputState.SetAction(InputAction::Undo,false);
-                _inputState.SetAction(InputAction::Redo,false);
-                _inputState.SetAction(InputAction::DccConstraintZ,false);
-            }
-            break;
+            if(down&&_controlDown){if(_shiftDown)_inputState.SetAction(InputAction::Redo,true);else _inputState.SetAction(InputAction::Undo,true);}
+            else if(down)_inputState.SetAction(InputAction::DccConstraintZ,true);
+            else {_inputState.SetAction(InputAction::Undo,false);_inputState.SetAction(InputAction::Redo,false);_inputState.SetAction(InputAction::DccConstraintZ,false);} break;
         case 'Y':
             if(down&&_controlDown)_inputState.SetAction(InputAction::Redo,true);
             else if(down)_inputState.SetAction(InputAction::DccConstraintY,true);
-            else {
-                _inputState.SetAction(InputAction::Redo,false);
-                _inputState.SetAction(InputAction::DccConstraintY,false);
-            }
-            break;
+            else {_inputState.SetAction(InputAction::Redo,false);_inputState.SetAction(InputAction::DccConstraintY,false);} break;
         case 'V': _inputState.SetAction(InputAction::ToggleDampening, down); break;
         case VK_SPACE:
             if(_controlDown)_inputState.SetAction(InputAction::DccMaximizeArea, down);
             else _inputState.SetAction(InputAction::FirePrimary, down);
-            if(!down){_inputState.SetAction(InputAction::FirePrimary,false);_inputState.SetAction(InputAction::DccMaximizeArea,false);}
-            break;
+            if(!down){_inputState.SetAction(InputAction::FirePrimary,false);_inputState.SetAction(InputAction::DccMaximizeArea,false);} break;
         case 'F':
             if(_shiftDown)_inputState.SetAction(InputAction::DccCycleAssetFilter, down);
             else {_inputState.SetAction(InputAction::FireMiningMissile, down); _inputState.SetAction(InputAction::EditorFrameSelected, down);}
-            if(!down){_inputState.SetAction(InputAction::DccCycleAssetFilter,false);_inputState.SetAction(InputAction::FireMiningMissile,false);_inputState.SetAction(InputAction::EditorFrameSelected,false);}
-            break;
+            if(!down){_inputState.SetAction(InputAction::DccCycleAssetFilter,false);_inputState.SetAction(InputAction::FireMiningMissile,false);_inputState.SetAction(InputAction::EditorFrameSelected,false);} break;
         case VK_HOME: _inputState.SetAction(InputAction::EditorFrameShip, down); break;
         case 'J': _inputState.SetAction(InputAction::RequestDock, down); break;
         case 'I': _inputState.SetAction(InputAction::ToggleInterior, down); break;
@@ -361,9 +466,9 @@ void NativeWindow::ApplyKey(unsigned long long virtualKey, bool down)
         case 'O': _inputState.SetAction(InputAction::OpenExploration, down); break;
         case 'G': _inputState.SetAction(InputAction::OpenFleetCorporation, down); _inputState.SetAction(InputAction::EditorToolMove, down); break;
         case VK_TAB: _inputState.SetAction(InputAction::ToggleFlightMode, down); break;
-        case VK_SHIFT: _shiftDown=down; _inputState.SetAction(InputAction::Boost, down); break;
-        case VK_CONTROL: _controlDown=down; break;
-        case VK_MENU: _altDown=down; break;
+        case VK_SHIFT: _inputState.SetAction(InputAction::Boost, down); break;
+        case VK_CONTROL: break;
+        case VK_MENU: break;
         case VK_F3: _inputState.SetAction(InputAction::DccCommandSearch, down); break;
         case VK_F5: _inputState.SetAction(InputAction::PlanetaryCommandCycleOverlay, down); break;
         case VK_F6: _inputState.SetAction(InputAction::ToggleShipInspection, down); break;
@@ -382,8 +487,7 @@ void NativeWindow::ApplyKey(unsigned long long virtualKey, bool down)
         case VK_ESCAPE:
             _inputState.SetAction(InputAction::Pause, down);
             _inputState.SetAction(InputAction::MenuBack, down);
-            _inputState.SetAction(InputAction::DccConstraintClear, down);
-            break;
+            _inputState.SetAction(InputAction::DccConstraintClear, down); break;
         default: break;
     }
 }
@@ -426,9 +530,11 @@ long long NativeWindow::WindowProc(void* hwndRaw, unsigned int message,
             _width = std::max(1, static_cast<int>(LOWORD(static_cast<LPARAM>(lParam))));
             _height = std::max(1, static_cast<int>(HIWORD(static_cast<LPARAM>(lParam))));
             if (_glContext) glViewport(0, 0, _width, _height);
+            if(_pointerPolicy==NativePointerPolicy::RelativeCaptured){ReleasePointerCapture();ApplyPointerPolicy();}
             return 0;
 
         case WM_KILLFOCUS:
+            ReleasePointerCapture();
             if(_primaryButtonDown)_inputCaptureLostPending=true;
             _inputState.Clear();
             _primaryButtonDown=false; _primaryPressPending=false; _primaryReleasePending=false; _primaryDragDeltaX=0.0f; _primaryDragDeltaY=0.0f; _cameraOrbitDragging=false; _cameraPanDragging=false;
@@ -437,6 +543,24 @@ long long NativeWindow::WindowProc(void* hwndRaw, unsigned int message,
             _altDown=false; _controlDown=false; _shiftDown=false;
             _secondaryClickPending=false; _primaryClickPending=false;
             return 0;
+
+        case WM_SETFOCUS:
+            ApplyPointerPolicy();
+            return 0;
+
+        case WM_SETCURSOR:
+            if(_pointerPolicy==NativePointerPolicy::RelativeCaptured){SetCursor(nullptr);return TRUE;}
+            break;
+
+        case WM_INPUT: {
+            if(_pointerPolicy!=NativePointerPolicy::RelativeCaptured)break;
+            RAWINPUT raw{};UINT size=sizeof(raw);
+            if(GetRawInputData(reinterpret_cast<HRAWINPUT>(lParam),RID_INPUT,&raw,&size,sizeof(RAWINPUTHEADER))==size&&raw.header.dwType==RIM_TYPEMOUSE){
+                _relativeMouseDeltaX+=static_cast<float>(raw.data.mouse.lLastX);
+                _relativeMouseDeltaY+=static_cast<float>(raw.data.mouse.lLastY);
+            }
+            return 0;
+        }
 
         case WM_CAPTURECHANGED:
             if(_primaryButtonDown){
@@ -449,6 +573,7 @@ long long NativeWindow::WindowProc(void* hwndRaw, unsigned int message,
         case WM_MOUSEMOVE: {
             _pointerX = static_cast<float>(static_cast<short>(LOWORD(static_cast<LPARAM>(lParam))));
             _pointerY = static_cast<float>(static_cast<short>(HIWORD(static_cast<LPARAM>(lParam))));
+            if(_pointerPolicy==NativePointerPolicy::RelativeCaptured)return 0;
             if (_primaryButtonDown) {
                 const float dx = _pointerX - _lastPrimaryX;
                 const float dy = _pointerY - _lastPrimaryY;
@@ -482,6 +607,8 @@ long long NativeWindow::WindowProc(void* hwndRaw, unsigned int message,
         }
 
         case WM_LBUTTONDOWN:
+            if(_inputProfile==NativeInputProfile::OnFoot){_inputState.SetAction(InputAction::CharacterPrimaryUse,true);return 0;}
+            if(_inputProfile==NativeInputProfile::Pilot){_inputState.SetAction(InputAction::PilotFirePrimary,true);return 0;}
             _pointerX = static_cast<float>(static_cast<short>(LOWORD(static_cast<LPARAM>(lParam))));
             _pointerY = static_cast<float>(static_cast<short>(HIWORD(static_cast<LPARAM>(lParam))));
             _primaryButtonDown = true;
@@ -495,6 +622,8 @@ long long NativeWindow::WindowProc(void* hwndRaw, unsigned int message,
             return 0;
 
         case WM_LBUTTONUP:
+            if(_inputProfile==NativeInputProfile::OnFoot){_inputState.SetAction(InputAction::CharacterPrimaryUse,false);return 0;}
+            if(_inputProfile==NativeInputProfile::Pilot){_inputState.SetAction(InputAction::PilotFirePrimary,false);return 0;}
             _pointerX = static_cast<float>(static_cast<short>(LOWORD(static_cast<LPARAM>(lParam))));
             _pointerY = static_cast<float>(static_cast<short>(HIWORD(static_cast<LPARAM>(lParam))));
             if(_primaryButtonDown){
@@ -514,6 +643,8 @@ long long NativeWindow::WindowProc(void* hwndRaw, unsigned int message,
             return 0;
 
         case WM_RBUTTONDOWN:
+            if(_inputProfile==NativeInputProfile::OnFoot){_inputState.SetAction(InputAction::CharacterSecondaryUse,true);return 0;}
+            if(_inputProfile==NativeInputProfile::Pilot){_inputState.SetAction(InputAction::PilotFireSecondary,true);return 0;}
             _pointerX = static_cast<float>(static_cast<short>(LOWORD(static_cast<LPARAM>(lParam))));
             _pointerY = static_cast<float>(static_cast<short>(HIWORD(static_cast<LPARAM>(lParam))));
             // Studio RMB is reserved for the real context menu. In-game
@@ -528,6 +659,8 @@ long long NativeWindow::WindowProc(void* hwndRaw, unsigned int message,
             return 0;
 
         case WM_RBUTTONUP:
+            if(_inputProfile==NativeInputProfile::OnFoot){_inputState.SetAction(InputAction::CharacterSecondaryUse,false);return 0;}
+            if(_inputProfile==NativeInputProfile::Pilot){_inputState.SetAction(InputAction::PilotFireSecondary,false);return 0;}
             _pointerX = static_cast<float>(static_cast<short>(LOWORD(static_cast<LPARAM>(lParam))));
             _pointerY = static_cast<float>(static_cast<short>(HIWORD(static_cast<LPARAM>(lParam))));
             _cameraOrbitDragging = false;

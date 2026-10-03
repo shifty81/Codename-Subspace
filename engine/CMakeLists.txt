@@ -1201,3 +1201,10 @@ if(SUBSPACE_BUILD_TESTS)
     add_test(NAME SubspaceStudioR82R4FourFailureRecoverySourceGate COMMAND ${CMAKE_COMMAND}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/../tools/control/static-gates/pass1567_1568_studio_r82r4_four_failure_recovery.cmake)
 endif()
+
+# R189: strategy-first runtime / real FPS cutover.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_r189_strategy_fps_cutover_tests tests/r189_strategy_fps_cutover_tests.cpp)
+    target_link_libraries(subspace_r189_strategy_fps_cutover_tests PRIVATE subspace_engine)
+    add_test(NAME SubspaceR189StrategyFpsCutoverTests COMMAND subspace_r189_strategy_fps_cutover_tests)
+endif()

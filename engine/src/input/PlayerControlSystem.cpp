@@ -64,7 +64,7 @@ void PlayerControlSystem::Update(float deltaTime)
         _inertialDampeningEnabled = !_inertialDampeningEnabled;
     }
 
-    _boostActive = _inputState.IsDown(InputAction::Boost);
+    _boostActive = _inputState.IsDown(InputAction::PilotBoost) || _inputState.IsDown(InputAction::Boost);
 
     if (_controlledShipId == InvalidEntityId) return;
 
@@ -87,12 +87,12 @@ void PlayerControlSystem::Update(float deltaTime)
         up={0.0f,0.0f,1.0f};
     }
 
-    _forwardResponse = SmoothResponse(_forwardResponse, _inputState.GetValue(InputAction::ThrustForward), _tuning.translationalResponse, deltaTime);
-    _reverseResponse = SmoothResponse(_reverseResponse, _inputState.GetValue(InputAction::ThrustReverse), _tuning.translationalResponse, deltaTime);
-    _leftResponse = SmoothResponse(_leftResponse, _inputState.GetValue(InputAction::StrafeLeft), _tuning.translationalResponse, deltaTime);
-    _rightResponse = SmoothResponse(_rightResponse, _inputState.GetValue(InputAction::StrafeRight), _tuning.translationalResponse, deltaTime);
-    const float rawUp=full3D?PreferSemanticAxis(_inputState,InputAction::FlightThrustUp,InputAction::EditorNudgeUp):0.0f;
-    const float rawDown=full3D?PreferSemanticAxis(_inputState,InputAction::FlightThrustDown,InputAction::EditorNudgeDown):0.0f;
+    _forwardResponse = SmoothResponse(_forwardResponse, PreferSemanticAxis(_inputState,InputAction::PilotForward,InputAction::ThrustForward), _tuning.translationalResponse, deltaTime);
+    _reverseResponse = SmoothResponse(_reverseResponse, PreferSemanticAxis(_inputState,InputAction::PilotReverse,InputAction::ThrustReverse), _tuning.translationalResponse, deltaTime);
+    _leftResponse = SmoothResponse(_leftResponse, PreferSemanticAxis(_inputState,InputAction::PilotStrafeLeft,InputAction::StrafeLeft), _tuning.translationalResponse, deltaTime);
+    _rightResponse = SmoothResponse(_rightResponse, PreferSemanticAxis(_inputState,InputAction::PilotStrafeRight,InputAction::StrafeRight), _tuning.translationalResponse, deltaTime);
+    const float rawUp=full3D?PreferSemanticAxis(_inputState,InputAction::PilotThrustUp,InputAction::FlightThrustUp):0.0f;
+    const float rawDown=full3D?PreferSemanticAxis(_inputState,InputAction::PilotThrustDown,InputAction::FlightThrustDown):0.0f;
     _upResponse=SmoothResponse(_upResponse,rawUp,_tuning.translationalResponse,deltaTime);
     _downResponse=SmoothResponse(_downResponse,rawDown,_tuning.translationalResponse,deltaTime);
 
@@ -151,7 +151,7 @@ void PlayerControlSystem::Update(float deltaTime)
         }
     }
 
-    if (_inputState.IsDown(InputAction::EmergencyBrake)) {
+    if (_inputState.IsDown(InputAction::PilotBrake) || _inputState.IsDown(InputAction::EmergencyBrake)) {
         const Vector3 brakeVelocity = full3D ? physics->velocity : Vector3{physics->velocity.x, physics->velocity.y, 0.0f};
         if (brakeVelocity.length() > 0.01f) {
             physics->AddForce(brakeVelocity.normalized() * (-physics->maxThrust * _tuning.emergencyBrakeMultiplier));

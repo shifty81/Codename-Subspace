@@ -777,26 +777,10 @@ void SetupScreenProjection(int w, int h) {
 }
 
 void SetupPerspectiveProjection(const NativeBattlefieldFrame& frame) {
-    const StrategicViewBasis b = StrategicViewProjection::Build(
-        *frame.camera, static_cast<float>(frame.viewportWidth), static_cast<float>(frame.viewportHeight));
-    gCameraEye=b.eye;
-
-    const float top = b.nearPlane*b.tanHalfFov;
-    const float right = top*b.aspect;
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glFrustum(-right, right, -top, top, b.nearPlane, b.farPlane);
-
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    const GLfloat m[16] = {
-        b.right.x, b.up.x, -b.forward.x, 0.0f,
-        b.right.y, b.up.y, -b.forward.y, 0.0f,
-        b.right.z, b.up.z, -b.forward.z, 0.0f,
-        0.0f, 0.0f, 0.0f, 1.0f
-    };
-    glMultMatrixf(m);
-    glTranslatef(-b.eye.x, -b.eye.y, -b.eye.z);
+    if(frame.hasFirstPersonPose){ // R189_REAL_FPS_PROJECTION
+        const auto& p=frame.firstPersonPose;gCameraEye=p.position;const float aspect=static_cast<float>(std::max(1,frame.viewportWidth))/static_cast<float>(std::max(1,frame.viewportHeight));const float nearPlane=.035f,farPlane=50000.0f;const float tanHalf=std::tan(p.verticalFovDegrees*.5f*kPi/180.0f);const float top=nearPlane*tanHalf,right=top*aspect;
+        glMatrixMode(GL_PROJECTION);glLoadIdentity();glFrustum(-right,right,-top,top,nearPlane,farPlane);glMatrixMode(GL_MODELVIEW);glLoadIdentity();const GLfloat m[16]={p.right.x,p.up.x,-p.forward.x,0.0f,p.right.y,p.up.y,-p.forward.y,0.0f,p.right.z,p.up.z,-p.forward.z,0.0f,0.0f,0.0f,0.0f,1.0f};glMultMatrixf(m);glTranslatef(-p.position.x,-p.position.y,-p.position.z);return;}
+    const StrategicViewBasis b = StrategicViewProjection::Build(*frame.camera, static_cast<float>(frame.viewportWidth), static_cast<float>(frame.viewportHeight));gCameraEye=b.eye;const float top=b.nearPlane*b.tanHalfFov,right=top*b.aspect;glMatrixMode(GL_PROJECTION);glLoadIdentity();glFrustum(-right,right,-top,top,b.nearPlane,b.farPlane);glMatrixMode(GL_MODELVIEW);glLoadIdentity();const GLfloat m[16]={b.right.x,b.up.x,-b.forward.x,0.0f,b.right.y,b.up.y,-b.forward.y,0.0f,b.right.z,b.up.z,-b.forward.z,0.0f,0.0f,0.0f,0.0f,1.0f};glMultMatrixf(m);glTranslatef(-b.eye.x,-b.eye.y,-b.eye.z);
 }
 
 void ConfigureSolarLighting(const NativeBattlefieldFrame& frame) {
@@ -2527,9 +2511,8 @@ void DrawPlayableInterior(const NativeBattlefieldFrame& frame) {
     glRotatef(ship.rotation.z*180.0f/kPi,0,0,1);
     glScalef(.72f,.72f,.72f); // same ship-local->world scale as avatar camera
     for(const auto& surface:shell.surfaces){
-        // The present on-foot camera remains a top-down strategic view. Hide
-        // ceiling *visually* in this preview, never remove it from collision.
-        if(surface.axis==2&&surface.direction>0)continue;
+        // R189 real FPS keeps the authored ceiling visible; only legacy preview omits it.
+        if(!frame.hasFirstPersonPose&&surface.axis==2&&surface.direction>0)continue;
         const Rgba material=surface.axis==2
             ? (surface.direction<0?Rgba{.16f,.20f,.24f,1.0f}:Rgba{.12f,.18f,.21f,1.0f})
             : Rgba{.22f,.27f,.31f,1.0f};
@@ -2543,10 +2526,7 @@ void DrawPlayableInterior(const NativeBattlefieldFrame& frame) {
         for(const auto& v:surface.corners)glVertex3f(v.x,v.y,v.z);
         glEnd();
     }
-    const auto& avatar=frame.interiorAvatar;
-    DrawSphere(avatar.localPosition.x,avatar.localPosition.y,
-               avatar.localPosition.z+avatar.capsuleHeightMeters*.5f,.18f,
-               {.88f,.66f,.22f,1.0f},16,8,SpaceMaterialKind::ShipHull);
+    if(!frame.hasFirstPersonPose){const auto& avatar=frame.interiorAvatar;DrawSphere(avatar.localPosition.x,avatar.localPosition.y,avatar.localPosition.z+avatar.capsuleHeightMeters*.5f,.18f,{.88f,.66f,.22f,1.0f},16,8,SpaceMaterialKind::ShipHull);}
     glPopMatrix();
     if(cull)glEnable(GL_CULL_FACE);
     if(blend)glEnable(GL_BLEND);
@@ -2892,10 +2872,7 @@ void DrawHud(const NativeBattlefieldFrame& frame,const NativeBattlefieldRenderer
         else FilledRect(8,ry+6,0,rail.width-16,rail.rowHeight-12,{0.018f,0.045f,0.058f,0.78f});
         DrawText5x7(item.shortLabel.empty()?item.label:item.shortLabel,18,ry+15,.78f,item.active?Rgba{0.92f,0.98f,0.98f,1.0f}:Rgba{0.70f,0.84f,0.86f,0.96f});
     }
-    if(frame.dockingStage!=DockingExperienceStage::Docked){
-        DrawText5x7(frame.strategicFlightMode?"STRATEGIC FLIGHT":"MANUAL FLIGHT",w-302,20,1.05f,frame.strategicFlightMode?Rgba{0.30f,0.82f,0.72f,0.90f}:Rgba{0.90f,0.64f,0.24f,0.90f});
-        DrawText5x7("TAB MODE   SHIFT BOOST",w-302,40,.76f,{0.42f,0.62f,0.68f,0.66f});
-    }
+    if(frame.dockingStage!=DockingExperienceStage::Docked&&frame.embodimentMode!=ShipEmbodimentMode::InteriorOnFoot){DrawText5x7(frame.fleetStrategyActive?"FLEET COMMAND":"COCKPIT / PILOTING",w-302,20,1.05f,frame.fleetStrategyActive?Rgba{0.30f,0.82f,0.72f,0.90f}:Rgba{0.90f,0.64f,0.24f,0.90f});DrawText5x7(frame.fleetStrategyActive?"WASD CAMERA   I BOARD":"I LEAVE HELM   SHIFT BOOST",w-302,40,.76f,{0.42f,0.62f,0.68f,0.66f});}
     if(frame.embodimentMode==ShipEmbodimentMode::InteriorOnFoot&&
        (!frame.playerInteriorShell||!frame.playerInteriorShell->ready)){
         FilledRect(cx-238,72,0,476,64,{.20f,.045f,.045f,.95f});
@@ -4466,7 +4443,7 @@ void NativeBattlefieldRenderer::Render(const NativeBattlefieldFrame& frame) {
     // Vector presentation overlays the ordinary scene during compression and
     // fades during exit, revealing the actual destination local scene below.
     DrawVectorTravelForeground(frame);
-    if(!compressedCruise&&!frame.standaloneShipyard)DrawWorldLabels(frame);
+    if(!compressedCruise&&!frame.standaloneShipyard&&!frame.hasFirstPersonPose)DrawWorldLabels(frame);
     if(!frame.standaloneShipyard){DrawQueuedUI(frame);DrawHud(frame,_assets.get());}
     DrawWorkspaceOverlay(frame,_assets.get());
     if(frame.workspaceMode!=SandboxWorkspaceMode::Flight)DrawContextMenuOverlay(frame);

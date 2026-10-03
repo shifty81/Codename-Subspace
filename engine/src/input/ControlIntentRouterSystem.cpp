@@ -38,6 +38,8 @@ ControlIntent ControlIntentRouterSystem::Build(const InputState& input, ControlD
             out.brake = DownEither(input, InputAction::PilotBrake, InputAction::EmergencyBrake);
             out.firePrimary = DownEither(input, InputAction::PilotFirePrimary, InputAction::FirePrimary);
             out.fireSecondary = DownEither(input, InputAction::PilotFireSecondary, InputAction::FireMiningMissile);
+            out.headLook = input.IsDown(InputAction::PilotHeadLook);
+            out.interact = input.WasPressed(InputAction::CharacterInteract);
             break;
 
         case ControlDomain::FirstPerson:
@@ -46,10 +48,13 @@ ControlIntent ControlIntentRouterSystem::Build(const InputState& input, ControlD
                                InputAction::ThrustForward, InputAction::ThrustReverse);
             out.right = Axis(input, InputAction::CharacterMoveRight, InputAction::CharacterMoveLeft,
                              InputAction::StrafeRight, InputAction::StrafeLeft);
-            out.sprint = DownEither(input, InputAction::CharacterSprint, InputAction::Boost);
+            out.sprint = input.IsDown(InputAction::CharacterSprint);
             out.crouch = input.IsDown(InputAction::CharacterCrouch);
             out.jump = input.WasPressed(InputAction::CharacterJump);
             out.interact = input.WasPressed(InputAction::CharacterInteract) || input.WasPressed(InputAction::MenuAccept);
+            out.primaryUse = input.IsDown(InputAction::CharacterPrimaryUse);
+            out.secondaryUse = input.IsDown(InputAction::CharacterSecondaryUse);
+            out.headLook = input.IsDown(InputAction::CharacterHeadLook);
             break;
 
         case ControlDomain::FleetStrategy:

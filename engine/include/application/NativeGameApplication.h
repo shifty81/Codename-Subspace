@@ -28,6 +28,10 @@
 #include "integration/PlayerFacingIntegrationSystem.h"
 #include "station/StationEcologySystem.h"
 #include "fleet/FleetCaptainAiSystem.h"
+#include "fleet/FleetStrategyControlSystem.h"
+#include "runtime/PlayerController.h"
+#include "rendering/FirstPersonViewSystem.h"
+#include "ui/RuntimeControlContextSystem.h"
 #include "ship_editor/ShipyardBuilderSystem.h"
 #include "ship_editor/ShipyardDocumentStartupSystem.h"
 #include "ship_editor/ShipyardDockPointerSystem.h"
@@ -95,6 +99,12 @@ private:
     void UpdateStrategicAutopilot();
     void RefreshPlayerFacingModels();
     void UpdateFleetCaptains();
+    void RefreshRuntimeControlContext();
+    void SetGameplayControlMode(GameplayControlMode mode);
+    void UpdateModeMouseInput();
+    void UpdateFleetStrategyControl();
+    bool EnterFleetStrategy();
+    bool BoardPlayerShipFromStrategy();
     InteractionContext BuildInteractionContext(const NativeContactSelection& selection) const;
     std::size_t ActivePlanetIndex() const;
     void EnsurePlanetSurvey(std::size_t planetIndex);
@@ -157,6 +167,12 @@ private:
     UniverseSystemMapSnapshot _universeSystemMap;
     std::vector<OrbitalBodyRecord> _orbitalBodies;
     StrategicFlightSystem _strategicFlight;
+    FleetStrategyControlSystem _fleetStrategy;
+    PlayerController _playerController;
+    RuntimeControlContext _controlContext{};
+    GameplayControlMode _gameplayMode = GameplayControlMode::OnFoot;
+    float _pilotHeadYawRadians = 0.0f;
+    float _pilotHeadPitchRadians = 0.0f;
     PlayerFacingIntegrationSystem _playerFacing;
     FlightHudRuntimeModel _flightHud;
     ContextMenuRuntimeModel _contextMenu;
