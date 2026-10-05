@@ -2562,7 +2562,11 @@ void DrawPlayableInterior(const NativeBattlefieldFrame& frame) {
     glDisable(GL_BLEND);glDepthMask(GL_TRUE);
     glPushMatrix();
     glTranslatef(ship.position.x,ship.position.y,ship.position.z);
+    // R193: the playable interior is ship-local in all three attitude axes.
+    // OpenGL post-multiplication yields Rz * Ry * Rx, matching flight physics.
     glRotatef(ship.rotation.z*180.0f/kPi,0,0,1);
+    glRotatef(ship.rotation.y*180.0f/kPi,0,1,0);
+    glRotatef(ship.rotation.x*180.0f/kPi,1,0,0);
     glScalef(.72f,.72f,.72f); // same ship-local->world scale as avatar camera
     for(const auto& surface:shell.surfaces){
         // R189 real FPS keeps the authored ceiling visible; only legacy preview omits it.
@@ -4505,7 +4509,9 @@ void NativeBattlefieldRenderer::Render(const NativeBattlefieldFrame& frame) {
         const float alpha=frame.cutaway.visible?std::max(0.30f,frame.cutaway.exteriorShellAlpha):1.0f;
         if(frame.cutaway.visible)glDepthMask(GL_FALSE);
         const int selected=frame.workspaceMode==SandboxWorkspaceMode::ShipBuilder&&frame.shipBuilder&&!frame.shipBuilder->recipe.modules.empty()?static_cast<int>(frame.shipBuilder->selectedPlacedModule):-1;
-        if(frame.embodimentMode==ShipEmbodimentMode::InteriorOnFoot){
+        if(frame.hasFirstPersonPose){
+            // R193: both walking and seated cockpit first-person views render
+            // the authored ship-local interior rather than a yaw-only exterior.
             if(frame.cutaway.visible)glDepthMask(GL_TRUE);
             DrawPlayableInterior(frame);
         }else{

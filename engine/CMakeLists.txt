@@ -1208,3 +1208,13 @@ if(SUBSPACE_BUILD_TESTS)
     target_link_libraries(subspace_r189_strategy_fps_cutover_tests PRIVATE subspace_engine)
     add_test(NAME SubspaceR189StrategyFpsCutoverTests COMMAND subspace_r189_strategy_fps_cutover_tests)
 endif()
+
+# R193: canonical player-scale authority + bounded small-ship certification.
+if(SUBSPACE_BUILD_TESTS)
+    add_executable(subspace_r193_player_scale_smallship_tests tests/r193_player_scale_smallship_tests.cpp)
+    target_link_libraries(subspace_r193_player_scale_smallship_tests PRIVATE subspace_engine)
+    add_test(NAME SubspaceR193PlayerScaleSmallShipTests COMMAND subspace_r193_player_scale_smallship_tests)
+    add_test(NAME SubspaceR193PlayerScaleSmallShipSourceGate COMMAND ${CMAKE_COMMAND}
+        -DROOT=${CMAKE_CURRENT_SOURCE_DIR}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/../tools/control/static-gates/nullharbor_r193_player_scale_smallship.cmake)
+endif()

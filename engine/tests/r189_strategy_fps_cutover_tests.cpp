@@ -1,8 +1,12 @@
 #include <cmath>
 #include <iostream>
+#include <memory>
+#include <utility>
 #include "fleet/FleetStrategyControlSystem.h"
+#include "core/physics/PhysicsComponent.h"
 #include "input/ControlIntentRouterSystem.h"
 #include "input/MouseLookProfileSystem.h"
+#include "input/PlayerControlSystem.h"
 #include "interior/ShipEmbodimentSystem.h"
 #include "interior/StarterShipInteriorSceneSystem.h"
 #include "rendering/FirstPersonViewSystem.h"
@@ -27,6 +31,44 @@ int main(){
 
     const auto rightMouse=MouseLookProfileSystem::OnFoot(20.0f,0.0f);
     CHECK("rightward raw mouse produces rightward FPS yaw",rightMouse.yawRadians<0.0f);
+    const auto pilotMouseRight=MouseLookProfileSystem::PilotSteer(20.0f,0.0f);
+    const auto pilotMouseUp=MouseLookProfileSystem::PilotSteer(0.0f,-20.0f);
+    CHECK("pilot mouse-right maps to positive steer-right axis",pilotMouseRight.yawAxis>0.0f&&std::fabs(pilotMouseRight.pitchAxis)<.0001f);
+    CHECK("pilot mouse-up maps to negative screen-down pitch axis",pilotMouseUp.pitchAxis<0.0f&&std::fabs(pilotMouseUp.yawAxis)<.0001f);
+
+    auto runFlightCase=[](InputAction action,float value,Vector3 rotation=Vector3{}){
+        EntityManager entities;InputState flightInput;PlayerControlSystem flightControls(entities,flightInput);
+        auto& entity=entities.CreateEntity("R193 control fixture");
+        auto component=std::make_unique<PhysicsComponent>();
+        component->mass=1000.0f;component->momentOfInertia=1000.0f;component->maxThrust=100.0f;component->maxTorque=50.0f;component->rotation=rotation;
+        auto* physics=entities.AddComponent<PhysicsComponent>(entity.id,std::move(component));
+        flightControls.SetControlledShip(entity.id);flightInput.SetActionValue(action,value);flightControls.Update(.10f);
+        return std::pair<Vector3,Vector3>{physics->appliedForce,physics->appliedTorque};
+    };
+    const auto levelForward=runFlightCase(InputAction::PilotForward,1.0f);
+    CHECK("level W is nose-forward without accidental vertical thrust",levelForward.first.y>1.0f&&std::fabs(levelForward.first.x)<.001f&&std::fabs(levelForward.first.z)<.001f);
+    const auto thrustUp=runFlightCase(InputAction::PilotThrustUp,1.0f);
+    CHECK("Space owns positive local vertical thrust",thrustUp.first.z>1.0f&&std::fabs(thrustUp.first.y)<.001f);
+    const auto rollLeft=runFlightCase(InputAction::FlightRollLeft,1.0f);
+    const auto rollRight=runFlightCase(InputAction::FlightRollRight,1.0f);
+    CHECK("Q is roll-left",rollLeft.second.y<-.1f&&std::fabs(rollLeft.second.x)<.001f&&std::fabs(rollLeft.second.z)<.001f);
+    CHECK("E is roll-right",rollRight.second.y>.1f&&std::fabs(rollRight.second.x)<.001f&&std::fabs(rollRight.second.z)<.001f);
+    {
+        EntityManager entities;InputState flightInput;PlayerControlSystem flightControls(entities,flightInput);
+        auto& entity=entities.CreateEntity("R193 mouse fixture");auto component=std::make_unique<PhysicsComponent>();component->maxTorque=50.0f;
+        auto* physics=entities.AddComponent<PhysicsComponent>(entity.id,std::move(component));flightControls.SetControlledShip(entity.id);
+        flightInput.SetActionValue(InputAction::TurnRight,pilotMouseRight.yawAxis);flightControls.Update(.016f);
+        CHECK("mouse-right produces immediate right-yaw torque",physics->appliedTorque.z<-20.0f);
+    }
+    {
+        EntityManager entities;InputState flightInput;PlayerControlSystem flightControls(entities,flightInput);
+        auto& entity=entities.CreateEntity("R193 mouse pitch fixture");auto component=std::make_unique<PhysicsComponent>();component->maxTorque=50.0f;
+        auto* physics=entities.AddComponent<PhysicsComponent>(entity.id,std::move(component));flightControls.SetControlledShip(entity.id);
+        flightInput.SetActionValue(InputAction::FlightPitchUp,-pilotMouseUp.pitchAxis);flightControls.Update(.016f);
+        CHECK("mouse-up produces immediate pitch-up torque",physics->appliedTorque.x>16.0f);
+    }
+    const auto pitchedForward=runFlightCase(InputAction::PilotForward,1.0f,{.45f,0.0f,0.0f});
+    CHECK("after deliberate pitch W follows the ship nose",pitchedForward.first.y>1.0f&&pitchedForward.first.z>1.0f);
     ShipEmbodimentSystem body; CHECK("bootable body enters FPS",body.ExitCockpit(9)&&body.IsOnFoot());
     auto fps=contexts.BuildForMode(SandboxWorkspaceMode::Flight,GameplayControlMode::OnFoot,body.Mode(),DockingExperienceStage::Undocked,false);
     CHECK("FPS owns avatar",fps.gameplayMode==GameplayControlMode::OnFoot&&fps.controlDomain==ControlDomain::FirstPerson&&fps.interiorControls&&!fps.flightControls);
@@ -61,6 +103,6 @@ int main(){
     const auto blocked=StarterShipInteriorSceneSystem::ResolveFixtureCollision(starter,starter.spawnFeet,starter.fixtures.front().localCenter,.32f);
     CHECK("starter furnishings participate in locomotion collision",(blocked-starter.fixtures.front().localCenter).length()>.05f);
 
-    std::cout<<"R189/R191/R192 assertions: "<<passed<<" passed / "<<failed<<" failed\n";
+    std::cout<<"R189/R191/R192/R193 assertions: "<<passed<<" passed / "<<failed<<" failed\n";
     return failed?1:0;
 }

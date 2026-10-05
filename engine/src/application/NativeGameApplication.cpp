@@ -61,6 +61,17 @@ Vector3 ShipLocalToWorld(const Vector3& local,float shipYaw)
     return {local.x*c-local.y*s,local.x*s+local.y*c,local.z};
 }
 
+Vector3 RotateShipLocalToWorld(const Vector3& v,const Vector3& r)
+{
+    // R193: Rz * Ry * Rx, identical to the Full3D flight-physics basis.
+    const float cx=std::cos(r.x),sx=std::sin(r.x);
+    const float cy=std::cos(r.y),sy=std::sin(r.y);
+    const float cz=std::cos(r.z),sz=std::sin(r.z);
+    const Vector3 x{v.x,v.y*cx-v.z*sx,v.y*sx+v.z*cx};
+    const Vector3 y{x.x*cy+x.z*sy,x.y,-x.x*sy+x.z*cy};
+    return {y.x*cz-y.y*sz,y.x*sz+y.y*cz,y.z};
+}
+
 TacticalTargetReference ToTargetReference(const NativeContactSelection& selection)
 {
     TacticalTargetReference ref;
@@ -2571,8 +2582,8 @@ NativeBattlefieldFrame NativeGameApplication::BuildRenderFrame() const
     f.productionHud=_productionInterface.Build(context,_selection.id,_embodiment.Mode(),_docking.stage,_vectorTravelSystem.InTransit(_vectorTravel));
     f.flightHud=_flightHud;
     const auto* hudPlayer=const_cast<Engine&>(_engine).GetEntityManager().GetComponent<PhysicsComponent>(_playerEntity);
-    if(hudPlayer&&_gameplayMode==GameplayControlMode::OnFoot&&_embodiment.IsOnFoot()){const auto local=FirstPersonViewSystem::BuildOnFootLocal(_embodiment.Avatar());const float yaw=hudPlayer->rotation.z,cy=std::cos(yaw),sy=std::sin(yaw);const auto rotate=[&](const Vector3& v){return Vector3{v.x*cy-v.y*sy,v.x*sy+v.y*cy,v.z};};f.firstPersonPose=local;f.firstPersonPose.position=hudPlayer->position+rotate(local.position)*.72f;f.firstPersonPose.forward=rotate(local.forward).normalized();f.firstPersonPose.right=rotate(local.right).normalized();f.firstPersonPose.up=rotate(local.up).normalized();f.hasFirstPersonPose=true;} // R189_REAL_FPS_POSE
-    if(hudPlayer&&_gameplayMode==GameplayControlMode::Pilot&&_embodiment.IsPiloting()){const auto local=FirstPersonViewSystem::BuildCockpitLocal(_embodiment.EyeLocalPosition(),_pilotHeadYawRadians,_pilotHeadPitchRadians);const float yaw=hudPlayer->rotation.z,cy=std::cos(yaw),sy=std::sin(yaw);const auto rotate=[&](const Vector3& v){return Vector3{v.x*cy-v.y*sy,v.x*sy+v.y*cy,v.z};};f.firstPersonPose=local;f.firstPersonPose.position=hudPlayer->position+rotate(local.position)*.72f;f.firstPersonPose.forward=rotate(local.forward).normalized();f.firstPersonPose.right=rotate(local.right).normalized();f.firstPersonPose.up=rotate(local.up).normalized();f.hasFirstPersonPose=true;} // R191_REAL_COCKPIT_POSE
+    if(hudPlayer&&_gameplayMode==GameplayControlMode::OnFoot&&_embodiment.IsOnFoot()){const auto local=FirstPersonViewSystem::BuildOnFootLocal(_embodiment.Avatar());const auto rotate=[&](const Vector3& v){return RotateShipLocalToWorld(v,hudPlayer->rotation);};f.firstPersonPose=local;f.firstPersonPose.position=hudPlayer->position+rotate(local.position)*.72f;f.firstPersonPose.forward=rotate(local.forward).normalized();f.firstPersonPose.right=rotate(local.right).normalized();f.firstPersonPose.up=rotate(local.up).normalized();f.hasFirstPersonPose=true;} // R189_REAL_FPS_POSE / R193_FULL_SHIP_ATTITUDE
+    if(hudPlayer&&_gameplayMode==GameplayControlMode::Pilot&&_embodiment.IsPiloting()){const auto local=FirstPersonViewSystem::BuildCockpitLocal(_embodiment.EyeLocalPosition(),_pilotHeadYawRadians,_pilotHeadPitchRadians);const auto rotate=[&](const Vector3& v){return RotateShipLocalToWorld(v,hudPlayer->rotation);};f.firstPersonPose=local;f.firstPersonPose.position=hudPlayer->position+rotate(local.position)*.72f;f.firstPersonPose.forward=rotate(local.forward).normalized();f.firstPersonPose.right=rotate(local.right).normalized();f.firstPersonPose.up=rotate(local.up).normalized();f.hasFirstPersonPose=true;} // R191_REAL_COCKPIT_POSE / R193_FULL_SHIP_ATTITUDE
     const float hudSpeed=hudPlayer?hudPlayer->velocity.length():0.0f;
     bool hudDamp=true,hudBoost=false;if(const auto* controls=_engine.GetPlayerControlSystem()){hudDamp=controls->IsInertialDampeningEnabled();hudBoost=controls->IsBoostActive();}
     const auto* hudCombat=const_cast<Engine&>(_engine).GetEntityManager().GetComponent<CombatComponent>(_playerEntity);

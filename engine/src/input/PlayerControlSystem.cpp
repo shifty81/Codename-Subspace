@@ -132,8 +132,12 @@ void PlayerControlSystem::Update(float deltaTime)
     const float rawYaw=ClampMagnitude(_inputState.GetValue(InputAction::TurnLeft)-_inputState.GetValue(InputAction::TurnRight),1.0f);
     const float rawPitch=full3D?ClampMagnitude(PreferSemanticAxis(_inputState,InputAction::FlightPitchUp,InputAction::EditorNudgeForward)-PreferSemanticAxis(_inputState,InputAction::FlightPitchDown,InputAction::EditorNudgeAft),1.0f):0.0f;
     const float rawRoll=full3D?ClampMagnitude(PreferSemanticAxis(_inputState,InputAction::FlightRollRight,InputAction::EditorNudgeRight)-PreferSemanticAxis(_inputState,InputAction::FlightRollLeft,InputAction::EditorNudgeLeft),1.0f):0.0f;
-    _yawResponse=SmoothResponse(_yawResponse,rawYaw,_tuning.rotationalResponse,deltaTime);
-    _pitchResponse=SmoothResponse(_pitchResponse,rawPitch,_tuning.rotationalResponse,deltaTime);
+    // R193: yaw/pitch are transient mouse-rate demands in the Pilot profile.
+    // Filtering a one-frame raw-mouse pulse like a held keyboard axis made normal
+    // mouse movement almost disappear. Apply those axes directly; preserve the
+    // smoother held-key response for Q/E roll.
+    _yawResponse=rawYaw;
+    _pitchResponse=rawPitch;
     _rollResponse=SmoothResponse(_rollResponse,rawRoll,_tuning.rotationalResponse,deltaTime);
 
     Vector3 requestedTorque{

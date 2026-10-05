@@ -1,0 +1,45 @@
+{
+  "schema": "subspace.player-scale-small-ship-authority.v1",
+  "pass": "R193",
+  "playerSource": {
+    "provider": "Quaternius",
+    "pack": "Universal Base Characters [Standard]",
+    "officialUrl": "https://quaternius.com/packs/universalbasecharacters.html",
+    "license": "CC0-1.0",
+    "status": "GOVERNED_SOURCE_DECLARED_PAYLOAD_NOT_BUNDLED",
+    "acceptedRuntimeFormats": ["gltf", "glb", "fbx"],
+    "selectionPolicy": "prefer one adult Regular base after local pack inventory; do not hard-code an unverified filename",
+    "scalePolicy": "measured imported adult humanoid height becomes WorldScaleProfile referencePlayerHeightMeters; 1.80m is bootstrap-only",
+    "requiredRuntimeEvidence": [
+      "source archive hash and provenance",
+      "loaded skinned mesh",
+      "resolved humanoid skeleton",
+      "measured standing bounds in metres",
+      "Universal Animation Library 2 retarget compatibility",
+      "feet/eye/seat anchors",
+      "first-person head visibility policy"
+    ]
+  },
+  "animationSource": {
+    "provider": "Quaternius",
+    "pack": "Universal Animation Library 2",
+    "officialUrl": "https://quaternius.com/packs/universalanimationlibrary2.html",
+    "license": "CC0-1.0",
+    "minimumExpectedAnimations": 130,
+    "locomotionRootMotionPolicy": "disabled/server-authoritative",
+    "actionRootMotionPolicy": "explicit-action-only"
+  },
+  "interiorOrder": [
+    "CUTTER_ONE_ROOM",
+    "SHUTTLE_TWO_TO_FOUR_CAVITIES",
+    "CORVETTE_THREE_TO_EIGHT_CAVITIES",
+    "MULTI_DECK_ONLY_AFTER_SMALL_SHIP_CERTIFICATION"
+  ],
+  "hollowing": {
+    "currentAuthority": "ShipInteriorCarvingSystem + ShipInteriorDerivedShellSystem",
+    "currentGeometry": "axis-aligned derived cavity union with pressure-shell inset, exclusions and cut portals",
+    "nextGeometry": "rotation-aware/arbitrary cohesive exterior inner-shell boolean",
+    "sourceExteriorIsDestructive": false,
+    "sameDerivedShellDrives": ["rendering", "collision", "traversal", "portal openings"]
+  }
+}

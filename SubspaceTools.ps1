@@ -1406,6 +1406,7 @@ function Invoke-BuildHeadless {
     Invoke-UtilityStep -Name "Studio R82R1 corrective audit" -ScriptBlock { Invoke-StudioR82R1CorrectionsIfRequired }
     Invoke-UtilityStep -Name "Studio R82R2 gate repair" -ScriptBlock { Invoke-StudioR82R2GateRepairIfRequired }
     Invoke-UtilityStep -Name "R189 strategy-first runtime / real FPS cutover" -ScriptBlock { Invoke-R189StrategyFpsRuntimeCutoverIfRequired }
+    Invoke-UtilityStep -Name "R193 player scale / small ship / Pilot control cutover" -ScriptBlock { Invoke-R193PlayerScaleSmallShipControlCutoverIfRequired }
     Invoke-UtilityStep -Name "Pass/source continuity audit" -ScriptBlock { Invoke-PassContinuityAudit }
     Invoke-UtilityStep -Name "Headless C++ configure/build/test" -ScriptBlock { Invoke-CMakeBuild -Headless -CleanFirst:$Clean }
     [void](Write-StepSummary)
@@ -1425,6 +1426,7 @@ function Invoke-BuildRender {
     Invoke-UtilityStep -Name "Studio R82R1 corrective audit" -ScriptBlock { Invoke-StudioR82R1CorrectionsIfRequired }
     Invoke-UtilityStep -Name "Studio R82R2 gate repair" -ScriptBlock { Invoke-StudioR82R2GateRepairIfRequired }
     Invoke-UtilityStep -Name "R189 strategy-first runtime / real FPS cutover" -ScriptBlock { Invoke-R189StrategyFpsRuntimeCutoverIfRequired }
+    Invoke-UtilityStep -Name "R193 player scale / small ship / Pilot control cutover" -ScriptBlock { Invoke-R193PlayerScaleSmallShipControlCutoverIfRequired }
     Invoke-UtilityStep -Name "Pass/source continuity audit" -ScriptBlock { Invoke-PassContinuityAudit }
     Invoke-UtilityStep -Name "Render C++ configure/build/test" -ScriptBlock { Invoke-CMakeBuild -CleanFirst:$Clean }
     if ($IsWindows -or $env:OS -eq "Windows_NT") {
@@ -1448,6 +1450,7 @@ function Invoke-TestsOnly {
     Invoke-UtilityStep -Name "Studio R82R1 corrective audit" -ScriptBlock { Invoke-StudioR82R1CorrectionsIfRequired }
     Invoke-UtilityStep -Name "Studio R82R2 gate repair" -ScriptBlock { Invoke-StudioR82R2GateRepairIfRequired }
     Invoke-UtilityStep -Name "R189 strategy-first runtime / real FPS cutover" -ScriptBlock { Invoke-R189StrategyFpsRuntimeCutoverIfRequired }
+    Invoke-UtilityStep -Name "R193 player scale / small ship / Pilot control cutover" -ScriptBlock { Invoke-R193PlayerScaleSmallShipControlCutoverIfRequired }
     Invoke-UtilityStep -Name "Pass/source continuity audit" -ScriptBlock { Invoke-PassContinuityAudit }
     $headlessBuild = Get-BuildDirectory -Headless
     $renderBuild = Get-BuildDirectory
@@ -2652,6 +2655,15 @@ function Invoke-R189StrategyFpsRuntimeCutoverIfRequired {
     Write-Log 'R189 strategy-first runtime / real FPS source contract is present.' 'PASS'
 }
 
+function Invoke-R193PlayerScaleSmallShipControlCutoverIfRequired {
+    $migration = Join-Path $Global:SubspaceRoot 'scripts\subspace_r193_control_player_smallship_apply.py'
+    if (-not (Test-Path -LiteralPath $migration -PathType Leaf)) { return }
+    Write-Log 'R193 player-scale / small-ship / Pilot control cutover: validating/applying guarded source normalization.' 'INFO'
+    Invoke-ProjectOpsPythonTool -RelativePath 'scripts\subspace_r193_control_player_smallship_apply.py' `
+        -Arguments @('--root',$Global:SubspaceRoot,'--apply')
+    Write-Log 'R193 player-scale / small-ship / Pilot control source contract is present.' 'PASS'
+}
+
 function Invoke-FullGate {
     param([switch]$CleanRoom)
 
@@ -2723,6 +2735,7 @@ function Invoke-FullGate {
     Invoke-UtilityStep -Name "Studio R82R1 corrective audit" -ScriptBlock { Invoke-StudioR82R1CorrectionsIfRequired }
     Invoke-UtilityStep -Name "Studio R82R2 gate repair" -ScriptBlock { Invoke-StudioR82R2GateRepairIfRequired }
     Invoke-UtilityStep -Name "R189 strategy-first runtime / real FPS cutover" -ScriptBlock { Invoke-R189StrategyFpsRuntimeCutoverIfRequired }
+    Invoke-UtilityStep -Name "R193 player scale / small ship / Pilot control cutover" -ScriptBlock { Invoke-R193PlayerScaleSmallShipControlCutoverIfRequired }
     Invoke-UtilityStep -Name "Pass/source continuity audit" -ScriptBlock { Invoke-PassContinuityAudit }
     if ($CleanRoom) {
         Write-Log "Clean-room Full Gate requested; rebuilding the native object graph from an empty build directory." "INFO"
@@ -2820,6 +2833,8 @@ function Invoke-FastDevelopmentGate {
     Invoke-UtilityStep -Name "Studio R82R1 corrective audit" -ScriptBlock { Invoke-StudioR82R1CorrectionsIfRequired }
     Invoke-UtilityStep -Name "Studio R82R2 gate repair" -ScriptBlock { Invoke-StudioR82R2GateRepairIfRequired }
         Invoke-UtilityStep -Name "R189 strategy-first runtime / real FPS cutover" -ScriptBlock { Invoke-R189StrategyFpsRuntimeCutoverIfRequired }
+        Invoke-UtilityStep -Name "R193 player scale / small ship / Pilot control cutover" -ScriptBlock { Invoke-R193PlayerScaleSmallShipControlCutoverIfRequired }
+    Invoke-UtilityStep -Name "R193 player scale / small ship / Pilot control cutover" -ScriptBlock { Invoke-R193PlayerScaleSmallShipControlCutoverIfRequired }
     Invoke-UtilityStep -Name "Pass/source continuity audit" -ScriptBlock { Invoke-PassContinuityAudit }
         Invoke-UtilityStep -Name "Incremental native configure/build/test" -ScriptBlock { Invoke-CMakeBuild }
     }
