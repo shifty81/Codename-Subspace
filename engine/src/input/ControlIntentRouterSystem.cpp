@@ -68,6 +68,7 @@ ControlIntent ControlIntentRouterSystem::Build(const InputState& input, ControlD
             out.additiveSelection = input.IsDown(InputAction::FleetAddSelection);
             out.commandConfirm = input.WasPressed(InputAction::FleetCommandConfirm) || input.WasPressed(InputAction::MenuAccept);
             out.commandCancel = input.WasPressed(InputAction::FleetCommandCancel) || input.WasPressed(InputAction::MenuBack);
+            out.interact = input.WasPressed(InputAction::CharacterInteract);
             // Intentionally do not populate pilot fire/thrust fields here.
             break;
 

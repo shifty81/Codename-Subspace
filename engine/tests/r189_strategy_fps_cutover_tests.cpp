@@ -2,7 +2,9 @@
 #include <iostream>
 #include "fleet/FleetStrategyControlSystem.h"
 #include "input/ControlIntentRouterSystem.h"
+#include "input/MouseLookProfileSystem.h"
 #include "interior/ShipEmbodimentSystem.h"
+#include "interior/StarterShipInteriorSceneSystem.h"
 #include "rendering/FirstPersonViewSystem.h"
 #include "runtime/GameplayControlMode.h"
 #include "ui/RuntimeControlContextSystem.h"
@@ -20,7 +22,11 @@ int main(){
     auto remote=contexts.BuildForMode(SandboxWorkspaceMode::Flight,GameplayControlMode::FleetCommand,ShipEmbodimentMode::InteriorOnFoot,DockingExperienceStage::Undocked,false);
     CHECK("fleet context is explicit",remote.gameplayMode==GameplayControlMode::FleetCommand&&remote.controlDomain==ControlDomain::FleetStrategy&&!remote.flightControls&&!remote.weapons);
     CHECK("fleet cursor is absolute",remote.pointerPolicy==RuntimePointerPolicy::AbsoluteVisible&&!remote.firstPerson);
+    InputState fleetExitInput;fleetExitInput.SetAction(InputAction::CharacterInteract,true);
+    CHECK("fleet F remains an explicit physical exit action",ControlIntentRouterSystem::Build(fleetExitInput,ControlDomain::FleetStrategy).interact);
 
+    const auto rightMouse=MouseLookProfileSystem::OnFoot(20.0f,0.0f);
+    CHECK("rightward raw mouse produces rightward FPS yaw",rightMouse.yawRadians<0.0f);
     ShipEmbodimentSystem body; CHECK("bootable body enters FPS",body.ExitCockpit(9)&&body.IsOnFoot());
     auto fps=contexts.BuildForMode(SandboxWorkspaceMode::Flight,GameplayControlMode::OnFoot,body.Mode(),DockingExperienceStage::Undocked,false);
     CHECK("FPS owns avatar",fps.gameplayMode==GameplayControlMode::OnFoot&&fps.controlDomain==ControlDomain::FirstPerson&&fps.interiorControls&&!fps.flightControls);
@@ -44,6 +50,17 @@ int main(){
     const auto pilotIntent=ControlIntentRouterSystem::Build(pilotInput,ControlDomain::Pilot);
     CHECK("pilot semantics are isolated",pilotIntent.forward>.9f&&pilotIntent.up>.9f&&pilotIntent.boost&&pilotIntent.headLook&&pilotIntent.AllowsShipThrust());
 
-    std::cout<<"R189/R191 assertions: "<<passed<<" passed / "<<failed<<" failed\n";
+    InteriorLayoutPlan layout;layout.carve.valid=true;layout.shell.ready=true;
+    InteriorCarvedVolume cabin;cabin.moduleIndex=1;cabin.moduleId="starter.cabin";cabin.roomType=InteriorRoomType::Cockpit;cabin.center={0,0,1.2f};cabin.halfExtents={2.0f,3.0f,1.2f};cabin.walkable=true;cabin.pressureCapable=true;layout.carve.volumes.push_back(cabin);
+    const auto starter=StarterShipInteriorSceneSystem::Build(layout);
+    CHECK("starter interior materializes functional fixtures",starter.ready&&starter.fixtures.size()>=5&&starter.fixtures.front().interaction.kind==InteriorFixtureKind::HelmSeat);
+    ShipEmbodimentSystem walker;walker.ExitCockpit(22);walker.SetCertifiedFootPosition(starter.spawnFeet);
+    const auto focus=StarterShipInteriorSceneSystem::Focus(starter,walker.Avatar(),4.0f,.40f);
+    CHECK("starter FPS spawn faces the physical helm",focus.valid()&&focus.fixtureIndex==0);
+    CHECK("starter helm can transfer nearby embodiment to pilot",walker.TakeControlsAt(starter.fixtures.front().useFeet,starter.fixtures.front().interaction.interactionRangeMeters+.20f)&&walker.IsPiloting());
+    const auto blocked=StarterShipInteriorSceneSystem::ResolveFixtureCollision(starter,starter.spawnFeet,starter.fixtures.front().localCenter,.32f);
+    CHECK("starter furnishings participate in locomotion collision",(blocked-starter.fixtures.front().localCenter).length()>.05f);
+
+    std::cout<<"R189/R191/R192 assertions: "<<passed<<" passed / "<<failed<<" failed\n";
     return failed?1:0;
 }

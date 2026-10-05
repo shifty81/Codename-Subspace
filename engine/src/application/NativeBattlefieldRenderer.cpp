@@ -2496,6 +2496,60 @@ void DrawStudioInteriorShell(const NativeBattlefieldFrame& frame,const std::stri
     if(blend)glEnable(GL_BLEND);
 }
 
+void DrawStarterInteriorFixtures(const NativeBattlefieldFrame& frame) {
+    if(!frame.starterInteriorScene||!frame.starterInteriorScene->ready)return;
+    const auto& scene=*frame.starterInteriorScene;
+    const float floor=scene.boundsMin.z;
+    const float width=std::max(.5f,scene.boundsMax.x-scene.boundsMin.x);
+    const float length=std::max(.5f,scene.boundsMax.y-scene.boundsMin.y);
+    const float cx=(scene.boundsMin.x+scene.boundsMax.x)*.5f;
+    const float cy=(scene.boundsMin.y+scene.boundsMax.y)*.5f;
+
+    // R192 starter-cabin visual language: readable floor runner, overhead light
+    // bars and a forward cockpit display bank. These are furnishing geometry,
+    // never replacement collision/hull surfaces.
+    DrawBox(cx,cy,floor+.025f,std::min(width*.44f,1.25f),std::max(.6f,length-.32f),.05f,{.055f,.105f,.125f,1.0f});
+    for(int i=-1;i<=1;++i){
+        const float y=cy+static_cast<float>(i)*std::min(1.05f,length*.25f);
+        DrawBox(cx,y,scene.boundsMax.z-.07f,std::min(width*.46f,1.35f),.10f,.055f,{.18f,.70f,.78f,1.0f},SpaceMaterialKind::ThrusterCore);
+    }
+    DrawBox(cx,scene.boundsMax.y-.055f,floor+1.42f,std::min(width*.58f,1.75f),.08f,.68f,{.055f,.28f,.36f,.98f},SpaceMaterialKind::ThrusterCore);
+
+    for(std::size_t i=0;i<scene.fixtures.size();++i){
+        const auto& f=scene.fixtures[i];
+        Rgba body{.18f,.22f,.25f,1.0f},panel{.16f,.68f,.76f,1.0f};
+        switch(f.interaction.kind){
+            case InteriorFixtureKind::HelmSeat: body={.19f,.25f,.29f,1};panel={.18f,.78f,.88f,1};break;
+            case InteriorFixtureKind::FleetCommandTerminal: body={.14f,.21f,.25f,1};panel={.32f,.82f,.66f,1};break;
+            case InteriorFixtureKind::CargoTerminal: body={.24f,.22f,.17f,1};panel={.92f,.64f,.20f,1};break;
+            case InteriorFixtureKind::EngineeringPanel: body={.20f,.22f,.18f,1};panel={.68f,.82f,.28f,1};break;
+            case InteriorFixtureKind::Airlock: body={.20f,.23f,.25f,1};panel=f.interaction.open?Rgba{.94f,.50f,.18f,1}:Rgba{.20f,.70f,.82f,1};break;
+            default: break;
+        }
+        const bool focused=static_cast<int>(i)==frame.starterInteriorFocusedFixture;
+        if(focused){panel.r=std::min(1.0f,panel.r+.18f);panel.g=std::min(1.0f,panel.g+.18f);panel.b=std::min(1.0f,panel.b+.18f);}
+        const Vector3 size=f.halfExtents*2.0f;
+        DrawBox(f.localCenter.x,f.localCenter.y,f.localCenter.z,size.x,size.y,size.z,body);
+        // Visible illuminated face/panel makes every station identifiable even
+        // before final authored meshes/material labels replace these primitives.
+        const float panelZ=f.localCenter.z+f.halfExtents.z*.34f;
+        DrawBox(f.localCenter.x,f.localCenter.y-.015f,panelZ,std::max(.14f,size.x*.72f),std::max(.045f,size.y*.28f),std::max(.10f,size.z*.26f),panel,SpaceMaterialKind::ThrusterCore);
+        if(f.interaction.kind==InteriorFixtureKind::HelmSeat){
+            DrawBox(f.useFeet.x,f.useFeet.y,floor+.32f,.54f,.54f,.64f,{.12f,.15f,.17f,1.0f});
+            DrawBox(f.useFeet.x,f.useFeet.y-.20f,floor+.69f,.50f,.12f,.50f,{.10f,.13f,.15f,1.0f});
+        }
+        if(f.interaction.kind==InteriorFixtureKind::CargoTerminal){
+            DrawBox(f.localCenter.x,f.localCenter.y+.36f,floor+.24f,.58f,.46f,.48f,{.28f,.24f,.17f,1.0f});
+        }
+        if(f.interaction.kind==InteriorFixtureKind::Airlock){
+            // Airlock frame is wall-mounted and intentionally leaves the walk
+            // lane clear. Door state is visible by the center panel color.
+            DrawBox(f.localCenter.x-f.halfExtents.x,f.localCenter.y,f.localCenter.z,.09f,.13f,f.halfExtents.z*2.0f,{.28f,.34f,.36f,1});
+            DrawBox(f.localCenter.x+f.halfExtents.x,f.localCenter.y,f.localCenter.z,.09f,.13f,f.halfExtents.z*2.0f,{.28f,.34f,.36f,1});
+        }
+    }
+}
+
 void DrawPlayableInterior(const NativeBattlefieldFrame& frame) {
     if(!frame.playerPhysics||!frame.playerInteriorShell||!frame.playerInteriorShell->ready)return;
     // The same quads are used by the on-foot traversal solver. Do NOT render
@@ -2526,6 +2580,7 @@ void DrawPlayableInterior(const NativeBattlefieldFrame& frame) {
         for(const auto& v:surface.corners)glVertex3f(v.x,v.y,v.z);
         glEnd();
     }
+    DrawStarterInteriorFixtures(frame);
     if(!frame.hasFirstPersonPose){const auto& avatar=frame.interiorAvatar;DrawSphere(avatar.localPosition.x,avatar.localPosition.y,avatar.localPosition.z+avatar.capsuleHeightMeters*.5f,.18f,{.88f,.66f,.22f,1.0f},16,8,SpaceMaterialKind::ShipHull);}
     glPopMatrix();
     if(cull)glEnable(GL_CULL_FACE);
@@ -2856,6 +2911,31 @@ void DrawHud(const NativeBattlefieldFrame& frame,const NativeBattlefieldRenderer
     const Rgba text{0.70f,0.84f,0.88f,0.90f};
     const float cx=w*0.5f,cy=h*0.5f;
 
+    // R192: OnFoot owns a deliberately separate, low-clutter FPS HUD. Do not
+    // paint the ship command rail, scanner or cockpit telemetry over embodiment.
+    if(frame.embodimentMode==ShipEmbodimentMode::InteriorOnFoot){
+        FilledRect(18,18,0,278,48,{.004f,.018f,.027f,.86f});
+        Line(18,66,0,296,66,0,{.18f,.70f,.78f,.52f},1.0f);
+        DrawText5x7("ON FOOT / SHIP INTERIOR",34,31,.90f,{.76f,.92f,.95f,.98f});
+        DrawText5x7("WASD MOVE   SHIFT SPRINT   CTRL CROUCH",34,50,.62f,{.58f,.76f,.80f,.92f});
+        Line(cx-10,cy,0,cx-3,cy,0,cyan,1.1f);Line(cx+3,cy,0,cx+10,cy,0,cyan,1.1f);
+        Line(cx,cy-10,0,cx,cy-3,0,cyan,1.1f);Line(cx,cy+3,0,cx,cy+10,0,cyan,1.1f);
+        if(!frame.playerInteriorShell||!frame.playerInteriorShell->ready){
+            FilledRect(cx-245,82,0,490,64,{.20f,.045f,.045f,.95f});
+            DrawText5x7("INTERIOR SHELL NOT READY / MOVEMENT DISABLED",cx-225,96,.78f,{1.0f,.72f,.58f,1.0f});
+            DrawText5x7("CHECK INTERIOR VALIDATION",cx-225,120,.68f,{1.0f,.85f,.72f,1.0f});
+        }else{
+            const std::string prompt=frame.starterInteriorPrompt.empty()?"LOOK AT A SHIP SYSTEM":frame.starterInteriorPrompt;
+            const float pw=std::min(560.0f,std::max(300.0f,static_cast<float>(prompt.size())*8.0f));
+            FilledRect(cx-pw*.5f,h-104,0,pw,44,{.004f,.022f,.032f,.90f});
+            Line(cx-pw*.5f,h-104,0,cx+pw*.5f,h-104,0,{.18f,.70f,.78f,.58f},1.0f);
+            DrawText5x7(prompt,cx-pw*.5f+18,h-91,.75f,frame.starterInteriorPrompt.empty()?Rgba{.52f,.68f,.72f,.82f}:Rgba{.92f,.70f,.26f,.98f});
+            DrawText5x7("MOUSE LOOK   ALT HEADLOOK   F INTERACT",26,h-42,.62f,{.50f,.68f,.72f,.82f});
+            if(!frame.starterInteriorStatus.empty())DrawText5x7(frame.starterInteriorStatus,26,h-64,.68f,{.36f,.86f,.72f,.94f});
+        }
+        glDisable(GL_BLEND);glEnable(GL_DEPTH_TEST);return;
+    }
+
     // Pass311-315: one coherent forward-facing HUD language. Interior and
     // hangar states intentionally do not inherit the flight telemetry layout.
     FilledRect(0,0,0,static_cast<float>(w),54,{0.004f,0.014f,0.024f,0.90f});
@@ -2872,7 +2952,7 @@ void DrawHud(const NativeBattlefieldFrame& frame,const NativeBattlefieldRenderer
         else FilledRect(8,ry+6,0,rail.width-16,rail.rowHeight-12,{0.018f,0.045f,0.058f,0.78f});
         DrawText5x7(item.shortLabel.empty()?item.label:item.shortLabel,18,ry+15,.78f,item.active?Rgba{0.92f,0.98f,0.98f,1.0f}:Rgba{0.70f,0.84f,0.86f,0.96f});
     }
-    if(frame.dockingStage!=DockingExperienceStage::Docked&&frame.embodimentMode!=ShipEmbodimentMode::InteriorOnFoot){DrawText5x7(frame.fleetStrategyActive?"FLEET COMMAND":"COCKPIT / PILOTING",w-302,20,1.05f,frame.fleetStrategyActive?Rgba{0.30f,0.82f,0.72f,0.90f}:Rgba{0.90f,0.64f,0.24f,0.90f});DrawText5x7(frame.fleetStrategyActive?"WASD CAMERA   I BOARD":"I LEAVE HELM   SHIFT BOOST",w-302,40,.76f,{0.42f,0.62f,0.68f,0.66f});}
+    if(frame.dockingStage!=DockingExperienceStage::Docked&&frame.embodimentMode!=ShipEmbodimentMode::InteriorOnFoot){DrawText5x7(frame.fleetStrategyActive?"FLEET COMMAND":"COCKPIT / PILOTING",w-302,20,1.05f,frame.fleetStrategyActive?Rgba{0.30f,0.82f,0.72f,0.90f}:Rgba{0.90f,0.64f,0.24f,0.90f});DrawText5x7(frame.fleetStrategyActive?"MOUSE COMMAND VIEW   F EXIT":"F LEAVE HELM   ALT FREELOOK",w-302,40,.76f,{0.42f,0.62f,0.68f,0.66f});}
     if(frame.embodimentMode==ShipEmbodimentMode::InteriorOnFoot&&
        (!frame.playerInteriorShell||!frame.playerInteriorShell->ready)){
         FilledRect(cx-238,72,0,476,64,{.20f,.045f,.045f,.95f});

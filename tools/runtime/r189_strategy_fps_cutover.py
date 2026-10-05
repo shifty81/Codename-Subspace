@@ -135,15 +135,47 @@ R189_KNOWN_FORWARD_DESCENDANTS = {
     ),
 }
 
+
+# R192 advances the same two application targets with the physical starter
+# interior interaction slice. Preserve the certified R191 hashes above as valid
+# historical descendants while adding a second byte-exact forward lineage.
+R189_KNOWN_R192_FORWARD_DESCENDANTS = {
+    TARGETS[0]: (
+        "a8750adffd0ad3af0ce2d85c0b9df6bdbc5050ac80b0353445adf43bf9789c9a",
+        (
+            "StarterInteriorScene _starterInteriorScene",
+            "void UpdateInteriorInteractionFocus()",
+            "bool ExecuteInteriorInteraction()",
+            "GameplayControlMode _gameplayMode = GameplayControlMode::OnFoot",
+            "bool BoardPlayerShipFromStrategy()",
+        ),
+    ),
+    TARGETS[1]: (
+        "c939bb3b81adafdb017ea67df98f17bff68723bd20a9f18c92009ec2884fe55e",
+        (
+            "R191_PRIMARY_FPS_BOOT",
+            "StarterShipInteriorSceneSystem::ResolveFixtureCollision",
+            "ExecuteInteriorInteraction()",
+            "GameplayControlMode::Pilot",
+            "GameplayControlMode::FleetCommand",
+            "_fleetStrategy.TickCamera",
+            "FirstPersonViewSystem::BuildOnFootLocal",
+        ),
+    ),
+}
+
 def _sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode('utf-8')).hexdigest()
 
 def _is_known_forward_descendant(rel: str, text: str) -> bool:
-    spec = R189_KNOWN_FORWARD_DESCENDANTS.get(rel)
-    if spec is None:
-        return False
-    expected_hash, markers = spec
-    return _sha256_text(text) == expected_hash and all(marker in text for marker in markers)
+    for table in (R189_KNOWN_FORWARD_DESCENDANTS, R189_KNOWN_R192_FORWARD_DESCENDANTS):
+        spec = table.get(rel)
+        if spec is None:
+            continue
+        expected_hash, markers = spec
+        if _sha256_text(text) == expected_hash and all(marker in text for marker in markers):
+            return True
+    return False
 
 def _satisfies_r189_target(rel: str, text: str) -> bool:
     tokens = POST[rel]

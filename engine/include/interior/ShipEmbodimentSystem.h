@@ -58,6 +58,9 @@ public:
     bool ExitCockpit(std::uint64_t shipId);
     bool CanTakeControls() const;
     bool TakeControls();
+    bool TakeControlsAt(Vector3 seatFeet,float interactionRadiusMeters=1.45f);
+    void SetCommandSeatLocalPosition(Vector3 seatFeet) { commandSeatLocalPosition_=seatFeet; RefreshCommandSeatInteraction(); }
+    Vector3 CommandSeatLocalPosition() const { return commandSeatLocalPosition_; }
     bool EnterDockedHangar(std::uint64_t shipId);
     bool BoardInterior(std::uint64_t shipId);
     void SetInspection(bool enabled);
@@ -90,6 +93,7 @@ private:
     InteriorTraversalBounds traversalBounds_{};
     bool commandSeatInteractionReady_ = true;
     bool commandSeatDeparted_ = false;
+    Vector3 commandSeatLocalPosition_{0.0f,1.45f,0.0f};
 };
 
 } // namespace subspace

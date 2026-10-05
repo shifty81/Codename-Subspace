@@ -71,3 +71,17 @@ if old_spec is None:
 else:
     m.R189_KNOWN_FORWARD_DESCENDANTS[m.TARGETS[0]]=old_spec
 print('R189/R191 forward-descendant gate compatibility tests PASS')
+
+# R192: a second exact forward lineage may coexist with the certified R191 one.
+fixture192="""StarterInteriorScene fixture
+ExecuteInteriorInteraction fixture
+"""
+old192=m.R189_KNOWN_R192_FORWARD_DESCENDANTS.get(m.TARGETS[0])
+m.R189_KNOWN_R192_FORWARD_DESCENDANTS[m.TARGETS[0]]=(m._sha256_text(fixture192),("StarterInteriorScene", "ExecuteInteriorInteraction"))
+assert m._is_known_forward_descendant(m.TARGETS[0],fixture192)
+assert not m._is_known_forward_descendant(m.TARGETS[0],fixture192+'unknown drift\n')
+if old192 is None:
+    del m.R189_KNOWN_R192_FORWARD_DESCENDANTS[m.TARGETS[0]]
+else:
+    m.R189_KNOWN_R192_FORWARD_DESCENDANTS[m.TARGETS[0]]=old192
+print('R189/R192 forward-descendant gate compatibility tests PASS')

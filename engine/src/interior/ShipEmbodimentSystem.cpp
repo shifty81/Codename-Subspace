@@ -21,7 +21,7 @@ Vector3 MoveToward2D(Vector3 current,Vector3 target,float maxDelta){
 
 bool ShipEmbodimentSystem::ExitCockpit(std::uint64_t shipId) {
     if (mode_ != ShipEmbodimentMode::CockpitControl || shipId == 0) return false;
-    avatar_.shipId = shipId; avatar_.localPosition = {0.0f, kCommandSeatY, 0.0f}; avatar_.deck = 0;
+    avatar_.shipId = shipId; avatar_.localPosition = commandSeatLocalPosition_; avatar_.deck = 0;
     avatar_.planarVelocity={};avatar_.grounded=true;avatar_.stance=InteriorAvatarStance::Standing;avatar_.sprinting=false;
     avatar_.lookPitchRadians=0.0f; avatar_.facingRadians=avatar_.lookYawRadians;
     avatar_.eyeHeightMeters=avatar_.standingEyeHeightMeters;avatar_.capsuleHeightMeters=avatar_.standingCapsuleHeightMeters;
@@ -30,21 +30,29 @@ bool ShipEmbodimentSystem::ExitCockpit(std::uint64_t shipId) {
 }
 bool ShipEmbodimentSystem::CanTakeControls() const {
     if(mode_!=ShipEmbodimentMode::InteriorOnFoot||avatar_.shipId==0||!commandSeatInteractionReady_)return false;
-    const float seatDistance=std::sqrt(avatar_.localPosition.x*avatar_.localPosition.x +
-        (avatar_.localPosition.y-kCommandSeatY)*(avatar_.localPosition.y-kCommandSeatY));
+    const float seatDistance=std::sqrt((avatar_.localPosition.x-commandSeatLocalPosition_.x)*(avatar_.localPosition.x-commandSeatLocalPosition_.x) +
+        (avatar_.localPosition.y-commandSeatLocalPosition_.y)*(avatar_.localPosition.y-commandSeatLocalPosition_.y));
     return seatDistance<=kCommandSeatInteractionRadius;
 }
 bool ShipEmbodimentSystem::TakeControls() {
     if(!CanTakeControls())return false;
     StopLocomotion();ResetHeadLook();mode_ = ShipEmbodimentMode::CockpitControl; return true;
 }
+bool ShipEmbodimentSystem::TakeControlsAt(Vector3 seatFeet,float interactionRadiusMeters) {
+    if(mode_!=ShipEmbodimentMode::InteriorOnFoot||avatar_.shipId==0)return false;
+    interactionRadiusMeters=std::clamp(interactionRadiusMeters,0.35f,2.5f);
+    const float dx=avatar_.localPosition.x-seatFeet.x,dy=avatar_.localPosition.y-seatFeet.y;
+    if(std::sqrt(dx*dx+dy*dy)>interactionRadiusMeters)return false;
+    commandSeatLocalPosition_=seatFeet;commandSeatInteractionReady_=true;commandSeatDeparted_=false;
+    StopLocomotion();ResetHeadLook();mode_=ShipEmbodimentMode::CockpitControl;return true;
+}
 bool ShipEmbodimentSystem::EnterDockedHangar(std::uint64_t shipId) { if(shipId==0)return false;avatar_.shipId=shipId;commandSeatInteractionReady_=false;commandSeatDeparted_=true;StopLocomotion();mode_=ShipEmbodimentMode::DockedHangar;return true; }
 bool ShipEmbodimentSystem::BoardInterior(std::uint64_t shipId) { if(shipId==0)return false;avatar_.shipId=shipId;avatar_.localPosition={0.0f,-1.55f,0.0f};avatar_.lookPitchRadians=0.0f;avatar_.grounded=true;commandSeatInteractionReady_=false;commandSeatDeparted_=true;ConfigureLocomotion(false,false);StopLocomotion();mode_=ShipEmbodimentMode::InteriorOnFoot;return true; }
 void ShipEmbodimentSystem::SetInspection(bool enabled) { if(mode_==ShipEmbodimentMode::InteriorOnFoot||mode_==ShipEmbodimentMode::DockedHangar)return;mode_=enabled?ShipEmbodimentMode::CutawayInspection:ShipEmbodimentMode::CockpitControl; }
 void ShipEmbodimentSystem::RefreshCommandSeatInteraction(){
     if(mode_!=ShipEmbodimentMode::InteriorOnFoot)return;
-    const float seatDistance=std::sqrt(avatar_.localPosition.x*avatar_.localPosition.x +
-        (avatar_.localPosition.y-kCommandSeatY)*(avatar_.localPosition.y-kCommandSeatY));
+    const float seatDistance=std::sqrt((avatar_.localPosition.x-commandSeatLocalPosition_.x)*(avatar_.localPosition.x-commandSeatLocalPosition_.x) +
+        (avatar_.localPosition.y-commandSeatLocalPosition_.y)*(avatar_.localPosition.y-commandSeatLocalPosition_.y));
     if(seatDistance>kCommandSeatInteractionRadius){commandSeatDeparted_=true;return;}
     if(commandSeatDeparted_)commandSeatInteractionReady_=true;
 }
